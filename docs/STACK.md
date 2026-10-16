@@ -33,6 +33,8 @@ Si una terminal necesita una dependencia npm nueva, la anota en su bitácora y e
 | Desarrollo (API real) | `npm run dev:api` (o `tools/dev.sh --api`) |
 | Solo API | `npm run server` (agrega `-- --mocks` o `USE_MOCKS=1` para mocks) |
 | Pruebas | `tools/test.sh` (typecheck + vitest; 0 = verde) |
+| Semilla | `npm run seed` (superadmin desde `.env`, idempotente) · `npm run seed -- --sala "Taller" --mesas 4` crea sala Foodsume e imprime URLs |
+| Simulador de carga | `npm run simular` (API en memoria, 40 personas, 4 mesas, 2 rondas; p95 y verificación de puntos) · `-- --url https://... --usuario U --clave C` contra un servidor |
 | Build | `npm run build` (genera `dist/web`; el servidor lo sirve con fallback SPA) |
 | Producción local | `npm run build && PORT=3000 HOST=0.0.0.0 npm start` |
 | Desplegar staging | Coolify: rama `main` del repo Horizontes → app staging (T4 documenta en `deploy/`) |

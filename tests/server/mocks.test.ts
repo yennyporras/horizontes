@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { FastifyInstance } from 'fastify'
 import { construirApp } from '../../server/app'
+import { abrirDb } from '../../server/db/index'
 
 let app: FastifyInstance
 beforeAll(async () => {
@@ -43,11 +44,14 @@ describe('servidor de mocks', () => {
 })
 
 describe('servidor sin mocks', () => {
-  it('rutas no implementadas responden 501 con forma de error del contrato', async () => {
-    const real = await construirApp({ mocks: false })
+  it('health responde en modo api y /api/yo sin token da 401 con forma de error del contrato', async () => {
+    const real = await construirApp({ mocks: false, db: abrirDb(':memory:'), intervaloCierresMs: 0 })
+    expect((await real.inject('/api/health')).json()).toEqual({ ok: true, modo: 'api' })
     const r = await real.inject('/api/yo')
-    expect(r.statusCode).toBe(501)
-    expect(r.json().error.codigo).toBe('NO_IMPLEMENTADO')
+    expect(r.statusCode).toBe(401)
+    expect(r.json().error.codigo).toBe('TOKEN_REQUERIDO')
+    const r2 = await real.inject('/api/no-existe')
+    expect(r2.statusCode).toBe(404)
     await real.close()
   })
 })
