@@ -534,3 +534,38 @@ body:has(> #root > .hz-tablero) {
     width: 0.85em;
   }
 }
+
+/* Pantalla completa (tecla F): sin controles; la vista se cambia con 1, 2 y C. */
+.hz-boton-pantalla {
+  min-height: 2.4em;
+  padding: 0.3em 0.9em;
+  font: inherit;
+  font-weight: 600;
+  color: var(--t-azul);
+  background: #fff;
+  border: 1px solid var(--t-azul-medio);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.hz-boton-pantalla kbd {
+  margin-left: 0.3em;
+  padding: 0 0.35em;
+  font: inherit;
+  font-size: 0.8em;
+  border: 1px solid var(--t-h3);
+  border-radius: 4px;
+}
+.hz-pantalla-completa .hz-cab-controles {
+  display: none;
+}
+.hz-cab-vista {
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: 800;
+  color: var(--t-azul);
+}
+@media (max-width: 1099px) {
+  .hz-boton-pantalla {
+    display: none;
+  }
+}

@@ -5,6 +5,7 @@ import { PanelProyecto } from './PanelProyecto'
 import { Progreso } from './Progreso'
 import { TablaComparada } from './TablaComparada'
 import { usePollingTablero } from './usePollingTablero'
+import { usePantallaCompleta } from './usePantallaCompleta'
 import { esPreliminar, mensajeVacio, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
 import type { DatosTablero, Vista } from './tipos'
 import './tablero.css'
@@ -31,6 +32,7 @@ export default function PaginaTablero() {
   const vista = elegida ?? vistaPorDefecto(estado, datos?.sala?.ronda_actual)
 
   const escalaTexto = useEscalaProyector()
+  const pantalla = usePantallaCompleta(setElegida)
 
   const cambiarAlcance = (valor: string) => {
     const p = new URLSearchParams(params)
@@ -61,8 +63,17 @@ export default function PaginaTablero() {
   }
 
   return (
-    <main className="hz-tablero" data-ruta="tablero">
-      <Encabezado datos={datos} vista={vista} onVista={setElegida} token={token} mesa={mesa} onAlcance={cambiarAlcance} />
+    <main className={pantalla.activa ? 'hz-tablero hz-pantalla-completa' : 'hz-tablero'} data-ruta="tablero">
+      <Encabezado
+        datos={datos}
+        vista={vista}
+        onVista={setElegida}
+        token={token}
+        mesa={mesa}
+        onAlcance={cambiarAlcance}
+        pantallaCompleta={pantalla.activa}
+        onPantalla={pantalla.alternar}
+      />
       {error && (
         <p className="hz-aviso-error" role="alert">
           {error.mensaje} Mostramos los últimos datos recibidos.
@@ -114,6 +125,8 @@ function Encabezado({
   token,
   mesa,
   onAlcance,
+  pantallaCompleta,
+  onPantalla,
 }: {
   datos: DatosTablero
   vista: Vista
@@ -121,6 +134,8 @@ function Encabezado({
   token: string | null
   mesa: string | null
   onAlcance: (v: string) => void
+  pantallaCompleta: boolean
+  onPantalla: () => void
 }) {
   const preliminar = esPreliminar(datos)
   const alcanceTexto =
@@ -161,7 +176,15 @@ function Encabezado({
             </button>
           ))}
         </div>
+        <button type="button" className="hz-boton-pantalla" onClick={onPantalla} aria-keyshortcuts="F">
+          {pantallaCompleta ? 'Salir de pantalla completa' : 'Pantalla completa'} <kbd>F</kbd>
+        </button>
       </div>
+      {pantallaCompleta && (
+        <p className="hz-cab-vista" aria-live="polite">
+          {VISTAS.find((v) => v.id === vista)?.texto}
+        </p>
+      )}
     </header>
   )
 }
