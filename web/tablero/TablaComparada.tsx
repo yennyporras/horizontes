@@ -1,7 +1,7 @@
 import { COLORES } from './matriz/matriz.js'
 import { MiniDistribucion } from './PanelProyecto'
 import type { CriterioId, DatosTablero, RondaVivo, Vista } from './tipos'
-import { nombreCorto, numero, rondaDe, rondaEnFoco } from './logica'
+import { hayVotosEnRonda, nombreCorto, numero, rondaDe, rondaEnFoco } from './logica'
 
 /**
  * Proyector: los proyectos vivos lado a lado en una sola tabla para que todo quepa en 1080 px de alto.
@@ -9,6 +9,9 @@ import { nombreCorto, numero, rondaDe, rondaEnFoco } from './logica'
  */
 export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: Vista }) {
   const enFoco = rondaEnFoco(datos, vista)
+  // Antes de la ronda 2 la columna R2 solo diría "Sin votos" en cada fila: no se muestra.
+  const conR2 = hayVotosEnRonda(datos, 2) || (datos.sala?.ronda_actual ?? 0) >= 2
+  const cols = conR2 ? 3 : 2
   const vivos = datos.proyectos_vivos.map((p, i) => ({
     p,
     r1: rondaDe(p, 1),
@@ -28,9 +31,11 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
         <td key={`${p.id}1`} className={claseR(1)}>
           {numero(r1?.[campo])}
         </td>,
-        <td key={`${p.id}2`} className={claseR(2)}>
-          {numero(r2?.[campo])}
-        </td>,
+        conR2 && (
+          <td key={`${p.id}2`} className={claseR(2)}>
+            {numero(r2?.[campo])}
+          </td>
+        ),
         <td key={`${p.id}d`} />,
       ])}
     </tr>
@@ -43,13 +48,13 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
       </h2>
       <table className="hz-tabla">
         <caption className="hz-oculto">
-          Promedio de la ronda 1 y la ronda 2 por criterio y proyecto, con la distribución de votos de la ronda {enFoco}
+          Promedio {conR2 ? 'de la ronda 1 y la ronda 2' : 'de la ronda 1'} por criterio y proyecto, con la distribución de votos de la ronda {enFoco}
         </caption>
         <thead>
           <tr>
             <td />
             {vivos.map(({ p, color, colorTexto }) => (
-              <th key={p.id} scope="colgroup" colSpan={3} className="hz-col-proy">
+              <th key={p.id} scope="colgroup" colSpan={cols} className="hz-col-proy">
                 <span className="hz-punto" style={{ background: color }} aria-hidden="true" />
                 <span style={{ color: colorTexto }}>{p.nombre}</span>
                 <span className="hz-panel-meta"> TAM {p.tam}</span>
@@ -62,10 +67,12 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
               <th key={`${p.id}1`} scope="col">
                 R1
               </th>,
-              <th key={`${p.id}2`} scope="col">
-                R2
-              </th>,
-              <th key={`${p.id}d`} scope="col">
+              conR2 && (
+                <th key={`${p.id}2`} scope="col">
+                  R2
+                </th>
+              ),
+              <th key={`${p.id}d`} scope="col" className="hz-th-dist">
                 Votos R{enFoco}
               </th>,
             ])}
@@ -83,9 +90,11 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
                   <td key={`${p.id}1`} className={claseR(1)}>
                     {numero(prom(r1, c.id))}
                   </td>,
-                  <td key={`${p.id}2`} className={claseR(2)}>
-                    {numero(prom(r2, c.id))}
-                  </td>,
+                  conR2 && (
+                    <td key={`${p.id}2`} className={claseR(2)}>
+                      {numero(prom(r2, c.id))}
+                    </td>
+                  ),
                   <td key={`${p.id}d`} className="hz-celda-dist">
                     <MiniDistribucion dist={rf?.distribucion?.[c.id]} criterio={`${p.nombre}, ${c.nombre}`} ronda={enFoco} />
                   </td>,
@@ -102,7 +111,7 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
             <th scope="row">Votos</th>
             {vivos.map(({ p, r1, r2 }) => [
               <td key={`${p.id}1`}>{r1?.n_votos ?? 0}</td>,
-              <td key={`${p.id}2`}>{r2?.n_votos ?? 0}</td>,
+              conR2 && <td key={`${p.id}2`}>{r2?.n_votos ?? 0}</td>,
               <td key={`${p.id}d`} />,
             ])}
           </tr>
