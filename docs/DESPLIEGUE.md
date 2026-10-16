@@ -39,7 +39,7 @@ No toques otros registros (el correo de Google Workspace depende de ellos). Veri
 ### 2.3 Aplicación
 
 - **+ New → Applications → Private Repository (with GitHub App)**, repo de Horizontes.
-- **Build Pack:** `Dockerfile`, ubicación `/deploy/Dockerfile`, base `/`. Mismo patrón del IRMI: build de la web (participante, tablero y admin) servida como estáticos por el mismo servidor Fastify, un solo puerto `3000`. Ver `deploy/README.md` y `deploy/desplegar.sh`.
+- **Build Pack:** `Dockerfile`, ubicación `/deploy/Dockerfile`, base `/`. Mismo patrón del IRMI: build de la web (participante, tablero y admin) servida como estáticos por el mismo servidor Fastify, un solo puerto `3000`. Ver `deploy/README.md` y `tools/deploy.sh`.
 - **Ports Exposes:** `3000`. Sin *Ports Mappings*.
 - **Advanced:** Force HTTPS. Certificado Let's Encrypt automático cuando el DNS responda.
 - **Healthcheck:** `GET /api/health` → 200, puerto 3000, intervalo 30 s, timeout 10 s, 3 reintentos, start period 60 s. (T1 publica la ruta; si cambia, se ajusta aquí.)
@@ -68,7 +68,7 @@ T1 fijó **SQLite** (`node:sqlite`) en `docs/STACK.md`. Se usa la segunda opció
 | `POLITICA_PRIVACIDAD_URL` | `https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/` | igual | Ver `docs/CONSENTIMIENTO.md`. |
 | `CONSENTIMIENTO_VERSION` | `hz-1.0` | `hz-1.0` | Versión vigente del aviso. |
 | `TRUST_PROXY_HOPS` | `1` | `1` | IP real detrás del proxy de Coolify para la evidencia del consentimiento. |
-| `CIERRES_INTERVALO_MS` | `15000` | `15000` | Intervalo del chequeo de cierres programados. |
+| `CIERRES_INTERVALO_MS` | no aplica | no aplica | El servidor usa 15 s fijos (no lee esta variable). |
 
 El `.env` local de la raíz es solo para desarrollo y no se sube (`.gitignore`).
 
@@ -76,7 +76,7 @@ El `.env` local de la raíz es solo para desarrollo y no se sube (`.gitignore`).
 
 No hace falta cron del sistema ni *Scheduled Task* de Coolify:
 1. **Chequeo perezoso:** antes de responder cualquier petición, el servidor aplica `cierre_programado_ronda_at` y `cierre_programado_sala_at` vencidos (SPEC §5).
-2. **Intervalo:** el proceso Node corre un `setInterval` cada `CIERRES_INTERVALO_MS` (15 s) que hace lo mismo, así se cierra aunque nadie esté consultando. Cumple el criterio ± 15 s.
+2. **Intervalo:** el proceso Node corre un `setInterval` cada 15 s que hace lo mismo, así se cierra aunque nadie esté consultando. Cumple el criterio ± 15 s.
 3. Si en algún momento el servidor no pudiera tener un intervalo (PHP), se agrega en Coolify *Scheduled Tasks* un `curl -fsS http://localhost:3000/api/interno/cierres` cada minuto y se acepta ± 60 s (anotar en `DECISIONES.md`).
 
 Por eso la app corre con **1 réplica** y `TZ=America/Bogota`.
@@ -92,7 +92,7 @@ Por eso la app corre con **1 réplica** y `TZ=America/Bogota`.
 
 1. DNS del paso 2.2 creado y respondiendo.
 2. Crear BD (2.4), app (2.3) y variables (2.5). Guardar.
-3. **Deploy**. Ver el log del build y luego *Logs*: migraciones, semilla Foodsume y superadmin creados.
+3. **Deploy** (o `tools/deploy.sh staging`, que además fija dominio, healthcheck y variables). Ver el log del build y luego *Logs*: migraciones, semilla Foodsume y superadmin creados.
 4. Estado **Running (healthy)**.
 5. Comprobaciones desde tu equipo:
    ```sh

@@ -35,6 +35,8 @@
   padding: 0 var(--hz-sp-4) calc(var(--hz-sp-12) * 2.5);
 }
 .hz-contenido { max-width: var(--hz-medida); margin: 0 auto; display: grid; gap: var(--hz-sp-6); }
+/* Ningún hijo (matriz, tablas) ensancha la página en 360 px. */
+.hz-contenido > * { min-width: 0; }
 .hz-titulo { font-size: var(--hz-fs-25); font-weight: 800; line-height: var(--hz-lh-titulo); color: var(--hz-azul); }
 .hz-subtitulo { font-size: var(--hz-fs-20); font-weight: 700; line-height: var(--hz-lh-titulo); }
 .hz-texto-2 { color: var(--hz-tinta-2); }
@@ -238,3 +240,10 @@
 .hz-hoja--activa { box-shadow: var(--hz-sombra); border-color: var(--hz-h2); }
 .hz-hoja__titulo { display: flex; justify-content: space-between; align-items: center; gap: var(--hz-sp-2); font-size: var(--hz-fs-18); font-weight: 800; color: var(--hz-azul); }
 .hz-hoja__texto { color: var(--hz-tinta); }
+
+/* ── Blindaje ante estilos globales de otras áreas ─────
+   tablero.css (T3) define .hz-cifra, .hz-insignia y .hz-progreso sin alcance y se carga en toda la SPA.
+   Dentro de .hz (páginas del participante) mandan los valores de este sistema de diseño. */
+.hz .hz-cifra { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
+.hz .hz-progreso { padding: 0; background: none; border-radius: 0; }
+.hz .hz-insignia { padding: 2px var(--hz-sp-2); border-radius: var(--hz-r-pill); font-size: var(--hz-fs-12); font-weight: 600; }
