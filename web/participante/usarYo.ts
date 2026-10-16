@@ -48,8 +48,10 @@ export function usarYo(token: string | null) {
           if (recuperacion.current) clearTimeout(recuperacion.current)
           recuperacion.current = setTimeout(() => vivo.current && setEstado((s) => ({ ...s, recuperada: false })), 3000)
         }
+        // Misma versión que la que ya teníamos: se conserva lo aplicado en local (voto recién guardado).
+        const igual = Boolean(r && r.etag && r.etag === etag.current)
         setEstado((s) => ({
-          yo: r ? r.yo : s.yo,
+          yo: r && !(igual && s.yo) ? r.yo : s.yo,
           fatal: null,
           errorCarga: null,
           sinConexion: false,

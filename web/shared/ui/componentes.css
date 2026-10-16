@@ -12,7 +12,9 @@
   -webkit-text-size-adjust: 100%;
 }
 .hz h1, .hz h2, .hz h3, .hz p { margin: 0; }
-.hz button, .hz input { font: inherit; color: inherit; }
+:where(.hz) button, :where(.hz) input { font: inherit; color: inherit; }
+/* Títulos que reciben el foco al cambiar de pantalla: sin anillo, no son interactivos. */
+.hz h1[tabindex="-1"]:focus { box-shadow: none; outline: none; }
 
 .hz :focus-visible { outline: none; box-shadow: var(--hz-foco); }
 
