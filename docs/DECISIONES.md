@@ -53,3 +53,7 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - 2026-10-16 [T3] Sin `?t=` el tablero no muestra el selector de alcance; usa `?mesa=` si viene (alcance mesa) o la sala. Con 401/403 muestra "Pide al facilitador el enlace completo con su token".
 - 2026-10-16 [T3] Etiquetas de vivos en color oscuro AA (INSUMEX `#A63C06`, NUTRIWHAT `#00609A`); la burbuja conserva el color de marca. Matriz con `escalaTexto` 1,3 en proyector.
 - 2026-10-16 [T3] `MatrizHorizontes` (embebible para T2): `import { MatrizHorizontes } from '../tablero'`; props `datos`, `vista` (1, 2 o 'comparacion'), `alto` o `llenar`, `escalaTexto`. Sin fetch interno.
+- 2026-10-16 [T3] Vista "todas las mesas": `?vista=mesas` (solo con token), una matriz por mesa con inscritos; cada mesa hace polling cada 5 s (no 2,5 s) para no multiplicar la carga del servidor.
+- 2026-10-16 [T3] Atajos del proyector: F pantalla completa (oculta controles; si el navegador no deja, igual oculta controles), 1, 2 y C cambian de vista. No actúan dentro de campos.
+- 2026-10-16 [T3] Animación R1 a R2 solo al pasar a Comparación (incluye el cambio automático al cerrar R2), una vez, 1,2 s, sin animación con `prefers-reduced-motion`.
+- 2026-10-16 [T3] Verifiqué contra la API real de T1 con una copia desacoplada (`git worktree add --detach ../hz-t3-api t1-backend`), sin escribir en su rama.
