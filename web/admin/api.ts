@@ -23,14 +23,33 @@ const transporteReal: Transporte = async (metodo, ruta, cuerpo, etag) => {
   return { status: r.status, body: texto ? JSON.parse(texto) : null, etag: r.headers.get('ETag') ?? undefined }
 }
 
-// Mocks por defecto hasta que T1 publique la API real (VITE_API_REAL=1).
-let transporte: Transporte = import.meta.env.VITE_API_REAL === '1' ? transporteReal : responderMock
+// API real por defecto. Modo simulado (servidor en memoria del navegador) con VITE_ADMIN_MOCK=1
+// o abriendo /admin?mock=1 (queda guardado en este navegador; ?mock=0 lo apaga).
+const LLAVE_MODO = 'hz_admin_modo'
+
+function modoInicial(): Transporte {
+  if (typeof window === 'undefined') return transporteReal
+  const q = new URLSearchParams(window.location.search).get('mock')
+  if (q === '1') localStorage.setItem(LLAVE_MODO, 'mock')
+  if (q === '0') localStorage.removeItem(LLAVE_MODO)
+  const mock = import.meta.env.VITE_ADMIN_MOCK === '1' || localStorage.getItem(LLAVE_MODO) === 'mock'
+  return mock ? responderMock : transporteReal
+}
+
+let transporte: Transporte = modoInicial()
 
 export function usarTransporte(t: Transporte) {
   transporte = t
 }
 
 export const usaMocks = () => transporte === responderMock
+
+/** Algunas listas llegan como arreglo o envueltas ({salas:[...]}, {admins:[...]}). */
+export function lista<T>(cuerpo: unknown, llave: string): T[] {
+  if (Array.isArray(cuerpo)) return cuerpo as T[]
+  const v = (cuerpo as Record<string, unknown> | null)?.[llave]
+  return Array.isArray(v) ? (v as T[]) : []
+}
 
 async function pedir<T>(metodo: string, ruta: string, cuerpo?: unknown): Promise<T> {
   let r: Respuesta

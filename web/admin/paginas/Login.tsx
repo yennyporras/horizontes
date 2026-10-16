@@ -6,7 +6,7 @@ import { usaMocks } from '../api'
 export function Login() {
   const { admin, entrar } = useSesion()
   const navegar = useNavigate()
-  const desde = (useLocation().state as { desde?: string } | null)?.desde ?? '/salas'
+  const desde = (useLocation().state as { desde?: string } | null)?.desde ?? '/admin/salas'
   const [usuario, setUsuario] = useState('')
   const [clave, setClave] = useState('')
   const [error, setError] = useState<string | null>(null)

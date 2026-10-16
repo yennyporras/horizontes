@@ -6,7 +6,7 @@ export function ElegirSala() {
     <section className="panel">
       <h1>Elige una sala</h1>
       <p>Esta sección trabaja sobre una sala. Abre una desde la lista y vuelve aquí.</p>
-      <Link className="btn btn--primario" to="/salas">
+      <Link className="btn btn--primario" to="/admin/salas">
         Ir a Salas
       </Link>
     </section>
