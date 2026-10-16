@@ -9,11 +9,11 @@ App web para el taller "Portafolio por Horizontes" de Estratek. Los participante
 Fecha límite: 2 días. Se trabaja en rondas autónomas de ~4 horas con 4 terminales en paralelo.
 
 ## Stack
-> R0-T1 completa esta sección tras inspeccionar el repo del IRMI. Hasta entonces nadie elige framework.
+> Fijado por R0-T1 (16-oct). Detalle, comandos y variables en `docs/STACK.md`.
 
-- Repo plantilla: IRMI (mismo stack, mismo despliegue en servidor cloud de Hostinger, mismo componente de página de consentimiento; el texto legal es el de Estratek).
-- Backend: `<lo fija R0>` · Base de datos: `<lo fija R0>` · Frontend: `<lo fija R0>`
-- Si el stack del IRMI no puede servir la API del contrato, fallback: Node 20 + Express + SQLite (better-sqlite3) + Vite. Si el plan de Hostinger no corre Node: PHP 8 + MySQL con la misma API.
+- Repo plantilla: IRMI en `../irmi` (mismo stack, mismo despliegue con Docker + Coolify en el servidor cloud de Hostinger, mismo componente de página de consentimiento; el texto legal es el de Estratek).
+- Backend: Node 24 + Fastify 5 + TypeScript (con `tsx`) · Base de datos: SQLite (`node:sqlite`, archivo en volumen) · Frontend: React 18 + Vite 6 + react-router 7 + TypeScript, una sola SPA.
+- Instalar `npm install` · desarrollo con mocks `npm run dev` · API real `npm run dev:api` · pruebas `tools/test.sh` · build `npm run build`.
 - Tiempo real = polling cada 2,5 s con `version` (ETag / If-None-Match → 304). Sin websockets.
 - Dominio: `horizontes.estratek.com.co` (staging: `staging-horizontes.estratek.com.co`).
 
@@ -36,14 +36,14 @@ Fecha límite: 2 días. Se trabaja en rondas autónomas de ~4 horas con 4 termin
 - Pruebas: `tools/test.sh` debe existir y salir con 0 en verde; `tools/sync.ps1` lo corre con Git Bash como compuerta.
 
 ## Propiedad por terminal (no edites lo que no es tuyo)
-| Terminal | Área | Rutas lógicas (R0 las mapea al layout real del IRMI) |
+| Terminal | Área | Rutas reales (layout fijado en R0, ver docs/STACK.md) |
 |---|---|---|
-| T1 Backend | Modelo de datos, motor, API, máquina de estados, precierre, cierres programados, auth admin con roles (superadmin y admin), semilla, simulador de carga | `server/`, `shared/motor/`, `tools/`, `tests/` |
-| T2 Participante | Inscripción + consentimiento, lectura del caso y hoja, votación, voto registrado / en vivo. Dueña del sistema de diseño | `web/participante/`, `web/shared/ui/` |
-| T3 Tablero | Matriz de burbujas, R1→R2, promedios y dispersión por criterio, progreso, alcance mesa/sala, vista proyector | `web/tablero/` |
-| T4 Admin + Infra | Panel admin, QR por mesa, config de visibilidad, rondas, cierres programados, export, despliegue, QA plugin | `web/admin/`, `deploy/`, `QA-tests/` |
+| T1 Backend | Modelo de datos, motor, API, máquina de estados, precierre, cierres programados, auth admin con roles (superadmin y admin), semilla, simulador de carga | `server/`, `shared/motor/`, `tools/`, `tests/`, `web/shared/api/`, archivos raíz (`package.json`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.json`, `web/App.tsx`, `web/main.tsx`, `web/index.html`) |
+| T2 Participante | Inscripción + consentimiento, lectura del caso y hoja, votación, voto registrado / en vivo. Dueña del sistema de diseño | `web/participante/` (entrada `PaginaMesa.tsx`), `web/shared/ui/` |
+| T3 Tablero | Matriz de burbujas, R1→R2, promedios y dispersión por criterio, progreso, alcance mesa/sala, vista proyector | `web/tablero/` (entrada `PaginaTablero.tsx`) |
+| T4 Admin + Infra | Panel admin, QR por mesa, config de visibilidad, rondas, cierres programados, export, despliegue, QA plugin | `web/admin/` (entrada `PaginaAdmin.tsx`), `deploy/`, `QA-tests/` |
 
-Compartido de solo lectura para todos: `data/`, `docs/`, `mocks/`, `web/shared/api/` (cliente generado del contrato, dueño T1).
+Compartido de solo lectura para todos: `data/`, `docs/`, `mocks/`, `web/shared/api/` (cliente generado del contrato, dueño T1). Pruebas de UI: junto al código de cada área (`web/<area>/**/*.test.tsx`). Dependencias npm nuevas: commit aparte que solo toque `package.json` y `package-lock.json`, anotado en `docs/DECISIONES.md`.
 
 ## Motor (no se reinterpreta)
 - `t2m = alistamiento_tecnico·0,30 + conocimiento_cliente·0,35 + regulacion·0,35`
