@@ -131,6 +131,9 @@ export function progreso(db: Db, sala: SalaFila, mesas: MesaFila[] = mesasDeSala
 
 export type Alcance = { tipo: 'sala' } | { tipo: 'mesa'; mesa: MesaFila }
 
+/** Votos mínimos de un proyecto en un alcance y ronda para mostrar promedios, distribución y punto (privacidad). */
+export const MINIMO_VOTOS = 2
+
 function votosPorProyecto(db: Db, salaId: string, ronda: number, mesaId?: string): Map<string, Entradas[]> {
   const columnas = CRITERIOS.map((c) => `v.${c}`).join(', ')
   const filtroMesa = mesaId ? 'AND p.mesa_id = ?' : ''
@@ -212,12 +215,16 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
         tam: p.tam,
         rondas: op.rondas.map((r) => {
           const a = agregar(porRonda.get(r)?.get(p.id) ?? [], c.pesos)
-          return a
-            ? { ronda: r, n_votos: a.n_votos, promedios: a.promedios, distribucion: a.distribucion, t2m: a.t2m, eje_x: a.eje_x, eje_y: a.eje_y }
-            : { ronda: r, n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null }
+          if (!a) return { ronda: r, n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null }
+          // SPEC §7: nunca respuestas individuales. Con un solo voto en el alcance, el promedio ES esa respuesta.
+          if (a.n_votos < MINIMO_VOTOS) {
+            return { ronda: r, n_votos: a.n_votos, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, bajo_minimo: true }
+          }
+          return { ronda: r, n_votos: a.n_votos, promedios: a.promedios, distribucion: a.distribucion, t2m: a.t2m, eje_x: a.eje_x, eje_y: a.eje_y }
         }),
       })),
     preliminar: op.preliminar,
+    minimo_votos: MINIMO_VOTOS,
   }
 }
 
