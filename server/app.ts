@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import Fastify, { type FastifyInstance, LogController } from 'fastify'
+import type { Writable } from 'node:stream'
+import Fastify, { type FastifyError, type FastifyInstance, LogController } from 'fastify'
 import cookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import { RAIZ, config } from './config.js'
@@ -12,10 +13,13 @@ import { aplicarCierresProgramados } from './dominio/estados.js'
 import { respaldarBd } from './dominio/mantenimiento.js'
 import type { Reloj } from './dominio/util.js'
 import { rutasApi } from './rutas/api.js'
+import { LIMITE_CUERPO, cabecerasSeguridad, errorDeFastify, opcionesLogger } from './seguridad.js'
 
 export interface OpcionesApp {
   mocks?: boolean
   logger?: boolean
+  /** Destino del log (pruebas que verifican que no salen datos personales). Implica logger. */
+  logStream?: Writable
   /** BD ya abierta (pruebas). Si falta, se abre config.dbPath. */
   db?: Db
   /** Ruta del archivo de la BD (para respaldos). Con `db` inyectada sin ruta no hay respaldos. */
@@ -31,7 +35,13 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
   // Sin log por petición: 40 celulares con polling son ~16 peticiones/s de ruido y escribir a stdout es síncrono
   // (en Windows, con el lector lento, frenaba el event loop segundos). Se registran solo las lentas y los 5xx.
   // trustProxy: solo el primer salto (Traefik de Coolify) (Coolify); un X-Forwarded-For inventado por el cliente no cambia req.ip.
-  const app = Fastify({ logger: op.logger ?? false, trustProxy: (_ip: string, salto: number) => salto < 1, logController: new LogController({ disableRequestLogging: true }) })
+  const app = Fastify({
+    logger: op.logger || op.logStream ? opcionesLogger(op.logStream) : false,
+    trustProxy: (_ip: string, salto: number) => salto < 1,
+    logController: new LogController({ disableRequestLogging: true }),
+    bodyLimit: LIMITE_CUERPO,
+  })
+  cabecerasSeguridad(app)
   app.addHook('onResponse', async (req, reply) => {
     if (reply.elapsedTime > 500 || reply.statusCode >= 500) {
       req.log.warn({ metodo: req.method, ruta: req.url.split('?')[0], status: reply.statusCode, ms: Math.round(reply.elapsedTime) }, 'petición lenta o con error')
@@ -42,7 +52,10 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof ErrorApi) return reply.code(err.status).send(cuerpoError(err.codigo, err.message))
     if ((err as { validation?: unknown }).validation) return reply.code(400).send(cuerpoError('PETICION_INVALIDA', (err as Error).message))
-    app.log.error(err)
+    // JSON mal formado, cuerpo enorme, content-type raro: 4xx con forma de contrato, no 500.
+    const f = errorDeFastify(err as FastifyError)
+    if (f) return reply.code(f.status).send(cuerpoError(f.codigo, f.mensaje))
+    app.log.error({ err }, 'error no controlado')
     return reply.code(500).send(cuerpoError('ERROR_INTERNO', 'Algo falló en el servidor. Intenta de nuevo.'))
   })
 
@@ -62,20 +75,22 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
     if (!process.env.POLITICA_PRIVACIDAD_URL) app.log.warn(`POLITICA_PRIVACIDAD_URL no está definida: se usa ${config.politicaUrl}`)
     const baseUrl = op.baseUrl ?? config.baseUrl
 
-    // Respaldo de la BD cada vez que una sala se cierra (a mano o programado). Un fallo no rompe la petición.
-    const alCerrarSala = (salaId: string) => {
+    // Respaldo de la BD antes de empezar cada sala, antes de reiniciar una ronda y cada vez que una sala se cierra
+    // (a mano o programado). Un fallo no rompe la petición.
+    const respaldar = (salaId: string, momento: string) => {
       try {
-        const r = respaldarBd(db, dbPath, salaId, ahora())
-        if (r) app.log.info(`Respaldo de la BD tras cerrar ${salaId}: ${r}`)
+        const r = respaldarBd(db, dbPath, `${salaId}_${momento}`, ahora())
+        if (r) app.log.info(`Respaldo de la BD (${momento}) de ${salaId}: ${r}`)
       } catch (e) {
-        app.log.error(e, 'No se pudo respaldar la BD')
+        app.log.error({ err: e }, 'No se pudo respaldar la BD')
       }
     }
+    const alCerrarSala = (salaId: string) => respaldar(salaId, 'cierre')
     const revisarCierres = () => {
       for (const id of aplicarCierresProgramados(db, ahora()).salasCerradas) alCerrarSala(id)
     }
 
-    await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala })
+    await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala, respaldar })
     const intervalo = op.intervaloCierresMs ?? 15_000
     if (intervalo > 0) {
       const t = setInterval(() => {
