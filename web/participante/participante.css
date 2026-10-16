@@ -8,6 +8,10 @@
 
 /* Consentimiento (patrón del IRMI: bloque con título y casilla obligatoria) */
 .hzp-consentimiento { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); }
+.hzp-aviso-datos { margin: var(--hz-sp-2) 0 0; display: grid; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
+.hzp-aviso-datos dt { font-weight: 700; color: var(--hz-tinta); }
+.hzp-aviso-datos dd { margin: 0; }
+.hzp-aviso-datos a { color: var(--hz-azul); font-weight: 600; text-underline-offset: 3px; }
 .hzp-consentimiento__titulo { font-size: var(--hz-fs-16); font-weight: 700; color: var(--hz-azul); }
 
 /* Esqueleto de carga */
