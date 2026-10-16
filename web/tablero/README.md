@@ -14,12 +14,30 @@ Ruta: `/tablero/:sala?mesa=&t=`. Con `t` (token de tablero) aparece el selector 
 
 ## `MatrizHorizontes` para otras pantallas
 
-```tsx
-import { MatrizHorizontes } from '../tablero'
+API estable desde R2 (prueba de contrato en `MatrizHorizontes.test.tsx`). No necesita importar CSS del tablero: el SVG trae sus estilos.
 
-// `resultados` es la respuesta de GET /api/resultados (misma forma que GET /api/tablero).
-<MatrizHorizontes datos={resultados} vista="comparacion" />
+```tsx
+import { MatrizHorizontes, insigniaResultado, mensajeVacio, vistaPorDefecto } from '../tablero'
+import type { Tablero } from '../shared/api/contrato'   // DatosTablero es el mismo tipo
+
+// `resultados` es `yo.resultados` o la respuesta de GET /api/resultados (misma forma que GET /api/tablero).
+function Resultado({ resultados }: { resultados: Tablero }) {
+  const vista = vistaPorDefecto(resultados.sala.estado, resultados.sala.ronda_actual)
+  const vacio = mensajeVacio(resultados, vista)
+  return (
+    <section>
+      {insigniaResultado(resultados) === 'preliminar' && <p>Resultado preliminar</p>}
+      {vacio && <p role="status">{vacio}</p>}
+      <MatrizHorizontes datos={resultados} vista={vista} />
+    </section>
+  )
+}
 ```
+
+Ayudas exportadas (`web/tablero/index.ts`):
+- `vistaPorDefecto(estado, ronda_actual)`: Ronda 1, Ronda 2 o Comparación según la sala.
+- `mensajeVacio(datos, vista)`: texto del estado vacío o `null`.
+- `insigniaResultado(datos)`: `'preliminar'` (alcance en precierre con la ronda abierta), `'en_vivo'` (ronda abierta) o `null`. Ojo: la API manda `preliminar: true` en toda ronda abierta; para el aviso "Todos votaron" usa esta función o `esPreliminar`.
 
 | Prop | Tipo | Por defecto | Uso |
 |---|---|---|---|
@@ -38,4 +56,4 @@ Reglas:
 
 ## Pruebas
 
-`npx vitest run web/tablero` (también corren en `tools/test.sh`). Incluyen la prueba de aceptación: el punto dibujado coincide con `tests/golden/motor_golden.json` (prueba sintética y fijos, tolerancia 0,001) en 360, 1366 y 1920 px.
+`npx vitest run web/tablero` (también corren en `tools/test.sh`). Incluyen la prueba de aceptación: el punto dibujado coincide con `tests/golden/motor_golden.json` (prueba sintética y fijos, tolerancia 0,001) en 360, 1366 y 1920 px, en Node (`matriz.test.ts`) y en Chromium real contra la API real (`e2e/navegador.test.ts`, ver `e2e/README.md`).
