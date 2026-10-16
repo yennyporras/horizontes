@@ -117,6 +117,15 @@ describe('panel admin contra el simulador', () => {
     expect(boton('Reabrir sala').disabled).toBe(false)
   })
 
+  it('el monitor de salud muestra el servidor y la latencia', async () => {
+    montar('/admin/login')
+    await entrar('jorge')
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Salud'))
+    expect(await screen.findByText('En línea')).toBeTruthy()
+    expect(screen.getByText('Versión desplegada: simulador')).toBeTruthy()
+    expect(screen.getByText('p95')).toBeTruthy()
+  })
+
   it('avisa el precierre de una mesa sin cerrar la ronda y muestra el resultado preliminar', async () => {
     montar('/admin/login')
     await entrar('paola')

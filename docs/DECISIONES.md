@@ -49,3 +49,4 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - 2026-10-16 [T4] Resultado preliminar en el panel: se lee `GET /api/tablero/{salaId}?alcance=...&t=` con el token que trae `url_tablero` de la mesa. Muestra eje X y eje Y de los vivos en la ronda abierta y enlaza a la matriz de T3.
 - 2026-10-16 [T4] Cierres programados: el panel usa `datetime-local` leído como hora Bogotá y envía ISO con `-05:00` (Bogotá no tiene horario de verano). No deja programar una hora pasada.
 - 2026-10-16 [T4] Botones de acción: se muestran siempre los 9 en orden del ciclo; los que no aplican al estado quedan deshabilitados. Reiniciar votos y cerrar sala piden confirmación con `<dialog>` nativo.
+- 2026-10-16 [T4] Monitor `/admin/salud` (backlog): muestra lo que devuelva `GET /api/health` y la latencia p95 medida por el navegador. Sugerencia a T1 (no rompe nada): agregar `version` (valor de `SOURCE_COMMIT`, que Coolify ya pasa a la imagen) a `/api/health`.
