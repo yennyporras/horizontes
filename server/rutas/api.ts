@@ -211,8 +211,9 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     const sala = cargarSala(db, req.params.id)
     const accion = String(req.body?.accion ?? '')
     // Respaldo antes de que la sala reciba datos (arranque) y antes de borrar votos (reinicio de ronda).
-    if (accion === 'abrir_inscripcion' || (accion === 'abrir_ronda_1' && sala.estado === 'preparada')) op.respaldar?.(sala.id, 'inicio')
-    if (accion === 'reiniciar_ronda' && sala.estado !== 'cerrada') op.respaldar?.(sala.id, 'antes_reinicio')
+    // Solo si la acción aplica en el estado actual: un clic repetido que termina en 409 no gasta la rotación de 30 respaldos.
+    if ((accion === 'abrir_inscripcion' || accion === 'abrir_ronda_1') && sala.estado === 'preparada') op.respaldar?.(sala.id, 'inicio')
+    if (accion === 'reiniciar_ronda' && sala.estado !== 'cerrada' && sala.ronda_actual >= 1) op.respaldar?.(sala.id, 'antes_reinicio')
     const s = aplicarAccion(db, sala.id, accion, ahora(), por(req), { ronda: req.body?.ronda })
     if (s.estado === 'cerrada') op.alCerrarSala(s.id)
     return { sala: salaResumen(s, op.baseUrl) }

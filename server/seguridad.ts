@@ -49,6 +49,8 @@ export function errorDeFastify(err: FastifyError): { status: number; codigo: str
   if (status < 400 || status >= 500) return null
   if (status === 413) return { status, codigo: 'CUERPO_DEMASIADO_GRANDE', mensaje: 'La petición es demasiado grande.' }
   if (status === 415) return { status, codigo: 'TIPO_NO_SOPORTADO', mensaje: 'Envía los datos como JSON.' }
+  // Los de @fastify/static (rango inválido, archivo prohibido o inexistente) conservan su código.
+  if (status === 403 || status === 404 || status === 405 || status === 416) return { status, codigo: 'PETICION_INVALIDA', mensaje: 'No se pudo atender esa petición.' }
   return { status: 400, codigo: 'PETICION_INVALIDA', mensaje: 'La petición no es válida. Revisa los datos enviados.' }
 }
 

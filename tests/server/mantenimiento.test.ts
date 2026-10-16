@@ -117,6 +117,7 @@ describe('respaldo antes y después de cada sala', () => {
       const respaldos = () => readdirSync(join(dir, 'respaldos')).filter((f) => f.includes(s.id))
       await acc('abrir_inscripcion')
       expect(respaldos().filter((f) => f.includes('_inicio'))).toHaveLength(1)
+      await acc('abrir_inscripcion') // clic repetido: 409, sin respaldo nuevo
       await acc('abrir_ronda_1')
       expect(respaldos()).toHaveLength(1) // abrir R1 desde inscripción no repite el respaldo de inicio
       await acc('reiniciar_ronda')
