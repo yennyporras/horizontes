@@ -12,7 +12,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "seed": "tsx server/seed.ts",
-    "simular": "tsx tools/simulador.ts"
+    "sala:reiniciar": "tsx server/reiniciar_sala.ts",
+    "simular": "tsx tools/simulador/index.ts",
+    "simular:golden": "tsx tools/simulador/index.ts --golden",
+    "ensayo": "tsx tools/simulador/index.ts --ensayo",
+    "ensayo:golden": "tsx tools/simulador/index.ts --ensayo --golden"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.0",
