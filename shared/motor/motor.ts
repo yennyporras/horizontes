@@ -57,21 +57,38 @@ export interface Agregado extends Punto {
   distribucion: Distribucion
 }
 
-/** Promedio simple por criterio, distribución 1-3-5-7-9 y punto. `null` si no hay votos. */
-export function agregar(votos: Entradas[], p: Pesos = PESOS_CANONICOS): Agregado | null {
+/** Alias con el nombre del prompt R0: inputs (promedios) y pesos → {t2m, eje_x, eje_y}. */
+export const calcular = calcularPunto
+
+/** Promedio simple por criterio. `null` si no hay votos. */
+export function promediar(votos: Entradas[]): Entradas | null {
   if (votos.length === 0) return null
   const promedios = {} as Entradas
-  const distribucion = {} as Distribucion
   for (const c of CRITERIOS) {
     let suma = 0
+    for (const v of votos) suma += v[c]
+    promedios[c] = suma / votos.length
+  }
+  return promedios
+}
+
+/** Conteo de respuestas 1, 3, 5, 7 y 9 por criterio (valores fuera de escala no cuentan). */
+export function distribucion(votos: Entradas[]): Distribucion {
+  const dist = {} as Distribucion
+  for (const c of CRITERIOS) {
     const d = { '1': 0, '3': 0, '5': 0, '7': 0, '9': 0 }
     for (const v of votos) {
-      suma += v[c]
       const k = String(v[c]) as keyof typeof d
       if (k in d) d[k]++
     }
-    promedios[c] = suma / votos.length
-    distribucion[c] = d
+    dist[c] = d
   }
-  return { n_votos: votos.length, promedios, distribucion, ...calcularPunto(promedios, p) }
+  return dist
+}
+
+/** Promedio simple por criterio, distribución 1-3-5-7-9 y punto. `null` si no hay votos. */
+export function agregar(votos: Entradas[], p: Pesos = PESOS_CANONICOS): Agregado | null {
+  const promedios = promediar(votos)
+  if (!promedios) return null
+  return { n_votos: votos.length, promedios, distribucion: distribucion(votos), ...calcular(promedios, p) }
 }
