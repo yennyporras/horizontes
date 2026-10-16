@@ -229,6 +229,39 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     120_000,
   )
 
+  it('alcance Mesa 1 con token: la URL cambia, los puntos son los de la mesa; sin token, aviso útil', async () => {
+    const p = await abrir(1920, 1080, `/tablero/${golden1.id}?t=${golden1.token}`)
+    const mesa = (await e.app.inject(`/api/tablero/${golden1.id}?t=${golden1.token}`)).json().progreso.por_mesa[0]
+    await p.selectOption('.hz-alcance select', mesa.mesa_id)
+    await expect.poll(() => p.locator('.hz-cab-meta').textContent(), { timeout: 5000 }).toContain(mesa.nombre)
+    expect(new URL(p.url()).searchParams.get('mesa')).toBe(mesa.mesa_id)
+    const api = (await e.app.inject(`/api/tablero/${golden1.id}?alcance=mesa&mesa=${mesa.mesa_id}&t=${golden1.token}`)).json()
+    const dib = await p.evaluate(() => {
+      const svg = document.querySelector('svg.hz-matriz')!
+      const t = [...svg.querySelectorAll('text')].filter((x) => /^\d$/.test(x.textContent ?? ''))
+      const mx = t.filter((x) => x.getAttribute('text-anchor') === 'middle').map((x) => [Number(x.textContent), Number(x.getAttribute('x'))])
+      const my = t.filter((x) => x.getAttribute('text-anchor') === 'end').map((x) => [Number(x.textContent), Number(x.getAttribute('y'))])
+      const lin = (q: number[][]) => (px: number) => q[0][0] + ((px - q[0][1]) * (q[q.length - 1][0] - q[0][0])) / (q[q.length - 1][1] - q[0][1])
+      return [...svg.querySelectorAll('circle.hz-r1, circle.hz-r2')].map((c) => ({
+        k: `${(c as SVGElement).dataset.proyecto}-${c.classList.contains('hz-r1') ? 1 : 2}`,
+        x: lin(mx)(Number(c.getAttribute('cx'))),
+        y: lin(my)(Number(c.getAttribute('cy'))),
+      }))
+    })
+    expect(dib).toHaveLength(4)
+    for (const d of dib) {
+      const [id, ronda] = d.k.split('-')
+      const r = api.proyectos_vivos.find((v: { id: string }) => v.id === id).rondas.find((x: { ronda: number }) => x.ronda === Number(ronda))
+      expect(Math.abs(d.x - r.eje_x), d.k).toBeLessThan(0.002)
+      expect(Math.abs(d.y - r.eje_y), d.k).toBeLessThan(0.002)
+    }
+    await p.context().close()
+
+    const sinToken = await abrir(1366, 768, `/tablero/${golden1.id}`, '.hz-error-grande')
+    expect(await sinToken.locator('.hz-error-grande').textContent()).toContain('Pide al facilitador el enlace completo')
+    await sinToken.context().close()
+  }, 60_000)
+
   it('con R1 abierta: 304 sin cambios y mismo SVG; un voto y el cierre se ven en menos de 5 s', async () => {
     const p = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}`, 'svg.hz-matriz')
     const estados: number[] = []
