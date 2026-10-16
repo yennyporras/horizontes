@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSesion } from './sesion'
 import { usaMocks } from './api'
 
@@ -17,6 +18,14 @@ export function Marco() {
   const { admin, salir } = useSesion()
   const { salaId } = useParams()
   const navegar = useNavigate()
+  const { pathname } = useLocation()
+  const refNav = useRef<HTMLElement>(null)
+  // En celular el menú es una fila deslizable: lleva la sección actual a la vista.
+  useEffect(() => {
+    const nav = refNav.current
+    const activo = nav?.querySelector<HTMLElement>('.nav__item--activo')
+    if (nav && activo && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = activo.offsetLeft - nav.offsetLeft - 16
+  }, [pathname])
   if (salaId) recordarSala(salaId)
   const sala = salaId ?? salaRecordada()
   const enSala = (seccion: string) => (sala ? `/admin/salas/${sala}/${seccion}` : `/admin/sala/${seccion}`)
@@ -41,7 +50,7 @@ export function Marco() {
         <span className="marca">
           Horizontes <span className="marca__sub">Administración</span>
         </span>
-        <nav aria-label="Secciones del panel" className="nav">
+        <nav aria-label="Secciones del panel" className="nav" ref={refNav}>
           {enlaces.map((e) => (
             <NavLink key={e.texto} to={e.a} end={e.end} className={({ isActive }) => (isActive ? 'nav__item nav__item--activo' : 'nav__item')}>
               {e.texto}
