@@ -152,9 +152,9 @@ export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ah
 
 /**
  * Aplica los cierres programados vencidos de todas las salas. Se llama antes de cada
- * petición (chequeo perezoso) y cada 15 s. Devuelve cuántos cierres aplicó.
+ * petición (chequeo perezoso) y cada 15 s. Devuelve cuántos cierres aplicó y qué salas quedaron cerradas.
  */
-export function aplicarCierresProgramados(db: Db, ahora: number): number {
+export function aplicarCierresProgramados(db: Db, ahora: number): { aplicados: number; salasCerradas: string[] } {
   const corte = isoUtc(ahora)
   const vencidas = todos<SalaFila>(
     db,
@@ -165,6 +165,7 @@ export function aplicarCierresProgramados(db: Db, ahora: number): number {
     corte,
   )
   let aplicados = 0
+  const salasCerradas: string[] = []
   for (const v of vencidas) {
     transaccion(db, () => {
       const s = cargarSala(db, v.id)
@@ -184,6 +185,7 @@ export function aplicarCierresProgramados(db: Db, ahora: number): number {
       const s2 = cargarSala(db, v.id)
       if (s2.cierre_programado_sala_at && s2.cierre_programado_sala_at <= corte && s2.estado !== 'cerrada') {
         aplicarAccion(db, s2.id, 'cerrar_sala', ahora, 'programado')
+        salasCerradas.push(s2.id)
         registrarEvento(db, s2.id, ahora, 'cierre_programado', 'programado', { accion: 'cerrar_sala', programado_at: s2.cierre_programado_sala_at })
         aplicados++
       } else if (s2.cierre_programado_sala_at && s2.cierre_programado_sala_at <= corte) {
@@ -192,5 +194,5 @@ export function aplicarCierresProgramados(db: Db, ahora: number): number {
       }
     })
   }
-  return aplicados
+  return { aplicados, salasCerradas }
 }

@@ -159,7 +159,24 @@ export interface OpcionesTablero {
   sufijoVersion?: string
 }
 
+// Caché de tableros por (sala, version, alcance, rondas, preliminar): con 40 celulares y el proyector
+// haciendo polling, la mayoría de lecturas caen entre dos escrituras. `version` sube con cada escritura.
+const cacheTablero = new WeakMap<Db, Map<string, ReturnType<typeof calcularTablero>>>()
+
 export function construirTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
+  const alcance = op.alcance.tipo === 'mesa' ? op.alcance.mesa.id : 'sala'
+  const clave = `${sala.id}|${sala.version}|${alcance}|${op.rondas.join(',')}|${op.preliminar}|${op.sufijoVersion ?? ''}`
+  const m = mapaDe(cacheTablero, db)
+  let t = m.get(clave)
+  if (!t) {
+    if (m.size > 500) m.clear()
+    t = calcularTablero(db, sala, op)
+    m.set(clave, t)
+  }
+  return t
+}
+
+function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
   const c = contenido(db, sala.id)
   const prs = proyectos(db, sala.id)
   const mesas = mesasDeSala(db, sala.id)

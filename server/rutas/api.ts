@@ -16,8 +16,9 @@ import {
   logout,
   DURACION_SESION_MS,
 } from '../dominio/admins.js'
-import { aplicarAccion, aplicarCierresProgramados, cambiarConfig } from '../dominio/estados.js'
-import { detalleSala, editarParticipante, exportInscritos, exportVotos, listarSalas, mesasAdmin, salaResumen, urls } from '../dominio/gestion.js'
+import { LimitadorPeticiones } from '../dominio/mantenimiento.js'
+import { aplicarAccion, cambiarConfig } from '../dominio/estados.js'
+import { detalleSala, editarParticipante, eventosPaginados, exportInscritos, exportVotos, listarSalas, mesasAdmin, salaResumen, urls } from '../dominio/gestion.js'
 import { autenticarParticipante, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
 import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla } from '../dominio/salas.js'
@@ -29,6 +30,10 @@ export interface OpcionesApi {
   db: Db
   ahora: Reloj
   baseUrl: string
+  /** Aplica cierres programados vencidos (y lo que dependa de ellos, como respaldos). */
+  revisarCierres: () => void
+  /** Se llama después de cerrar una sala (respaldo de la BD). */
+  alCerrarSala: (salaId: string) => void
 }
 
 const COOKIE = 'hz_admin'
@@ -44,7 +49,21 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   // Chequeo perezoso: los cierres programados vencidos se aplican antes de responder cualquier petición.
   app.addHook('onRequest', async (req) => {
-    if (req.url.startsWith('/api/')) aplicarCierresProgramados(db, ahora())
+    if (req.url.startsWith('/api/')) op.revisarCierres()
+  })
+
+  // Límite por IP en las rutas de escritura abiertas (los celulares de un taller comparten IP: topes holgados).
+  const limites: Record<string, LimitadorPeticiones> = {
+    'POST /api/inscripcion': new LimitadorPeticiones(120, 60_000),
+    'PUT /api/votos': new LimitadorPeticiones(600, 60_000),
+    'POST /api/admin/login': new LimitadorPeticiones(20, 60_000),
+  }
+  app.addHook('onRequest', async (req) => {
+    const clave = `${req.method} ${req.url.split('?')[0]}`
+    const l = limites[clave]
+    if (l && !l.permitir(`${req.ip}|${clave}`, ahora())) {
+      throw new ErrorApi(429, 'DEMASIADAS_PETICIONES', 'Hay demasiados intentos desde esta red. Espera un minuto e intenta de nuevo.')
+    }
   })
 
   // --- Participante -------------------------------------------------------------------
@@ -166,6 +185,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   app.post<{ Params: { id: string }; Body: { accion?: string; ronda?: number } }>('/api/admin/salas/:id/acciones', async (req) => {
     const s = aplicarAccion(db, cargarSala(db, req.params.id).id, String(req.body?.accion ?? ''), ahora(), por(req), { ronda: req.body?.ronda })
+    if (s.estado === 'cerrada') op.alCerrarSala(s.id)
     return { sala: salaResumen(s, op.baseUrl) }
   })
 
@@ -182,6 +202,10 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     const svg = await QRCode.toString(url, { type: 'svg', margin: 2, errorCorrectionLevel: 'M', color: { dark: '#1C4587', light: '#FFFFFF' } })
     return reply.type('image/svg+xml; charset=utf-8').header('Cache-Control', 'private, max-age=3600').send(svg)
   })
+
+  app.get<{ Params: { id: string }; Querystring: { antes?: string; limite?: string } }>('/api/admin/salas/:id/eventos', async (req) =>
+    eventosPaginados(db, cargarSala(db, req.params.id).id, Number(req.query.antes) || undefined, Number(req.query.limite) || 50),
+  )
 
   app.patch<{ Params: { id: string } }>('/api/admin/participantes/:id', async (req) =>
     editarParticipante(db, req.params.id, (req.body ?? {}) as never, ahora(), por(req)),

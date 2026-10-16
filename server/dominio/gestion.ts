@@ -182,3 +182,18 @@ export function exportVotos(db: Db, salaId: string) {
     ...filas.map((f) => [sha256(`${sala.id}:${f.participante_id}`).slice(0, 12), f.mesa, nombrePerfil(String(f.perfil_id)), f.ronda, f.proyecto_id, ...CRITERIOS.map((c) => f[c])]),
   ])
 }
+
+/** Eventos de la sala, del más reciente al más antiguo. `antes` = id del último evento recibido. */
+export function eventosPaginados(db: Db, salaId: string, antes: number | undefined, limite: number) {
+  const n = Math.min(Math.max(1, Math.floor(limite)), 200)
+  const filas = todos<{ id: number; at: string; tipo: string; por: string; detalle_json: string | null }>(
+    db,
+    `SELECT id, at, tipo, por, detalle_json FROM eventos WHERE sala_id = ? ${antes ? 'AND id < ?' : ''} ORDER BY id DESC LIMIT ?`,
+    ...(antes ? [salaId, antes, n + 1] : [salaId, n + 1]),
+  )
+  const pagina = filas.slice(0, n)
+  return {
+    eventos: pagina.map((e) => ({ id: e.id, at: isoBogota(e.at), tipo: e.tipo, detalle: e.detalle_json ? JSON.parse(e.detalle_json) : null, por: e.por })),
+    siguiente: filas.length > n ? pagina[pagina.length - 1].id : null,
+  }
+}
