@@ -1,0 +1,53 @@
+/* Estilos propios de las pantallas del participante. Solo tokens de web/shared/ui/tokens.css. Prefijo hzp-. */
+
+.hzp-form { display: grid; gap: var(--hz-sp-5); }
+.hzp-avisos { display: grid; gap: var(--hz-sp-2); }
+.hzp-acciones { display: grid; gap: var(--hz-sp-2); justify-items: center; }
+.hzp-seccion { display: grid; gap: var(--hz-sp-4); padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-h3); }
+.hzp-volver { justify-self: start; min-height: 40px; padding: 0; }
+
+/* Consentimiento (patrón del IRMI: bloque con título y casilla obligatoria) */
+.hzp-consentimiento { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); }
+.hzp-consentimiento__titulo { font-size: var(--hz-fs-16); font-weight: 700; color: var(--hz-azul); }
+
+/* Esqueleto de carga */
+.hzp-esqueleto { display: grid; gap: var(--hz-sp-4); padding-top: var(--hz-sp-4); }
+.hzp-esqueleto__bloque { border-radius: var(--hz-r-m); background: var(--hz-h1); animation: hzp-pulso 1.4s ease-in-out infinite; }
+@keyframes hzp-pulso { 50% { opacity: 0.55; } }
+
+/* Lectura */
+.hzp-lectura { display: grid; gap: var(--hz-sp-5); }
+.hzp-md { display: grid; gap: var(--hz-sp-3); max-width: var(--hz-medida); }
+.hzp-md ul { margin: 0; padding-left: var(--hz-sp-5); display: grid; gap: var(--hz-sp-1); }
+.hzp-md strong { font-weight: 700; color: var(--hz-tinta); }
+
+.hzp-proyectos { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--hz-h3); }
+.hzp-proyecto { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4) 0; border-bottom: 1px solid var(--hz-h3); }
+.hzp-proyecto--vivo { padding-inline: var(--hz-sp-3); margin-inline: calc(var(--hz-sp-3) * -1); background: var(--hz-h1); border-radius: var(--hz-r-m); border-bottom-color: transparent; }
+.hzp-proyecto__nombre { display: flex; align-items: center; gap: var(--hz-sp-2); flex-wrap: wrap; font-weight: 800; color: var(--hz-azul); }
+.hzp-proyecto__desc { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
+.hzp-grupo-hojas { display: grid; gap: var(--hz-sp-3); }
+
+/* Elegir proyecto */
+.hzp-elegir { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--hz-h3); }
+.hzp-elegir__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-4) 0; border-bottom: 1px solid var(--hz-h3); }
+.hzp-elegir__info { display: grid; gap: var(--hz-sp-1); justify-items: start; }
+
+/* Calificar */
+.hzp-rubricas { display: grid; gap: var(--hz-sp-8); }
+.hzp-hoja-plegable { display: grid; gap: var(--hz-sp-2); }
+.hzp-hoja-plegable > .hz-boton { justify-self: start; padding: 0; }
+.hzp-hoja-plegable__texto { padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); font-size: var(--hz-fs-14); }
+
+/* Resultado provisional (hasta la matriz de T3) */
+.hzp-resultado { display: grid; gap: var(--hz-sp-5); }
+.hzp-resultado__proyecto { display: grid; gap: var(--hz-sp-3); padding: var(--hz-sp-4); border: 1px solid var(--hz-h3); border-radius: var(--hz-r-l); }
+.hzp-posicion { margin: 0; display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
+.hzp-posicion__fila { display: grid; gap: 2px; }
+.hzp-posicion dt { font-weight: 700; color: var(--hz-tinta-2); }
+.hzp-posicion dd { margin: 0; }
+.hzp-tabla { width: 100%; border-collapse: collapse; font-size: var(--hz-fs-14); }
+.hzp-tabla th, .hzp-tabla td { padding: var(--hz-sp-2) 0; border-bottom: 1px solid var(--hz-h3); text-align: left; vertical-align: top; }
+.hzp-tabla thead th { font-weight: 700; color: var(--hz-tinta-2); }
+.hzp-tabla tbody th { font-weight: 500; padding-right: var(--hz-sp-3); }
+.hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 4.5rem; font-weight: 700; }
