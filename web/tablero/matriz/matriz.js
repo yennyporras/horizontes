@@ -15,6 +15,8 @@ export const COLORES = {
   fijo: '#7D8FA9',
   halo: '#FFFFFF',
   vivos: ['#E8590C', '#00A3FF', '#2B8A3E', '#AE3EC9'],
+  // Texto de las etiquetas de vivos: variante oscura del color (AA ≥ 4,5:1 incluso sobre el fondo H1).
+  vivosTexto: ['#A63C06', '#00609A', '#1E6B30', '#86279C'],
 };
 
 const esc = (s) =>
@@ -123,6 +125,7 @@ export function calcularLayout(datos, opciones = {}) {
 
   const vivos = (datos?.proyectos_vivos || []).map((p, i) => {
     const color = colores.vivos[i % colores.vivos.length];
+    const colorTexto = colores.vivosTexto[i % colores.vivosTexto.length];
     const r = radioPorTam(p.tam, rmin, rmax);
     const ronda = (n) => {
       const rd = (p.rondas || []).find((x) => x.ronda === n);
@@ -161,7 +164,7 @@ export function calcularLayout(datos, opciones = {}) {
         flecha = { x1: r1.cx, y1: r1.cy, x2: r2_.cx - ux * 2, y2: r2_.cy - uy * 2, encima: true };
       }
     }
-    return { id: p.id, nombre: p.nombre, tam: p.tam, color, r1, r2: r2_, flecha };
+    return { id: p.id, nombre: p.nombre, tam: p.tam, color, colorTexto, r1, r2: r2_, flecha };
   });
 
   // Obstáculos: todas las burbujas y flechas.
@@ -223,11 +226,11 @@ export function calcularLayout(datos, opciones = {}) {
   for (const v of vivos) {
     const principal = v.r2 || v.r1;
     if (!principal) continue;
-    v.etiqueta = colocar({ texto: v.nombre, fs: fsVivo, color: v.color, peso: 800, tipo: 'vivo' }, principal, true);
+    v.etiqueta = colocar({ texto: v.nombre, fs: fsVivo, color: v.colorTexto, peso: 800, tipo: 'vivo' }, principal, true);
   }
   for (const v of vivos) {
     if (v.r1 && v.r2) {
-      v.etiquetaR1 = colocar({ texto: 'R1', fs: fsTag, color: v.color, peso: 700, tipo: 'r1' }, v.r1, true);
+      v.etiquetaR1 = colocar({ texto: 'R1', fs: fsTag, color: v.colorTexto, peso: 700, tipo: 'r1' }, v.r1, true);
     }
   }
   for (const f of [...fijos].sort((a, b) => b.r - a.r)) {
@@ -256,7 +259,7 @@ export function matrizSVG(datos, opciones = {}) {
   const yBase = y0 + P;
 
   partes.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(W)} ${r2(H)}" width="${r2(W)}" height="${r2(H)}" role="img" aria-labelledby="${id}-t ${id}-d" font-family="Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" class="hz-matriz">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(W)} ${r2(H)}" width="${r2(W)}" height="${r2(H)}" role="img" aria-labelledby="${id}-t ${id}-d" font-family="'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" class="hz-matriz">`,
   );
   partes.push(`<title id="${id}-t">${esc(datos?.grafico?.titulo || 'Matriz de priorización por horizontes')}</title>`);
   const desc = L.vivos
