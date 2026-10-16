@@ -1,11 +1,13 @@
-# R3 · T3 Tablero · 4 h autónomas · Triage y legibilidad
+﻿# R3 adelantada · T3 Tablero
 
-Lee CLAUDE.md, docs, `docs/bitacora/S_R2.md` y las bitácoras `R2_T*.md` de las 4 terminales (están en main tras la integración; si falta alguna, `git log main` te orienta). Empieza por lo que tu bitácora anterior dejó pendiente y por cualquier falla de pruebas atribuible a tu área.
-
+## Reglas de esta R3 adelantada
+- Arrancas apenas terminas tu R2, sin esperar a las otras terminales ni a staging (todavía no existe). Todo lo que diga "staging" hazlo contra la imagen de producción local o tu servidor de desarrollo en TU puerto: T1 4101, T2 4102, T3 4103, T4 3999 (`tools/deploy.sh local`). Nunca uses el puerto de otra terminal.
+- Cada 30 min: `git log main --oneline -3`. Si aparece "[sync] integracion tras R2", haz `git merge main` y corre `tools/test.sh` antes de seguir.
+- Cada 30 min lee el triage de T4 con `git show t4-admin:docs/TRIAGE.md` y corrige lo asignado a ti primero.
+- Solo esperas a otra terminal si el triage o un fallo de pruebas depende de su código: en ese caso anótalo en tu bitácora y sigue con la siguiente tarea.
 ## Entregables en orden
-1. Corregir lo asignado a T3 en el triage (`git show t4-admin:docs/TRIAGE.md`, revisar cada 30 min). Mientras llega, empieza por el punto 2.
-2. Legibilidad a 6 m y en proyectores de baja resolución (1280×720); nombres de proyectos fijos sin solaparse.
-3. Animación suave R1→R2 al cerrar la ronda 2 (sin afectar rendimiento).
-4. Vista "todas las mesas" en cuadrícula para comparar empresas (si el alcance es sala).
-
-Aceptación: pruebas visuales en verde en las 4 resoluciones; cero hallazgos abiertos de T3.
+1. Hallazgos de T3 en el triage.
+2. Legibilidad a 6 m y en proyector de 1280×720; nombres de los proyectos fijos sin solaparse.
+3. Animación suave R1 → R2 al cerrar la ronda 2, sin afectar el rendimiento.
+4. (adelanto de R4) Capturas de referencia de cada vista (R1, R2, comparación, preliminar, todas las mesas, proyector) en `docs/capturas/` para la guía del facilitador.
+Aceptación: pruebas visuales en verde en 1920, 1366, 1280 y 360 px; cero hallazgos abiertos de T3.
