@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
-import { Aviso, BarraProgreso, Boton, Insignia, Rubrica } from '../../shared/ui'
+import { Aviso, BarraProgreso, Boton, Hoja, Insignia, Rubrica } from '../../shared/ui'
 import { ErrorApi, guardarVoto, type RespuestaVoto, type Yo } from '../api'
 import type { VotoEnCola } from '../cola'
-import { Marco, type MarcoBase } from '../Comun'
+import { Marco, Md, type MarcoBase } from '../Comun'
+import { hojasDeProyecto, nombrePerfil } from './Lectura'
 import { guardarBorrador, leerBorrador } from '../sesion'
 
 export const proyectosVivos = (yo: Yo) => yo.contenido.portafolio.filter((p) => p.modo === 'vivo')
@@ -57,7 +58,9 @@ export interface CalificarProps {
 export function Calificar({ yo, codigo, token, proyectoId, onGuardado, onVolver, onSinSenal, onSesionVencida, esperarCola, marco }: CalificarProps) {
   const ronda = yo.sala.ronda_actual
   const proyecto = yo.contenido.portafolio.find((p) => p.id === proyectoId)
-  const hoja = yo.contenido.hojas.find((h) => h.proyecto_id === proyectoId && h.perfil_id === yo.participante.perfil.id)
+  const mio = yo.participante.perfil.id
+  const hojas = hojasDeProyecto(yo, proyectoId)
+  const variasHojas = hojas.length > 1
   const [respuestas, setRespuestas] = useState<Record<string, number>>(
     () => leerBorrador(codigo, proyectoId, ronda) ?? { ...(votoDe(yo, proyectoId)?.respuestas ?? {}) },
   )
@@ -138,12 +141,26 @@ export function Calificar({ yo, codigo, token, proyectoId, onGuardado, onVolver,
       </Boton>
       <h1 className="hz-titulo">{proyecto.nombre}</h1>
       {proyecto.descripcion && <p className="hz-texto-2">{proyecto.descripcion}</p>}
-      {hoja && (
+      {hojas.length > 0 && (
         <div className="hzp-hoja-plegable">
-          <Boton variante="fantasma" aria-expanded={verHoja} onClick={() => setVerHoja((v) => !v)}>
-            {verHoja ? 'Ocultar tu hoja de este proyecto' : 'Ver tu hoja de este proyecto'}
+          <Boton variante="fantasma" aria-expanded={verHoja} aria-controls="hzp-hojas-calificar" onClick={() => setVerHoja((v) => !v)}>
+            {`${verHoja ? 'Ocultar' : 'Ver'} ${variasHojas ? 'las hojas' : 'tu hoja'} de este proyecto`}
           </Boton>
-          {verHoja && <p className="hzp-hoja-plegable__texto">{hoja.texto}</p>}
+          {verHoja && (
+            <div id="hzp-hojas-calificar" className="hzp-grupo-hojas">
+              {variasHojas ? (
+                hojas.map((h) => (
+                  <Hoja key={h.perfil_id} titulo={nombrePerfil(h)} activa={h.perfil_id === mio} extra={h.perfil_id === mio ? <Insignia tono="ok">Tu hoja</Insignia> : undefined}>
+                    <Md texto={h.texto} />
+                  </Hoja>
+                ))
+              ) : (
+                <div className="hzp-hoja-plegable__texto">
+                  <Md texto={hojas[0].texto} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       {error && <Aviso tono="error">{error}</Aviso>}

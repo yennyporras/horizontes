@@ -17,6 +17,15 @@ const ORDEN_PERFILES = Object.keys(PERFILES)
 
 export const nombrePerfil = (h: HojaInfo) => h.perfil ?? PERFILES[h.perfil_id] ?? h.perfil_id
 
+/** Hojas visibles de un proyecto: la propia primero y luego los demás perfiles en el orden del deck. */
+export function hojasDeProyecto(yo: Yo, proyectoId: string): HojaInfo[] {
+  const mio = yo.participante.perfil.id
+  const orden = (h: HojaInfo) => (h.perfil_id === mio ? -1 : ORDEN_PERFILES.indexOf(h.perfil_id))
+  return yo.contenido.hojas
+    .filter((h) => h.proyecto_id === proyectoId && (yo.config.revelar_hojas || h.perfil_id === mio))
+    .sort((a, b) => orden(a) - orden(b))
+}
+
 /** 8.5 Lectura: pestañas "Caso" y "Tu hoja" (o "Hojas" cuando se revelan las 6). */
 export function Lectura({ yo, codigo, pestanaInicial = 'caso' }: { yo: Yo; codigo: string; pestanaInicial?: 'caso' | 'hoja' }) {
   const [activa, setActiva] = useState<string>(pestanaInicial)
@@ -87,12 +96,11 @@ function TuHoja({ yo }: { yo: Yo }) {
 function TodasLasHojas({ yo, aviso }: { yo: Yo; aviso: boolean }) {
   const mio = yo.participante.perfil.id
   const proyectos = [...new Set(yo.contenido.hojas.map((h) => h.proyecto_id))]
-  const orden = (h: HojaInfo) => (h.perfil_id === mio ? -1 : ORDEN_PERFILES.indexOf(h.perfil_id))
   return (
     <div className="hzp-lectura">
       {aviso && <Aviso tono="info">Ya puedes ver la información de los 6 perfiles.</Aviso>}
       {proyectos.map((pid) => {
-        const hojas = yo.contenido.hojas.filter((h) => h.proyecto_id === pid).sort((a, b) => orden(a) - orden(b))
+        const hojas = hojasDeProyecto(yo, pid)
         return (
           <section key={pid} className="hzp-grupo-hojas" aria-labelledby={`hzp-hojas-${pid}`}>
             <h2 id={`hzp-hojas-${pid}`} className="hz-subtitulo">

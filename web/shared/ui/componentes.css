@@ -1,5 +1,8 @@
 /* Base y componentes de Horizontes. Solo consume tokens de tokens.css. Clases con prefijo hz-. */
 
+/* Sin el margen de 8 px del navegador: cabecera y fondos llegan al borde (triage #17). */
+body { margin: 0; }
+
 .hz, .hz *, .hz *::before, .hz *::after { box-sizing: border-box; }
 
 .hz {
