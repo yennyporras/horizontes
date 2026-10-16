@@ -10,7 +10,9 @@
     "build": "vite build",
     "start": "tsx server/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed": "tsx server/seed.ts",
+    "simular": "tsx tools/simulador.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.0",
