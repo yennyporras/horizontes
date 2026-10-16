@@ -47,6 +47,7 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         await p.getByRole('button', { name: 'Inscribirme' }).click()
         await titulo(p, /^Tu perfil es /, espera)
         const tokenB = await inscribirApi(e, mesa, 'Beto Ruiz', `beto.perfil${n}@empresa.com`)
+        const tokenC = await inscribirApi(e, mesa, 'Ciro Ríos', `ciro.perfil${n}@empresa.com`)
 
         // Ronda 1: califica los 2 proyectos con toques en las rúbricas.
         await accion(e, sala.id, 'abrir_ronda_1')
@@ -67,7 +68,9 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         }
         await titulo(p, 'Voto registrado', espera)
         await votarApi(e, tokenB, 'insumex', 1)
+        await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)
+        await votarApi(e, tokenC, 'nutriwhat', 1)
         await ver(p, /^Todos votaron en Mesa 1/, espera)
         await accion(e, sala.id, 'cerrar_ronda_1')
         await titulo(p, 'Ronda 1 cerrada', espera)
@@ -77,19 +80,19 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         // Ronda 2 y comparación R1→R2.
         await accion(e, sala.id, 'abrir_ronda_2')
         await titulo(p, 'Ronda 2: califica los 2 proyectos', espera)
-        for (const [proyecto, valor] of [
-          ['INSUMEX', 9],
-          ['NUTRIWHAT', 1],
-        ] as const) {
-          await p.getByRole('button', { name: `Calificar ${proyecto}` }).click()
-          await calificar(p, valor)
-          await p.getByRole('button', { name: 'Guardar calificación' }).click()
-        }
+        await p.getByRole('button', { name: 'Calificar INSUMEX' }).click()
+        await calificar(p, 9)
+        await p.getByRole('button', { name: 'Guardar calificación' }).click()
+        for (const t of [tokenB, tokenC]) for (const pid of ['insumex', 'nutriwhat']) await votarApi(e, t, pid, 2)
+        await p.getByRole('button', { name: 'Calificar NUTRIWHAT' }).click()
+        await calificar(p, 1)
+        await p.getByRole('button', { name: 'Guardar calificación' }).click()
         await titulo(p, 'Voto registrado', espera)
-        await votarApi(e, tokenB, 'insumex', 2)
-        await votarApi(e, tokenB, 'nutriwhat', 2)
+        // Triage #15: guarda y la ronda se cierra enseguida; el "guardada" no pasa a la pantalla de ronda cerrada.
+        await ver(p, 'Calificación de NUTRIWHAT guardada.', espera)
         await accion(e, sala.id, 'cerrar_ronda_2')
         await titulo(p, 'Ronda 2 cerrada', espera)
+        expect(await p.getByText(/Calificación de .* guardada\./).count()).toBe(0)
         const matriz = p.locator('.hzp-matriz svg.hz-matriz')
         await matriz.waitFor()
         expect(await matriz.locator('.hz-r1').count()).toBeGreaterThanOrEqual(2)
