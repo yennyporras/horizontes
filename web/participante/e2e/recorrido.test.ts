@@ -39,7 +39,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
   }, 120_000)
   afterAll(async () => {
     await e?.cerrar()
-  })
+  }, 30_000)
 
   it('2 rondas completas con resiliencia, precierre y comparación R1→R2', async () => {
     const sala = await crearSala(e, 'Ensayo e2e T2')
@@ -49,11 +49,26 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     const p = await ctx.newPage()
     const errores: string[] = []
     p.on('pageerror', (err) => errores.push(err.message))
+    // Saltos de diseño (CLS) acumulados desde la primera carga.
+    await p.addInitScript(() => {
+      const w = window as unknown as { __cls: number }
+      w.__cls = 0
+      new PerformanceObserver((l) => l.getEntries().forEach((e) => {
+        const s = e as unknown as { value: number; hadRecentInput: boolean; sources: { node?: Element; previousRect: DOMRect; currentRect: DOMRect }[] }
+        if (!s.hadRecentInput) w.__cls += s.value
+        ;(window as unknown as { __src: string[] }).__src ??= []
+        for (const x of s.sources ?? []) (window as unknown as { __src: string[] }).__src.push(`${Math.round(e.startTime)} ${s.value.toFixed(3)} ${x.node?.nodeName}.${(x.node as Element)?.className} ${JSON.stringify(x.previousRect)} -> ${JSON.stringify(x.currentRect)} fonts=${document.fonts.status}`)
+      })).observe({ type: 'layout-shift', buffered: true })
+    })
 
     // Inscripción: sin consentimiento el botón no avanza.
     await p.goto(`${e.web}/m/${mesa}`)
     await titulo(p, 'Bienvenido al taller Horizontes', 60_000)
     await sinDesborde(p)
+    await p.waitForTimeout(500)
+    const cls = await p.evaluate(() => (window as unknown as { __cls: number }).__cls)
+    if (cls >= 0.05) console.log(await p.evaluate(() => (window as unknown as { __src: string[] }).__src))
+    expect(cls).toBeLessThan(0.05)
     await p.getByLabel('Tu nombre').fill('Ana Pérez')
     await p.getByLabel('Tu correo').fill('ana.e2e@empresa.com')
     const inscribirme = p.getByRole('button', { name: 'Inscribirme' })
