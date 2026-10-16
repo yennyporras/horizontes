@@ -1,7 +1,7 @@
-﻿# Integración tras R1 · 2026-10-16 07:29
+﻿# Integración tras R1 · 2026-10-16 11:28
 
 - t1-backend: integrada
-- t3-tablero: integrada con conflictos resueltos por Claude
-- t2-participante: integrada con conflictos resueltos por Claude
-- t4-admin: integrada con conflictos resueltos por Claude
+- t3-tablero: integrada
+- t2-participante: integrada
+- t4-admin: integrada
 - Pruebas: verde
