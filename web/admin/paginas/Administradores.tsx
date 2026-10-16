@@ -1,0 +1,186 @@
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { api, lista } from '../api'
+import { useConfirmar } from '../componentes/Confirmar'
+import type { AdminFila } from '../tipos'
+
+/** Clave temporal legible: 12 caracteres sin letras que se confunden (0/O, 1/l/I). */
+export function claveTemporal(): string {
+  const abc = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  const n = new Uint32Array(12)
+  crypto.getRandomValues(n)
+  return Array.from(n, (x) => abc[x % abc.length]).join('')
+}
+
+type Aviso = { tono: 'exito' | 'error' | 'info'; texto: string; clave?: string } | null
+
+/** Solo superadmin. El servidor responde 403 SOLO_SUPERADMIN al resto; aquí además la ruta y el menú se ocultan. */
+export function Administradores() {
+  const [admins, setAdmins] = useState<AdminFila[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<Aviso>(null)
+  const [usuario, setUsuario] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [correo, setCorreo] = useState('')
+  const [clave, setClave] = useState(claveTemporal)
+  const [dialogo, confirmar] = useConfirmar()
+
+  const cargar = useCallback(
+    () =>
+      api
+        .get<unknown>('/api/admin/admins')
+        .then((r) => {
+          setAdmins(lista<AdminFila>(r, 'admins'))
+          setError(null)
+        })
+        .catch((e: Error) => setError(e.message)),
+    [],
+  )
+
+  useEffect(() => {
+    cargar()
+  }, [cargar])
+
+  const crear = async (e: FormEvent) => {
+    e.preventDefault()
+    setAviso(null)
+    try {
+      await api.post('/api/admin/admins', { usuario: usuario.trim(), nombre: nombre.trim(), correo: correo.trim() || null, clave_temporal: clave })
+      setAviso({ tono: 'exito', texto: `Creamos la cuenta de ${nombre.trim()} (usuario ${usuario.trim()}). Entrégale esta clave temporal; la cambiará en su primer ingreso:`, clave })
+      setUsuario('')
+      setNombre('')
+      setCorreo('')
+      setClave(claveTemporal())
+      await cargar()
+    } catch (err) {
+      setAviso({ tono: 'error', texto: err instanceof Error ? err.message : 'No se pudo crear la cuenta.' })
+    }
+  }
+
+  const cambiarActivo = async (a: AdminFila) => {
+    if (a.activo && !(await confirmar(`¿Desactivar a ${a.nombre}?`, 'No podrá entrar al panel hasta que lo actives de nuevo.', 'Sí, desactivar'))) return
+    setAviso(null)
+    try {
+      await api.patch(`/api/admin/admins/${a.id}`, { activo: !a.activo })
+      setAviso({ tono: 'exito', texto: a.activo ? `${a.nombre} ya no puede entrar al panel.` : `${a.nombre} puede entrar de nuevo.` })
+      await cargar()
+    } catch (err) {
+      setAviso({ tono: 'error', texto: err instanceof Error ? err.message : 'No se pudo guardar el cambio.' })
+    }
+  }
+
+  const restablecer = async (a: AdminFila) => {
+    if (!(await confirmar(`¿Restablecer la clave de ${a.nombre}?`, 'Su clave actual deja de servir. Le darás una clave temporal y la cambiará al entrar.', 'Sí, restablecer'))) return
+    const nueva = claveTemporal()
+    setAviso(null)
+    try {
+      const r = await api.patch<{ clave_temporal?: string }>(`/api/admin/admins/${a.id}`, { restablecer_clave: nueva })
+      setAviso({ tono: 'exito', texto: `Nueva clave temporal de ${a.nombre}. Entrégasela; la cambiará en su próximo ingreso:`, clave: r?.clave_temporal ?? nueva })
+      await cargar()
+    } catch (err) {
+      setAviso({ tono: 'error', texto: err instanceof Error ? err.message : 'No se pudo restablecer la clave.' })
+    }
+  }
+
+  return (
+    <>
+      {dialogo}
+      <h1>Administradores</h1>
+      <p className="pista">Solo tú, como superadmin, ves esta sección. Las cuentas nuevas son de rol admin: manejan salas pero no crean otros administradores.</p>
+      {aviso && (
+        <div className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
+          {aviso.texto}
+          {aviso.clave && (
+            <p>
+              <code style={{ fontSize: 20, fontWeight: 700 }}>{aviso.clave}</code>
+            </p>
+          )}
+        </div>
+      )}
+
+      <section className="panel" aria-labelledby="t-nuevo">
+        <h2 id="t-nuevo">Nuevo administrador</h2>
+        <form className="fila-form" onSubmit={crear}>
+          <label className="campo">
+            <span>Usuario</span>
+            <input required autoComplete="off" pattern="[a-z0-9._\-]{3,30}" title="Entre 3 y 30 caracteres: minúsculas, números, punto, guion" value={usuario} onChange={(e) => setUsuario(e.target.value.toLowerCase())} />
+          </label>
+          <label className="campo">
+            <span>Nombre</span>
+            <input required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          </label>
+          <label className="campo">
+            <span>Correo (opcional)</span>
+            <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} />
+          </label>
+          <label className="campo">
+            <span>Clave temporal</span>
+            <input required minLength={10} value={clave} onChange={(e) => setClave(e.target.value)} />
+          </label>
+          <button className="btn btn--primario" type="submit">
+            Crear administrador
+          </button>
+        </form>
+      </section>
+
+      <section className="panel" aria-labelledby="t-cuentas">
+        <h2 id="t-cuentas">Cuentas</h2>
+        {error && (
+          <p className="alerta alerta--error" role="alert">
+            No pudimos cargar las cuentas. {error}
+          </p>
+        )}
+        {!admins && !error && <p role="status">Cargando cuentas…</p>}
+        {admins?.length === 0 && <p className="vacio">No hay cuentas para mostrar.</p>}
+        {admins && admins.length > 0 && (
+          <div className="tabla-envoltura">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Usuario</th>
+                  <th scope="col">Correo</th>
+                  <th scope="col">Rol</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {admins.map((a) => (
+                  <tr key={a.id} className={a.activo ? undefined : 'inactivo'}>
+                    <th scope="row">{a.nombre}</th>
+                    <td>{a.usuario}</td>
+                    <td>{a.correo ?? 'Sin correo'}</td>
+                    <td>{a.rol === 'superadmin' ? 'Superadmin' : 'Admin'}</td>
+                    <td>
+                      {!a.activo ? (
+                        <span className="etiqueta etiqueta--apagado">Inactivo</span>
+                      ) : a.debe_cambiar_clave ? (
+                        <span className="etiqueta etiqueta--aviso">Clave temporal</span>
+                      ) : (
+                        <span className="etiqueta etiqueta--exito">Activo</span>
+                      )}
+                    </td>
+                    <td>
+                      {a.rol === 'superadmin' ? (
+                        <span className="pista">Se administra desde el servidor</span>
+                      ) : (
+                        <span className="acciones" style={{ marginBottom: 0 }}>
+                          <button className="btn btn--chico" onClick={() => restablecer(a)} disabled={!a.activo}>
+                            Restablecer clave
+                          </button>
+                          <button className={a.activo ? 'btn btn--peligro btn--chico' : 'btn btn--chico'} onClick={() => cambiarActivo(a)}>
+                            {a.activo ? 'Desactivar' : 'Activar'}
+                          </button>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  )
+}
