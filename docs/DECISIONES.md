@@ -39,6 +39,10 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - Un correo = una inscripción por sala; si la persona vuelve a entrar con el mismo correo, recupera su sesión.
 
 ## Registro de las terminales
+- 2026-10-16 [T2] El participante usa tema claro (fondo blanco, tinta `#0F2340`, acción `#1C4587`), no el tema oscuro del IRMI: la identidad de Horizontes en CLAUDE.md pide azules claros como el deck y el celular se usa con luz de salón.
+- 2026-10-16 [T2] Firma visual única: arco de horizonte (cuarto de círculo con radio proporcional al valor 1 a 9) en cada opción de la rúbrica, coherente con las curvas H1/H2 de la matriz. Todo lo demás sobrio.
+- 2026-10-16 [T2] Textos de la app en tuteo (como el IRMI, D-113). Sin rayas.
+- 2026-10-16 [T2] Componentes base en React + TypeScript sin dependencias de UI externas (mismo stack del IRMI). Si R0-T1 fija otro framework, se portan; los tokens CSS no cambian.
 - 2026-10-16 [T1] Dependencia `qrcode` (+ `@types/qrcode`) para `GET /api/admin/mesas/{id}/qr.svg` — generar QR a mano no vale el riesgo; commit aparte solo con package.json/lock.
 - 2026-10-16 [T1] BD: además del modelo, tabla `sesiones_admin` (token con hash, 12 h) y columna `salas.token_tablero` en claro junto al hash — el admin necesita volver a mostrar el enlace del tablero y el token no es dato personal. Fechas en UTC ISO en BD; la API responde en `-05:00` (Bogotá).
 - 2026-10-16 [T1] CONTRATO: `GET /api/admin/salas/{id}` agrega `sala.token_tablero`, `sala.url_tablero`, `sala.plantilla`, `progreso` (sala) y `perfiles` (catálogo); `mesas[]` agrega `numero`. `POST /api/admin/salas` responde el mismo `sala` + `mesas`. `GET /api/admin/yo` y login agregan `debe_cambiar_clave`. `GET /api/yo` agrega `participante.activo` y `hojas[].perfil` (nombre). Todo opcional para los clientes.
@@ -72,3 +76,8 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - 2026-10-16 [T3] Atajos del proyector: F pantalla completa (oculta controles; si el navegador no deja, igual oculta controles), 1, 2 y C cambian de vista. No actúan dentro de campos.
 - 2026-10-16 [T3] Animación R1 a R2 solo al pasar a Comparación (incluye el cambio automático al cerrar R2), una vez, 1,2 s, sin animación con `prefers-reduced-motion`.
 - 2026-10-16 [T3] Verifiqué contra la API real de T1 con una copia desacoplada (`git worktree add --detach ../hz-t3-api t1-backend`), sin escribir en su rama.
+- 2026-10-16 [T2] El participante usa su propio transporte (`web/participante/api.ts`), con la misma forma de errores que `web/shared/api/cliente.ts` (de uso opcional según T1): guarda el token por mesa (`hz_token:{CODIGO}`) en vez de una llave global, para que un mismo celular pueda estar en dos salas de ensayo sin pisarse. Los tipos se alinean al contrato; si T1 lo pide, se cambia el import sin tocar pantallas.
+- 2026-10-16 [T2] Navegación interna por estado (no subrutas): la pantalla en curso (`inicio`, `lectura`, `elegir`, `calificar:{proyecto}`) vive en sessionStorage, así que recargar devuelve al mismo punto; lo marcado sin guardar vive en sessionStorage por proyecto y ronda.
+- 2026-10-16 [T2] Tras guardar un voto se aplica en local la respuesta del PUT y se fuerza un GET /api/yo; si la versión no cambió (mocks) se conserva lo local.
+- 2026-10-16 [T2] Con la inscripción cerrada (sala ya en curso o terminada) se ofrece "Ya me inscribí: recuperar mi sesión", que usa el mismo POST /api/inscripcion (409 CORREO_YA_INSCRITO recupera; 409 INSCRIPCION_CERRADA = correo no inscrito). Sin consentimiento tampoco se recupera, porque el servidor registra uno nuevo.
+- 2026-10-16 [T2] Resultado en el celular, provisional hasta integrar la matriz de T3: posición (eje X, eje Y) y promedio por criterio en R1 y R2, tal como los entrega el servidor (sin recalcular).
