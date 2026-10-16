@@ -15,21 +15,75 @@ const RAIZ = resolve(__dirname, '../../..')
 const USUARIO = 'e2e_t2'
 const CLAVE = 'clave-e2e-participante'
 
-/** Chromium headless que trae Playwright (misma revisión que playwright-core) o el de PW_EXE. */
-export function hayChromium(): boolean {
-  if (process.env.PW_EXE) return existsSync(process.env.PW_EXE)
+/** Navegador de Playwright instalado (misma revisión que playwright-core). Para Chromium también vale PW_EXE. */
+export function hayNavegador(motor: Motor): boolean {
+  if (motor === 'chromium' && process.env.PW_EXE) return existsSync(process.env.PW_EXE)
   const base = process.env.PLAYWRIGHT_BROWSERS_PATH ?? (process.platform === 'win32' ? join(process.env.LOCALAPPDATA ?? join(homedir(), 'AppData/Local'), 'ms-playwright') : process.platform === 'darwin' ? join(homedir(), 'Library/Caches/ms-playwright') : join(homedir(), '.cache/ms-playwright'))
   try {
-    return readdirSync(base).some((d) => d.startsWith('chromium'))
+    return readdirSync(base).some((d) => d.startsWith(`${motor}-`) || (motor === 'chromium' && d.startsWith('chromium')))
   } catch {
     return false
   }
+}
+export const hayChromium = () => hayNavegador('chromium')
+
+export type Motor = 'chromium' | 'webkit'
+
+/** Celulares emulados para el recorrido por perfiles: motor real + user agent, pantalla y densidad del equipo. */
+export interface PerfilMovil {
+  nombre: string
+  motor: Motor
+  contexto: { userAgent: string; viewport: { width: number; height: number }; deviceScaleFactor: number }
+}
+export const PERFILES_MOVILES: PerfilMovil[] = [
+  {
+    nombre: 'Chrome Android (Pixel 7)',
+    motor: 'chromium',
+    contexto: {
+      userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36',
+      viewport: { width: 412, height: 839 },
+      deviceScaleFactor: 2.625,
+    },
+  },
+  {
+    nombre: 'Safari iOS (iPhone 13, WebKit)',
+    motor: 'webkit',
+    contexto: {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+      viewport: { width: 390, height: 664 },
+      deviceScaleFactor: 3,
+    },
+  },
+  {
+    nombre: 'Samsung Internet (Galaxy S24)',
+    motor: 'chromium',
+    contexto: {
+      userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-S921B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/27.0 Chrome/125.0.0.0 Mobile Safari/537.36',
+      viewport: { width: 360, height: 780 },
+      deviceScaleFactor: 3,
+    },
+  },
+]
+
+/** Contexto de un perfil móvil. WebKit se lanza aparte la primera vez y se cierra con el entorno. */
+export async function celularPerfil(e: Entorno, perfil: PerfilMovil): Promise<BrowserContext> {
+  let browser = e.browser
+  if (perfil.motor === 'webkit') {
+    if (!e.webkit) {
+      const { webkit } = await import('playwright-core')
+      e.webkit = await webkit.launch()
+    }
+    browser = e.webkit
+  }
+  return browser.newContext({ ...perfil.contexto, isMobile: true, hasTouch: true, locale: 'es-CO' })
 }
 
 export interface Entorno {
   api: FastifyInstance
   web_server: Server
   browser: Browser
+  /** WebKit (Safari iOS), solo si un perfil lo pide. */
+  webkit?: Browser
   web: string
   apiUrl: string
   cookie: string
@@ -70,7 +124,7 @@ export async function iniciar(): Promise<Entorno> {
   if (!r.ok) throw new Error(`login admin falló: ${r.status}`)
   const cookie = (r.headers.get('set-cookie') ?? '').split(';')[0]
 
-  return {
+  const entorno: Entorno = {
     api,
     web_server,
     browser,
@@ -81,6 +135,7 @@ export async function iniciar(): Promise<Entorno> {
       // Las conexiones keep-alive (navegador → Vite → API) no deben colgar el cierre.
       const conTope = (p: Promise<unknown>) => Promise.race([p.catch(() => {}), new Promise((r) => setTimeout(r, 5000))])
       await conTope(browser.close())
+      if (entorno.webkit) await conTope(entorno.webkit.close())
       web_server.closeAllConnections()
       await conTope(new Promise((r) => web_server.close(r)))
       api.server.closeAllConnections()
@@ -88,6 +143,7 @@ export async function iniciar(): Promise<Entorno> {
       rmSync(salida, { recursive: true, force: true })
     },
   }
+  return entorno
 }
 
 const TIPOS: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' }
