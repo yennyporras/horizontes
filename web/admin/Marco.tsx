@@ -27,7 +27,7 @@ export function Marco() {
     { a: enSala('mesas'), texto: 'Mesas y QR' },
     { a: enSala('participantes'), texto: 'Participantes' },
     { a: enSala('configuracion'), texto: 'Configuración' },
-    { a: enSala('export'), texto: 'Export' },
+    { a: enSala('export'), texto: 'Exportar' },
   ]
   enlaces.push({ a: '/admin/salud', texto: 'Salud' })
   if (admin?.rol === 'superadmin') enlaces.push({ a: '/admin/administradores', texto: 'Administradores' })
