@@ -54,7 +54,17 @@ export async function iniciar(): Promise<Entorno> {
   const web = `http://127.0.0.1:${(web_server.address() as AddressInfo).port}`
 
   const { chromium } = await import('playwright-core')
-  const browser = await chromium.launch({ executablePath: process.env.PW_EXE || undefined, args: ['--disable-gpu'] })
+  let browser: Browser
+  try {
+    browser = await chromium.launch({ executablePath: process.env.PW_EXE || undefined, args: ['--disable-gpu'] })
+  } catch (err) {
+    // Sin esto, la API y el estático quedan escuchando y Vitest no termina.
+    web_server.closeAllConnections()
+    web_server.close()
+    await api.close()
+    rmSync(salida, { recursive: true, force: true })
+    throw err
+  }
 
   const r = await fetch(`${apiUrl}/api/admin/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ usuario: USUARIO, clave: CLAVE }) })
   if (!r.ok) throw new Error(`login admin falló: ${r.status}`)

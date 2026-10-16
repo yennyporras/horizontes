@@ -3,6 +3,10 @@
 import { ErrorApi, guardarVoto, type RespuestaVoto } from './api'
 
 export interface VotoEnCola {
+  /** Versión exacta del voto: un reenvío viejo no borra una edición más nueva del mismo proyecto. */
+  id: string
+  /** Dueño del voto: si en el celular entra otra persona, no se envía con su token. */
+  participante_id: string
   proyecto_id: string
   /** Nombre del proyecto, para los avisos. */
   nombre: string
@@ -38,8 +42,11 @@ export function encolar(codigo: string, voto: VotoEnCola): VotoEnCola[] {
   return cola
 }
 
-export function quitar(codigo: string, voto: Pick<VotoEnCola, 'proyecto_id' | 'ronda'>): VotoEnCola[] {
-  const cola = leerCola(codigo).filter((v) => !(v.proyecto_id === voto.proyecto_id && v.ronda === voto.ronda))
+export const nuevoId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
+/** Con `id` borra solo esa versión; sin `id`, cualquier versión de ese proyecto y ronda (se guardó en línea). */
+export function quitar(codigo: string, voto: Pick<VotoEnCola, 'proyecto_id' | 'ronda'> & { id?: string }): VotoEnCola[] {
+  const cola = leerCola(codigo).filter((v) => !(v.proyecto_id === voto.proyecto_id && v.ronda === voto.ronda && (!voto.id || v.id === voto.id)))
   escribirCola(codigo, cola)
   return cola
 }
@@ -53,9 +60,12 @@ export type ResultadoEnvio =
  * Envía la cola en orden. Se detiene en el primer fallo de red o de sesión (401): esos votos siguen
  * en la cola para el siguiente intento. Devuelve lo que pasó con cada voto que salió de la cola.
  */
-export async function enviarCola(codigo: string, token: string): Promise<ResultadoEnvio[]> {
+export async function enviarCola(codigo: string, token: string, participanteId: string): Promise<ResultadoEnvio[]> {
   const hechos: ResultadoEnvio[] = []
   for (const voto of leerCola(codigo)) {
+    if (voto.participante_id !== participanteId) continue
+    // Pudo cambiar mientras se enviaba el anterior (la persona editó otra vez): se envía la versión vigente.
+    if (!leerCola(codigo).some((v) => v.id === voto.id)) continue
     try {
       const respuesta = await guardarVoto(token, { proyecto_id: voto.proyecto_id, ronda: voto.ronda, respuestas: voto.respuestas })
       quitar(codigo, voto)

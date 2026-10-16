@@ -18,9 +18,9 @@ export interface InscripcionProps {
 
 /** 8.1 Inscripción con el componente de consentimiento (patrón del IRMI, texto de Estratek). */
 export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: InscripcionProps) {
-  // Si ya se inscribió en este celular, el formulario llega lleno (recuperar sesión en un toque).
-  const [nombre, setNombre] = useState(() => leerDatos(codigo)?.nombre ?? '')
-  const [correo, setCorreo] = useState(() => leerDatos(codigo)?.correo ?? '')
+  // Solo al recuperar la sesión el formulario llega lleno; una inscripción nueva nunca muestra datos de otra persona.
+  const [nombre, setNombre] = useState(() => (recuperar ? (leerDatos(codigo)?.nombre ?? '') : ''))
+  const [correo, setCorreo] = useState(() => (recuperar ? (leerDatos(codigo)?.correo ?? '') : ''))
   const [acepta, setAcepta] = useState(false)
   const [errores, setErrores] = useState<{ nombre?: string; correo?: string }>({})
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)

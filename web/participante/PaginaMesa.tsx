@@ -3,13 +3,13 @@ import { useParams } from 'react-router-dom'
 import { Aviso, BarraProgreso, Boton } from '../shared/ui'
 import { ErrorApi, obtenerMesa, type Mesa, type RespuestaVoto, type Yo } from './api'
 import { usarFuenteLista } from './fuente'
-import { encolar, enviarCola, leerCola, quitar as quitarDeCola, type VotoEnCola } from './cola'
+import { encolar, enviarCola, leerCola, nuevoId, quitar as quitarDeCola, type VotoEnCola } from './cola'
 import { Cargando, Marco, Mensaje, type MarcoBase } from './Comun'
 import { Inscripcion } from './pantallas/Inscripcion'
 import { Lectura } from './pantallas/Lectura'
 import { ResultadoAlcance, textoAlcance } from './pantallas/Resultado'
 import { Calificar, ElegirProyecto, proyectosVivos, votoDe } from './pantallas/Votacion'
-import { bienvenidaPendiente, guardarBorrador, guardarToken, guardarVista, leerBorrador, leerToken, leerVista, marcarBienvenida, olvidarSesion } from './sesion'
+import { bienvenidaPendiente, guardarBorrador, olvidarDatos, guardarToken, guardarVista, leerBorrador, leerToken, leerVista, marcarBienvenida, olvidarSesion } from './sesion'
 import { usarYo } from './usarYo'
 
 // La muestra del sistema de diseño trae el mock de /api/yo: se carga aparte para no inflar el bundle.
@@ -186,7 +186,8 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   const [cola, setCola] = useState<VotoEnCola[]>(() => leerCola(codigo))
   // Avisos de error que se quedan hasta que la persona cambie de pantalla (ronda cerrada mientras votaba).
   const [avisoPerdido, setAvisoPerdido] = useState<string | null>(null)
-  const enviando = useRef(false)
+  // Reenvío de la cola en curso: guardar en línea lo espera para que un envío viejo no llegue después.
+  const envio = useRef<Promise<void> | null>(null)
   const fuente = usarFuenteLista()
 
   const ir = useCallback(
@@ -200,18 +201,23 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   )
 
   // Reenvío de la cola: al cargar, cada 4 s mientras haya algo pendiente y apenas vuelve la señal.
+  const participanteId = yo?.participante.id
   const vaciarCola = useCallback(async () => {
-    if (enviando.current || leerCola(codigo).length === 0) return
-    enviando.current = true
-    try {
-      const hechos = await enviarCola(codigo, token)
+    if (envio.current || !participanteId || leerCola(codigo).length === 0) return
+    const tarea = (async () => {
+      const hechos = await enviarCola(codigo, token, participanteId)
       if (hechos.length === 0) return
+      const quedan = leerCola(codigo)
       for (const h of hechos) {
+        // Si entretanto se encoló una edición más nueva del mismo proyecto, esa sigue su curso.
+        const reemplazado = quedan.some((v) => v.proyecto_id === h.voto.proyecto_id && v.ronda === h.voto.ronda)
         if (h.tipo === 'enviado') {
+          if (reemplazado) continue
           guardarBorrador(codigo, h.voto.proyecto_id, h.voto.ronda, null)
           aplicar((y) => conVoto(y, h.respuesta))
           setAvisoOk(`Volvió la señal: enviamos tu calificación de ${h.voto.nombre}.`)
         } else {
+          if (reemplazado) continue
           // Rechazo definitivo: lo marcado vuelve al borrador para no perderlo.
           guardarBorrador(codigo, h.voto.proyecto_id, h.voto.ronda, h.voto.respuestas)
           const c = h.error.codigo
@@ -224,10 +230,12 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
       }
       setCola(leerCola(codigo))
       void refrescar()
-    } finally {
-      enviando.current = false
-    }
-  }, [codigo, token, aplicar, refrescar])
+    })()
+    envio.current = tarea.finally(() => {
+      envio.current = null
+    })
+    await envio.current
+  }, [codigo, token, participanteId, aplicar, refrescar])
 
   const hayCola = cola.length > 0
   useEffect(() => {
@@ -241,6 +249,17 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
       window.removeEventListener('online', alVolver)
     }
   }, [hayCola, vaciarCola])
+
+  // Ley 1581: con la sala cerrada no hay sesión que recuperar; nombre y correo salen del celular.
+  const salaCerrada = yo?.sala.estado === 'cerrada'
+  useEffect(() => {
+    if (salaCerrada) olvidarDatos(codigo)
+  }, [salaCerrada, codigo])
+
+  /** Antes de guardar en línea: termina el reenvío en curso (si lo hay) para no pisar lo nuevo con lo viejo. */
+  const esperarCola = useCallback(async () => {
+    if (envio.current) await envio.current.catch(() => {})
+  }, [])
 
   // La ronda se cerró mientras calificaba: aviso claro y lo marcado se conserva (borrador).
   const estadoSala = yo?.sala.estado
@@ -384,8 +403,9 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
           ir('inicio')
           void refrescar()
         }}
+        esperarCola={esperarCola}
         onSinSenal={(voto) => {
-          setCola(encolar(codigo, voto))
+          setCola(encolar(codigo, { ...voto, id: nuevoId(), participante_id: yo.participante.id }))
           ir('inicio')
           setAvisoOk(null)
         }}

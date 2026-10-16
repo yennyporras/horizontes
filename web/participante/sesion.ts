@@ -63,6 +63,8 @@ export function leerDatos(codigo: string): { nombre: string; correo: string } | 
   }
 }
 export const guardarDatos = (codigo: string, datos: { nombre: string; correo: string }) => escribir(local, clave('datos', codigo), JSON.stringify(datos))
+/** Ley 1581: al cerrar la sala ya no hay sesión que recuperar; nombre y correo salen del celular. */
+export const olvidarDatos = (codigo: string) => escribir(local, clave('datos', codigo), null)
 
 /**
  * Sale de la sesión. Con `conservarLugar` (token vencido) se guardan la pantalla, los borradores

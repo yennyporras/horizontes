@@ -56,3 +56,5 @@
    (min-width: auto): sin min-width 0, el SVG inicial de 360 px ensancha la página. */
 .hzp-resultado > *, .hzp-matriz { min-width: 0; }
 .hzp-matriz { min-height: 320px; overflow: hidden; }
+/* Las cifras de la tabla siguen en negrita pese al blindaje de .hz-cifra (componentes.css). */
+.hz .hzp-tabla td, .hz .hzp-tabla thead th + th { font-weight: 700; }
