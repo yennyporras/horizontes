@@ -92,3 +92,9 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - 2026-10-16 [T4] Cierres programados: el panel usa `datetime-local` leído como hora Bogotá y envía ISO con `-05:00` (Bogotá no tiene horario de verano). No deja programar una hora pasada.
 - 2026-10-16 [T4] Botones de acción: se muestran siempre los 9 en orden del ciclo; los que no aplican al estado quedan deshabilitados. Reiniciar votos y cerrar sala piden confirmación con `<dialog>` nativo.
 - 2026-10-16 [T4] Monitor `/admin/salud` (backlog): muestra lo que devuelva `GET /api/health` y la latencia p95 medida por el navegador. Sugerencia a T1 (no rompe nada): agregar `version` (valor de `SOURCE_COMMIT`, que Coolify ya pasa a la imagen) a `/api/health`.
+
+## 2026-10-16 · R2 · T4
+- [T4] El pipeline de despliegue vive en `tools/deploy.sh` (pedido por el prompt de R2); `deploy/desplegar.sh` queda como atajo. Es idempotente: en cada corrida fija por la API de Coolify el dominio (y con él el certificado Let's Encrypt), el healthcheck y las variables del servidor, y luego pide el deploy. La app, el volumen y la tarea de respaldo se crean una sola vez a mano (no hay API estable para todo eso y es un paso único).
+- [T4] Sin cron para cierres programados: el servidor ya aplica los vencidos en cada petición y cada 15 s (§2.6 de DESPLIEGUE). La variable `CIERRES_INTERVALO_MS` no existe en el servidor; se quitó de la tabla de variables.
+- [T4] Mientras no haya staging, el ensayo "tipo staging" es la misma imagen en local (`tools/deploy.sh local`). La latencia del simulador medida desde Windows contra el contenedor (p95 ~7,6 s) es del proxy de puertos de Docker Desktop, no del servidor (p95 11 ms en sus logs); la medida válida es dentro del contenedor (p95 205 ms, 0 errores).
+- [T4] La bitácora de la sala en el panel muestra textos legibles por tipo de evento (`textoEvento`), y el mensaje del precierre cuando viene.

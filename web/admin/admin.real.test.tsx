@@ -91,7 +91,7 @@ describe('panel admin contra la API real', () => {
       for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, t, p, 1)).statusCode).toBe(200)
     }
     // Precierre de la Mesa 1: avisa sin cerrar la ronda y muestra el resultado preliminar.
-    expect(await screen.findByText(/Todos votaron en Mesa 1/, undefined, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText(/Todos votaron en Mesa 1/, { selector: 'strong' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()

@@ -125,3 +125,30 @@ export const decimal = (n: number | null | undefined, d = 2) =>
 
 export const fechaHora = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'medium', timeStyle: 'short' }) : 'Sin definir'
+
+const TEXTO_EVENTO: Record<string, string> = {
+  sala_creada: 'Sala creada',
+  inscripcion_abierta: 'Inscripción abierta',
+  inscripcion: 'Nueva inscripción',
+  ronda_abierta: 'Ronda abierta',
+  ronda_cerrada: 'Ronda cerrada',
+  ronda_reabierta: 'Ronda reabierta',
+  reinicio: 'Votos de la ronda reiniciados',
+  sala_cerrada: 'Sala cerrada',
+  sala_reabierta: 'Sala reabierta',
+  precierre: 'Precierre',
+  config: 'Configuración cambiada',
+  participante_editado: 'Participante editado',
+  cierre_programado: 'Cierre programado aplicado',
+  cierre_programado_descartado: 'Cierre programado descartado',
+}
+
+/** Texto legible de un evento de la bitácora de la sala. */
+export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown> | null; por: string }): string {
+  const d = ev.detalle ?? {}
+  if (typeof d.mensaje === 'string') return d.mensaje
+  let t = TEXTO_EVENTO[ev.tipo] ?? ev.tipo.replace(/_/g, ' ')
+  if (/^ronda_/.test(ev.tipo) && typeof d.ronda === 'number') t = t.replace('Ronda', `Ronda ${d.ronda}`)
+  const por = ev.por === 'sistema' ? '' : ev.por === 'programado' ? ' · automático' : ` · ${ev.por.replace(/^admin:/, '')}`
+  return t + por
+}

@@ -15,6 +15,7 @@ import {
   fechaHora,
   rondaAbierta,
   rutaApiTablero,
+  textoEvento,
   urlTableroSala,
 } from '../textos'
 
@@ -341,7 +342,7 @@ function Eventos({ d }: { d: SalaDetalle }) {
         <ol className="eventos">
           {d.eventos.slice(0, 20).map((ev, i) => (
             <li key={i}>
-              <time dateTime={ev.at}>{fechaHora(ev.at)}</time> · {ev.tipo.replace(/_/g, ' ')} · {ev.por}
+              <time dateTime={ev.at}>{fechaHora(ev.at)}</time> · {textoEvento(ev)}
             </li>
           ))}
         </ol>
