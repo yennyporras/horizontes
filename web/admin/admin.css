@@ -1,0 +1,294 @@
+/* Panel admin. Tokens con los mismos valores de docs/DISENO.md (T2); se definen aquí con
+   alcance .hz-admin para no depender del orden de carga de web/shared/ui/tokens.css. */
+.hz-admin {
+  --a-azul: var(--hz-azul, #1c4587);
+  --a-azul-medio: var(--hz-azul-medio, #3f7cc8);
+  --a-cielo: var(--hz-cielo, #00a3ff);
+  --a-tinta: var(--hz-tinta, #0f2340);
+  --a-tinta-2: var(--hz-tinta-2, #3a4d6b);
+  --a-tinta-3: var(--hz-tinta-3, #5b6b84);
+  --a-h1: var(--hz-h1, #eef4fb);
+  --a-h2: var(--hz-h2, #dce8f6);
+  --a-h3: var(--hz-h3, #c5d8ef);
+  --a-ok: #1d6b4f;
+  --a-ok-fondo: #e6f4ee;
+  --a-alerta: #7a4b00;
+  --a-alerta-fondo: #fff4dc;
+  --a-error: #a3261b;
+  --a-error-fondo: #fdecea;
+  --a-r-s: 6px;
+  --a-r-m: 10px;
+  --a-r-l: 16px;
+
+  font-family: 'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--a-tinta);
+  background: #fff;
+  min-height: 100vh;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.hz-admin *,
+.hz-admin *::before,
+.hz-admin *::after {
+  box-sizing: border-box;
+}
+
+.hz-admin h1,
+.hz-admin h2,
+.hz-admin h3 {
+  line-height: 1.2;
+  margin: 0 0 12px;
+  color: var(--a-azul);
+}
+.hz-admin h1 { font-size: 25px; font-weight: 800; }
+.hz-admin h2 { font-size: 20px; font-weight: 700; }
+.hz-admin h3 { font-size: 18px; font-weight: 600; }
+.hz-admin p { margin: 0 0 12px; }
+.hz-admin a { color: var(--a-azul); }
+
+.hz-admin :focus-visible {
+  outline: 3px solid var(--a-azul);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 7px var(--a-cielo);
+}
+
+.hz-admin .saltar {
+  position: absolute;
+  left: -9999px;
+}
+.hz-admin .saltar:focus {
+  left: 16px;
+  top: 8px;
+  background: #fff;
+  padding: 8px 12px;
+  z-index: 10;
+}
+
+/* Cabecera y navegación */
+.hz-admin .cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--a-h3);
+  background: var(--a-h1);
+}
+.hz-admin .marca { font-weight: 800; color: var(--a-azul); font-size: 18px; }
+.hz-admin .marca__sub { font-weight: 500; color: var(--a-tinta-2); font-size: 14px; }
+.hz-admin .nav { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.hz-admin .nav__item {
+  padding: 8px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--a-tinta-2);
+  font-weight: 600;
+  font-size: 14px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+}
+.hz-admin .nav__item:hover { background: var(--a-h2); }
+.hz-admin .nav__item--activo { background: #fff; color: var(--a-azul); font-weight: 700; box-shadow: inset 0 0 0 1px var(--a-h3); }
+.hz-admin .usuario { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+
+.hz-admin .contenido { padding: 24px 16px 48px; max-width: 1200px; margin: 0 auto; }
+
+/* Superficies */
+.hz-admin .panel {
+  border: 1px solid var(--a-h3);
+  border-radius: var(--a-r-l);
+  padding: 20px;
+  margin-bottom: 20px;
+  background: #fff;
+}
+.hz-admin .rejilla { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.hz-admin .encabezado-sala { margin-bottom: 16px; }
+.hz-admin .vacio { color: var(--a-tinta-3); font-style: italic; }
+.hz-admin .pista { color: var(--a-tinta-3); font-size: 14px; }
+.hz-admin .cargando { padding: 24px; }
+
+/* Botones */
+.hz-admin .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: var(--a-r-m);
+  border: 2px solid var(--a-azul);
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: none;
+  background: #fff;
+  color: var(--a-azul);
+}
+.hz-admin .btn--primario { background: var(--a-azul); color: #fff; }
+.hz-admin .btn--primario:hover:not(:disabled) { background: #163869; }
+.hz-admin .btn--fantasma { border-color: transparent; background: transparent; text-decoration: underline; }
+.hz-admin .btn--peligro { border-color: var(--a-error); color: var(--a-error); }
+.hz-admin .btn--peligro:hover:not(:disabled) { background: var(--a-error-fondo); }
+.hz-admin .btn--chico { min-height: 36px; padding: 4px 10px; font-size: 14px; }
+.hz-admin .btn--bloque { width: 100%; }
+.hz-admin .btn:disabled,
+.hz-admin .btn[aria-disabled='true'] {
+  background: var(--a-h2);
+  border-color: var(--a-h2);
+  color: var(--a-tinta-3);
+  cursor: not-allowed;
+}
+.hz-admin .acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+/* Formularios */
+.hz-admin .campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; flex: 1; min-width: 180px; }
+.hz-admin .campo > span { font-size: 14px; font-weight: 600; color: var(--a-tinta-2); }
+.hz-admin .campo--corto { flex: 0 0 120px; min-width: 100px; }
+.hz-admin input,
+.hz-admin select {
+  font: inherit;
+  font-size: 16px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--a-tinta-3);
+  border-radius: var(--a-r-s);
+  color: var(--a-tinta);
+  background: #fff;
+}
+.hz-admin select.chico { min-height: 36px; font-size: 14px; padding: 4px 8px; }
+.hz-admin .fila-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.hz-admin .fila-form .btn { margin-bottom: 12px; }
+.hz-admin fieldset { border: 1px solid var(--a-h3); border-radius: var(--a-r-m); padding: 12px 16px; margin: 0 0 16px; }
+.hz-admin legend { font-weight: 700; color: var(--a-azul); padding: 0 4px; }
+.hz-admin .opcion { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
+.hz-admin .opcion input { min-height: auto; width: 20px; height: 20px; margin-top: 2px; }
+.hz-admin .opcion small { display: block; color: var(--a-tinta-3); font-size: 14px; }
+
+/* Avisos y etiquetas */
+.hz-admin .alerta { padding: 12px 16px; border-radius: var(--a-r-m); border-left: 4px solid; margin: 0 0 16px; }
+.hz-admin .alerta--error { background: var(--a-error-fondo); color: var(--a-error); }
+.hz-admin .alerta--aviso { background: var(--a-alerta-fondo); color: var(--a-alerta); }
+.hz-admin .alerta--exito { background: var(--a-ok-fondo); color: var(--a-ok); }
+.hz-admin .alerta--info { background: var(--a-h1); color: var(--a-azul); }
+.hz-admin .alerta strong { display: block; }
+.hz-admin .aviso-mock { margin: 0; padding: 6px 16px; background: var(--a-alerta-fondo); color: var(--a-alerta); font-size: 14px; }
+
+.hz-admin .etiqueta {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--a-h2);
+  color: var(--a-azul);
+}
+.hz-admin .etiqueta--exito { background: var(--a-ok-fondo); color: var(--a-ok); }
+.hz-admin .etiqueta--aviso { background: var(--a-alerta-fondo); color: var(--a-alerta); }
+.hz-admin .etiqueta--apagado { background: #eceff3; color: var(--a-tinta-3); }
+
+.hz-admin .estado {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--a-h2);
+  color: var(--a-azul);
+}
+.hz-admin .estado--r1_abierta,
+.hz-admin .estado--r2_abierta,
+.hz-admin .estado--inscripcion { background: var(--a-ok-fondo); color: var(--a-ok); }
+.hz-admin .estado--cerrada { background: #eceff3; color: var(--a-tinta-2); }
+
+/* Tablas */
+.hz-admin .tabla-envoltura { overflow-x: auto; }
+.hz-admin table { border-collapse: collapse; width: 100%; font-size: 15px; font-variant-numeric: tabular-nums; }
+.hz-admin th,
+.hz-admin td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--a-h3); vertical-align: middle; }
+.hz-admin thead th { font-size: 13px; color: var(--a-tinta-2); font-weight: 700; }
+.hz-admin tbody th { font-weight: 600; }
+.hz-admin tr.inactivo td,
+.hz-admin tr.inactivo th { color: var(--a-tinta-3); text-decoration: line-through; }
+.hz-admin .enlaces { display: flex; flex-wrap: wrap; gap: 12px; }
+.hz-admin .num { text-align: right; }
+
+/* Salas */
+.hz-admin .lista-salas { list-style: none; padding: 0; margin: 0; }
+.hz-admin .tarjeta-sala { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.hz-admin .tarjeta-sala > div { flex: 1; min-width: 200px; }
+.hz-admin .tarjeta-sala h2 { margin-bottom: 4px; }
+
+/* Sala en vivo */
+.hz-admin .estado-grande { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: baseline; margin-bottom: 12px; }
+.hz-admin .cifra { font-size: 32px; font-weight: 800; color: var(--a-azul); font-variant-numeric: tabular-nums; }
+.hz-admin .cuenta { font-variant-numeric: tabular-nums; font-weight: 700; }
+.hz-admin .eventos { padding-left: 20px; margin: 0; font-size: 14px; color: var(--a-tinta-2); }
+.hz-admin .barra { height: 8px; background: var(--a-h2); border-radius: 999px; overflow: hidden; min-width: 80px; }
+.hz-admin .barra > span { display: block; height: 100%; background: var(--a-azul-medio); }
+
+/* QR */
+.hz-admin .qr-lista { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.hz-admin .qr-tarjeta { text-align: center; }
+.hz-admin .qr-tarjeta img { width: 200px; height: 200px; display: block; margin: 8px auto; }
+.hz-admin .qr-tarjeta code { word-break: break-all; font-size: 13px; }
+
+.hz-admin .proyectar {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  text-align: center;
+}
+.hz-admin .proyectar img { width: min(70vh, 80vw); height: min(70vh, 80vw); }
+.hz-admin .proyectar h2 { font-size: clamp(32px, 5vw, 64px); }
+.hz-admin .proyectar p { font-size: clamp(20px, 2.5vw, 32px); }
+.hz-admin .proyectar .btn { position: absolute; top: 16px; right: 16px; }
+
+/* Diálogo de confirmación */
+.hz-admin dialog {
+  border: 1px solid var(--a-h3);
+  border-radius: var(--a-r-l);
+  padding: 24px;
+  max-width: 440px;
+  width: calc(100% - 32px);
+  color: var(--a-tinta);
+}
+.hz-admin dialog::backdrop { background: rgba(15, 35, 64, 0.45); }
+
+/* Login */
+.hz-admin .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--a-h1); }
+.hz-admin .login__caja { width: 100%; max-width: 400px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hz-admin * { transition: none !important; animation: none !important; }
+}
+
+/* Hoja imprimible de QR: cuatro mesas por hoja A4 */
+@media print {
+  .hz-admin .cabecera,
+  .hz-admin .aviso-mock,
+  .hz-admin .no-imprimir { display: none !important; }
+  .hz-admin .contenido { padding: 0; max-width: none; }
+  .hz-admin .qr-lista { grid-template-columns: 1fr 1fr; gap: 0; }
+  .hz-admin .qr-tarjeta {
+    border: 1px dashed #999;
+    border-radius: 0;
+    margin: 0;
+    height: 138mm;
+    break-inside: avoid;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .hz-admin .qr-tarjeta img { width: 85mm; height: 85mm; }
+  @page { size: A4; margin: 6mm; }
+}
