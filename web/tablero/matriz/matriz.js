@@ -69,7 +69,8 @@ export function radioPorTam(tam, rmin, rmax) {
 /**
  * Calcula toda la geometría de la matriz (sin producir SVG). Útil para pruebas.
  * @param {object} datos respuesta de GET /api/tablero
- * @param {{ancho:number, alto?:number, colores?:object}} opciones
+ * @param {{ancho:number, alto?:number, colores?:object, vista?:1|2|'comparacion'}} opciones
+ *   vista 1 o 2 dibuja solo esa ronda en sólido; 'comparacion' (por defecto) dibuja R1 suave, R2 sólido y flecha.
  */
 export function calcularLayout(datos, opciones = {}) {
   const W = Math.max(240, opciones.ancho || 800);
@@ -134,8 +135,10 @@ export function calcularLayout(datos, opciones = {}) {
         n_votos: rd.n_votos,
       };
     };
-    const r1 = ronda(1);
-    const r2_ = ronda(2);
+    const vista = opciones.vista ?? 'comparacion';
+    const r1 = vista === 2 ? null : ronda(1);
+    const r2_ = vista === 1 ? null : ronda(2);
+    if (r1 && vista === 1) r1.solido = true;
     let flecha = null;
     if (r1 && r2_) {
       const dx = r2_.cx - r1.cx;
@@ -343,7 +346,11 @@ export function matrizSVG(datos, opciones = {}) {
     const sw = r2(Math.max(2, fs * 0.16));
     if (v.r1) {
       partes.push(
-        `<circle class="hz-r1" data-proyecto="${esc(v.id)}" cx="${r2(v.r1.cx)}" cy="${r2(v.r1.cy)}" r="${r2(v.r1.r)}" fill="${v.color}" fill-opacity="0.22" stroke="${v.color}" stroke-width="${sw}" stroke-dasharray="${r2(fs * 0.35)} ${r2(fs * 0.25)}"><title>${esc(v.nombre)} ronda 1 · X ${v.r1.valor.x} · Y ${v.r1.valor.y}</title></circle>`,
+        `<circle class="hz-r1" data-proyecto="${esc(v.id)}" cx="${r2(v.r1.cx)}" cy="${r2(v.r1.cy)}" r="${r2(v.r1.r)}" fill="${v.color}" ${
+          v.r1.solido
+            ? `stroke="${C.halo}" stroke-width="2"`
+            : `fill-opacity="0.22" stroke="${v.color}" stroke-width="${sw}" stroke-dasharray="${r2(fs * 0.35)} ${r2(fs * 0.25)}"`
+        }><title>${esc(v.nombre)} ronda 1 · X ${v.r1.valor.x} · Y ${v.r1.valor.y}</title></circle>`,
       );
     }
     if (v.flecha && !v.flecha.encima) {
