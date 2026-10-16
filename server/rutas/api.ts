@@ -29,8 +29,6 @@ export interface OpcionesApi {
   db: Db
   ahora: Reloj
   baseUrl: string
-  /** Cookie `Secure` (producción detrás de HTTPS). */
-  cookieSegura: boolean
 }
 
 const COOKIE = 'hz_admin'
@@ -106,12 +104,13 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   // --- Admin ----------------------------------------------------------------------------
 
-  const ponerCookie = (reply: FastifyReply, token: string) =>
-    reply.setCookie(COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure: op.cookieSegura, maxAge: DURACION_SESION_MS / 1000 })
+  // Secure solo si la petición llegó por HTTPS (Coolify/Traefik manda X-Forwarded-Proto; trustProxy está activo).
+  const ponerCookie = (req: FastifyRequest, reply: FastifyReply, token: string) =>
+    reply.setCookie(COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure: req.protocol === 'https', maxAge: DURACION_SESION_MS / 1000 })
 
   app.post<{ Body: { usuario?: unknown; clave?: unknown } }>('/api/admin/login', async (req, reply) => {
     const { token, admin } = login(db, req.body?.usuario, req.body?.clave, ahora())
-    ponerCookie(reply, token)
+    ponerCookie(req, reply, token)
     return { ok: true, admin: adminPublico(admin) }
   })
 

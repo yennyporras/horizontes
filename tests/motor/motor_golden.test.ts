@@ -12,8 +12,8 @@ describe('motor · golden', () => {
     expect(semilla.motor.pesos).toEqual(PESOS_CANONICOS)
   })
 
-  it.each(golden.casos_proyecto.map((c: { nombre: string }) => [c.nombre, c]))('fijo %s (tolerancia 1e-9)', (_n, c) => {
-    const caso = c as { inputs: Entradas; esperado: { t2m: number; eje_x: number; eje_y: number } }
+  type CasoFijo = { nombre: string; inputs: Entradas; esperado: { t2m: number; eje_x: number; eje_y: number } }
+  it.each(golden.casos_proyecto as CasoFijo[])('fijo $nombre (tolerancia 1e-9)', (caso) => {
     const p = calcularPunto(caso.inputs, semilla.motor.pesos)
     expect(Math.abs(p.t2m - caso.esperado.t2m)).toBeLessThan(EXACTA)
     expect(Math.abs(p.eje_x - caso.esperado.eje_x)).toBeLessThan(EXACTA)

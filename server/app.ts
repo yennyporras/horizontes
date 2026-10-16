@@ -47,7 +47,7 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
     if (sa === 'sin_config') app.log.warn('SUPERADMIN_USUARIO / SUPERADMIN_CLAVE no están definidos: no se creó superadmin.')
     if (!process.env.POLITICA_PRIVACIDAD_URL) app.log.warn(`POLITICA_PRIVACIDAD_URL no está definida: se usa ${config.politicaUrl}`)
     const baseUrl = op.baseUrl ?? config.baseUrl
-    await app.register(rutasApi, { db, ahora, baseUrl, cookieSegura: baseUrl.startsWith('https://') })
+    await app.register(rutasApi, { db, ahora, baseUrl })
     const intervalo = op.intervaloCierresMs ?? 15_000
     if (intervalo > 0) {
       const t = setInterval(() => {
