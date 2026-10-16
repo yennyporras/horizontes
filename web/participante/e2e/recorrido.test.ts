@@ -225,6 +225,17 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     const encabezado = await p.locator('.hzp-tabla thead th').last().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
     expect(encabezado).toBeLessThan(letra)
 
+    // Triage #23: la columna del criterio se queda con el ancho; las cifras, lo justo.
+    const anchoCriterio = await p.locator('.hzp-tabla tbody th').first().evaluate((el) => el.getBoundingClientRect().width)
+    expect(anchoCriterio).toBeGreaterThan(170)
+
+    // Triage #25: el celular abierto en escritorio muestra la matriz grande y sin desborde.
+    await p.setViewportSize({ width: 1920, height: 1080 })
+    await p.waitForFunction(() => (document.querySelector('.hzp-matriz svg')?.getBoundingClientRect().width ?? 0) > 900)
+    expect(await p.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1920)
+    await capturar(p, '06-comparacion-1920')
+    await p.setViewportSize({ width: 360, height: 740 })
+
     // Triage #17: sin el margen de 8 px del navegador alrededor de la página.
     expect(await p.evaluate(() => getComputedStyle(document.body).marginTop)).toBe('0px')
 

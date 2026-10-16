@@ -54,6 +54,10 @@ body { margin: 0; }
   padding: var(--hz-sp-5) var(--hz-sp-4) var(--hz-sp-4);
   border-bottom: 1px solid var(--hz-h3);
 }
+/* En pantallas anchas, el texto del encabezado se alinea con la columna de contenido. */
+@media (min-width: 40rem) {
+  .hz-encabezado { padding-inline: max(var(--hz-sp-4), calc(50vw - var(--hz-medida) / 2)); }
+}
 .hz-encabezado__arcos { position: absolute; top: 0; right: 0; width: 132px; height: 100%; pointer-events: none; }
 .hz-encabezado__sala { position: relative; font-size: var(--hz-fs-14); font-weight: 700; color: var(--hz-azul); max-width: 75%; }
 .hz-encabezado__meta { position: relative; font-size: var(--hz-fs-14); color: var(--hz-tinta-2); max-width: 75%; }
