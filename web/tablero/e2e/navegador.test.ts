@@ -156,8 +156,8 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     await e?.app.close()
   }, 60_000)
 
-  async function abrir(w: number, h: number, url: string, esperar = 'svg.hz-matriz circle.hz-r2'): Promise<Page> {
-    const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' })
+  async function abrir(w: number, h: number, url: string, esperar = 'svg.hz-matriz circle.hz-r2', movimiento = false): Promise<Page> {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: movimiento ? 'no-preference' : 'reduce' })
     const page = await ctx.newPage()
     await page.goto(base + url, { waitUntil: 'domcontentloaded', timeout: 30_000 })
     await page.waitForSelector(esperar, { timeout: 30_000 })
@@ -301,7 +301,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
   }, 60_000)
 
   it('con R1 abierta: 304 sin cambios y mismo SVG; un voto y el cierre se ven en menos de 5 s', async () => {
-    const p = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}`, 'svg.hz-matriz')
+    const p = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}`, 'svg.hz-matriz', true)
     const estados: number[] = []
     p.on('response', (res) => res.url().includes('/api/tablero/') && estados.push(res.status()))
     expect(await p.locator('.hz-vacio').textContent()).toContain('Aún no hay votos en la ronda 1')
@@ -338,16 +338,87 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Ronda 2')
     const resp2 = Object.fromEntries(CRITERIOS.map((c) => [c, 3]))
     for (const tk of vivo.tokens) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 2, resp2)).statusCode).toBe(200)
+    await p.waitForSelector('svg.hz-matriz circle.hz-r2')
+    // Registro cuadro a cuadro de las burbujas R2 para medir la animación R1 → R2 al cerrar la ronda.
+    await p.evaluate(registrarCuadros)
     const t2 = Date.now()
     await accion(e, vivo.id, 'cerrar_ronda_2')
     await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Comparación')
     const tComparacion = Date.now() - t2
     expect(await p.locator('svg.hz-matriz .hz-flecha').count()).toBe(2)
     expect(tComparacion).toBeLessThan(5000)
+    await expect.poll(() => p.locator('svg.hz-matriz .hz-anim-mov').count(), { timeout: 5000, interval: 100 }).toBe(0)
+    await p.waitForTimeout(600)
+    const anim = await p.evaluate(() => (window as unknown as { __anim: () => ResultadoAnimacion }).__anim())
+    console.info(`[tablero e2e] animación R1 → R2: ${anim.duracion} ms, ${anim.cuadros} cuadros, intervalo mediano ${anim.mediana} ms, máximo ${anim.maximo} ms, arranques ${anim.arranques}`)
+    // Una sola animación, que mueve las burbujas desde R1 hasta su punto final, sin saltos hacia atrás.
+    expect(anim.arranques).toBe(1)
+    expect(anim.duracion).toBeGreaterThan(900)
+    expect(anim.duracion).toBeLessThan(2500)
+    expect(anim.recorrido, 'las burbujas se mueven').toBeGreaterThan(30)
+    expect(anim.retroceso, 'el movimiento no retrocede').toBeLessThan(1.5)
+    expect(anim.errorFinal, 'terminan en su punto R2').toBeLessThan(0.5)
+    // Fluida sin afectar el rendimiento: mediana ≤ 1 cuadro a 30 fps.
+    expect(anim.mediana).toBeLessThanOrEqual(34)
     console.info(`[tablero e2e] voto visible en ${tVoto} ms · cierre R1 en ${tCierre} ms · Comparación tras cerrar R2 en ${tComparacion} ms`)
     if (capturas) await p.screenshot({ path: join(capturas, 'tablero-vivo-comparacion.png') })
     await p.context().close()
   }, 60_000)
+
+  // Capturas de referencia para la guía del facilitador (solo con HZ_CAPTURAS_GUIA=docs/capturas).
+  const guia = process.env.HZ_CAPTURAS_GUIA ?? ''
+  it.runIf(!!guia)('capturas de referencia de cada vista para la guía del facilitador', async () => {
+    mkdirSync(guia, { recursive: true })
+    const ids = [...new Set(ps.votos.map((v) => v.respondiente_id))]
+    // Sala cerrada con los votos de la prueba sintética, con nombre de taller.
+    const sc = await crearSala(e, 2, 'Taller Foodsume')
+    await accion(e, sc.id, 'abrir_inscripcion')
+    const tc = await inscribirTodos(sc, ids)
+    await accion(e, sc.id, 'abrir_ronda_1')
+    await votarGolden(tc, 1)
+    await accion(e, sc.id, 'cerrar_ronda_1')
+    await accion(e, sc.id, 'abrir_ronda_2')
+    await votarGolden(tc, 2)
+    await accion(e, sc.id, 'cerrar_ronda_2')
+    // Sala con la ronda 1 abierta y todos ya votaron: precierre (resultado preliminar).
+    const sp = await crearSala(e, 2, 'Taller Foodsume')
+    await accion(e, sp.id, 'abrir_inscripcion')
+    const tp = await inscribirTodos(sp, ids)
+    await accion(e, sp.id, 'abrir_ronda_1')
+    await votarGolden(tp, 1)
+
+    const url = (id: string, token: string, extra = '') => `/tablero/${id}?t=${token}${extra}`
+    const cerrada = url(sc.id, sc.token_tablero)
+    const tomar = async (nombre: string, w: number, h: number, ruta: string, preparar?: (p: Page) => Promise<void>) => {
+      const p = await abrir(w, h, ruta, 'svg.hz-matriz circle')
+      await p.evaluate(() => document.fonts.ready)
+      if (preparar) await preparar(p)
+      await p.waitForTimeout(300)
+      await p.screenshot({ path: join(guia, nombre), fullPage: w < 1100 })
+      await p.context().close()
+    }
+    const vista = (tecla: string, texto: string) => async (p: Page) => {
+      await p.keyboard.press(tecla)
+      await expect.poll(() => p.locator('.hz-segmento [aria-pressed="true"]').textContent()).toBe(texto)
+    }
+    await tomar('01-ronda-1.png', 1920, 1080, cerrada, vista('1', 'Ronda 1'))
+    await tomar('02-ronda-2.png', 1920, 1080, cerrada, vista('2', 'Ronda 2'))
+    await tomar('03-comparacion.png', 1920, 1080, cerrada)
+    await tomar('04-preliminar.png', 1920, 1080, url(sp.id, sp.token_tablero), async (p) => {
+      await p.waitForSelector('.hz-insignia-alerta')
+    })
+    await tomar('05-todas-las-mesas.png', 1920, 1080, url(sc.id, sc.token_tablero, '&vista=mesas'), async (p) => {
+      await expect.poll(() => p.locator('svg.hz-matriz').count(), { timeout: 15_000 }).toBe(2)
+      await p.waitForSelector('svg.hz-matriz circle.hz-r2')
+    })
+    await tomar('06-proyector-pantalla-completa.png', 1920, 1080, cerrada, async (p) => {
+      await p.keyboard.press('f')
+      await p.waitForSelector('.hz-pantalla-completa')
+    })
+    await tomar('07-proyector-1280x720.png', 1280, 720, cerrada)
+    await tomar('08-mesa-1.png', 1920, 1080, url(sc.id, sc.token_tablero, `&mesa=${sc.mesas[0].id}`))
+    await tomar('09-celular-360.png', 360, 740, cerrada)
+  }, 240_000)
 })
 
 /** Corre en el navegador: texto HTML visible con contraste menor a AA contra su fondo efectivo. */
@@ -417,4 +488,68 @@ function solapesEtiquetas(): string[] {
     }
   })
   return fallas
+}
+
+interface ResultadoAnimacion {
+  arranques: number
+  duracion: number
+  cuadros: number
+  mediana: number
+  maximo: number
+  recorrido: number
+  retroceso: number
+  errorFinal: number
+}
+
+/**
+ * Corre en el navegador: en cada cuadro anota si hay animación y dónde se ve cada burbuja R2.
+ * `window.__anim()` resume: arranques, duración, intervalos entre cuadros, recorrido y retroceso
+ * (cuánto se aleja del punto final de un cuadro al siguiente) y error final contra cx/cy.
+ */
+function registrarCuadros() {
+  type Cuadro = { t: number; anim: boolean; pos: Record<string, [number, number]> }
+  const cuadros: Cuadro[] = []
+  const paso = (t: number) => {
+    const svg = document.querySelector('svg.hz-matriz')
+    const pos: Record<string, [number, number]> = {}
+    let anim = false
+    svg?.querySelectorAll<SVGCircleElement>('circle.hz-r2').forEach((c) => {
+      const b = c.getBoundingClientRect()
+      pos[c.dataset.proyecto!] = [b.x + b.width / 2, b.y + b.height / 2]
+      anim ||= c.classList.contains('hz-anim-mov')
+    })
+    cuadros.push({ t, anim, pos })
+    requestAnimationFrame(paso)
+  }
+  requestAnimationFrame(paso)
+  ;(window as unknown as { __anim: () => ResultadoAnimacion }).__anim = () => {
+    const svg = document.querySelector('svg.hz-matriz')!
+    const sr = svg.getBoundingClientRect()
+    const final: Record<string, [number, number]> = {}
+    svg.querySelectorAll<SVGCircleElement>('circle.hz-r2').forEach((c) => {
+      final[c.dataset.proyecto!] = [sr.x + Number(c.getAttribute('cx')), sr.y + Number(c.getAttribute('cy'))]
+    })
+    const arranques = cuadros.filter((c, i) => c.anim && !cuadros[i - 1]?.anim).length
+    const con = cuadros.filter((c) => c.anim)
+    const intervalos = con.slice(1).map((c, i) => c.t - con[i].t).sort((a, b) => a - b)
+    const dist = (c: Cuadro, id: string) => (c.pos[id] ? Math.hypot(c.pos[id][0] - final[id][0], c.pos[id][1] - final[id][1]) : 0)
+    let recorrido = 0
+    let retroceso = 0
+    for (const id of Object.keys(final)) {
+      const d = con.map((c) => dist(c, id))
+      recorrido = Math.max(recorrido, Math.max(...d) - Math.min(...d))
+      for (let i = 1; i < d.length; i++) retroceso = Math.max(retroceso, d[i] - d[i - 1])
+    }
+    const ultimo = cuadros[cuadros.length - 1]
+    return {
+      arranques,
+      duracion: con.length ? Math.round(con[con.length - 1].t - con[0].t) : 0,
+      cuadros: con.length,
+      mediana: Math.round(intervalos[Math.floor(intervalos.length / 2)] ?? 0),
+      maximo: Math.round(intervalos[intervalos.length - 1] ?? 0),
+      recorrido: Math.round(recorrido),
+      retroceso,
+      errorFinal: Math.max(0, ...Object.keys(final).map((id) => dist(ultimo, id))),
+    }
+  }
 }

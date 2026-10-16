@@ -423,7 +423,7 @@ body:has(> #root > .hz-tablero) {
   font-size: 0.7em;
 }
 .hz-comparada .hz-tabla td.hz-celda-dist,
-.hz-comparada .hz-tabla thead tr:nth-child(2) th:nth-child(3n + 1):not(:first-child) {
+.hz-comparada .hz-tabla thead th.hz-th-dist {
   padding-right: 1em;
 }
 .hz-solo-ancho {
@@ -648,6 +648,20 @@ body:has(> #root > .hz-tablero) {
   .hz-tablero:has(.hz-cuadricula) {
     height: auto;
     overflow: visible;
+  }
+  /* Proyector: las mesas llenan el alto de la pantalla; con más de 2 filas se desplaza. */
+  .hz-cuadricula {
+    grid-template-columns: repeat(var(--hz-cols, 2), minmax(0, 1fr));
+    grid-auto-rows: max(22em, calc((100dvh - 7.5em - (var(--hz-filas, 1) - 1) * 1em) / var(--hz-filas, 1)));
+  }
+  .hz-celda-mesa {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .hz-celda-lienzo {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }
 .hz-alcance {
