@@ -13,8 +13,10 @@ import {
   decimal,
   faltan,
   fechaHora,
+  estadoMesa,
   rondaAbierta,
   rutaApiTablero,
+  textoEvento,
   urlTableroSala,
 } from '../textos'
 
@@ -106,7 +108,7 @@ function Estado({ d }: { d: SalaDetalle }) {
       <h2 id="t-estado">Estado</h2>
       <div className="estado-grande">
         <div>
-          <span className="pista">Ronda en curso</span>
+          <span className="pista">{ronda || !d.sala.ronda_actual ? 'Ronda en curso' : 'Última ronda'}</span>
           <div className="cifra">{ronda ?? (d.sala.ronda_actual || 'Ninguna')}</div>
         </div>
         <div>
@@ -267,6 +269,11 @@ function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: st
   )
 }
 
+function EtiquetaMesa({ estado, mesa }: { estado: SalaDetalle['sala']['estado']; mesa: SalaDetalle['mesas'][number] }) {
+  const { texto, tono } = estadoMesa(estado, mesa)
+  return <span className={tono ? `etiqueta etiqueta--${tono}` : 'etiqueta'}>{texto}</span>
+}
+
 function Mesas({ d }: { d: SalaDetalle }) {
   return (
     <section className="panel" aria-labelledby="t-mesas">
@@ -275,7 +282,7 @@ function Mesas({ d }: { d: SalaDetalle }) {
         <p className="vacio">Esta sala no tiene mesas. Agrégalas en Mesas y QR.</p>
       ) : (
         <div className="tabla-envoltura">
-          <table>
+          <table className="tabla-tarjetas">
             <thead>
               <tr>
                 <th scope="col">Mesa</th>
@@ -292,9 +299,9 @@ function Mesas({ d }: { d: SalaDetalle }) {
               {d.mesas.map((m) => (
                 <tr key={m.id}>
                   <th scope="row">{m.nombre}</th>
-                  <td>{m.codigo}</td>
-                  <td className="num">{m.inscritos}</td>
-                  <td>
+                  <td data-label="Código">{m.codigo}</td>
+                  <td className="num" data-label="Inscritos">{m.inscritos}</td>
+                  <td data-label="Completaron">
                     <span>
                       {m.completos} de {m.inscritos}
                     </span>
@@ -302,16 +309,10 @@ function Mesas({ d }: { d: SalaDetalle }) {
                       <span style={{ width: `${m.inscritos ? (100 * m.completos) / m.inscritos : 0}%` }} />
                     </div>
                   </td>
-                  <td>
-                    {m.precierre ? (
-                      <span className="etiqueta etiqueta--exito">Precierre</span>
-                    ) : m.inscritos === 0 ? (
-                      <span className="etiqueta etiqueta--apagado">Sin inscritos</span>
-                    ) : (
-                      <span className="etiqueta">Votando</span>
-                    )}
+                  <td data-label="Estado">
+                    <EtiquetaMesa estado={d.sala.estado} mesa={m} />
                   </td>
-                  <td>
+                  <td data-label="Enlaces">
                     <span className="enlaces">
                       <a href={m.url_tablero} target="_blank" rel="noreferrer">
                         Tablero de {m.nombre}
@@ -341,7 +342,7 @@ function Eventos({ d }: { d: SalaDetalle }) {
         <ol className="eventos">
           {d.eventos.slice(0, 20).map((ev, i) => (
             <li key={i}>
-              <time dateTime={ev.at}>{fechaHora(ev.at)}</time> · {ev.tipo.replace(/_/g, ' ')} · {ev.por}
+              <time dateTime={ev.at}>{fechaHora(ev.at)}</time> · {textoEvento(ev)}
             </li>
           ))}
         </ol>

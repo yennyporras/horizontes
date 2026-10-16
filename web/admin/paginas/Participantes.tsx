@@ -73,7 +73,7 @@ export function Participantes() {
                 <p className="vacio">Nadie coincide con ese filtro.</p>
               ) : (
                 <div className="tabla-envoltura">
-                  <table>
+                  <table className="tabla-tarjetas">
                     <thead>
                       <tr>
                         <th scope="col">Nombre</th>
@@ -88,8 +88,8 @@ export function Participantes() {
                       {filas.map((p) => (
                         <tr key={p.id} className={p.activo ? undefined : 'inactivo'} aria-busy={guardando === p.id}>
                           <th scope="row">{p.nombre}</th>
-                          <td>{p.correo}</td>
-                          <td>
+                          <td data-label="Correo">{p.correo}</td>
+                          <td data-label="Mesa">
                             <select
                               className="chico"
                               aria-label={`Mesa de ${p.nombre}`}
@@ -104,7 +104,7 @@ export function Participantes() {
                               ))}
                             </select>
                           </td>
-                          <td>
+                          <td data-label="Perfil">
                             <select
                               className="chico"
                               aria-label={`Perfil de ${p.nombre}`}
@@ -119,7 +119,7 @@ export function Participantes() {
                               ))}
                             </select>
                           </td>
-                          <td>
+                          <td data-label={ronda ? `Ronda ${ronda}` : 'Ronda'}>
                             {!p.activo ? (
                               <span className="etiqueta etiqueta--apagado">Inactivo</span>
                             ) : p.completo_ronda ? (
@@ -128,7 +128,7 @@ export function Participantes() {
                               <span className="etiqueta etiqueta--aviso">Pendiente</span>
                             )}
                           </td>
-                          <td>
+                          <td data-label="Acción">
                             <button
                               className={p.activo ? 'btn btn--peligro btn--chico' : 'btn btn--chico'}
                               disabled={guardando === p.id}
@@ -165,7 +165,7 @@ function Resumen({ d }: { d: SalaDetalle }) {
     <section className="panel" aria-labelledby="t-perfiles">
       <h2 id="t-perfiles">Perfiles por mesa</h2>
       <div className="tabla-envoltura">
-        <table>
+        <table className="tabla-tarjetas">
           <thead>
             <tr>
               <th scope="col">Mesa</th>
@@ -184,11 +184,11 @@ function Resumen({ d }: { d: SalaDetalle }) {
               <tr key={m.id}>
                 <th scope="row">{m.nombre}</th>
                 {PERFILES.map((p) => (
-                  <td key={p.id} className="num">
+                  <td key={p.id} className="num" data-label={p.nombre}>
                     {m.perfiles[p.id] ?? 0}
                   </td>
                 ))}
-                <td className="num">
+                <td className="num" data-label="Completaron">
                   {m.completos} de {m.inscritos}
                 </td>
               </tr>

@@ -141,6 +141,12 @@ function Cierres({ d, guardar }: PropsSeccion) {
         id="cierre-ronda"
         etiqueta="Cerrar la ronda abierta el"
         valor={c.cierre_programado_ronda_at}
+        inactivo={
+          d.sala.estado === 'r2_cerrada' || d.sala.estado === 'cerrada'
+            ? 'Ya no quedan rondas por cerrar.'
+            : 'Cierra la ronda que esté abierta a esa hora. Si a esa hora no hay ronda abierta, se descarta.'
+        }
+        bloquear={d.sala.estado === 'r2_cerrada' || d.sala.estado === 'cerrada'}
         alGuardar={(iso) =>
           guardar({ cierre_programado_ronda_at: iso }, iso ? `La ronda se cerrará el ${fechaHora(iso)}.` : 'Quitamos el cierre programado de la ronda.')
         }
@@ -149,6 +155,8 @@ function Cierres({ d, guardar }: PropsSeccion) {
         id="cierre-sala"
         etiqueta="Cerrar la sala el"
         valor={c.cierre_programado_sala_at}
+        bloquear={d.sala.estado === 'cerrada'}
+        inactivo={d.sala.estado === 'cerrada' ? 'La sala ya está cerrada.' : undefined}
         alGuardar={(iso) =>
           guardar({ cierre_programado_sala_at: iso }, iso ? `La sala se cerrará el ${fechaHora(iso)}.` : 'Quitamos el cierre programado de la sala.')
         }
@@ -162,10 +170,15 @@ function CampoCierre({
   etiqueta,
   valor,
   alGuardar,
+  inactivo,
+  bloquear = false,
 }: {
   id: string
   etiqueta: string
   valor: string | null
+  /** Pista bajo el campo (por qué está bloqueado o cómo se aplica). */
+  inactivo?: string
+  bloquear?: boolean
   alGuardar: (iso: string | null) => Promise<void>
 }) {
   const [local, setLocal] = useState(isoABogotaLocal(valor))
@@ -188,17 +201,23 @@ function CampoCierre({
           id={id}
           type="datetime-local"
           value={local}
+          disabled={bloquear}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${id}-error` : undefined}
+          aria-describedby={error ? `${id}-error` : inactivo ? `${id}-pista` : undefined}
           onChange={(e) => setLocal(e.target.value)}
         />
       </label>
-      <button className="btn btn--primario" type="button" onClick={programar}>
+      <button className="btn btn--primario" type="button" onClick={programar} disabled={bloquear}>
         Programar
       </button>
       <button className="btn" type="button" disabled={!valor} onClick={() => void alGuardar(null)}>
         Quitar
       </button>
+      {inactivo && (
+        <p id={`${id}-pista`} className="pista" style={{ flexBasis: '100%', margin: 0 }}>
+          {inactivo}
+        </p>
+      )}
       {error && (
         <p id={`${id}-error`} className="alerta alerta--error" role="alert" style={{ flexBasis: '100%' }}>
           {error}
