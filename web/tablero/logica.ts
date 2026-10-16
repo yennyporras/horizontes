@@ -62,12 +62,12 @@ export function rondaAbierta(estado: EstadoSala | undefined): boolean {
 }
 
 /** Avisos de precierre visibles en el tablero ("Mesa 2: todos votaron"). */
-export function avisosPrecierre(datos: DatosTablero | null | undefined): string[] {
+export function avisosPrecierre(datos: DatosTablero | null | undefined): { id: string; texto: string }[] {
   if (!datos || !rondaAbierta(datos.sala?.estado)) return []
   const p = datos.progreso
   if (!p) return []
-  const mesas = (p.por_mesa ?? []).filter((m) => m.precierre).map((m) => `${m.nombre}: todos votaron`)
-  if (p.precierre) return ['Toda la sala votó', ...mesas]
+  const mesas = (p.por_mesa ?? []).filter((m) => m.precierre).map((m) => ({ id: m.mesa_id, texto: `${m.nombre}: todos votaron` }))
+  if (p.precierre) return [{ id: '_sala', texto: 'Toda la sala votó' }, ...mesas]
   return mesas
 }
 
@@ -173,6 +173,14 @@ export async function pedirTablero(
     }
     return { tipo: 'error', status: res.status, codigo, mensaje }
   }
-  const datos = (await res.json()) as DatosTablero
+  let datos: DatosTablero
+  try {
+    datos = (await res.json()) as DatosTablero
+  } catch {
+    return { tipo: 'error', status: res.status, codigo: 'RESPUESTA_INVALIDA', mensaje: 'El servidor respondió algo que no es el tablero. Reintentamos solos cada pocos segundos.' }
+  }
+  if (!datos || typeof datos !== 'object' || !datos.sala) {
+    return { tipo: 'error', status: res.status, codigo: 'RESPUESTA_INVALIDA', mensaje: 'El servidor respondió algo que no es el tablero. Reintentamos solos cada pocos segundos.' }
+  }
   return { tipo: 'nuevo', datos, etag: res.headers.get('ETag') ?? (datos.version != null ? `"${datos.version}"` : null) }
 }

@@ -8,6 +8,8 @@ export interface OpcionesMatriz {
   idPrefijo?: string
   /** Multiplica el tamaño de letra (1 = base). En proyector se usa ~1,3. */
   escalaTexto?: number
+  /** Anima R2 saliendo desde R1 (al pasar a Comparación). Respeta prefers-reduced-motion. */
+  animar?: boolean
   colores?: Record<string, unknown>
 }
 

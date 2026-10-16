@@ -142,3 +142,13 @@ test('proyector con letra grande: etiquetas de vivos sin solaparse', () => {
   }
   assert.ok(calcularLayout(mock, { ancho: 930, escalaTexto: 1.3 }).fs > calcularLayout(mock, { ancho: 930 }).fs);
 });
+
+test('animación R1 → R2 solo con animar y en comparación, con movimiento reducido', () => {
+  const svg = matrizSVG(mock, { ancho: 900, animar: true });
+  assert.equal((svg.match(/class="hz-r2 hz-anim-mov"/g) || []).length, 2);
+  assert.ok(svg.includes('prefers-reduced-motion: reduce'));
+  assert.ok(/--dx:-?[\d.]+px;--dy:-?[\d.]+px/.test(svg));
+  assert.ok(!matrizSVG(mock, { ancho: 900 }).includes('hz-anim'));
+  assert.ok(!matrizSVG(mock, { ancho: 900, animar: true, vista: 2 }).includes('hz-anim'));
+  assert.ok(svg.includes('style="display:block"'));
+});

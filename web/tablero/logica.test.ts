@@ -59,7 +59,7 @@ describe('estados vacíos', () => {
 
 describe('precierre y preliminar', () => {
   test('aviso por mesa en precierre con ronda abierta', () => {
-    expect(avisosPrecierre(mock)).toEqual(['Mesa 1: todos votaron'])
+    expect(avisosPrecierre(mock).map((a) => a.texto)).toEqual(['Mesa 1: todos votaron'])
   })
   test('sin avisos con la ronda cerrada', () => {
     const d = structuredClone(mock)
@@ -71,7 +71,7 @@ describe('precierre y preliminar', () => {
     const d = structuredClone(mock)
     d.progreso.precierre = true
     d.progreso.por_mesa.forEach((m) => (m.precierre = true))
-    expect(avisosPrecierre(d)[0]).toBe('Toda la sala votó')
+    expect(avisosPrecierre(d)[0].texto).toBe('Toda la sala votó')
   })
   test('preliminar si la mesa del alcance está en precierre', () => {
     expect(esPreliminar(mock)).toBe(true) // alcance Mesa 1 en precierre, R2 abierta
@@ -96,7 +96,7 @@ describe('formato', () => {
     expect(delta(null, 5)).toBeNull()
   })
   test('sin rayas en los textos', () => {
-    const textos = [mensajeVacio(sinVotos(mock, 2), 'comparacion'), ...avisosPrecierre(mock)]
+    const textos = [mensajeVacio(sinVotos(mock, 2), 'comparacion'), ...avisosPrecierre(mock).map((a) => a.texto)]
     for (const t of textos) expect(t).not.toContain('—')
   })
 })
@@ -144,5 +144,9 @@ describe('polling con ETag', () => {
 
     const f500 = (async () => respuesta(500, { error: { codigo: 'ERROR_INTERNO', mensaje: 'Algo falló en el servidor.' } })) as typeof fetch
     expect(await pedirTablero('/x', null, f500)).toMatchObject({ mensaje: 'Algo falló en el servidor.' })
+
+    // proxy que devuelve el index.html del SPA con 200
+    const html = (async () => new Response('<!doctype html><html></html>', { status: 200 })) as typeof fetch
+    expect(await pedirTablero('/x', null, html)).toMatchObject({ tipo: 'error', codigo: 'RESPUESTA_INVALIDA' })
   })
 })

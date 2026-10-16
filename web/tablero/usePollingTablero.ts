@@ -19,7 +19,9 @@ export function usePollingTablero(url: string | null, intervalo = INTERVALO_POLL
   useEffect(() => {
     if (!url) return
     etag.current = null
-    setEstado({ datos: null, error: null, cargando: true })
+    // Conserva los datos anteriores mientras llega el nuevo alcance: la página no se desmonta
+    // (el selector de alcance mantiene el foco y la vista elegida no se pierde).
+    setEstado((e) => ({ ...e, error: null, cargando: true }))
     const ctrl = new AbortController()
     let temporizador: ReturnType<typeof setTimeout> | undefined
     let vivo = true

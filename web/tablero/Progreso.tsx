@@ -6,7 +6,7 @@ export function Progreso({ datos }: { datos: DatosTablero }) {
   if (!p) return null
   const avisos = avisosPrecierre(datos)
   const abierta = rondaAbierta(datos.sala?.estado)
-  const pct = p.inscritos ? Math.round((p.completos / p.inscritos) * 100) : 0
+  const pct = p.inscritos ? Math.min(100, Math.round((p.completos / p.inscritos) * 100)) : 0
   return (
     <section className="hz-progreso" aria-labelledby="hz-progreso-t">
       <h2 id="hz-progreso-t" className="hz-sub">
@@ -26,7 +26,7 @@ export function Progreso({ datos }: { datos: DatosTablero }) {
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={p.inscritos}
-          aria-valuenow={p.completos}
+          aria-valuenow={Math.min(p.completos, p.inscritos)}
           aria-valuetext={`${p.completos} de ${p.inscritos} completaron`}
         >
           <div className="hz-barra-relleno" style={{ width: `${pct}%` }} />
@@ -35,11 +35,11 @@ export function Progreso({ datos }: { datos: DatosTablero }) {
       {avisos.length > 0 && (
         <ul className="hz-avisos" role="status" aria-live="polite">
           {avisos.map((a) => (
-            <li key={a}>
+            <li key={a.id}>
               <span aria-hidden="true" className="hz-check">
                 ✓
               </span>
-              {a}
+              {a.texto}
             </li>
           ))}
         </ul>
