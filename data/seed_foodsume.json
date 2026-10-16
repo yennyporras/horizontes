@@ -1,0 +1,557 @@
+{
+  "_meta": {
+    "fuente": "Caso_Foodsume_-_Herramienta_Horizontes_2026 + motor_scoring_horizontes.json + Plantilla_Horizontes_Shot_Nutresa.xlsx",
+    "nota": "Contenido del evento demo. Los criterios, pesos y ejes son el motor universal (no editar sin aprobación de Sebastián). TAM de vivos tomado del Excel (fila FOODSUME=5, Proyecto 6=6). Ids en slug; convenciones iguales a mocks/."
+  },
+  "motor": {
+    "escala_permitida": [
+      1,
+      3,
+      5,
+      7,
+      9
+    ],
+    "criterios": [
+      {
+        "id": "alistamiento_tecnico",
+        "nombre": "Nivel de Alistamiento Técnico",
+        "pregunta": "¿Desde el punto de vista técnico, qué tan lista está la solución?",
+        "rubrica": [
+          {
+            "valor": 9,
+            "texto": "Idea o concepto en construcción"
+          },
+          {
+            "valor": 7,
+            "texto": "Etapa temprana / potencial de desarrollo validado técnicamente"
+          },
+          {
+            "valor": 5,
+            "texto": "Prueba de concepto demostrada / prototipo a pequeña escala probando propuesta de valor"
+          },
+          {
+            "valor": 3,
+            "texto": "Prototipo a gran escala en etapa pre-comercial, con ajustes orientados a usabilidad y no tanto a probar propuesta de valor"
+          },
+          {
+            "valor": 1,
+            "texto": "Producto de alta fidelidad en fase (o listo para) comercialización"
+          }
+        ],
+        "alimenta": "t2m",
+        "perfil_informante": "tecnica_operaciones"
+      },
+      {
+        "id": "conocimiento_cliente",
+        "nombre": "Nivel de Conocimiento del Cliente/Mercado",
+        "pregunta": "¿Qué tanto hemos descubierto de nuestro cliente potencial? ¿Tenemos adoptantes tempranos?",
+        "rubrica": [
+          {
+            "valor": 9,
+            "texto": "No se conoce el cliente potencial ni early adopter. Solo se tienen hipótesis"
+          },
+          {
+            "valor": 7,
+            "texto": "Se han realizado exploraciones y se conoce el early adopter"
+          },
+          {
+            "valor": 5,
+            "texto": "Se han realizado validaciones con early adopters; hay mapa de stakeholders e hipótesis de propuesta de valor y canales"
+          },
+          {
+            "valor": 3,
+            "texto": "Hay claridad de early adopters y stakeholders (influencia, gains, pains, jobs) pero aún no hay claridad de propuesta de valor ni canales"
+          },
+          {
+            "valor": 1,
+            "texto": "La solución ya fue completamente validada con los segmentos identificados, incluyendo stakeholders, canales y propuesta de valor"
+          }
+        ],
+        "alimenta": "t2m",
+        "perfil_informante": "cliente"
+      },
+      {
+        "id": "regulacion",
+        "nombre": "Regulación",
+        "pregunta": "¿Qué tantas barreras de entrada tiene el mercado desde el punto de vista legal y normativo?",
+        "rubrica": [
+          {
+            "valor": 9,
+            "texto": "Mercado extremadamente regulado (+5 años)"
+          },
+          {
+            "valor": 7,
+            "texto": "Mercado altamente regulado (3 a 5 años)"
+          },
+          {
+            "valor": 5,
+            "texto": "Mercado moderadamente regulado (2 a 3 años)"
+          },
+          {
+            "valor": 3,
+            "texto": "Mercado poco regulado (6 meses a 2 años)"
+          },
+          {
+            "valor": 1,
+            "texto": "Mercado no regulado"
+          }
+        ],
+        "alimenta": "t2m",
+        "perfil_informante": "regulacion"
+      },
+      {
+        "id": "capacidades_organizacionales",
+        "nombre": "Capacidades Organizacionales",
+        "pregunta": "¿Con qué capacidades y recursos contamos para apalancar el desarrollo del nuevo negocio? (marca, secretos industriales, data, patentes, certificaciones, RRHH, licencias, instalaciones, equipos, bases de datos, capital relacional, entre otros)",
+        "rubrica": [
+          {
+            "valor": 9,
+            "texto": "No tenemos ningún recurso o capacidad estratégica que apalanque el negocio"
+          },
+          {
+            "valor": 7,
+            "texto": "Contamos con algunas capacidades o recursos, pero no son propias / no son de alto valor / no están disponibles"
+          },
+          {
+            "valor": 5,
+            "texto": "Contamos con capacidades o recursos desde nuestro core que pueden ser adaptables, pero con restricciones de uso o disponibilidad"
+          },
+          {
+            "valor": 3,
+            "texto": "Contamos con capacidades o recursos desde nuestro core fácilmente adaptables, altamente usables y altamente disponibles"
+          },
+          {
+            "valor": 1,
+            "texto": "Las capacidades y recursos organizacionales actuales apalancan perfectamente el negocio y están completamente disponibles"
+          }
+        ],
+        "alimenta": "eje_x",
+        "perfil_informante": "produccion"
+      },
+      {
+        "id": "alineacion_core",
+        "nombre": "Alineación y Cercanía Estratégica con el Core",
+        "pregunta": "¿Qué tan alineado está el core actual de la organización con el core del nuevo negocio?",
+        "rubrica": [
+          {
+            "valor": 9,
+            "texto": "Negocio absolutamente lejano/ajeno al core actual; oportunidad atractiva pero de poco interés estratégico como transformador organizacional (Lejos/Lejos)"
+          },
+          {
+            "valor": 7,
+            "texto": "Negocio absolutamente lejano/ajeno al core actual; oportunidad de alto interés estratégico como transformador organizacional (Lejos/Cerca)"
+          },
+          {
+            "valor": 5,
+            "texto": "Negocio adyacente al core actual; poca capacidad de actuar como mecanismo de diferenciación (Cerca/Lejos)"
+          },
+          {
+            "valor": 3,
+            "texto": "Negocio adyacente al core actual; alta capacidad de actuar como mecanismo de diferenciación, de alto interés estratégico (Cerca/Cerca)"
+          },
+          {
+            "valor": 1,
+            "texto": "Negocio totalmente alineado al core actual; la oportunidad es una mejora competitiva del negocio actual"
+          }
+        ],
+        "alimenta": "eje_y",
+        "perfil_informante": "estrategica"
+      },
+      {
+        "id": "inversion_requerida",
+        "nombre": "Inversión Requerida para Probar",
+        "pregunta": "¿Cuál es el nivel y qué tipo de inversión se requiere para probar la solución?",
+        "rubrica": [
+          {
+            "valor": 9,
+            "texto": "Inversión muy alta, largo plazo (+3 años), requiere apalancamiento externo (> USD 1MM)"
+          },
+          {
+            "valor": 7,
+            "texto": "Inversión alta, mediano/largo plazo (1 a 3 años), puede requerir apalancamiento externo o presupuestos compartidos (USD 300k - 1MM)"
+          },
+          {
+            "valor": 5,
+            "texto": "Inversión moderada, mediano plazo (1 a 3 años) (USD 100k - 300k)"
+          },
+          {
+            "valor": 3,
+            "texto": "Inversión media-baja, corto plazo (0,5 a 1,5 años) (USD 50k - 300k)"
+          },
+          {
+            "valor": 1,
+            "texto": "Inversión baja, operable con presupuesto de caja (0 a 12 meses) (USD 10k - 50k)"
+          }
+        ],
+        "alimenta": "eje_y",
+        "perfil_informante": "financiero"
+      }
+    ],
+    "pesos": {
+      "t2m": {
+        "alistamiento_tecnico": 0.3,
+        "conocimiento_cliente": 0.35,
+        "regulacion": 0.35
+      },
+      "eje_x": {
+        "t2m": 0.6,
+        "capacidades_organizacionales": 0.4
+      },
+      "eje_y": {
+        "alineacion_core": 0.7,
+        "inversion_requerida": 0.3
+      }
+    },
+    "ejes": {
+      "x": {
+        "titulo": "TIME 2 MARKET",
+        "subtitulo": "(Capacidades + Recursos + Barreras de Entrada)",
+        "min": 0,
+        "max": 9.5
+      },
+      "y": {
+        "titulo": "VALUE GENERATION CAPACITY",
+        "subtitulo": "(Core business alignment)",
+        "min": 0,
+        "max": 9.5
+      }
+    },
+    "grafico": {
+      "titulo": "PRIORIZACIÓN DE PORTAFOLIO POR HORIZONTES",
+      "horizontes": [
+        {
+          "id": "H1",
+          "radio": 4.5
+        },
+        {
+          "id": "H2",
+          "radio": 9.0
+        },
+        {
+          "id": "H3",
+          "radio": null
+        }
+      ],
+      "etiquetas_horizonte": {
+        "H1": [
+          1.3,
+          1.9
+        ],
+        "H2": [
+          4.3,
+          4.0
+        ],
+        "H3": [
+          8.0,
+          7.6
+        ]
+      },
+      "nota_horizontes": "Cuartos de círculo centrados en (0,0), radio 4,5 y 9. Solo decoración, no clasifican proyectos.",
+      "tam_a_radio": "radio_px = rmin + (sqrt(clamp(tam,1,10))/sqrt(10))*(rmax-rmin)"
+    }
+  },
+  "perfiles": [
+    {
+      "id": "cliente",
+      "nombre": "Conocimiento del cliente"
+    },
+    {
+      "id": "regulacion",
+      "nombre": "Regulación"
+    },
+    {
+      "id": "financiero",
+      "nombre": "Financiero"
+    },
+    {
+      "id": "tecnica_operaciones",
+      "nombre": "Técnica y Operaciones"
+    },
+    {
+      "id": "estrategica",
+      "nombre": "Estratégica"
+    },
+    {
+      "id": "produccion",
+      "nombre": "Producción"
+    }
+  ],
+  "plantilla": {
+    "id": "foodsume_2026",
+    "nombre": "Taller Horizontes — Caso Foodsume",
+    "caso": {
+      "titulo": "Caso Foodsume S.A.",
+      "descripcion_md": "FOODSUME S.A. es una empresa colombiana multilatina de la industria de alimentos, que provee insumos a nivel regional en 14 países de Latinoamérica para empresas de todos los tamaños en los sectores de bebidas, cárnicos, condimentos, panadería, pre-mezclas, galletería, confitería, nutracéuticos y, en general, todos los demás segmentos del food service, con clientes como Colombina, Nutresa, Frisby, Fruko, Alquería, Luker, Premex, Postobón, Súper, Quala, Team Foods, Alpina, Colanta, Nestlé, McDonald's, Nutreo, Bimbo, entre otros.\n\nLa participación accionaria está repartida entre dos grupos económicos: Grupo Nutresa con el 51% de participación y Nestlé con el 49%.\n\nEs una empresa reconocida y de alto prestigio en el segmento B2B, con más de 1.200 productos bajo 9 marcas fuertemente posicionadas con los atributos de alta calidad, altos estándares, cumplimiento, seguridad y buen servicio al cliente en términos de respaldo y trazabilidad. Tiene un propósito superior de “Cuidar y alimentar al mundo”, haciendo referencia, cuando se habla de mundo, al planeta tierra y sus habitantes, incluyendo no solo a las personas sino a los ecosistemas en general.\n\nLa compañía cuenta con todas las certificaciones internacionales de calidad, seguridad en el trabajo y gestión ambiental. Recientemente se ha certificado como empresa B en 5 de los países donde tiene presencia, gracias a su gran modelo de gestión ambiental y de trabajo con las comunidades a las que impacta.\n\n**A nivel general, los números más relevantes de la empresa a la fecha son:**\n\nTiene 9.000 empleados en total, de los cuales 5.000 son campesinos y operarios del sector alimentos.\n\nTiene más de 800 proveedores (relevantes para su operación core) de productos como frutas, verduras, esencias, aceites, aromas, condimentos, transporte, maquinaria, empacado, etc.\n\nCuenta con más de 90.000 clientes en los 14 países de operación.\n\nNegocio 100% B2B con 3 segmentos: Food Service (25%), Gran Industria (65%), Pequeña Industria (10%).\n\nSus principales productos son las pre-mezclas y los pre-cocidos formulados y desarrollados a la medida para cada cliente.\n\nAlta reputación en la industria de alimentos.\n\nVentas anuales de 8 billones de pesos, con utilidades netas de 1,2 billones de pesos.\n\nInversión en I+D aproximada de USD 20 millones/año; cuenta con 68 patentes, 43 doctores y otras 182 personas dedicadas a las actividades de I+D; tiene 11 laboratorios en las áreas de Ingeniería de Alimentos, Nanotecnología, Biotecnología, Proteínas, Ingredientes, Genética, Metabolismo y Empaques.\n\nEquipo comercial con más de 1.200 personas en ventas y más de 300 en mercadeo.\n\nFlota de camiones propios con más de 3.000 unidades, que van desde tracto camiones hasta motocargueros.\n\nHa invertido fuertemente en innovación durante los últimos 3 años, con resultados importantes en cultura que se han visto reflejados en mejoras de productividad (eficiencia operacional).\n\n**Sin embargo, la empresa cuenta con algunas limitaciones:**\n\nSi bien es una marca muy reconocida en B2B, en el segmento B2C no es muy fuerte y actualmente no tiene ningún negocio de este tipo.\n\nEs un negocio supremamente maduro, cuyas tasas de crecimiento anual no superan el 4% en promedio.\n\nGenera más de 86.500 toneladas de desperdicios orgánicos en el proceso de fabricación.\n\nEs una empresa muy fuerte en I+D con una estrategia de technology-push: lanza aproximadamente 30 productos nuevos al año basados en desarrollos tecnológicos (sabores, funcionalidades, texturas, presentaciones, etc.), de los cuales solo 1 o 2 tienen algún nivel de éxito en el mercado y son adoptados masivamente por sus clientes.\n\nEs altamente dependiente de lo que sus clientes estén dispuestos a desarrollar.\n\nNo tiene ningún negocio B2C.\n\nEs una organización altamente jerárquica, con una junta directiva conservadora.\n\nLa unidad de innovación hace parte del área de I+D y está a cargo del VP de I+D.",
+      "situacion_md": "Ha llegado un nuevo presidente con una vocación muy comercial y de innovación. Ha sido presidente y alto directivo de grandes compañías de tecnología como Apple y Telefónica, del sector retail como Wholefoods y Grupo Éxito, y recientemente viene de ser el VP de Transformación Digital e Innovación de Danone.\n\nEl presidente quiere lograr una transformación del negocio y ha conseguido que la junta directiva apruebe la exploración de nuevas oportunidades que puedan transformar el negocio actual desde el punto de vista de la oferta, el segmento de clientes y/o los canales. Sin embargo, esto requiere definir una estrategia de innovación clara y una reestructuración de la compañía en términos de estructura y operación, para poder operar este tipo de programas.\n\nAl ser una junta conservadora, el presidente tiene una gran presión por demostrar resultados tangibles y concretos, de alto potencial pero con un bajo consumo de recursos, en los próximos 12 meses. Por lo anterior, se hace indispensable ser muy precisos en los proyectos a priorizar en el pipeline, para tomar decisiones de negocio sobre apuestas y renuncias necesarias que generen el impacto esperado.\n\nPorque tiene un negocio que crece al 4% anual, el presidente ha impulsado un conjunto de proyectos de exploración (no de explotación: el pipeline de mejora de empaques y optimización del core tiene su propio proceso aparte) en categorías B2B y B2C en las que la compañía hoy no juega."
+    },
+    "proyectos": [
+      {
+        "id": "insumex",
+        "nombre": "INSUMEX",
+        "tipo": "B2B/B2C",
+        "sector": "Agroindustria",
+        "descripcion": "Capturar todos los desperdicios orgánicos de Foodsume para producir fertilizantes orgánicos como compost o humus.",
+        "modo": "vivo",
+        "orden": 1,
+        "tam": 5
+      },
+      {
+        "id": "bioskin",
+        "nombre": "BIOSKIN",
+        "tipo": "B2C",
+        "sector": "Cosmética",
+        "descripcion": "Mascarillas y productos cosméticos basados en extractos de frutas y vegetales procesados por Foodsume.",
+        "modo": "fijo",
+        "orden": 2,
+        "tam": 10,
+        "inputs": {
+          "alistamiento_tecnico": 7,
+          "conocimiento_cliente": 7,
+          "regulacion": 2,
+          "capacidades_organizacionales": 3,
+          "alineacion_core": 8,
+          "inversion_requerida": 1
+        },
+        "esperado": {
+          "t2m": 5.25,
+          "eje_x": 4.35,
+          "eje_y": 5.9
+        }
+      },
+      {
+        "id": "crypto_trade",
+        "nombre": "CRYPTO TRADE",
+        "tipo": "B2B",
+        "sector": "Fintech",
+        "descripcion": "Sistema de transacciones y flujo de capitales internacionales usando criptomonedas (blockchain).",
+        "modo": "fijo",
+        "orden": 3,
+        "tam": 6,
+        "inputs": {
+          "alistamiento_tecnico": 1,
+          "conocimiento_cliente": 3,
+          "regulacion": 1,
+          "capacidades_organizacionales": 1,
+          "alineacion_core": 1,
+          "inversion_requerida": 1
+        },
+        "esperado": {
+          "t2m": 1.7,
+          "eje_x": 1.42,
+          "eje_y": 1.0
+        }
+      },
+      {
+        "id": "truckpool",
+        "nombre": "TRUCKPOOL",
+        "tipo": "B2B",
+        "sector": "Logística",
+        "descripcion": "Plataforma de logística de carga para monitorear camiones disponibles en la vía que puedan suplir la demanda de carga de cualquier empresa.",
+        "modo": "fijo",
+        "orden": 4,
+        "tam": 7,
+        "inputs": {
+          "alistamiento_tecnico": 7,
+          "conocimiento_cliente": 4.6,
+          "regulacion": 6,
+          "capacidades_organizacionales": 3,
+          "alineacion_core": 9,
+          "inversion_requerida": 7
+        },
+        "esperado": {
+          "t2m": 5.81,
+          "eje_x": 4.686,
+          "eje_y": 8.4
+        }
+      },
+      {
+        "id": "cooling72",
+        "nombre": "COOLING72",
+        "tipo": "B2B",
+        "sector": "Empaques",
+        "descripcion": "Sistema de empaque para productos perecederos que baja la temperatura del producto hasta -5ºC por hasta 72 horas, sin necesidad de camión/cuarto refrigerado.",
+        "modo": "fijo",
+        "orden": 5,
+        "tam": 4,
+        "inputs": {
+          "alistamiento_tecnico": 2.6,
+          "conocimiento_cliente": 2.8,
+          "regulacion": 3,
+          "capacidades_organizacionales": 3,
+          "alineacion_core": 7,
+          "inversion_requerida": 7
+        },
+        "esperado": {
+          "t2m": 2.81,
+          "eje_x": 2.886,
+          "eje_y": 7.0
+        }
+      },
+      {
+        "id": "nutriwhat",
+        "nombre": "NUTRIWHAT",
+        "tipo": "B2C",
+        "sector": "Tecnología",
+        "descripcion": "Plataforma para comunicar toda la información nutricional de los productos alimenticios en retail.",
+        "modo": "vivo",
+        "orden": 6,
+        "tam": 6
+      },
+      {
+        "id": "sumsnack",
+        "nombre": "SUMSNACK",
+        "tipo": "B2B/B2C",
+        "sector": "Alimentos",
+        "descripcion": "Snacks saludables y funcionales, con alta fuente de proteína y vitaminas.",
+        "modo": "fijo",
+        "orden": 7,
+        "tam": 2,
+        "inputs": {
+          "alistamiento_tecnico": 7,
+          "conocimiento_cliente": 3,
+          "regulacion": 5,
+          "capacidades_organizacionales": 3,
+          "alineacion_core": 5,
+          "inversion_requerida": 7
+        },
+        "esperado": {
+          "t2m": 4.9,
+          "eje_x": 4.14,
+          "eje_y": 5.6
+        }
+      },
+      {
+        "id": "yummi",
+        "nombre": "YUMMI",
+        "tipo": "B2B/B2C",
+        "sector": "Alimentos",
+        "descripcion": "Conservas de frutas y verduras, tanto para la industria de alimentos como para el consumidor final.",
+        "modo": "fijo",
+        "orden": 8,
+        "tam": 1,
+        "inputs": {
+          "alistamiento_tecnico": 7,
+          "conocimiento_cliente": 7,
+          "regulacion": 9,
+          "capacidades_organizacionales": 9,
+          "alineacion_core": 7,
+          "inversion_requerida": 5
+        },
+        "esperado": {
+          "t2m": 7.7,
+          "eje_x": 8.22,
+          "eje_y": 6.4
+        }
+      },
+      {
+        "id": "dehidra",
+        "nombre": "DEHIDRA",
+        "tipo": "B2B/B2C",
+        "sector": "Alimentos",
+        "descripcion": "Frutas y vegetales deshidratados e hidrolizados.",
+        "modo": "fijo",
+        "orden": 9,
+        "tam": 1,
+        "inputs": {
+          "alistamiento_tecnico": 7,
+          "conocimiento_cliente": 1,
+          "regulacion": 1,
+          "capacidades_organizacionales": 9,
+          "alineacion_core": 3,
+          "inversion_requerida": 7
+        },
+        "esperado": {
+          "t2m": 2.8,
+          "eje_x": 5.28,
+          "eje_y": 4.2
+        }
+      },
+      {
+        "id": "nutrepet",
+        "nombre": "NUTREPET",
+        "tipo": "B2C",
+        "sector": "Nutrición Animal",
+        "descripcion": "Fabricación de alimento concentrado/balanceado para mascotas a partir de los desperdicios orgánicos de la compañía.",
+        "modo": "fijo",
+        "orden": 10,
+        "tam": 8,
+        "inputs": {
+          "alistamiento_tecnico": 3,
+          "conocimiento_cliente": 1,
+          "regulacion": 7,
+          "capacidades_organizacionales": 5,
+          "alineacion_core": 1,
+          "inversion_requerida": 7
+        },
+        "esperado": {
+          "t2m": 3.7,
+          "eje_x": 4.22,
+          "eje_y": 2.8
+        }
+      }
+    ],
+    "hojas": [
+      {
+        "proyecto_id": "insumex",
+        "perfil_id": "cliente",
+        "texto": "Ya lo hemos probado con 140 usuarios durante 6 meses, tanto con campesinos como con grandes industriales, usando abono comprado en viveros locales y reempacado bajo la marca INSUMEX. Hemos prestado asesoría técnica permanente a 70 de esos clientes. A los que no se les ha prestado asesoría técnica han mostrado un incremento en productividad del 16% en promedio, mientras que a los que sí se les ha asesorado han aumentado su productividad en 38%. Los primeros 3 meses fueron gratuitos y, luego de eso, hemos venido cobrando el servicio con una recompra del 93%."
+      },
+      {
+        "proyecto_id": "insumex",
+        "perfil_id": "regulacion",
+        "texto": "Se ha avanzado en la consecución de las licencias ambientales con las CAR y el Ministerio de Ambiente para tener el centro de acopio, procesamiento y transformación de los residuos orgánicos en lotes aledaños a 3 de las plantas de la empresa en Colombia. También se han empezado a adelantar los trámites con el ICA para poder producir los fertilizantes y bioinsumos iniciales."
+      },
+      {
+        "proyecto_id": "insumex",
+        "perfil_id": "financiero",
+        "texto": "Hemos trabajado con el equipo en los últimos días para la estructuración del modelo financiero inicial. Si bien el proyecto completo cuesta unos USD 3 millones, las pruebas a la fecha han consumido solamente 60 millones de pesos."
+      },
+      {
+        "proyecto_id": "insumex",
+        "perfil_id": "tecnica_operaciones",
+        "texto": "Algunos de los clientes actuales, de los más importantes y ubicados en 3 regiones diferentes del país, han demandado tácitamente esta necesidad y estarían dispuestos a facilitar sus capacidades logísticas a cambio de datos y trazabilidad de los residuos."
+      },
+      {
+        "proyecto_id": "insumex",
+        "perfil_id": "estrategica",
+        "texto": "La alta dirección logística de la compañía es la creadora de la oportunidad y está destinando el 40% del presupuesto asignado al componente de I+D y mejoramiento de su proceso para patrocinar el primer año de pruebas y descubrimiento del negocio."
+      },
+      {
+        "proyecto_id": "insumex",
+        "perfil_id": "produccion",
+        "texto": "La planta de transformación de residuos orgánicos opera hoy con capacidad instalada para procesar cerca del 18% de las 86.500 toneladas/año de desperdicio orgánico que genera la operación, usando maquinaria de compostaje y peletizado arrendada a terceros mientras se evalúa la inversión en línea propia. El equipo de manufactura estima en 8 meses el tiempo de montaje de una planta dedicada con capacidad para absorber el 100% del residuo de las 3 plantas donde opera hoy el piloto. La variabilidad en la composición del residuo orgánico según la temporada y el cliente de origen dificulta estandarizar la calidad del fertilizante final, por lo que se requiere una curva de aprendizaje de aproximadamente 3 meses para que los operarios alcancen los niveles de calidad definidos por el área técnica. Actualmente, 12 operarios del área de manufactura han sido reasignados parcialmente (20% de su tiempo) a este piloto, sin que se haya definido aún si esa dedicación se formalizará como un equipo permanente."
+      },
+      {
+        "proyecto_id": "nutriwhat",
+        "perfil_id": "cliente",
+        "texto": "Recientemente (2 meses) se comenzó a probar una tecnología desarrollada —y aún sin tracción importante— por una startup israelí ya conocida por el nuevo presidente, quien encargó a la VP de Mercadeo y su equipo realizar actividades de testeo en entornos controlados y a través de los canales de clientes conocidos del sector retail. Durante el segundo mes de pruebas, el aplicativo a cliente final obtuvo 240 descargas y mantuvo 15 adoptantes tempranos enganchados y retroalimentando al Product Manager corporativo encargado, quien a su vez iba documentando toda la información de experiencia de usuario tanto digital como física. El 92% de las descargas y el 100% de los usuarios retenidos fueron mujeres profesionales, madres, entre los 29 y los 45 años."
+      },
+      {
+        "proyecto_id": "nutriwhat",
+        "perfil_id": "regulacion",
+        "texto": "Hasta el momento, lo único que se ha descubierto en las vigilancias superficiales de información, y lo que ha suministrado la startup dueña de la tecnología de interés y potencial solución a adquirir, es que en 9 de los 14 países de operación existe regulación fuerte para que se comunique de manera preponderante el exceso de azúcares, grasas y sodio en los envases y empaques."
+      },
+      {
+        "proyecto_id": "nutriwhat",
+        "perfil_id": "financiero",
+        "texto": "Comprar la tecnología a la startup (no pretenden ser adquiridos ni compartir participación accionaria) tiene un valor cercano a los USD 7 millones, incluyendo un año de infraestructura cloud y soporte tecnológico para atender errores, sin desarrollo de nuevas funcionalidades, como parte de la garantía. Por ahora, usar la tecnología no ha tenido costo y es un ejercicio a riesgo de los emprendedores, con quienes se tiene firmado un NDA. Las pruebas a la fecha han consumido 26 millones de pesos, excluyendo la mano de obra corporativa."
+      },
+      {
+        "proyecto_id": "nutriwhat",
+        "perfil_id": "tecnica_operaciones",
+        "texto": "La organización actualmente no cuenta con un proceso ni un equipo definido para procesos de transformación digital. Existe un caso fallido de hace 7 años de apropiación tecnológica asociada a IoT para sus centros y red de distribución. El equipo de I+D respalda y apoya la iniciativa, y la ha conectado con una exploración realizada junto con una universidad colombiana."
+      },
+      {
+        "proyecto_id": "nutriwhat",
+        "perfil_id": "estrategica",
+        "texto": "El proyecto es una apuesta de la nueva presidencia, que pretende tener una participación importante en el proceso de emprendimiento del proyecto. Actualmente, la mitad de los miembros de la junta directiva le apuesta al conocimiento del cliente de su cliente, y la otra mitad es indiferente y/o prefiere continuar generando y explotando las soluciones actuales en el marco B2B."
+      },
+      {
+        "proyecto_id": "nutriwhat",
+        "perfil_id": "produccion",
+        "texto": "El 100% de las fichas técnicas de los más de 1.200 productos bajo las 9 marcas de la compañía están digitalizadas en el sistema ERP de manufactura, pero solo el 40% se actualiza en tiempo real cuando hay cambios de formulación; el 60% restante depende de una actualización manual trimestral por parte de calidad, lo que introduce riesgo de desfase entre la información nutricional mostrada en la app y la que realmente sale de línea. Integrar la plataforma con las líneas de producción de las 3 plantas donde se fabrican los productos candidatos al piloto implica adaptar el etiquetado digital (código QR) en las líneas de empaque, lo que reduce la velocidad de línea entre un 2% y un 3% mientras se ajusta el proceso. Cualquier modificación a una línea de empaque debe pasar por el comité de cambios de manufactura, cuyo ciclo de aprobación toma en promedio 6 semanas, un tiempo que hoy no está contemplado en el cronograma de 2 meses que lleva corriendo el piloto."
+      }
+    ],
+    "rondas_votacion": 2
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "version": "v-000123",
+  "sala": {
+    "id": "s_demo",
+    "codigo": "HZ7K2",
+    "nombre": "Taller Horizontes demo",
+    "estado": "r1_abierta",
+    "ronda_actual": 1,
+    "creada_at": "2026-10-20T14:00:00-05:00",
+    "config": {
+      "alcance_resultados": "mesa",
+      "vista_participante": "registrado",
+      "revelar_hojas": false,
+      "cierre_programado_ronda_at": null,
+      "cierre_programado_sala_at": "2026-10-20T18:00:00-05:00"
+    }
+  },
+  "mesas": [
+    {
+      "id": "m1",
+      "nombre": "Mesa 1",
+      "codigo": "HZ7K2-1",
+      "url_participante": "https://horizontes.estratek.com.co/m/HZ7K2-1",
+      "url_tablero": "https://horizontes.estratek.com.co/tablero/HZ7K2?mesa=m1&t=TOKEN",
+      "inscritos": 7,
+      "completos": 5,
+      "precierre": false,
+      "perfiles": {
+        "cliente": 2,
+        "regulacion": 1,
+        "financiero": 1,
+        "tecnica_operaciones": 1,
+        "estrategica": 1,
+        "produccion": 1
+      }
+    }
+  ],
+  "participantes": [
+    {
+      "id": "p_8f2a",
+      "nombre": "Ana Pérez",
+      "correo": "ana@ejemplo.com",
+      "mesa_id": "m1",
+      "perfil_id": "cliente",
+      "activo": true,
+      "completo_ronda": false,
+      "consentimiento_at": "2026-10-20T14:55:00-05:00"
+    }
+  ],
+  "eventos": [
+    {
+      "at": "2026-10-20T15:00:00-05:00",
+      "tipo": "ronda_abierta",
+      "detalle": {
+        "ronda": 1
+      },
+      "por": "admin:paola"
+    }
+  ],
+  "admin_actual": {
+    "id": 1,
+    "usuario": "paola",
+    "nombre": "Paola Porras",
+    "rol": "superadmin"
+  }
+}

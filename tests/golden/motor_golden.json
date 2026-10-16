@@ -1,0 +1,1169 @@
+{
+ "tolerancia": 0.001,
+ "casos_proyecto": [
+  {
+   "nombre": "BIOSKIN",
+   "inputs": {
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 7,
+    "regulacion": 2,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 8,
+    "inversion_requerida": 1
+   },
+   "esperado": {
+    "t2m": 5.25,
+    "eje_x": 4.35,
+    "eje_y": 5.9
+   }
+  },
+  {
+   "nombre": "CRYPTO TRADE",
+   "inputs": {
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 3,
+    "regulacion": 1,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 1,
+    "inversion_requerida": 1
+   },
+   "esperado": {
+    "t2m": 1.7,
+    "eje_x": 1.42,
+    "eje_y": 1.0
+   }
+  },
+  {
+   "nombre": "TRUCKPOOL",
+   "inputs": {
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 4.6,
+    "regulacion": 6,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 9,
+    "inversion_requerida": 7
+   },
+   "esperado": {
+    "t2m": 5.81,
+    "eje_x": 4.686,
+    "eje_y": 8.4
+   }
+  },
+  {
+   "nombre": "COOLING72",
+   "inputs": {
+    "alistamiento_tecnico": 2.6,
+    "conocimiento_cliente": 2.8,
+    "regulacion": 3,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 7,
+    "inversion_requerida": 7
+   },
+   "esperado": {
+    "t2m": 2.81,
+    "eje_x": 2.886,
+    "eje_y": 7.0
+   }
+  },
+  {
+   "nombre": "SUMSNACK",
+   "inputs": {
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 3,
+    "regulacion": 5,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 5,
+    "inversion_requerida": 7
+   },
+   "esperado": {
+    "t2m": 4.9,
+    "eje_x": 4.14,
+    "eje_y": 5.6
+   }
+  },
+  {
+   "nombre": "YUMMI",
+   "inputs": {
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 7,
+    "regulacion": 9,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 7,
+    "inversion_requerida": 5
+   },
+   "esperado": {
+    "t2m": 7.7,
+    "eje_x": 8.22,
+    "eje_y": 6.4
+   }
+  },
+  {
+   "nombre": "DEHIDRA",
+   "inputs": {
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 1,
+    "regulacion": 1,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 3,
+    "inversion_requerida": 7
+   },
+   "esperado": {
+    "t2m": 2.8,
+    "eje_x": 5.28,
+    "eje_y": 4.2
+   }
+  },
+  {
+   "nombre": "NUTREPET",
+   "inputs": {
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 1,
+    "regulacion": 7,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 1,
+    "inversion_requerida": 7
+   },
+   "esperado": {
+    "t2m": 3.7,
+    "eje_x": 4.22,
+    "eje_y": 2.8
+   }
+  }
+ ],
+ "caso_nicolai": {
+  "nota": "Ejemplo verbal de la reunión: solo T2M",
+  "inputs": {
+   "alistamiento_tecnico": 2.4,
+   "conocimiento_cliente": 3,
+   "regulacion": 3.5
+  },
+  "esperado_t2m": 2.995
+ },
+ "prueba_sintetica": {
+  "nota": "80 votos crudos (20 personas x 2 proyectos x 2 rondas), una sola sala. Promediar por criterio y luego aplicar fórmulas.",
+  "votos": [
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 1,
+    "rol": "Producción",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 9,
+    "regulacion": 9,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 9,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 2,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 7,
+    "regulacion": 3,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 9,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 3,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 3,
+    "regulacion": 7,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 5,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 4,
+    "rol": "Producción",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 1,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 7,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 5,
+    "rol": "Financiero",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 5,
+    "regulacion": 9,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 1,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 6,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 1,
+    "regulacion": 7,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 9,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 7,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 5,
+    "regulacion": 9,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 1,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 8,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 1,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 1,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 9,
+    "rol": "Producción",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 7,
+    "regulacion": 5,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 5,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 10,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 1,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 3,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 11,
+    "rol": "Producción",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 3,
+    "regulacion": 7,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 5,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 12,
+    "rol": "Producción",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 1,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 1,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 13,
+    "rol": "Estratégica",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 5,
+    "regulacion": 1,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 9,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 14,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 7,
+    "regulacion": 7,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 3,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 15,
+    "rol": "Estratégica",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 3,
+    "regulacion": 9,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 5,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 16,
+    "rol": "Técnica y Operaciones",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 9,
+    "regulacion": 7,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 3,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 17,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 7,
+    "regulacion": 1,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 1,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 18,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 7,
+    "regulacion": 9,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 7,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 19,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 7,
+    "regulacion": 9,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 9,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 1,
+    "respondiente_id": 20,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 9,
+    "regulacion": 5,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 1,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 1,
+    "rol": "Producción",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 3,
+    "regulacion": 7,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 5,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 2,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 9,
+    "regulacion": 1,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 9,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 3,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 3,
+    "regulacion": 5,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 9,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 4,
+    "rol": "Producción",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 9,
+    "regulacion": 5,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 1,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 5,
+    "rol": "Financiero",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 5,
+    "regulacion": 3,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 3,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 6,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 1,
+    "regulacion": 7,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 9,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 7,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 7,
+    "regulacion": 9,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 5,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 8,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 7,
+    "regulacion": 3,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 3,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 9,
+    "rol": "Producción",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 5,
+    "regulacion": 7,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 7,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 10,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 3,
+    "regulacion": 1,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 1,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 11,
+    "rol": "Producción",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 3,
+    "regulacion": 9,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 1,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 12,
+    "rol": "Producción",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 3,
+    "regulacion": 1,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 5,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 13,
+    "rol": "Estratégica",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 3,
+    "regulacion": 5,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 3,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 14,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 9,
+    "regulacion": 9,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 3,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 15,
+    "rol": "Estratégica",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 3,
+    "regulacion": 1,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 7,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 16,
+    "rol": "Técnica y Operaciones",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 7,
+    "regulacion": 7,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 1,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 17,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 5,
+    "regulacion": 1,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 3,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 18,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 7,
+    "regulacion": 3,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 3,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 19,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 3,
+    "regulacion": 1,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 9,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "INSUMEX",
+    "ronda": 2,
+    "respondiente_id": 20,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 9,
+    "regulacion": 1,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 3,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 1,
+    "rol": "Producción",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 7,
+    "regulacion": 7,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 7,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 2,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 7,
+    "regulacion": 1,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 5,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 3,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 7,
+    "regulacion": 9,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 3,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 4,
+    "rol": "Producción",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 3,
+    "regulacion": 1,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 9,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 5,
+    "rol": "Financiero",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 1,
+    "regulacion": 1,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 7,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 6,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 3,
+    "regulacion": 1,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 1,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 7,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 9,
+    "regulacion": 1,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 7,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 8,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 3,
+    "regulacion": 9,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 1,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 9,
+    "rol": "Producción",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 7,
+    "regulacion": 9,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 9,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 10,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 3,
+    "regulacion": 5,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 5,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 11,
+    "rol": "Producción",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 7,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 1,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 12,
+    "rol": "Producción",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 9,
+    "regulacion": 9,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 1,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 13,
+    "rol": "Estratégica",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 9,
+    "regulacion": 5,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 5,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 14,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 5,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 7,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 15,
+    "rol": "Estratégica",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 9,
+    "regulacion": 9,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 9,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 16,
+    "rol": "Técnica y Operaciones",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 3,
+    "regulacion": 5,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 1,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 17,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 5,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 3,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 18,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 9,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 5,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 19,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 7,
+    "regulacion": 5,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 1,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 1,
+    "respondiente_id": 20,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 3,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 9,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 1,
+    "rol": "Producción",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 1,
+    "regulacion": 1,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 3,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 2,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 5,
+    "regulacion": 9,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 3,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 3,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 1,
+    "regulacion": 5,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 1,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 4,
+    "rol": "Producción",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 3,
+    "regulacion": 1,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 9,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 5,
+    "rol": "Financiero",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 3,
+    "regulacion": 3,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 3,
+    "inversion_requerida": 7
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 6,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 3,
+    "regulacion": 5,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 3,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 7,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 1,
+    "regulacion": 7,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 7,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 8,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 7,
+    "regulacion": 5,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 3,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 9,
+    "rol": "Producción",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 3,
+    "regulacion": 7,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 5,
+    "inversion_requerida": 1
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 10,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 5,
+    "regulacion": 9,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 9,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 11,
+    "rol": "Producción",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 1,
+    "regulacion": 5,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 9,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 12,
+    "rol": "Producción",
+    "alistamiento_tecnico": 1,
+    "conocimiento_cliente": 1,
+    "regulacion": 9,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 5,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 13,
+    "rol": "Estratégica",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 9,
+    "regulacion": 9,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 7,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 14,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 5,
+    "regulacion": 1,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 1,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 15,
+    "rol": "Estratégica",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 3,
+    "regulacion": 5,
+    "capacidades_organizacionales": 7,
+    "alineacion_core": 1,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 16,
+    "rol": "Técnica y Operaciones",
+    "alistamiento_tecnico": 9,
+    "conocimiento_cliente": 5,
+    "regulacion": 1,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 9,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 17,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 7,
+    "conocimiento_cliente": 5,
+    "regulacion": 7,
+    "capacidades_organizacionales": 5,
+    "alineacion_core": 9,
+    "inversion_requerida": 3
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 18,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 7,
+    "regulacion": 7,
+    "capacidades_organizacionales": 3,
+    "alineacion_core": 9,
+    "inversion_requerida": 9
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 19,
+    "rol": "Conocimiento del cliente",
+    "alistamiento_tecnico": 5,
+    "conocimiento_cliente": 7,
+    "regulacion": 9,
+    "capacidades_organizacionales": 1,
+    "alineacion_core": 5,
+    "inversion_requerida": 5
+   },
+   {
+    "proyecto": "NUTRIWHAT",
+    "ronda": 2,
+    "respondiente_id": 20,
+    "rol": "Regulación",
+    "alistamiento_tecnico": 3,
+    "conocimiento_cliente": 7,
+    "regulacion": 9,
+    "capacidades_organizacionales": 9,
+    "alineacion_core": 5,
+    "inversion_requerida": 7
+   }
+  ],
+  "esperado": {
+   "INSUMEX": {
+    "1": {
+     "n": 20,
+     "promedio_por_criterio": {
+      "alistamiento_tecnico": 4.9,
+      "conocimiento_cliente": 5.7,
+      "regulacion": 5.4,
+      "capacidades_organizacionales": 4.2,
+      "alineacion_core": 4.7,
+      "inversion_requerida": 4.9
+     },
+     "t2m": 5.355,
+     "eje_x": 4.893,
+     "eje_y": 4.76
+    },
+    "2": {
+     "n": 20,
+     "promedio_por_criterio": {
+      "alistamiento_tecnico": 5.1,
+      "conocimiento_cliente": 5.2,
+      "regulacion": 4.3,
+      "capacidades_organizacionales": 4.1,
+      "alineacion_core": 4.5,
+      "inversion_requerida": 5.0
+     },
+     "t2m": 4.855,
+     "eje_x": 4.553,
+     "eje_y": 4.65
+    }
+   },
+   "NUTRIWHAT": {
+    "1": {
+     "n": 20,
+     "promedio_por_criterio": {
+      "alistamiento_tecnico": 4.1,
+      "conocimiento_cliente": 5.6,
+      "regulacion": 5.3,
+      "capacidades_organizacionales": 5.3,
+      "alineacion_core": 4.8,
+      "inversion_requerida": 4.9
+     },
+     "t2m": 5.045,
+     "eje_x": 5.147,
+     "eje_y": 4.83
+    },
+    "2": {
+     "n": 20,
+     "promedio_por_criterio": {
+      "alistamiento_tecnico": 4.3,
+      "conocimiento_cliente": 4.1,
+      "regulacion": 5.7,
+      "capacidades_organizacionales": 4.8,
+      "alineacion_core": 5.3,
+      "inversion_requerida": 5.7
+     },
+     "t2m": 4.72,
+     "eje_x": 4.752,
+     "eje_y": 5.42
+    }
+   }
+  }
+ }
+}

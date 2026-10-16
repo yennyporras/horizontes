@@ -1,0 +1,331 @@
+{
+  "version": "v-000123",
+  "participante": {
+    "id": "p_8f2a",
+    "nombre": "Ana Pérez",
+    "mesa": {
+      "id": "m1",
+      "nombre": "Mesa 1"
+    },
+    "perfil": {
+      "id": "cliente",
+      "nombre": "Conocimiento del cliente"
+    }
+  },
+  "sala": {
+    "id": "s_demo",
+    "nombre": "Taller Horizontes demo",
+    "estado": "r1_abierta",
+    "ronda_actual": 1
+  },
+  "config": {
+    "vista_participante": "registrado",
+    "alcance_resultados": "mesa",
+    "revelar_hojas": false
+  },
+  "contenido": {
+    "caso": {
+      "titulo": "Caso Foodsume S.A.",
+      "descripcion_md": "FOODSUME S.A. es una empresa colombiana multilatina de la industria de alimentos, que provee insumos a nivel regional en 14 países de Latinoamérica para empresas de todos los tamaños en los sectores de bebidas, cárnicos, condimentos, panadería, pre-mezclas, galletería, confitería, nutracéuticos y, en general, todos los demás segmentos del food service, con clientes como Colombina, Nutresa, Frisby, Fruko, Alquería, Luker, Premex, Postobón, Súper, Quala, Team Foods, Alpina, Colanta, Nestlé, McDonald's, Nutreo, Bimbo, entre otros.\n\nLa participación accionaria está repartida entre dos grupos económicos: Grupo Nutresa con el 51% de participación y Nestlé con el 49%.\n\nEs una empresa reconocida y de alto prestigio en el segmento B2B, con más de 1.200 productos bajo 9 marcas fuertemente posicionadas con los atributos de alta calidad, altos estándares, cumplimiento, seguridad y buen servicio al cliente en términos de respaldo y trazabilidad. Tiene un propósito superior de “Cuidar y alimentar al mundo”, haciendo referencia, cuando se habla de mundo, al planeta tierra y sus habitantes, incluyendo no solo a las personas sino a los ecosistemas en general.\n\nLa compañía cuenta con todas las certificaciones internacionales de calidad, seguridad en el trabajo y gestión ambiental. Recientemente se ha certificado como empresa B en 5 de los países donde tiene presencia, gracias a su gran modelo de gestión ambiental y de trabajo con las comunidades a las que impacta.\n\n**A nivel general, los números más relevantes de la empresa a la fecha son:**\n\nTiene 9.000 empleados en total, de los cuales 5.000 son campesinos y operarios del sector alimentos.\n\nTiene más de 800 proveedores (relevantes para su operación core) de productos como frutas, verduras, esencias, aceites, aromas, condimentos, transporte, maquinaria, empacado, etc.\n\nCuenta con más de 90.000 clientes en los 14 países de operación.\n\nNegocio 100% B2B con 3 segmentos: Food Service (25%), Gran Industria (65%), Pequeña Industria (10%).\n\nSus principales productos son las pre-mezclas y los pre-cocidos formulados y desarrollados a la medida para cada cliente.\n\nAlta reputación en la industria de alimentos.\n\nVentas anuales de 8 billones de pesos, con utilidades netas de 1,2 billones de pesos.\n\nInversión en I+D aproximada de USD 20 millones/año; cuenta con 68 patentes, 43 doctores y otras 182 personas dedicadas a las actividades de I+D; tiene 11 laboratorios en las áreas de Ingeniería de Alimentos, Nanotecnología, Biotecnología, Proteínas, Ingredientes, Genética, Metabolismo y Empaques.\n\nEquipo comercial con más de 1.200 personas en ventas y más de 300 en mercadeo.\n\nFlota de camiones propios con más de 3.000 unidades, que van desde tracto camiones hasta motocargueros.\n\nHa invertido fuertemente en innovación durante los últimos 3 años, con resultados importantes en cultura que se han visto reflejados en mejoras de productividad (eficiencia operacional).\n\n**Sin embargo, la empresa cuenta con algunas limitaciones:**\n\nSi bien es una marca muy reconocida en B2B, en el segmento B2C no es muy fuerte y actualmente no tiene ningún negocio de este tipo.\n\nEs un negocio supremamente maduro, cuyas tasas de crecimiento anual no superan el 4% en promedio.\n\nGenera más de 86.500 toneladas de desperdicios orgánicos en el proceso de fabricación.\n\nEs una empresa muy fuerte en I+D con una estrategia de technology-push: lanza aproximadamente 30 productos nuevos al año basados en desarrollos tecnológicos (sabores, funcionalidades, texturas, presentaciones, etc.), de los cuales solo 1 o 2 tienen algún nivel de éxito en el mercado y son adoptados masivamente por sus clientes.\n\nEs altamente dependiente de lo que sus clientes estén dispuestos a desarrollar.\n\nNo tiene ningún negocio B2C.\n\nEs una organización altamente jerárquica, con una junta directiva conservadora.\n\nLa unidad de innovación hace parte del área de I+D y está a cargo del VP de I+D.",
+      "situacion_md": "Ha llegado un nuevo presidente con una vocación muy comercial y de innovación. Ha sido presidente y alto directivo de grandes compañías de tecnología como Apple y Telefónica, del sector retail como Wholefoods y Grupo Éxito, y recientemente viene de ser el VP de Transformación Digital e Innovación de Danone.\n\nEl presidente quiere lograr una transformación del negocio y ha conseguido que la junta directiva apruebe la exploración de nuevas oportunidades que puedan transformar el negocio actual desde el punto de vista de la oferta, el segmento de clientes y/o los canales. Sin embargo, esto requiere definir una estrategia de innovación clara y una reestructuración de la compañía en términos de estructura y operación, para poder operar este tipo de programas.\n\nAl ser una junta conservadora, el presidente tiene una gran presión por demostrar resultados tangibles y concretos, de alto potencial pero con un bajo consumo de recursos, en los próximos 12 meses. Por lo anterior, se hace indispensable ser muy precisos en los proyectos a priorizar en el pipeline, para tomar decisiones de negocio sobre apuestas y renuncias necesarias que generen el impacto esperado.\n\nPorque tiene un negocio que crece al 4% anual, el presidente ha impulsado un conjunto de proyectos de exploración (no de explotación: el pipeline de mejora de empaques y optimización del core tiene su propio proceso aparte) en categorías B2B y B2C en las que la compañía hoy no juega."
+    },
+    "portafolio": [
+      {
+        "id": "insumex",
+        "nombre": "INSUMEX",
+        "tipo": "B2B/B2C",
+        "sector": "Agroindustria",
+        "descripcion": "Capturar todos los desperdicios orgánicos de Foodsume para producir fertilizantes orgánicos como compost o humus.",
+        "modo": "vivo"
+      },
+      {
+        "id": "bioskin",
+        "nombre": "BIOSKIN",
+        "tipo": "B2C",
+        "sector": "Cosmética",
+        "descripcion": "Mascarillas y productos cosméticos basados en extractos de frutas y vegetales procesados por Foodsume.",
+        "modo": "fijo"
+      },
+      {
+        "id": "crypto-trade",
+        "nombre": "CRYPTO TRADE",
+        "tipo": "B2B",
+        "sector": "Fintech",
+        "descripcion": "Sistema de transacciones y flujo de capitales internacionales usando criptomonedas (blockchain).",
+        "modo": "fijo"
+      },
+      {
+        "id": "truckpool",
+        "nombre": "TRUCKPOOL",
+        "tipo": "B2B",
+        "sector": "Logística",
+        "descripcion": "Plataforma de logística de carga para monitorear camiones disponibles en la vía que puedan suplir la demanda de carga de cualquier empresa.",
+        "modo": "fijo"
+      },
+      {
+        "id": "cooling72",
+        "nombre": "COOLING72",
+        "tipo": "B2B",
+        "sector": "Empaques",
+        "descripcion": "Sistema de empaque para productos perecederos que baja la temperatura del producto hasta -5ºC por hasta 72 horas, sin necesidad de camión/cuarto refrigerado.",
+        "modo": "fijo"
+      },
+      {
+        "id": "nutriwhat",
+        "nombre": "NUTRIWHAT",
+        "tipo": "B2C",
+        "sector": "Tecnología",
+        "descripcion": "Plataforma para comunicar toda la información nutricional de los productos alimenticios en retail.",
+        "modo": "vivo"
+      },
+      {
+        "id": "sumsnack",
+        "nombre": "SUMSNACK",
+        "tipo": "B2B/B2C",
+        "sector": "Alimentos",
+        "descripcion": "Snacks saludables y funcionales, con alta fuente de proteína y vitaminas.",
+        "modo": "fijo"
+      },
+      {
+        "id": "yummi",
+        "nombre": "YUMMI",
+        "tipo": "B2B/B2C",
+        "sector": "Alimentos",
+        "descripcion": "Conservas de frutas y verduras, tanto para la industria de alimentos como para el consumidor final.",
+        "modo": "fijo"
+      },
+      {
+        "id": "dehidra",
+        "nombre": "DEHIDRA",
+        "tipo": "B2B/B2C",
+        "sector": "Alimentos",
+        "descripcion": "Frutas y vegetales deshidratados e hidrolizados.",
+        "modo": "fijo"
+      },
+      {
+        "id": "nutrepet",
+        "nombre": "NUTREPET",
+        "tipo": "B2C",
+        "sector": "Nutrición Animal",
+        "descripcion": "Fabricación de alimento concentrado/balanceado para mascotas a partir de los desperdicios orgánicos de la compañía.",
+        "modo": "fijo"
+      }
+    ],
+    "hojas": [
+      {
+        "proyecto_id": "insumex",
+        "proyecto": "INSUMEX",
+        "perfil_id": "cliente",
+        "texto": "Ya lo hemos probado con 140 usuarios durante 6 meses, tanto con campesinos como con grandes industriales, usando abono comprado en viveros locales y reempacado bajo la marca INSUMEX. Hemos prestado asesoría técnica permanente a 70 de esos clientes. A los que no se les ha prestado asesoría técnica han mostrado un incremento en productividad del 16% en promedio, mientras que a los que sí se les ha asesorado han aumentado su productividad en 38%. Los primeros 3 meses fueron gratuitos y, luego de eso, hemos venido cobrando el servicio con una recompra del 93%."
+      },
+      {
+        "proyecto_id": "nutriwhat",
+        "proyecto": "NUTRIWHAT",
+        "perfil_id": "cliente",
+        "texto": "Recientemente (2 meses) se comenzó a probar una tecnología desarrollada —y aún sin tracción importante— por una startup israelí ya conocida por el nuevo presidente, quien encargó a la VP de Mercadeo y su equipo realizar actividades de testeo en entornos controlados y a través de los canales de clientes conocidos del sector retail. Durante el segundo mes de pruebas, el aplicativo a cliente final obtuvo 240 descargas y mantuvo 15 adoptantes tempranos enganchados y retroalimentando al Product Manager corporativo encargado, quien a su vez iba documentando toda la información de experiencia de usuario tanto digital como física. El 92% de las descargas y el 100% de los usuarios retenidos fueron mujeres profesionales, madres, entre los 29 y los 45 años."
+      }
+    ]
+  },
+  "criterios": [
+    {
+      "id": "alistamiento_tecnico",
+      "nombre": "Nivel de Alistamiento Técnico",
+      "pregunta": "¿Desde el punto de vista técnico, qué tan lista está la solución?",
+      "perfil_informante": "tecnica_operaciones",
+      "rubrica": [
+        {
+          "valor": 9,
+          "texto": "Idea o concepto en construcción"
+        },
+        {
+          "valor": 7,
+          "texto": "Etapa temprana / potencial de desarrollo validado técnicamente"
+        },
+        {
+          "valor": 5,
+          "texto": "Prueba de concepto demostrada / prototipo a pequeña escala probando propuesta de valor"
+        },
+        {
+          "valor": 3,
+          "texto": "Prototipo a gran escala en etapa pre-comercial, con ajustes orientados a usabilidad y no tanto a probar propuesta de valor"
+        },
+        {
+          "valor": 1,
+          "texto": "Producto de alta fidelidad en fase (o listo para) comercialización"
+        }
+      ]
+    },
+    {
+      "id": "conocimiento_cliente",
+      "nombre": "Nivel de Conocimiento del Cliente/Mercado",
+      "pregunta": "¿Qué tanto hemos descubierto de nuestro cliente potencial? ¿Tenemos adoptantes tempranos?",
+      "perfil_informante": "cliente",
+      "rubrica": [
+        {
+          "valor": 9,
+          "texto": "No se conoce el cliente potencial ni early adopter. Solo se tienen hipótesis"
+        },
+        {
+          "valor": 7,
+          "texto": "Se han realizado exploraciones y se conoce el early adopter"
+        },
+        {
+          "valor": 5,
+          "texto": "Se han realizado validaciones con early adopters; hay mapa de stakeholders e hipótesis de propuesta de valor y canales"
+        },
+        {
+          "valor": 3,
+          "texto": "Hay claridad de early adopters y stakeholders (influencia, gains, pains, jobs) pero aún no hay claridad de propuesta de valor ni canales"
+        },
+        {
+          "valor": 1,
+          "texto": "La solución ya fue completamente validada con los segmentos identificados, incluyendo stakeholders, canales y propuesta de valor"
+        }
+      ]
+    },
+    {
+      "id": "regulacion",
+      "nombre": "Regulación",
+      "pregunta": "¿Qué tantas barreras de entrada tiene el mercado desde el punto de vista legal y normativo?",
+      "perfil_informante": "regulacion",
+      "rubrica": [
+        {
+          "valor": 9,
+          "texto": "Mercado extremadamente regulado (+5 años)"
+        },
+        {
+          "valor": 7,
+          "texto": "Mercado altamente regulado (3 a 5 años)"
+        },
+        {
+          "valor": 5,
+          "texto": "Mercado moderadamente regulado (2 a 3 años)"
+        },
+        {
+          "valor": 3,
+          "texto": "Mercado poco regulado (6 meses a 2 años)"
+        },
+        {
+          "valor": 1,
+          "texto": "Mercado no regulado"
+        }
+      ]
+    },
+    {
+      "id": "capacidades_organizacionales",
+      "nombre": "Capacidades Organizacionales",
+      "pregunta": "¿Con qué capacidades y recursos contamos para apalancar el desarrollo del nuevo negocio? (marca, secretos industriales, data, patentes, certificaciones, RRHH, licencias, instalaciones, equipos, bases de datos, capital relacional, entre otros)",
+      "perfil_informante": "produccion",
+      "rubrica": [
+        {
+          "valor": 9,
+          "texto": "No tenemos ningún recurso o capacidad estratégica que apalanque el negocio"
+        },
+        {
+          "valor": 7,
+          "texto": "Contamos con algunas capacidades o recursos, pero no son propias / no son de alto valor / no están disponibles"
+        },
+        {
+          "valor": 5,
+          "texto": "Contamos con capacidades o recursos desde nuestro core que pueden ser adaptables, pero con restricciones de uso o disponibilidad"
+        },
+        {
+          "valor": 3,
+          "texto": "Contamos con capacidades o recursos desde nuestro core fácilmente adaptables, altamente usables y altamente disponibles"
+        },
+        {
+          "valor": 1,
+          "texto": "Las capacidades y recursos organizacionales actuales apalancan perfectamente el negocio y están completamente disponibles"
+        }
+      ]
+    },
+    {
+      "id": "alineacion_core",
+      "nombre": "Alineación y Cercanía Estratégica con el Core",
+      "pregunta": "¿Qué tan alineado está el core actual de la organización con el core del nuevo negocio?",
+      "perfil_informante": "estrategica",
+      "rubrica": [
+        {
+          "valor": 9,
+          "texto": "Negocio absolutamente lejano/ajeno al core actual; oportunidad atractiva pero de poco interés estratégico como transformador organizacional (Lejos/Lejos)"
+        },
+        {
+          "valor": 7,
+          "texto": "Negocio absolutamente lejano/ajeno al core actual; oportunidad de alto interés estratégico como transformador organizacional (Lejos/Cerca)"
+        },
+        {
+          "valor": 5,
+          "texto": "Negocio adyacente al core actual; poca capacidad de actuar como mecanismo de diferenciación (Cerca/Lejos)"
+        },
+        {
+          "valor": 3,
+          "texto": "Negocio adyacente al core actual; alta capacidad de actuar como mecanismo de diferenciación, de alto interés estratégico (Cerca/Cerca)"
+        },
+        {
+          "valor": 1,
+          "texto": "Negocio totalmente alineado al core actual; la oportunidad es una mejora competitiva del negocio actual"
+        }
+      ]
+    },
+    {
+      "id": "inversion_requerida",
+      "nombre": "Inversión Requerida para Probar",
+      "pregunta": "¿Cuál es el nivel y qué tipo de inversión se requiere para probar la solución?",
+      "perfil_informante": "financiero",
+      "rubrica": [
+        {
+          "valor": 9,
+          "texto": "Inversión muy alta, largo plazo (+3 años), requiere apalancamiento externo (> USD 1MM)"
+        },
+        {
+          "valor": 7,
+          "texto": "Inversión alta, mediano/largo plazo (1 a 3 años), puede requerir apalancamiento externo o presupuestos compartidos (USD 300k - 1MM)"
+        },
+        {
+          "valor": 5,
+          "texto": "Inversión moderada, mediano plazo (1 a 3 años) (USD 100k - 300k)"
+        },
+        {
+          "valor": 3,
+          "texto": "Inversión media-baja, corto plazo (0,5 a 1,5 años) (USD 50k - 300k)"
+        },
+        {
+          "valor": 1,
+          "texto": "Inversión baja, operable con presupuesto de caja (0 a 12 meses) (USD 10k - 50k)"
+        }
+      ]
+    }
+  ],
+  "escala": [
+    1,
+    3,
+    5,
+    7,
+    9
+  ],
+  "mis_votos": [
+    {
+      "proyecto_id": "insumex",
+      "ronda": 1,
+      "respuestas": {
+        "alistamiento_tecnico": 5,
+        "conocimiento_cliente": 1,
+        "regulacion": 7,
+        "capacidades_organizacionales": 5,
+        "alineacion_core": 3,
+        "inversion_requerida": 3
+      },
+      "actualizado_at": "2026-10-20T15:02:11-05:00"
+    }
+  ],
+  "pendientes": [
+    "nutriwhat"
+  ],
+  "completo_ronda": false,
+  "progreso_mesa": {
+    "inscritos": 7,
+    "completos": 5,
+    "precierre": false
+  },
+  "resultados": null
+}
