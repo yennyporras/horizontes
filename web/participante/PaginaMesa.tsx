@@ -281,6 +281,11 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
     )
   }, [yo, vista, estadoSala, rondaSala, codigo])
 
+  // Un "guardada" de la ronda anterior no sigue en la pantalla de ronda cerrada (triage #15).
+  useEffect(() => {
+    setAvisoOk(null)
+  }, [estadoSala])
+
   useEffect(() => {
     if (!avisoOk) return
     const t = setTimeout(() => setAvisoOk(null), 4000)
@@ -340,7 +345,7 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
       </Aviso>,
     )
   if (avisoInscrito) arriba.push(<Aviso key="ya" tono="info">Ya estabas inscrito con este correo. Retomas donde ibas.</Aviso>)
-  if (avisoOk) arriba.push(<Aviso key="ok" tono="ok">{avisoOk}</Aviso>)
+  if (avisoOk && abierta) arriba.push(<Aviso key="ok" tono="ok">{avisoOk}</Aviso>)
   if (precierre)
     arriba.push(
       <Aviso key="pre" tono="alerta" titulo={`Todos votaron en ${precierreSala && !yo.progreso_mesa.precierre ? 'la sala' : yo.participante.mesa.nombre}`}>

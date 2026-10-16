@@ -198,7 +198,8 @@ describe('votación', () => {
     expect(Object.values(puts[0].respuestas as object)).toEqual([9, 9, 9, 9, 9, 9])
     expect(await screen.findByRole('heading', { name: 'Voto registrado' })).toBeTruthy()
     expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe('6 de 7 completaron en Mesa 1')
-  })
+    // 12 clics de rúbrica y 2 guardados: con la suite completa en paralelo pasa de 5 s.
+  }, 15_000)
 
   it('conserva lo marcado tras recargar y avisa si la ronda se cerró', async () => {
     servidor((url) => {

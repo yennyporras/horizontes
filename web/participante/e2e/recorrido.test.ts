@@ -179,6 +179,10 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await sinDesborde(p)
     await p.getByRole('button', { name: 'Calificar proyectos' }).click()
     await p.getByRole('button', { name: 'Calificar INSUMEX' }).click()
+    // Triage #16: con las 6 hojas abiertas, el plegable las muestra todas (la propia primero).
+    await p.getByRole('button', { name: 'Ver las hojas de este proyecto' }).click()
+    expect(await p.locator('#hzp-hojas-calificar .hz-hoja').count()).toBeGreaterThanOrEqual(6)
+    await p.getByRole('button', { name: 'Ocultar las hojas de este proyecto' }).click()
     await calificar(p, 9)
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, 'Calificación de INSUMEX guardada.')
@@ -198,6 +202,8 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ver(p, /La ronda 2 se cerró mientras calificabas INSUMEX/)
     await ver(p, /Esos cambios no alcanzaron a guardarse/)
     await titulo(p, 'Ronda 2 cerrada')
+    // Triage #15: el "guardada" de la ronda abierta no sigue en la pantalla de ronda cerrada.
+    expect(await p.getByText(/Calificación de .* guardada\./).count()).toBe(0)
     const borrador = await p.evaluate((c) => sessionStorage.getItem(`hz_borrador_insumex_r2:${c}`), mesa.toUpperCase())
     expect(JSON.parse(borrador ?? '{}')).toMatchObject({ alistamiento_tecnico: 5 })
 
@@ -209,8 +215,18 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await sinDesborde(p)
     await capturar(p, '05-comparacion')
     // Estilos globales de otras áreas (p. ej. .hz-cifra del tablero) no deben agrandar el texto del celular.
-    const letra = await p.locator('.hzp-posicion dd').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    const letra = await p.locator('.hzp-tabla__ejes td').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
     expect(letra).toBeLessThanOrEqual(16)
+    // Triage #10 y #11: mismo nombre de ejes que el tablero, 2 decimales y pie más pequeño que los datos.
+    await ver(p, 'Eje X (Time 2 Market)')
+    for (const td of await p.locator('.hzp-tabla td').allTextContents()) expect(td).toMatch(/^\d+,\d{2}$/)
+    const pie = await p.locator('.hzp-resultado__pie').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    expect(pie).toBeLessThan(letra)
+    const encabezado = await p.locator('.hzp-tabla thead th').last().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    expect(encabezado).toBeLessThan(letra)
+
+    // Triage #17: sin el margen de 8 px del navegador alrededor de la página.
+    expect(await p.evaluate(() => getComputedStyle(document.body).marginTop)).toBe('0px')
 
     // Fin del taller.
     await accion(e, sala.id, 'cerrar_sala')
