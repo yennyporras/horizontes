@@ -38,6 +38,38 @@ async function sinDesborde(p: Page) {
   expect(ancho).toBeLessThanOrEqual(360)
 }
 
+/**
+ * Objetivos táctiles de 44 px o más: botones, pestañas, opciones de rúbrica y la casilla.
+ * Los enlaces dentro de un párrafo quedan exentos (WCAG 2.5.8, excepción en línea).
+ */
+async function tactiles(p: Page) {
+  const chicos = await p.evaluate(() => {
+    const sel = 'button, [role="tab"], .hz-opcion, .hz-casilla__toque, a:not(p a):not(label a):not(li a)'
+    return [...document.querySelectorAll<HTMLElement>(sel)]
+      .filter((el) => el.offsetParent !== null && !el.closest('.hz-visual-oculto'))
+      .map((el) => ({ el: `${el.tagName}.${el.className} "${el.textContent?.trim().slice(0, 30)}"`, r: el.getBoundingClientRect() }))
+      .filter(({ r }) => r.height < 44 || r.width < 44)
+      .map(({ el, r }) => `${el} ${Math.round(r.width)}×${Math.round(r.height)}`)
+  })
+  expect(chicos).toEqual([])
+}
+
+/** Foco visible: recorre con Tab y cada elemento enfocado (o su opción de rúbrica) muestra anillo. */
+async function focoVisible(p: Page, pasos: number) {
+  await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  for (let i = 0; i < pasos; i++) {
+    await p.keyboard.press('Tab')
+    const r = await p.evaluate(() => {
+      const a = document.activeElement as HTMLElement | null
+      if (!a || a === document.body) return null
+      const anillo = a.matches('.hz-opcion__input') ? a.closest('.hz-opcion')! : a
+      const st = getComputedStyle(anillo)
+      return { el: `${a.tagName} ${a.textContent?.trim().slice(0, 20) ?? ''}`, ok: st.boxShadow !== 'none' || (st.outlineStyle !== 'none' && st.outlineColor !== 'rgba(0, 0, 0, 0)') }
+    })
+    if (r) expect(r.ok, `sin foco visible: ${r.el}`).toBe(true)
+  }
+}
+
 describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la API real', () => {
   let e: Entorno
   beforeAll(async () => {
@@ -83,6 +115,8 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await titulo(p, 'Te damos la bienvenida al taller Horizontes')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('target')).toBe('_blank')
     await capturar(p, '01-inscripcion')
+    await tactiles(p)
+    await focoVisible(p, 6)
     await p.getByRole('checkbox').check()
     await inscribirme.click()
 
@@ -108,6 +142,17 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ver(p, 'Te faltan 6 criterios. Elige una opción en cada uno.')
     await calificar(p, 7)
     await sinDesborde(p)
+    // Rúbrica para lector de pantalla: grupo con nombre del criterio, pregunta como descripción y opciones "9: texto".
+    const grupo = p.getByRole('radiogroup', { name: /^Criterio 1 de 6: / })
+    expect(await grupo.getAttribute('aria-required')).toBe('true')
+    const descripcion = await grupo.evaluate((g) =>
+      (g.getAttribute('aria-describedby') ?? '').split(' ').map((id) => document.getElementById(id)?.textContent ?? '').join(' '),
+    )
+    expect(descripcion.trim().length).toBeGreaterThan(10)
+    expect(await grupo.getByRole('radio', { name: /^9: / }).count()).toBe(1)
+    expect(await grupo.getByRole('radio', { name: /^7: / }).isChecked()).toBe(true)
+    await tactiles(p)
+    await focoVisible(p, 8)
     await capturar(p, '02-calificar')
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, 'Calificación de INSUMEX guardada.')

@@ -7,12 +7,14 @@ export interface CasillaProps {
   nombre?: string
 }
 
-/** Casilla de 24 px con área táctil en toda la fila. El texto puede incluir enlaces. */
+/** Casilla de 24 px con área táctil de 44 px y el texto como etiqueta. El texto puede incluir enlaces. */
 export function Casilla({ marcada, onCambio, children, nombre }: CasillaProps) {
   const id = useId()
   return (
     <div className="hz-casilla">
-      <input id={id} name={nombre} type="checkbox" className="hz-casilla__input" checked={marcada} onChange={(e) => onCambio(e.target.checked)} />
+      <label htmlFor={id} className="hz-casilla__toque">
+        <input id={id} name={nombre} type="checkbox" className="hz-casilla__input" checked={marcada} onChange={(e) => onCambio(e.target.checked)} />
+      </label>
       <label htmlFor={id} className="hz-casilla__texto">
         {children}
       </label>
