@@ -23,7 +23,7 @@ PUERTO_LOCAL="${PUERTO_LOCAL:-3999}"
 CONTENEDOR_LOCAL="horizontes-local"
 
 info() { printf '== %s\n' "$*"; }
-falla() { printf '!! %s\n' "$*" >&2; exit "${2:-1}"; }
+falla() { printf '!! %s\n' "$1" >&2; exit "${2:-1}"; }
 falta() { falla "Falta $1. Ver deploy/README.md (Credenciales) y docs/BLOQUEOS.md." 2; }
 
 dominio_de() { case "$1" in staging) echo staging-horizontes.estratek.com.co ;; produccion) echo horizontes.estratek.com.co ;; *) falla "Ambiente desconocido: $1" ;; esac; }
