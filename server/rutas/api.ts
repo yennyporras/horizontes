@@ -2,7 +2,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import QRCode from 'qrcode'
 import type { Db } from '../db/index.js'
-import { ErrorApi, responderConVersion } from '../http.js'
+import { ErrorApi, responderConVersion, yaLaTiene } from '../http.js'
 import {
   type AdminFila,
   adminDeSesion,
@@ -52,10 +52,11 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     if (req.url.startsWith('/api/')) op.revisarCierres()
   })
 
-  // Límite por IP en las rutas de escritura abiertas (los celulares de un taller comparten IP: topes holgados).
+  // Límite por IP en las rutas de escritura abiertas. Todos los celulares del taller salen por la IP del wifi:
+  // los topes cubren una sala de 300 personas inscribiéndose en el mismo minuto (el simulador lo verifica).
   const limites: Record<string, LimitadorPeticiones> = {
-    'POST /api/inscripcion': new LimitadorPeticiones(120, 60_000),
-    'PUT /api/votos': new LimitadorPeticiones(600, 60_000),
+    'POST /api/inscripcion': new LimitadorPeticiones(600, 60_000),
+    'PUT /api/votos': new LimitadorPeticiones(2000, 60_000),
     'POST /api/admin/login': new LimitadorPeticiones(20, 60_000),
   }
   app.addHook('onRequest', async (req) => {
@@ -82,7 +83,13 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   const participante = (req: FastifyRequest) => autenticarParticipante(db, req.headers['x-participante-token'] as string | undefined)
 
-  app.get('/api/yo', async (req, reply) => responderConVersion(req, reply, vistaYo(db, participante(req))))
+  app.get('/api/yo', async (req, reply) => {
+    const p = participante(req)
+    // La ETag sale de la versión de la sala: si el celular ya la tiene, 304 sin armar la vista completa.
+    const version = `v-${cargarSala(db, p.sala_id).version}-${p.id}`
+    if (yaLaTiene(req, version)) return reply.header('ETag', `"${version}"`).header('Cache-Control', 'no-cache').code(304).send()
+    return responderConVersion(req, reply, vistaYo(db, p))
+  })
 
   app.put('/api/votos', async (req) => votar(db, participante(req), (req.body ?? {}) as never, ahora()))
 

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import Fastify, { type FastifyInstance } from 'fastify'
+import Fastify, { type FastifyInstance, LogController } from 'fastify'
 import cookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import { RAIZ, config } from './config.js'
@@ -28,7 +28,14 @@ export interface OpcionesApp {
 }
 
 export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstance> {
-  const app = Fastify({ logger: op.logger ?? false, trustProxy: true })
+  // Sin log por petición: 40 celulares con polling son ~16 peticiones/s de ruido y escribir a stdout es síncrono
+  // (en Windows, con el lector lento, frenaba el event loop segundos). Se registran solo las lentas y los 5xx.
+  const app = Fastify({ logger: op.logger ?? false, trustProxy: true, logController: new LogController({ disableRequestLogging: true }) })
+  app.addHook('onResponse', async (req, reply) => {
+    if (reply.elapsedTime > 500 || reply.statusCode >= 500) {
+      req.log.warn({ metodo: req.method, ruta: req.routeOptions.url ?? req.url, status: reply.statusCode, ms: Math.round(reply.elapsedTime) }, 'petición lenta o con error')
+    }
+  })
   await app.register(cookie)
 
   app.setErrorHandler((err, _req, reply) => {

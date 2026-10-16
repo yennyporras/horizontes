@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "seed": "tsx server/seed.ts",
-    "simular": "tsx tools/simulador.ts"
+    "simular": "tsx tools/simulador/index.ts",
+    "simular:golden": "tsx tools/simulador/index.ts --golden"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.0",
