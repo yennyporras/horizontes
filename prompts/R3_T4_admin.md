@@ -1,11 +1,14 @@
-# R3 · T4 Admin + Infra · 4 h autónomas · QA total y triage
+﻿# R3 adelantada · T4 Admin + Infra
 
-Lee CLAUDE.md, docs, `docs/bitacora/S_R2.md` y las bitácoras `R2_T*.md` de las 4 terminales (están en main tras la integración; si falta alguna, `git log main` te orienta). Empieza por lo que tu bitácora anterior dejó pendiente y por cualquier falla de pruebas atribuible a tu área.
-
+## Reglas de esta R3 adelantada
+- Arrancas apenas terminas tu R2, sin esperar a las otras terminales ni a staging (todavía no existe). Todo lo que diga "staging" hazlo contra la imagen de producción local o tu servidor de desarrollo en TU puerto: T1 4101, T2 4102, T3 4103, T4 3999 (`tools/deploy.sh local`). Nunca uses el puerto de otra terminal.
+- Cada 30 min: `git log main --oneline -3`. Si aparece "[sync] integracion tras R2", haz `git merge main` y corre `tools/test.sh` antes de seguir.
+- Cada 30 min lee el triage de T4 con `git show t4-admin:docs/TRIAGE.md` y corrige lo asignado a ti primero.
+- Solo esperas a otra terminal si el triage o un fallo de pruebas depende de su código: en ese caso anótalo en tu bitácora y sigue con la siguiente tarea.
 ## Entregables en orden
-1. Primera hora: QA completo sobre staging (`/qa-my-app:run-all` si existe; si no, recorrido propio de todas las pantallas en móvil y escritorio). Escribe `docs/TRIAGE.md` con cada hallazgo: severidad, pantalla, pasos, terminal dueña y estado. Haz commit en tu rama cada vez que lo actualices: las demás terminales lo leen con `git show t4-admin:docs/TRIAGE.md`.
-2. Corregir lo asignado a T4.
-3. Hoja imprimible de QR (A4) y botón "Proyectar QR".
-4. Re-desplegar staging con lo integrado y volver a pasar QA al final.
-
-Aceptación: TRIAGE con estado actualizado; staging con la última integración.
+1. QA total sobre el sistema integrado, en local: crea en tu carpeta una rama temporal `qa-integrada` desde `t4-admin`, haz merge de las puntas actuales de `t1-backend`, `t3-tablero` y `t2-participante` (si hay conflicto: `git merge --abort` y prueba solo sobre `t4-admin`), levanta `tools/deploy.sh local` y recorre todas las pantallas en móvil y escritorio, con el simulador de T1 de fondo. **Nunca hagas push ni sync de `qa-integrada`**. Vuelve a `t4-admin` para todo commit.
+2. `docs/TRIAGE.md` en `t4-admin`: severidad, pantalla, pasos, terminal dueña y estado. Commit cada vez que lo actualices; repite el QA cada 60 min con las puntas nuevas.
+3. Corrige lo asignado a T4.
+4. (adelanto de R4) `docs/GUIA_FACILITADOR.md` (1 página, voz Estratek), `docs/PLAN_B.md` (Excel Shot Nutresa + formulario de respaldo), hoja de QR en A4 y borrador de `docs/ENTREGA.md`.
+5. Deja `tools/deploy.sh staging` y `produccion` listos para el primer comando de Paola; no esperes credenciales.
+Aceptación: TRIAGE al día, guía y plan B escritos, y la rama `t4-admin` activa al terminar (nunca `qa-integrada`).
