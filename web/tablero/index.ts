@@ -2,3 +2,4 @@
 export { MatrizHorizontes } from './MatrizHorizontes'
 export type { MatrizHorizontesProps } from './MatrizHorizontes'
 export type { DatosTablero, Vista } from './tipos'
+export { mensajeVacio } from './logica'
