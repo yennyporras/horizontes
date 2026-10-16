@@ -103,7 +103,7 @@ export function Calificar({ yo, codigo, token, proyectoId, onGuardado, onVolver,
         return
       }
       if (ea.status === 401) {
-        setError('Tu sesión se cerró. Lo que marcaste está guardado en este celular; recupera tu sesión y guarda de nuevo.')
+        setError('Tu sesión se cerró. Lo que marcaste está guardado en este celular. Recupera tu sesión y guarda de nuevo.')
         onSesionVencida()
       } else if (ea?.codigo === 'RESPUESTA_INVALIDA') setError('Una de las respuestas no es válida. Vuelve a elegir y guarda de nuevo.')
       else if (ea?.codigo === 'RONDA_CERRADA') setError(`La ronda ${ronda} ya se cerró. Tu última calificación guardada es la que cuenta.`)

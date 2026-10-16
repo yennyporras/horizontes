@@ -69,7 +69,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     // Inscripción: sin consentimiento el botón no avanza.
     await p.goto(`${e.web}/m/${mesa}`)
-    await titulo(p, 'Bienvenido al taller Horizontes', 60_000)
+    await titulo(p, 'Te damos la bienvenida al taller Horizontes', 60_000)
     await sinDesborde(p)
     await p.waitForTimeout(500)
     const cls = await p.evaluate(() => (window as unknown as { __cls: number }).__cls)
@@ -80,7 +80,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     const inscribirme = p.getByRole('button', { name: 'Inscribirme' })
     expect(await inscribirme.getAttribute('aria-disabled')).toBe('true')
     await inscribirme.click({ force: true })
-    await titulo(p, 'Bienvenido al taller Horizontes')
+    await titulo(p, 'Te damos la bienvenida al taller Horizontes')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('target')).toBe('_blank')
     await capturar(p, '01-inscripcion')
     await p.getByRole('checkbox').check()

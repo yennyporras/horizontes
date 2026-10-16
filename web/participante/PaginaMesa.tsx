@@ -114,7 +114,7 @@ function AntesDeInscribirse({
     if (error.esRed) {
       return (
         <Mensaje titulo="Sin conexión" accion={{ texto: 'Reintentar', onClick: () => setIntento((i) => i + 1) }}>
-          No pudimos cargar tu mesa. Revisa la señal; seguimos intentando.
+          No pudimos cargar tu mesa. Revisa la señal, seguimos intentando.
         </Mensaje>
       )
     }
@@ -133,7 +133,7 @@ function AntesDeInscribirse({
         mesa={mesa}
         onInscrito={onInscrito}
         recuperar
-        motivo="Tu sesión se cerró en este celular (venció o entraste desde otro). Confirma tu correo y retomas donde ibas; lo que habías marcado sigue aquí."
+        motivo="Tu sesión se cerró en este celular: venció o entraste desde otro. Confirma tu correo y retomas donde ibas. Lo que habías marcado sigue aquí."
       />
     )
   }
@@ -224,7 +224,7 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
           setAvisoPerdido(
             c === 'RONDA_CERRADA' || c === 'RONDA_NO_ACTIVA'
               ? `La ronda ${h.voto.ronda} se cerró antes de que llegara tu calificación de ${h.voto.nombre}. Lo que marcaste sigue en este celular por si el facilitador reabre la ronda.`
-              : `No pudimos guardar tu calificación de ${h.voto.nombre}. Ábrela de nuevo y guarda otra vez; lo que marcaste sigue aquí.`,
+              : `No pudimos guardar tu calificación de ${h.voto.nombre}. Ábrela de nuevo y guarda otra vez. Lo que marcaste sigue aquí.`,
           )
         }
       }
@@ -344,12 +344,12 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
         {avisoPerdido}
       </Aviso>,
     )
-  if (avisoInscrito) arriba.push(<Aviso key="ya" tono="info">Ya estabas inscrito con este correo. Retomas donde ibas.</Aviso>)
+  if (avisoInscrito) arriba.push(<Aviso key="ya" tono="info">Este correo ya estaba en la mesa. Retomas donde ibas.</Aviso>)
   if (avisoOk && abierta) arriba.push(<Aviso key="ok" tono="ok">{avisoOk}</Aviso>)
   if (precierre)
     arriba.push(
       <Aviso key="pre" tono="alerta" titulo={`Todos votaron en ${precierreSala && !yo.progreso_mesa.precierre ? 'la sala' : yo.participante.mesa.nombre}`}>
-        Este es un resultado preliminar. El facilitador cerrará la ronda; hasta entonces puedes editar tus calificaciones.
+        Este es un resultado preliminar. Puedes editar tus calificaciones hasta que el facilitador cierre la ronda.
       </Aviso>,
     )
 
