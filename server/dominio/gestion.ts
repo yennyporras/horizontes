@@ -145,10 +145,12 @@ export function editarParticipante(db: Db, id: string, d: CambiosParticipante, a
 // --- Export CSV (UTF-8 con BOM, separador ";" para Excel en español) -------------------
 
 const celda = (v: unknown) => {
-  const s = v === null || v === undefined ? '' : String(v)
+  let s = v === null || v === undefined ? '' : String(v)
+  // Evita inyección de fórmulas: Excel ejecuta celdas que empiezan con = + - @ (o tab / CR).
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
-const csv = (filas: unknown[][]) => '﻿' + filas.map((f) => f.map(celda).join(';')).join('\r\n') + '\r\n'
+const csv = (filas: unknown[][]) => '﻿' +filas.map((f) => f.map(celda).join(';')).join('\r\n') + '\r\n'
 
 export function exportInscritos(db: Db, salaId: string) {
   const sala = cargarSala(db, salaId)

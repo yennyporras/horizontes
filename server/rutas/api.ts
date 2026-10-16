@@ -80,7 +80,8 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   app.get<{ Params: { salaId: string }; Querystring: { alcance?: string; mesa?: string; t?: string } }>('/api/tablero/:salaId', async (req, reply) => {
     const sala = cargarSala(db, req.params.salaId)
-    const esAdmin = Boolean(adminDeSesion(db, req.cookies[COOKIE], ahora()))
+    const sesion = adminDeSesion(db, req.cookies[COOKIE], ahora())
+    const esAdmin = Boolean(sesion && !sesion.debe_cambiar_clave)
     if (!esAdmin && (!req.query.t || sha256(req.query.t) !== sala.token_tablero_hash)) {
       throw new ErrorApi(401, 'TOKEN_TABLERO_INVALIDO', 'El enlace del tablero no es válido. Pide el enlace actualizado al facilitador.')
     }

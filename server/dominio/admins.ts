@@ -72,9 +72,13 @@ export function asegurarSuperadmin(db: Db, usuario: string, clave: string, ahora
   return 'creado'
 }
 
+// Hash ficticio para que un usuario inexistente tarde lo mismo que uno real (sin enumeración por tiempo).
+let hashFicticio: string | null = null
+
 export function login(db: Db, usuario: unknown, clave: unknown, ahora: number) {
   const a = uno<AdminFila>(db, 'SELECT * FROM admins WHERE usuario = ?', String(usuario ?? '').trim().toLowerCase())
-  if (!a || typeof clave !== 'string' || !verificarClave(clave, a.clave_hash) || !a.activo) {
+  const ok = verificarClave(typeof clave === 'string' ? clave : '', a?.clave_hash ?? (hashFicticio ??= hashClave('ficticia-no-usar')))
+  if (!a || typeof clave !== 'string' || !ok || !a.activo) {
     throw new ErrorApi(401, 'CREDENCIALES_INVALIDAS', 'Usuario o clave incorrectos.')
   }
   const token = tokenAleatorio()
