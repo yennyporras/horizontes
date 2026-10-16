@@ -95,6 +95,21 @@ describe('PaginaTablero', () => {
     expect(document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent).toBe('Comparación')
   })
 
+  test('todas las mesas: una matriz por mesa con inscritos, solo con token', async () => {
+    montar('/tablero/s_demo?t=tok&vista=mesas')
+    await screen.findByRole('heading', { name: 'Mesa 3' })
+    expect(screen.getByRole('heading', { name: 'Mesa 1' })).toBeTruthy()
+    await waitFor(() => expect(document.querySelectorAll('svg.hz-matriz').length).toBe(3))
+    expect(llamadas[0]).toBe('/api/tablero/s_demo?alcance=sala&t=tok')
+    await waitFor(() => expect(llamadas).toContain('/api/tablero/s_demo?alcance=mesa&mesa=m2&t=tok'))
+    expect(screen.getByText('7 de 7, todos votaron')).toBeTruthy()
+    cleanup()
+    llamadas.length = 0
+    montar('/tablero/s_demo?vista=mesas')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    expect(screen.queryByRole('heading', { name: 'Mesa 3' })).toBeNull()
+  })
+
   test('progreso con más completos que inscritos no pasa del 100 %', async () => {
     const raro = structuredClone(mock)
     raro.progreso.completos = 25

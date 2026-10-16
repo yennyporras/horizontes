@@ -569,3 +569,47 @@ body:has(> #root > .hz-tablero) {
     display: none;
   }
 }
+
+/* Todas las mesas: una matriz por mesa. */
+.hz-cuadricula {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24em), 1fr));
+  gap: 1em;
+  margin-top: 0.75em;
+}
+.hz-celda-mesa {
+  padding: 0.6em 0.8em;
+  border: 1px solid var(--t-h3);
+  border-radius: 16px;
+}
+.hz-celda-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2em 0.8em;
+  margin-bottom: 0.4em;
+}
+.hz-celda-cab h2 {
+  margin: 0;
+  font-size: 1.25em;
+  font-weight: 800;
+  color: var(--t-azul);
+}
+.hz-ok-texto {
+  font-weight: 700;
+  color: var(--t-ok);
+}
+@media (min-width: 1100px) {
+  .hz-tablero:has(.hz-cuadricula) {
+    height: auto;
+    overflow: visible;
+  }
+}
+.hz-alcance {
+  min-width: 0;
+  max-width: 100%;
+}
+.hz-alcance select {
+  min-width: 0;
+  max-width: 100%;
+}
