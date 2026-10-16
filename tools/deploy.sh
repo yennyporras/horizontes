@@ -7,11 +7,12 @@
 #   tools/deploy.sh staging       pruebas + push de main + dominio y variables en Coolify + deploy + HTTPS y salud
 #   tools/deploy.sh produccion    igual, solo si staging está sano (Auto Deploy apagado en prod)
 #   tools/deploy.sh revisar <staging|produccion>   solo comprueba DNS, HTTPS, /api/health y /admin
+#   tools/deploy.sh diagnostico [staging|produccion]  lista qué falta para desplegar (no cambia nada). Empieza por aquí.
 #
 # Credenciales en deploy/.env.deploy (ignorado por git; plantilla en deploy/env.deploy.ejemplo) o en el entorno:
 #   COOLIFY_URL, COOLIFY_TOKEN, COOLIFY_APP_STAGING, COOLIFY_APP_PROD
 #   SUPERADMIN_CLAVE_STAGING, SUPERADMIN_CLAVE_PROD   (opcionales: si faltan, no se tocan en Coolify)
-# Opciones: SIN_PRUEBAS=1 salta tools/test.sh · SIN_PUSH=1 no empuja main · RAMA=main rama que construye Coolify.
+# Opciones: SIN_PRUEBAS=1 salta tools/test.sh · SIN_PUSH=1 no empuja main · RAMA=main rama que construye Coolify · FORZAR=1 produccion sin igualar staging.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -148,18 +149,61 @@ revisar() {
   info "OK: $url arriba con certificado válido"
 }
 
-desplegar() {
+# Credenciales y app antes de correr pruebas o empujar: si algo falta, se sabe en segundos.
+requisitos() {
   local amb="$1" uuid
   [ -n "${COOLIFY_URL:-}" ] || falta COOLIFY_URL
   [ -n "${COOLIFY_TOKEN:-}" ] || falta COOLIFY_TOKEN
   uuid=$(uuid_de "$amb")
   [ -n "$uuid" ] || falta "el UUID de la app de $amb (COOLIFY_APP_STAGING o COOLIFY_APP_PROD)"
   coolify GET "/applications/$uuid" >/dev/null || falla "Coolify no reconoce la app $uuid o el token no tiene permiso."
+  # Sin SUPERADMIN_CLAVE el servidor arranca sin nadie que pueda entrar al panel: se exige en el primer deploy.
+  if [ -z "$(clave_de "$amb")" ] && ! coolify GET "/applications/$uuid/envs" 2>/dev/null | grep -q '"key":"SUPERADMIN_CLAVE"'; then
+    falta "SUPERADMIN_CLAVE_$([ "$amb" = produccion ] && echo PROD || echo STAGING) en deploy/.env.deploy (primer deploy: Coolify aún no la tiene)"
+  fi
+}
+
+desplegar() {
+  local amb="$1"
+  requisitos "$amb"
   configurar_coolify "$amb"
   info "pidiendo deploy a Coolify"
   coolify GET "/deploy?uuid=$uuid&force=false"; echo
   sleep 20
   revisar "$amb"
+}
+
+# Lista de chequeo sin efectos: qué está listo y qué falta para desplegar el ambiente.
+diagnostico() {
+  local amb="${1:-staging}" ok=0 uuid dominio
+  dominio=$(dominio_de "$amb"); uuid=$(uuid_de "$amb")
+  si() { printf '  [ok]    %s
+' "$1"; }
+  no() { printf '  [falta] %s
+' "$1"; ok=1; }
+  info "diagnóstico de $amb ($dominio)"
+  command -v docker >/dev/null && si "Docker (para tools/deploy.sh verificar y local)" || no "Docker instalado (solo para ensayos locales)"
+  if git remote get-url origin >/dev/null 2>&1; then
+    si "remoto origin: $(git remote get-url origin)"
+    git ls-remote --exit-code origin "refs/heads/$RAMA" >/dev/null 2>&1 && si "la rama $RAMA existe en origin" || no "la rama $RAMA en origin (o acceso a GitHub): se crea con el primer tools/deploy.sh staging"
+  else
+    no "remoto origin (repo de GitHub conectado a la GitHub App de Coolify)"
+  fi
+  [ -f deploy/.env.deploy ] && si "deploy/.env.deploy" || no "deploy/.env.deploy (copia deploy/env.deploy.ejemplo y llénalo)"
+  [ -n "${COOLIFY_URL:-}" ] && si "COOLIFY_URL" || no "COOLIFY_URL"
+  [ -n "${COOLIFY_TOKEN:-}" ] && si "COOLIFY_TOKEN" || no "COOLIFY_TOKEN (Coolify → Keys & Tokens → API tokens)"
+  [ -n "$uuid" ] && si "UUID de la app de $amb" || no "UUID de la app de $amb (COOLIFY_APP_$([ "$amb" = produccion ] && echo PROD || echo STAGING))"
+  if [ -n "${COOLIFY_URL:-}" ] && [ -n "${COOLIFY_TOKEN:-}" ] && [ -n "$uuid" ]; then
+    if coolify GET "/applications/$uuid" >/dev/null 2>&1; then
+      si "Coolify responde y reconoce la app"
+      if [ -n "$(clave_de "$amb")" ] || coolify GET "/applications/$uuid/envs" 2>/dev/null | grep -q '"key":"SUPERADMIN_CLAVE"'; then si "clave del superadmin"; else no "SUPERADMIN_CLAVE_$([ "$amb" = produccion ] && echo PROD || echo STAGING) (primer deploy)"; fi
+    else
+      no "acceso a Coolify con ese token y esa app"
+    fi
+  fi
+  node -e "require('node:dns').promises.lookup(process.argv[1]).then(r=>console.log('  [ok]    DNS '+process.argv[1]+' -> '+r.address)).catch(()=>{console.log('  [falta] registro A '+process.argv[1]+' -> IP del VPS (Hostinger)');process.exit(1)})" "$dominio" || ok=1
+  [ "$ok" = 0 ] && info "listo: tools/deploy.sh $amb" || info "completa lo que falta y vuelve a correr tools/deploy.sh diagnostico $amb"
+  return "$ok"
 }
 
 empujar() {
@@ -173,18 +217,27 @@ case "${1:-}" in
   verificar) verificar ;;
   local) local_arriba ;;
   parar-local) docker rm -f "$CONTENEDOR_LOCAL" >/dev/null 2>&1 && info "contenedor local detenido (el volumen horizontes-datos-local se conserva)" || info "no había contenedor local" ;;
+  diagnostico) diagnostico "${2:-staging}" ;;
   staging)
+    requisitos staging
     [ "${SIN_PRUEBAS:-0}" = 1 ] || tools/test.sh
     empujar
     desplegar staging
     ;;
   produccion)
+    requisitos produccion
     INTENTOS_SALUD=1 revisar staging >/dev/null 2>&1 || falla "Staging no está sano; no se despliega producción."
+    v_staging=$(curl -fsS --max-time 10 "https://$(dominio_de staging)/api/health" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).version||""))}catch{}})')
+    v_main=$(git rev-parse "$RAMA")
+    case "$v_main" in
+      "$v_staging"*) [ -n "$v_staging" ] && info "staging corre $v_staging = $RAMA" ;;
+      *) [ "${FORZAR:-0}" = 1 ] || falla "Staging corre '${v_staging:-?}' y $RAMA está en ${v_main:0:7}: despliega y prueba staging primero (o FORZAR=1)." ;;
+    esac
     desplegar produccion
     ;;
   revisar) revisar "${2:-staging}" ;;
   *)
-    sed -n '2,15p' "$0"
+    sed -n '2,16p' "$0"
     exit 1
     ;;
 esac
