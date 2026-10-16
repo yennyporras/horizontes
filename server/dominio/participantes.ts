@@ -251,6 +251,7 @@ export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ahora: number) 
 export type Visibilidad = { visible: false } | { visible: true; preliminar: boolean }
 
 export function visibilidadResultados(db: Db, sala: SalaFila, p: ParticipanteFila, ronda: number): Visibilidad {
+  if (!p.activo) return { visible: false }
   if (ronda < 1 || ronda > sala.ronda_actual) return { visible: false }
   if (rondaCerrada(sala, ronda)) return { visible: true, preliminar: false }
   if (rondaAbierta(sala) !== ronda) return { visible: false }
