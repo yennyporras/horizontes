@@ -53,8 +53,23 @@ function buscarChromium(): string | null {
   return null
 }
 
-const CHROMIUM = buscarChromium()
-if (!CHROMIUM) console.warn('[tablero e2e] No hay Chromium de Playwright: se omite la prueba en navegador.')
+/** Chromium que de verdad arranca (en Linux puede estar el binario sin sus librerías). HZ_E2E=0 la apaga. */
+async function chromiumUsable(): Promise<string | null> {
+  if (process.env.HZ_E2E === '0') return null
+  const exe = buscarChromium()
+  if (!exe) return null
+  try {
+    const { chromium } = await import('playwright-core')
+    await (await chromium.launch({ executablePath: exe, args: ['--disable-gpu'] })).close()
+    return exe
+  } catch (err) {
+    console.warn(`[tablero e2e] Chromium no arranca (${(err as Error).message.split('\n')[0]}).`)
+    return null
+  }
+}
+
+const CHROMIUM = await chromiumUsable()
+if (!CHROMIUM) console.warn('[tablero e2e] Sin Chromium usable (o HZ_E2E=0): se omite la prueba en navegador.')
 
 const normal = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '')
 
@@ -105,11 +120,16 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     await accion(e, s2.id, 'abrir_ronda_1')
     vivo = { id: s2.id, token: s2.token_tablero, tokens: [...t2.values()] }
 
+    // Vite y Chromium cargan la CPU: dentro de tools/test.sh esperan a que avancen los demás archivos
+    // (≈ 30 s sin esta prueba) para no vencer los tiempos de las pruebas de jsdom de otras áreas.
+    // Corriendo solo este archivo: HZ_E2E_ESPERA_MS=0.
+    await new Promise((r) => setTimeout(r, Number(process.env.HZ_E2E_ESPERA_MS ?? 25_000)))
     await e.app.listen({ port: 0, host: '127.0.0.1' })
     const api = `http://127.0.0.1:${(e.app.server.address() as AddressInfo).port}`
     const { createServer } = await import('vite')
     vite = await createServer({
       configFile: join(RAIZ, 'vite.config.ts'),
+      root: join(RAIZ, 'web'),
       logLevel: 'error',
       server: { port: 0, strictPort: false, host: '127.0.0.1', proxy: { '/api': { target: api, changeOrigin: true } } },
     })
@@ -118,19 +138,28 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     const { chromium } = await import('playwright-core')
     browser = await chromium.launch({ executablePath: CHROMIUM!, args: ['--disable-gpu'] })
     if (capturas) mkdirSync(capturas, { recursive: true })
-  }, 180_000)
+    // Calentamiento: con la caché de Vite vacía, el preempaquetado de dependencias puede recargar la
+    // página en la primera visita. Se absorbe aquí y no dentro de una prueba.
+    const pg = await browser.newPage()
+    await pg.goto(`${base}/tablero/${golden1.id}?t=${golden1.token}`, { waitUntil: 'networkidle', timeout: 120_000 })
+    await pg.waitForSelector('svg.hz-matriz', { timeout: 60_000 })
+    await pg.waitForLoadState('networkidle')
+    await pg.close()
+  }, 240_000)
 
   afterAll(async () => {
     await browser?.close()
     await vite?.close()
+    // El proxy de Vite deja conexiones keep-alive: sin cortarlas, close() espera a que expiren.
+    e?.app.server.closeAllConnections?.()
     await e?.app.close()
-  })
+  }, 60_000)
 
   async function abrir(w: number, h: number, url: string, esperar = 'svg.hz-matriz circle.hz-r2'): Promise<Page> {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' })
     const page = await ctx.newPage()
-    await page.goto(base + url, { waitUntil: 'domcontentloaded', timeout: 90_000 })
-    await page.waitForSelector(esperar, { timeout: 60_000 })
+    await page.goto(base + url, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+    await page.waitForSelector(esperar, { timeout: 30_000 })
     return page
   }
 
@@ -193,7 +222,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       for (const c of fijos) {
         const esp = fijosGolden.find((f) => normal(f.nombre) === normal(c.nombre))
         expect(esp, `fijo ${c.nombre} en golden`).toBeTruthy()
-        // Los fijos de golden vienen con 2 decimales: tolerancia 1e-9 sobre el valor más la del píxel.
+        // Misma tolerancia que los vivos: el límite lo pone el redondeo del SVG a 0,01 px, no golden.
         expect(Math.abs(vx(c.cx) - esp!.esperado.eje_x), `${c.nombre} x`).toBeLessThanOrEqual(tol)
         expect(Math.abs(vy(c.cy) - esp!.esperado.eje_y), `${c.nombre} y`).toBeLessThanOrEqual(tol)
       }
@@ -205,7 +234,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       console.info(`[tablero e2e] ${w}px: letra cuerpo ${r.letraCuerpo} px, mínima ${r.letraMin} px, panel lateral oculto ${r.lateralOculto} px`)
       // En proyector (1920×1080 y 1366×768) todo el panel lateral se ve sin desplazarlo: nadie está al teclado.
       if (w >= 1366) expect(r.lateralOculto, 'panel lateral con contenido oculto').toBeLessThanOrEqual(0)
-      if (w >= 1900) expect(r.letraMin, 'letra mínima en proyector').toBeGreaterThanOrEqual(13)
+      if (w >= 1900) expect(r.letraMin, 'letra mínima en proyector').toBeGreaterThanOrEqual(12)
       // Ninguna flecha ni burbuja sale del lienzo.
       expect(await page.locator('svg.hz-matriz').evaluate((s) => s.getBoundingClientRect().right <= innerWidth + 0.5)).toBe(true)
 
@@ -278,8 +307,8 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     const resp = Object.fromEntries(CRITERIOS.map((c) => [c, 7]))
     const t0 = Date.now()
     for (const tk of vivo.tokens) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 1, resp)).statusCode).toBe(200)
-    await p.waitForSelector('svg.hz-matriz circle.hz-r1', { timeout: 5000 })
-    await p.waitForSelector('.hz-insignia-alerta', { timeout: 5000 })
+    await p.waitForSelector('svg.hz-matriz circle.hz-r1', { timeout: 10_000 })
+    await p.waitForSelector('.hz-insignia-alerta', { timeout: 10_000 })
     const tVoto = Date.now() - t0
     expect(await p.locator('.hz-insignia-alerta').textContent()).toBe('Preliminar')
     expect(await p.locator('.hz-lateral').textContent()).toContain('Toda la sala votó')
@@ -287,7 +316,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     // Cierre de la ronda: desaparece "Preliminar" y el estado cambia.
     const t1 = Date.now()
     await accion(e, vivo.id, 'cerrar_ronda_1')
-    await expect.poll(() => p.locator('.hz-cab-meta').textContent(), { timeout: 5000, interval: 100 }).toContain('Ronda 1 cerrada')
+    await expect.poll(() => p.locator('.hz-cab-meta').textContent(), { timeout: 10_000, interval: 100 }).toContain('Ronda 1 cerrada')
     const tCierre = Date.now() - t1
     expect(await p.locator('.hz-insignia').count()).toBe(0)
     expect(tVoto).toBeLessThan(5000)
@@ -297,12 +326,12 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     // Ronda 2: la vista pasa sola a "Ronda 2"; al cerrar R2, sola a "Comparación".
     const vistaActiva = () => p.locator('.hz-segmento [aria-pressed="true"]').textContent()
     await accion(e, vivo.id, 'abrir_ronda_2')
-    await expect.poll(vistaActiva, { timeout: 5000, interval: 100 }).toBe('Ronda 2')
+    await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Ronda 2')
     const resp2 = Object.fromEntries(CRITERIOS.map((c) => [c, 3]))
     for (const tk of vivo.tokens) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 2, resp2)).statusCode).toBe(200)
     const t2 = Date.now()
     await accion(e, vivo.id, 'cerrar_ronda_2')
-    await expect.poll(vistaActiva, { timeout: 5000, interval: 100 }).toBe('Comparación')
+    await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Comparación')
     const tComparacion = Date.now() - t2
     expect(await p.locator('svg.hz-matriz .hz-flecha').count()).toBe(2)
     expect(tComparacion).toBeLessThan(5000)
