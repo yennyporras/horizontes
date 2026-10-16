@@ -125,3 +125,20 @@ test('el punto dibujado coincide con el golden sintético en 360, 1366 y 1920 px
     }
   }
 });
+
+test('proyector con letra grande: etiquetas de vivos sin solaparse', () => {
+  for (const [ancho, alto] of [[930, 930], [1152, 915], [650, 650], [314, 360]]) {
+    for (const vista of [1, 2, 'comparacion'] as Vista[]) {
+      const L = calcularLayout(mock, { ancho, alto, vista, escalaTexto: 1.3 });
+      for (const e of L.etiquetas.filter((x) => x.prioridad)) {
+        for (const o of L.etiquetas) if (o !== e) assert.ok(!solapan(e.caja, o.caja), `${e.texto} choca con ${o.texto} a ${ancho}x${alto} vista ${vista}`);
+        for (const c of [...L.fijos, ...L.vivos.flatMap((v) => [v.r1, v.r2].filter((b) => b !== null))]) {
+          const px = Math.min(e.caja.x + e.caja.w, Math.max(e.caja.x, c.cx));
+          const py = Math.min(e.caja.y + e.caja.h, Math.max(e.caja.y, c.cy));
+          assert.ok((c.cx - px) ** 2 + (c.cy - py) ** 2 >= c.r * c.r, `${e.texto} tapa una burbuja a ${ancho}x${alto}`);
+        }
+      }
+    }
+  }
+  assert.ok(calcularLayout(mock, { ancho: 930, escalaTexto: 1.3 }).fs > calcularLayout(mock, { ancho: 930 }).fs);
+});

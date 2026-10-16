@@ -1,0 +1,77 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { act, cleanup, render, screen } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import mockJson from '../../mocks/GET_api_tablero.json'
+import PaginaTablero from './PaginaTablero'
+import type { DatosTablero } from './tipos'
+
+const mock = mockJson as unknown as DatosTablero
+
+function montar(ruta: string) {
+  return render(
+    <MemoryRouter initialEntries={[ruta]}>
+      <Routes>
+        <Route path="/tablero/:sala/*" element={<PaginaTablero />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+describe('PaginaTablero', () => {
+  let llamadas: string[]
+  beforeEach(() => {
+    llamadas = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        llamadas.push(url)
+        return new Response(JSON.stringify(mock), { status: 200, headers: { ETag: `"${mock.version}"` } })
+      }),
+    )
+  })
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  test('muestra matriz, paneles, progreso y aviso de precierre', async () => {
+    montar('/tablero/s_demo?t=tok')
+    expect(await screen.findByRole('heading', { name: mock.sala.nombre })).toBeTruthy()
+    expect(llamadas[0]).toBe('/api/tablero/s_demo?alcance=sala&t=tok')
+    expect(document.querySelector('svg.hz-matriz')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'INSUMEX' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'NUTRIWHAT' })).toBeTruthy()
+    expect(screen.getByText('Mesa 1: todos votaron')).toBeTruthy()
+    expect(screen.getByText('Preliminar')).toBeTruthy()
+    // R2 abierta: vista por defecto Ronda 2
+    expect(screen.getByRole('button', { name: 'Ronda 2' }).getAttribute('aria-pressed')).toBe('true')
+    // con token: selector de alcance
+    expect(screen.getByRole('combobox')).toBeTruthy()
+  })
+
+  test('sin token no hay selector de alcance y respeta ?mesa=', async () => {
+    montar('/tablero/s_demo?mesa=m2')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    expect(llamadas[0]).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m2')
+    expect(screen.queryByRole('combobox')).toBeNull()
+  })
+
+  test('error sin datos muestra texto útil', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { codigo: 'X', mensaje: 'x' } }), { status: 403 })))
+    montar('/tablero/s_demo')
+    expect(await screen.findByText(/No pudimos abrir el tablero/)).toBeTruthy()
+    expect(screen.getByText(/token/)).toBeTruthy()
+  })
+
+  test('estado vacío de la ronda 1', async () => {
+    const vacio = structuredClone(mock)
+    vacio.sala.estado = 'r1_abierta'
+    vacio.sala.ronda_actual = 1
+    for (const v of vacio.proyectos_vivos) for (const r of v.rondas) Object.assign(r, { n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(vacio), { status: 200 })))
+    montar('/tablero/s_demo')
+    expect(await screen.findByText('Aún no hay votos en la ronda 1')).toBeTruthy()
+    await act(async () => {})
+  })
+})

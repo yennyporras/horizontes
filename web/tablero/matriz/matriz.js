@@ -78,7 +78,9 @@ export function calcularLayout(datos, opciones = {}) {
   const W = Math.max(240, opciones.ancho || 800);
   const H = Math.max(240, opciones.alto || W);
   const colores = { ...COLORES, ...(opciones.colores || {}) };
-  const fs = clamp(Math.min(W, H) / 52, 11, 26);
+  // escalaTexto agranda la tipografía (proyector: lectura a 6 m). 1 = tamaño base.
+  const escalaTexto = esNumero(opciones.escalaTexto) ? clamp(opciones.escalaTexto, 0.6, 2) : 1;
+  const fs = clamp((Math.min(W, H) / 52) * escalaTexto, 11, 34);
 
   const ejes = datos?.ejes || {};
   const ex = ejes.x || {};

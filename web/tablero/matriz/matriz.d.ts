@@ -6,6 +6,8 @@ export interface OpcionesMatriz {
   alto?: number
   vista?: Vista
   idPrefijo?: string
+  /** Multiplica el tamaño de letra (1 = base). En proyector se usa ~1,3. */
+  escalaTexto?: number
   colores?: Record<string, unknown>
 }
 
