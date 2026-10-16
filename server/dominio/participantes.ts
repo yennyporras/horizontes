@@ -58,7 +58,7 @@ export function perfilBalanceado(db: Db, mesaId: string): string {
   return mejor
 }
 
-const RE_CORREO = /^[^\s@<>"'`;,()\\]+@[^\s@<>"'`;,()\\]+\.[^\s@<>"'`;,()\\]+$/
+const RE_CORREO = /^[^\s@<>"`;,()\\]+@[^\s@<>"`;,()\\]+\.[^\s@<>"`;,()\\]+$/
 const RE_NOMBRE_PROHIBIDO = /[\u0000-\u001f\u007f<>{}\\`]/
 
 export interface DatosInscripcion {
