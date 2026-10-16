@@ -172,14 +172,15 @@ export function exportVotos(db: Db, salaId: string) {
   const sala = cargarSala(db, salaId)
   const filas = todos<Record<string, string | number>>(
     db,
-    `SELECT v.participante_id, m.nombre AS mesa, p.perfil_id, v.ronda, v.proyecto_id, ${CRITERIOS.map((c) => `v.${c}`).join(', ')}
+    `SELECT v.participante_id, m.nombre AS mesa, p.perfil_id, p.activo, v.ronda, v.proyecto_id, ${CRITERIOS.map((c) => `v.${c}`).join(', ')}
        FROM votos v JOIN participantes p ON p.id = v.participante_id JOIN mesas m ON m.id = p.mesa_id
       WHERE v.sala_id = ? ORDER BY m.numero, v.participante_id, v.ronda, v.proyecto_id`,
     sala.id,
   )
   return csv([
-    ['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', ...CRITERIOS],
-    ...filas.map((f) => [sha256(`${sala.id}:${f.participante_id}`).slice(0, 12), f.mesa, nombrePerfil(String(f.perfil_id)), f.ronda, f.proyecto_id, ...CRITERIOS.map((c) => f[c])]),
+    // `activo` al final: los votos de desactivados no cuentan en la matriz; con esta columna Excel cuadra con el tablero.
+    ['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', ...CRITERIOS, 'activo'],
+    ...filas.map((f) => [sha256(`${sala.id}:${f.participante_id}`).slice(0, 12), f.mesa, nombrePerfil(String(f.perfil_id)), f.ronda, f.proyecto_id, ...CRITERIOS.map((c) => f[c]), f.activo ? 'si' : 'no']),
   ])
 }
 

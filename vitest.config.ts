@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts', 'web/**/*.test.{ts,tsx}', 'shared/**/*.test.ts', 'server/**/*.test.ts'],
     environment: 'node',
+    // Con 4 terminales compilando en la misma máquina, las pruebas de UI en jsdom pasaban de 5 s y la compuerta fallaba al azar.
+    testTimeout: 20_000,
   },
 })

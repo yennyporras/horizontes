@@ -3,7 +3,7 @@
 import { type Db, ejecutar, todos, transaccion } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { type EstadoSala, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
-import { isoUtc } from './util.js'
+import { isoBogota, isoUtc } from './util.js'
 
 export const ACCIONES = [
   'abrir_inscripcion',
@@ -52,8 +52,8 @@ const NOMBRE_ESTADO: Record<EstadoSala, string> = {
 }
 
 export interface OpcionesAccion {
-  /** Solo para reiniciar_ronda: qué ronda reiniciar (por defecto la actual). */
-  ronda?: number
+  /** Solo para reiniciar_ronda: qué ronda reiniciar (por defecto la actual). Llega del cuerpo sin validar. */
+  ronda?: unknown
 }
 
 /** Aplica una acción del admin (o del programador). 409 TRANSICION_INVALIDA si no aplica. */
@@ -64,6 +64,9 @@ export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: num
   return transaccion(db, () => {
     const s = cargarSala(db, salaId)
     if (accion === 'reiniciar_ronda') {
+      if (op.ronda !== undefined && op.ronda !== 1 && op.ronda !== 2) {
+        throw new ErrorApi(422, 'RONDA_INVALIDA', 'La ronda a reiniciar debe ser 1 o 2.')
+      }
       const ronda = op.ronda ?? s.ronda_actual
       if (s.estado === 'cerrada' || ronda < 1 || ronda > s.ronda_actual) {
         throw new ErrorApi(409, 'TRANSICION_INVALIDA', 'No hay votos de esa ronda para reiniciar en el estado actual de la sala.')
@@ -106,10 +109,18 @@ export interface CambiosConfig {
   cierre_programado_sala_at?: unknown
 }
 
-function fechaOpcional(campo: string, v: unknown): string | null {
+/**
+ * Valida una hora de cierre programado. Manda la hora del servidor, no la del navegador del admin:
+ * una hora que ya pasó se rechaza (si se aceptara, la ronda se cerraría de golpe en la siguiente petición).
+ */
+function fechaOpcional(campo: string, v: unknown, ahora: number): string | null {
   if (v === null || v === '') return null
   if (typeof v !== 'string' || Number.isNaN(Date.parse(v))) {
     throw new ErrorApi(422, 'CONFIG_INVALIDA', `${campo} debe ser una fecha ISO-8601 con zona o null.`)
+  }
+  if (Date.parse(v) <= ahora) {
+    const hora = (isoBogota(ahora) ?? '').slice(11, 19)
+    throw new ErrorApi(422, 'HORA_PASADA', `Esa hora ya pasó. En el servidor son las ${hora}; elige una hora posterior.`)
   }
   return isoUtc(Date.parse(v))
 }
@@ -135,8 +146,8 @@ export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ah
     if (typeof cambios.revelar_hojas !== 'boolean') throw new ErrorApi(422, 'CONFIG_INVALIDA', 'revelar_hojas debe ser true o false.')
     poner('revelar_hojas', cambios.revelar_hojas ? 1 : 0)
   }
-  if (cambios.cierre_programado_ronda_at !== undefined) poner('cierre_programado_ronda_at', fechaOpcional('cierre_programado_ronda_at', cambios.cierre_programado_ronda_at))
-  if (cambios.cierre_programado_sala_at !== undefined) poner('cierre_programado_sala_at', fechaOpcional('cierre_programado_sala_at', cambios.cierre_programado_sala_at))
+  if (cambios.cierre_programado_ronda_at !== undefined) poner('cierre_programado_ronda_at', fechaOpcional('cierre_programado_ronda_at', cambios.cierre_programado_ronda_at, ahora))
+  if (cambios.cierre_programado_sala_at !== undefined) poner('cierre_programado_sala_at', fechaOpcional('cierre_programado_sala_at', cambios.cierre_programado_sala_at, ahora))
   if (sets.length === 0) throw new ErrorApi(422, 'CONFIG_INVALIDA', 'No llegó ningún cambio de configuración.')
 
   return transaccion(db, () => {
