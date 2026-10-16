@@ -21,7 +21,7 @@ import { aplicarAccion, cambiarConfig } from '../dominio/estados.js'
 import { detalleSala, editarParticipante, eventosPaginados, exportInscritos, exportVotos, listarSalas, mesasAdmin, salaResumen, urls } from '../dominio/gestion.js'
 import { autenticarParticipante, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
-import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla } from '../dominio/salas.js'
+import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
 import { sha256 } from '../dominio/util.js'
 import { uno } from '../db/index.js'
@@ -169,6 +169,11 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   app.post<{ Body: { nombre?: string; plantilla?: string; mesas?: number } }>('/api/admin/salas', async (req, reply) => {
     const b = req.body ?? {}
     const sala = crearSalaDesdePlantilla(db, { nombre: b.nombre ?? '', plantilla: b.plantilla ?? 'foodsume_2026', mesas: b.mesas ?? 1 }, ahora(), por(req))
+    return reply.code(201).send({ ...salaResumen(sala, op.baseUrl), mesas: mesasAdmin(db, sala, op.baseUrl) })
+  })
+
+  app.post<{ Params: { id: string }; Body: { nombre?: string } }>('/api/admin/salas/:id/duplicar', async (req, reply) => {
+    const sala = duplicarSala(db, req.params.id, req.body?.nombre, ahora(), por(req))
     return reply.code(201).send({ ...salaResumen(sala, op.baseUrl), mesas: mesasAdmin(db, sala, op.baseUrl) })
   })
 

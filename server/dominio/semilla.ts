@@ -45,8 +45,13 @@ let cache: Semilla | null = null
 
 /** data/seed_foodsume.json (plantilla foodsume_2026). Se lee una vez. */
 export function semilla(): Semilla {
-  if (!cache) cache = JSON.parse(readFileSync(resolve(RAIZ, 'data', 'seed_foodsume.json'), 'utf8')) as Semilla
+  if (!cache) cache = JSON.parse(readFileSync(resolve(RAIZ, 'data', 'seed_foodsume.json'), 'utf8'), (_k, v) => (typeof v === 'string' ? sinRayas(v) : v)) as Semilla
   return cache
+}
+
+/** La app no muestra rayas (—): un inciso entre rayas pasa a ir entre comas. data/ es de solo lectura, se corrige al cargar. */
+export function sinRayas(texto: string): string {
+  return texto.replace(/\s*—\s*/g, ', ').replace(/, ([.,;:])/g, '$1')
 }
 
 export const PLANTILLAS = ['foodsume_2026'] as const

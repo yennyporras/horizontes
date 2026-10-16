@@ -86,6 +86,7 @@ export async function rutasMocks(app: FastifyInstance) {
     }
   })
   app.post('/api/admin/salas', async (_req, reply) => reply.code(201).send(admin().sala))
+  app.post('/api/admin/salas/:id/duplicar', async (_req, reply) => reply.code(201).send({ ...admin().sala, id: 's_copia', nombre: `${admin().sala.nombre} (copia)`, estado: 'preparada' }))
   app.get('/api/admin/salas/:id', async (req, reply) => responderConVersion(req, reply, admin()))
   app.patch('/api/admin/salas/:id/config', async (req) => ({ ...admin().sala.config, ...(req.body as object) }))
   app.post('/api/admin/salas/:id/acciones', async () => ({ sala: admin().sala }))

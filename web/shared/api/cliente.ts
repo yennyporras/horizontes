@@ -98,6 +98,8 @@ export const api = {
   cambiarClave: (actual: string, nueva: string) => datos(pedir<{ ok: true }>('/api/admin/cambiar-clave', { metodo: 'POST', cuerpo: { actual, nueva } })),
   salas: () => datos(pedir<{ salas: (Omit<SalaResumen, 'config'> & { mesas: number; inscritos: number })[] }>('/api/admin/salas')),
   crearSala: (nombre: string, mesas: number) => datos(pedir<SalaResumen>('/api/admin/salas', { metodo: 'POST', cuerpo: { nombre, plantilla: 'foodsume_2026', mesas } })),
+  /** Sala nueva para ensayos con las mismas mesas y configuración (sin inscritos). `nombre` por defecto: "<original> (copia)". */
+  duplicarSala: (id: string, nombre?: string) => datos(pedir<SalaResumen>(`/api/admin/salas/${id}/duplicar`, { metodo: 'POST', cuerpo: nombre ? { nombre } : {} })),
   sala: (id: string, etag?: string) => pedir<DetalleSala>(`/api/admin/salas/${id}`, { etag }),
   config: (id: string, cambios: Partial<Config>) => datos(pedir<Config>(`/api/admin/salas/${id}/config`, { metodo: 'PATCH', cuerpo: cambios })),
   accion: (id: string, accion: AccionSala, ronda?: number) => datos(pedir<{ sala: SalaResumen }>(`/api/admin/salas/${id}/acciones`, { metodo: 'POST', cuerpo: { accion, ronda } })),
