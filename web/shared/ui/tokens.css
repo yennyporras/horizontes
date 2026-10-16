@@ -1,0 +1,73 @@
+/*
+ * Tokens del sistema visual de Horizontes. Fuente: docs/DISENO.md (§2 a §6).
+ * Cambiar la marca = cambiar este archivo. Los componentes solo consumen tokens --hz-*.
+ */
+:root {
+  color-scheme: light;
+
+  /* Marca */
+  --hz-azul: #1C4587;
+  --hz-azul-presionado: #163869;
+  --hz-azul-medio: #3F7CC8;
+  --hz-cielo: #00A3FF;
+
+  /* Texto */
+  --hz-tinta: #0F2340;
+  --hz-tinta-2: #3A4D6B;
+  --hz-tinta-3: #5B6B84;
+
+  /* Superficies: horizontes en azules claros */
+  --hz-fondo: #FFFFFF;
+  --hz-h1: #EEF4FB;
+  --hz-h2: #DCE8F6;
+  --hz-h3: #C5D8EF;
+
+  /* Estados */
+  --hz-ok: #1D6B4F;
+  --hz-ok-fondo: #E6F4EE;
+  --hz-alerta: #7A4B00;
+  --hz-alerta-fondo: #FFF4DC;
+  --hz-error: #A3261B;
+  --hz-error-fondo: #FDECEA;
+
+  /* Tipografía */
+  --hz-fuente: 'Montserrat Variable', 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --hz-fs-12: 0.75rem;
+  --hz-fs-14: 0.875rem;
+  --hz-fs-16: 1rem;
+  --hz-fs-18: 1.125rem;
+  --hz-fs-20: 1.25rem;
+  --hz-fs-25: 1.5625rem;
+  --hz-fs-32: 2rem;
+  --hz-lh: 1.5;
+  --hz-lh-titulo: 1.2;
+  --hz-medida: 34rem;
+
+  /* Espaciado (4 px) */
+  --hz-sp-1: 0.25rem;
+  --hz-sp-2: 0.5rem;
+  --hz-sp-3: 0.75rem;
+  --hz-sp-4: 1rem;
+  --hz-sp-5: 1.25rem;
+  --hz-sp-6: 1.5rem;
+  --hz-sp-8: 2rem;
+  --hz-sp-10: 2.5rem;
+  --hz-sp-12: 3rem;
+  --hz-tactil: 3rem;
+
+  /* Radios */
+  --hz-r-s: 6px;
+  --hz-r-m: 10px;
+  --hz-r-l: 16px;
+  --hz-r-pill: 999px;
+
+  /* Elevación única */
+  --hz-sombra: 0 1px 2px rgba(15, 35, 64, 0.08), 0 8px 24px rgba(15, 35, 64, 0.08);
+
+  /* Foco */
+  --hz-foco: 0 0 0 2px var(--hz-fondo), 0 0 0 5px var(--hz-azul), 0 0 0 7px var(--hz-cielo);
+
+  /* Movimiento */
+  --hz-t-rapido: 160ms;
+  --hz-t-medio: 200ms;
+}
