@@ -90,7 +90,7 @@ export default function PaginaTablero() {
         <div className="hz-cuerpo">
           <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
             <Vacio datos={datos} vista={vista} />
-            <div className="hz-lienzo">
+            <div className="hz-lienzo" data-version={datos.version}>
               <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} />
             </div>
             <Leyenda vista={vista} />

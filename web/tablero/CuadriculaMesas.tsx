@@ -10,13 +10,16 @@ function CeldaMesa({ sala, token, mesa, vista, escalaTexto }: { sala: string; to
   const { datos, error } = usePollingTablero(urlApiTablero(sala, { mesa: mesa.mesa_id, t: token }), INTERVALO_MESAS_MS)
   const vacio = datos ? mensajeVacio(datos, vista) : null
   const idTitulo = `hz-celda-${mesa.mesa_id}`
-  const lista = mesa.precierre && rondaAbierta(datos?.sala?.estado)
+  // Conteo, "todos votaron" y "Preliminar" salen de la misma respuesta (la de la celda) para que no se
+  // contradigan entre polls; mientras llega, el progreso de la sala.
+  const propia = datos?.progreso?.por_mesa?.find((m) => m.mesa_id === mesa.mesa_id) ?? mesa
+  const lista = propia.precierre && rondaAbierta(datos?.sala?.estado)
   return (
     <section className="hz-celda-mesa" aria-labelledby={idTitulo}>
       <header className="hz-celda-cab">
         <h2 id={idTitulo}>{mesa.nombre}</h2>
         <span className={lista ? 'hz-mesa-n hz-ok-texto' : 'hz-mesa-n'}>
-          {mesa.completos} de {mesa.inscritos}
+          {propia.completos} de {propia.inscritos}
           {lista ? ', todos votaron' : ''}
         </span>
         {datos && esPreliminar(datos) && <span className="hz-insignia hz-insignia-alerta">Preliminar</span>}

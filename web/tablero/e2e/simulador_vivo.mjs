@@ -8,6 +8,7 @@ const [web, apiBase, usuario, clave, salida] = process.argv.slice(2)
 const exe = process.env.PW_EXE
 
 const login = await fetch(apiBase + '/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ usuario, clave }) })
+if (!login.ok) { console.error(`Login falló: ${login.status}`); process.exit(1) }
 const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0]
 const get = async (ruta) => (await fetch(apiBase + ruta, { headers: { cookie } })).json()
 // Navegador listo y Vite precalentado antes de que el simulador cree la sala.
@@ -19,7 +20,8 @@ console.log('LISTO')
 const inicio = Date.now()
 let sala = null
 while (!sala) {
-  const { salas } = await get('/api/admin/salas')
+  if (Date.now() - inicio > 120_000) { console.error('El simulador no creó una sala en 2 min'); await browser.close(); process.exit(1) }
+  const { salas = [] } = await get('/api/admin/salas')
   sala = salas.find((s) => s.nombre.startsWith('Simulación') && Date.parse(s.creada_at) >= inicio - 60_000 && s.estado !== 'cerrada') ?? null
   if (!sala) await new Promise((r) => setTimeout(r, 200))
 }
@@ -41,7 +43,7 @@ const dibujados = () =>
     const vx = lin(tx), vy = lin(ty)
     const out = {}
     for (const c of svg.querySelectorAll('circle.hz-r1, circle.hz-r2')) out[`${c.dataset.proyecto}-${c.classList.contains('hz-r1') ? 1 : 2}`] = [vx(Number(c.getAttribute('cx'))), vy(Number(c.getAttribute('cy')))]
-    return { out, estado: document.querySelector('.hz-cab-meta span')?.textContent, vista: document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent }
+    return { out, version: document.querySelector('.hz-lienzo')?.dataset.version, estado: document.querySelector('.hz-cab-meta span')?.textContent, vista: document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent }
   })
 
 const delApi = (t) => {
@@ -60,34 +62,34 @@ const coincide = (api, dom, estado) => {
   return true
 }
 
-const ESTADO_TEXTO = { r1_abierta: 'Ronda 1 abierta', r1_cerrada: 'Ronda 1 cerrada', r2_abierta: 'Ronda 2 abierta', r2_cerrada: 'Ronda 2 cerrada', cerrada: 'Sala cerrada', inscripcion: 'Inscripción abierta', preparada: 'Sala preparada' }
-// Cada estado distinto que entrega la API, con la hora en que lo vimos. Se resuelve cuando el SVG
-// muestra ese estado o uno posterior: el retraso es lo que tardó el tablero en ponerse al día.
+// Cada versión que entrega la API, con la hora en que la vimos (muestreo cada 200 ms: el retraso real
+// puede ser hasta ~200 ms mayor). Se resuelve cuando el tablero muestra esa versión o una posterior
+// (`data-version` del lienzo); en ese momento se exige además que el SVG coincida con esa versión.
 const pendientes = []
 const retrasos = []
 let ultimo = null
 let fallasFinal = 0
+const vistas = new Map()
 for (;;) {
   const t = await get(`/api/tablero/${sala.id}`)
   const api = delApi(t)
-  const firma = t.sala.estado + JSON.stringify(api)
-  if (firma !== ultimo) {
-    pendientes.push({ api, estado: t.sala.estado, desde: Date.now() })
-    ultimo = firma
+  if (t.version !== ultimo) {
+    pendientes.push({ version: t.version, desde: Date.now() })
+    vistas.set(t.version, { api, estado: t.sala.estado })
+    ultimo = t.version
   }
   const dom = await dibujados()
-  if (dom) {
-    for (let i = pendientes.length - 1; i >= 0; i--) {
-      const pd = pendientes[i]
-      if (dom.estado === ESTADO_TEXTO[pd.estado] && coincide(pd.api, dom.out, pd.estado)) {
-        for (const r of pendientes.splice(0, i + 1)) retrasos.push(Date.now() - r.desde)
-        break
-      }
-    }
+  // La versión es "v-{n}-sala" y n solo sube: el tablero puede mostrar una versión que el muestreo no vio.
+  const n = (v) => Number(String(v ?? '').match(/\d+/)?.[0] ?? -1)
+  const i = dom ? pendientes.findLastIndex((pd) => n(pd.version) <= n(dom.version)) : -1
+  if (i >= 0) {
+    const v = vistas.get(dom.version)
+    if (v && !coincide(v.api, dom.out, v.estado)) { console.log(`FALLA: versión ${dom.version} dibujada con puntos distintos a la API`); fallasFinal++ }
+    for (const r of pendientes.splice(0, i + 1)) retrasos.push(Date.now() - r.desde)
   }
   const viejo = pendientes[0] && Date.now() - pendientes[0].desde
   if (viejo > 10_000) { console.log(`Sin alcanzar un estado de la API tras ${viejo} ms`); fallasFinal++; break }
-  if (t.sala.estado === 'cerrada' && pendientes.length === 0) {
+  if (t.sala.estado === 'cerrada' && pendientes.length === 0 && dom) {
     for (const [k, [x, y]] of Object.entries(api)) {
       const d = dom.out[k]
       const ok = d && Math.abs(d[0] - x) <= 0.006 && Math.abs(d[1] - y) <= 0.006
