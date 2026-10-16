@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import mockJson from '../../mocks/GET_api_tablero.json'
 import PaginaTablero from './PaginaTablero'
@@ -69,18 +69,40 @@ describe('PaginaTablero', () => {
     await screen.findByRole('heading', { name: mock.sala.nombre })
     const pulsado = () => document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent
     fireEvent.keyDown(window, { key: 'c' })
-    expect(pulsado()).toBe('Comparación')
-    expect(document.querySelectorAll('.hz-flecha').length).toBe(2)
+    await waitFor(() => expect(pulsado()).toBe('Comparación'))
+    await waitFor(() => expect(document.querySelectorAll('.hz-flecha').length).toBe(2))
     fireEvent.keyDown(window, { key: '1' })
-    expect(pulsado()).toBe('Ronda 1')
+    await waitFor(() => expect(pulsado()).toBe('Ronda 1'))
     // dentro del selector de alcance no se interceptan teclas
     fireEvent.keyDown(screen.getByRole('combobox'), { key: '2' })
-    expect(pulsado()).toBe('Ronda 1')
+    await waitFor(() => expect(pulsado()).toBe('Ronda 1'))
     // jsdom no tiene requestFullscreen: F igual activa el modo sin controles
     fireEvent.keyDown(window, { key: 'f' })
-    expect(document.querySelector('main')?.className).toContain('hz-pantalla-completa')
+    await waitFor(() => expect(document.querySelector('main')?.className).toContain('hz-pantalla-completa'))
     fireEvent.keyDown(window, { key: 'F' })
-    expect(document.querySelector('main')?.className).not.toContain('hz-pantalla-completa')
+    await waitFor(() => expect(document.querySelector('main')?.className).not.toContain('hz-pantalla-completa'))
+  })
+
+  test('cambiar de alcance no desmonta la página ni pierde la vista elegida', async () => {
+    montar('/tablero/s_demo?t=tok')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    fireEvent.keyDown(window, { key: 'c' })
+    const select = screen.getByRole('combobox')
+    fireEvent.change(select, { target: { value: 'm2' } })
+    expect(screen.getByRole('combobox')).toBe(select)
+    expect(screen.queryByText('Cargando el tablero…')).toBeNull()
+    await waitFor(() => expect(llamadas.at(-1)).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m2&t=tok'))
+    expect(document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent).toBe('Comparación')
+  })
+
+  test('progreso con más completos que inscritos no pasa del 100 %', async () => {
+    const raro = structuredClone(mock)
+    raro.progreso.completos = 25
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(raro), { status: 200 })))
+    montar('/tablero/s_demo')
+    const barra = await screen.findByRole('progressbar')
+    expect(Number(barra.getAttribute('aria-valuenow'))).toBeLessThanOrEqual(Number(barra.getAttribute('aria-valuemax')))
+    expect((barra.firstChild as HTMLElement).style.width).toBe('100%')
   })
 
   test('estado vacío de la ronda 1', async () => {

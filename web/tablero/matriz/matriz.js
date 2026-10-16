@@ -261,8 +261,21 @@ export function matrizSVG(datos, opciones = {}) {
   const yBase = y0 + P;
 
   partes.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(W)} ${r2(H)}" width="${r2(W)}" height="${r2(H)}" role="img" aria-labelledby="${id}-t ${id}-d" font-family="'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" class="hz-matriz">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(W)} ${r2(H)}" width="${r2(W)}" height="${r2(H)}" role="img" style="display:block" aria-labelledby="${id}-t ${id}-d" font-family="'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" class="hz-matriz">`,
   );
+  const animar = !!opciones.animar && L.vivos.some((v) => v.r1 && v.r2);
+  if (animar) {
+    // Animación R1 → R2: la burbuja R2 sale desde la posición R1; flecha y etiquetas aparecen después.
+    partes.push(
+      `<style>` +
+        `.hz-anim-mov{animation:hzMover 1.2s cubic-bezier(.22,.8,.3,1) both}` +
+        `.hz-anim-apar{animation:hzAparecer .5s ease-out .9s both}` +
+        `@keyframes hzMover{from{transform:translate(var(--dx),var(--dy))}to{transform:translate(0,0)}}` +
+        `@keyframes hzAparecer{from{opacity:0}to{opacity:1}}` +
+        `@media (prefers-reduced-motion: reduce){.hz-anim-mov,.hz-anim-apar{animation:none}}` +
+        `</style>`,
+    );
+  }
   partes.push(`<title id="${id}-t">${esc(datos?.grafico?.titulo || 'Matriz de priorización por horizontes')}</title>`);
   const desc = L.vivos
     .map((v) => {
@@ -295,10 +308,10 @@ export function matrizSVG(datos, opciones = {}) {
     );
   });
   // Rejilla
-  for (let v = Math.ceil(L.xmin); v <= L.xmax; v++) {
+  for (let v = Math.ceil(L.xmin); v <= L.xmax && v - L.xmin <= 50; v++) {
     partes.push(`<line x1="${r2(sx(v))}" y1="${r2(y0)}" x2="${r2(sx(v))}" y2="${r2(yBase)}" stroke="${C.rejilla}" stroke-opacity="0.08"/>`);
   }
-  for (let v = Math.ceil(L.ymin); v <= L.ymax; v++) {
+  for (let v = Math.ceil(L.ymin); v <= L.ymax && v - L.ymin <= 50; v++) {
     partes.push(`<line x1="${r2(x0)}" y1="${r2(sy(v))}" x2="${r2(x0 + P)}" y2="${r2(sy(v))}" stroke="${C.rejilla}" stroke-opacity="0.08"/>`);
   }
   // Etiquetas H1, H2, H3
@@ -316,10 +329,10 @@ export function matrizSVG(datos, opciones = {}) {
     `<path d="M${r2(x0)},${r2(y0)} V${r2(yBase)} H${r2(x0 + P)}" fill="none" stroke="${C.texto}" stroke-width="${r2(Math.max(1.5, fs * 0.1))}"/>`,
   );
   const fsTick = Math.max(10, fs * 0.78);
-  for (let v = Math.ceil(L.xmin); v <= L.xmax; v++) {
+  for (let v = Math.ceil(L.xmin); v <= L.xmax && v - L.xmin <= 50; v++) {
     partes.push(`<text x="${r2(sx(v))}" y="${r2(yBase + fsTick * 1.3)}" font-size="${r2(fsTick)}" fill="${C.textoSuave}" text-anchor="middle">${v}</text>`);
   }
-  for (let v = Math.ceil(L.ymin); v <= L.ymax; v++) {
+  for (let v = Math.ceil(L.ymin); v <= L.ymax && v - L.ymin <= 50; v++) {
     partes.push(`<text x="${r2(x0 - fsTick * 0.6)}" y="${r2(sy(v))}" font-size="${r2(fsTick)}" fill="${C.textoSuave}" text-anchor="end" dominant-baseline="middle">${v}</text>`);
   }
   // Títulos de ejes
@@ -361,12 +374,14 @@ export function matrizSVG(datos, opciones = {}) {
     if (v.flecha && !v.flecha.encima) {
       const a = v.flecha;
       partes.push(
-        `<line class="hz-flecha" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${v.color}" stroke-width="${sw}" stroke-linecap="round" marker-end="url(#${id}-flecha${i})"/>`,
+        `<line class="hz-flecha${animar ? ' hz-anim-apar' : ''}" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${v.color}" stroke-width="${sw}" stroke-linecap="round" marker-end="url(#${id}-flecha${i})"/>`,
       );
     }
     if (v.r2) {
       partes.push(
-        `<circle class="hz-r2" data-proyecto="${esc(v.id)}" cx="${r2(v.r2.cx)}" cy="${r2(v.r2.cy)}" r="${r2(v.r2.r)}" fill="${v.color}" stroke="${C.halo}" stroke-width="2"><title>${esc(v.nombre)} ronda 2 · X ${v.r2.valor.x} · Y ${v.r2.valor.y}</title></circle>`,
+        `<circle class="hz-r2${animar && v.r1 ? ' hz-anim-mov' : ''}"${
+          animar && v.r1 ? ` style="--dx:${r2(v.r1.cx - v.r2.cx)}px;--dy:${r2(v.r1.cy - v.r2.cy)}px"` : ''
+        } data-proyecto="${esc(v.id)}" cx="${r2(v.r2.cx)}" cy="${r2(v.r2.cy)}" r="${r2(v.r2.r)}" fill="${v.color}" stroke="${C.halo}" stroke-width="2"><title>${esc(v.nombre)} ronda 2 · X ${v.r2.valor.x} · Y ${v.r2.valor.y}</title></circle>`,
       );
     }
   });
@@ -375,8 +390,10 @@ export function matrizSVG(datos, opciones = {}) {
     const a = v.flecha;
     const sw = r2(Math.max(2, fs * 0.16));
     partes.push(
+      `<g${animar ? ' class="hz-anim-apar"' : ''}>`,
       `<line x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${C.halo}" stroke-width="${r2(sw * 2.6)}" stroke-linecap="round"/>`,
       `<line class="hz-flecha" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${C.texto}" stroke-width="${sw}" stroke-linecap="round" marker-end="url(#${id}-flechaE)"/>`,
+      `</g>`,
     );
   });
   partes.push(`</g>`);
@@ -387,7 +404,7 @@ export function matrizSVG(datos, opciones = {}) {
   for (const e of orden) {
     const { caja } = e;
     partes.push(
-      `<text class="hz-etq hz-etq-${e.tipo}" x="${r2(caja.x + caja.w / 2)}" y="${r2(caja.y + caja.h / 2)}" font-size="${r2(e.fs)}" font-weight="${e.peso}" fill="${e.color}" text-anchor="middle" dominant-baseline="central" stroke="${C.halo}" stroke-width="${r2(e.fs * 0.28)}" stroke-linejoin="round" paint-order="stroke">${esc(e.texto)}</text>`,
+      `<text class="hz-etq hz-etq-${e.tipo}${animar && e.tipo !== 'fijo' ? ' hz-anim-apar' : ''}" x="${r2(caja.x + caja.w / 2)}" y="${r2(caja.y + caja.h / 2)}" font-size="${r2(e.fs)}" font-weight="${e.peso}" fill="${e.color}" text-anchor="middle" dominant-baseline="central" stroke="${C.halo}" stroke-width="${r2(e.fs * 0.28)}" stroke-linejoin="round" paint-order="stroke">${esc(e.texto)}</text>`,
     );
   }
   partes.push(`</g></svg>`);
