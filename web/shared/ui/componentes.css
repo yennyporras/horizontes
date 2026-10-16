@@ -35,6 +35,8 @@
   padding: 0 var(--hz-sp-4) calc(var(--hz-sp-12) * 2.5);
 }
 .hz-contenido { max-width: var(--hz-medida); margin: 0 auto; display: grid; gap: var(--hz-sp-6); }
+/* Ningún hijo (matriz, tablas) ensancha la página en 360 px. */
+.hz-contenido > * { min-width: 0; }
 .hz-titulo { font-size: var(--hz-fs-25); font-weight: 800; line-height: var(--hz-lh-titulo); color: var(--hz-azul); }
 .hz-subtitulo { font-size: var(--hz-fs-20); font-weight: 700; line-height: var(--hz-lh-titulo); }
 .hz-texto-2 { color: var(--hz-tinta-2); }
