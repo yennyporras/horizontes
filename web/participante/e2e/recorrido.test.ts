@@ -26,6 +26,12 @@ async function calificar(p: Page, valor: number, criterios = [0, 1, 2, 3, 4, 5])
   for (const i of criterios) await grupos.nth(i).locator('label.hz-opcion', { has: p.locator(`input[value="${valor}"]`) }).click()
 }
 
+/** Con HZ_CAPTURAS=carpeta guarda capturas de página completa para revisión visual. */
+async function capturar(p: Page, nombre: string) {
+  const dir = process.env.HZ_CAPTURAS
+  if (dir) await p.screenshot({ path: `${dir}/${nombre}.png`, fullPage: true })
+}
+
 /** Sin desborde horizontal en 360 px. */
 async function sinDesborde(p: Page) {
   const ancho = await p.evaluate(() => document.documentElement.scrollWidth)
@@ -76,6 +82,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await inscribirme.click({ force: true })
     await titulo(p, 'Bienvenido al taller Horizontes')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('target')).toBe('_blank')
+    await capturar(p, '01-inscripcion')
     await p.getByRole('checkbox').check()
     await inscribirme.click()
 
@@ -101,6 +108,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ver(p, 'Te faltan 6 criterios. Elige una opción en cada uno.')
     await calificar(p, 7)
     await sinDesborde(p)
+    await capturar(p, '02-calificar')
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, 'Calificación de INSUMEX guardada.')
 
@@ -112,6 +120,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, '1 calificación por enviar')
     await titulo(p, 'Voto guardado en este celular')
+    await capturar(p, '03-sin-senal')
     await ctx.setOffline(false)
     await ver(p, 'Volvió la señal: enviamos tu calificación de NUTRIWHAT.')
     await titulo(p, 'Voto registrado')
@@ -139,6 +148,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ver(p, 'Preliminar')
     await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
     await sinDesborde(p)
+    await capturar(p, '04-precierre')
 
     // Cierre de la ronda 1: resultado sin "Preliminar".
     await accion(e, sala.id, 'cerrar_ronda_1')
@@ -197,6 +207,10 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await matriz.waitFor()
     expect(await matriz.locator('.hz-r1').count()).toBeGreaterThanOrEqual(2)
     await sinDesborde(p)
+    await capturar(p, '05-comparacion')
+    // Estilos globales de otras áreas (p. ej. .hz-cifra del tablero) no deben agrandar el texto del celular.
+    const letra = await p.locator('.hzp-posicion dd').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    expect(letra).toBeLessThanOrEqual(16)
 
     // Fin del taller.
     await accion(e, sala.id, 'cerrar_sala')

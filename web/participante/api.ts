@@ -136,21 +136,29 @@ interface Opciones {
   etag?: string | null
 }
 
+/** Una petición colgada (4G mala) no puede bloquear la cola ni el botón de guardar: se corta y cuenta como sin red. */
+const TOPE_MS = 10_000
+
 async function pedir(ruta: string, op: Opciones = {}): Promise<{ status: number; datos: unknown; etag: string | null }> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (op.cuerpo !== undefined) headers['Content-Type'] = 'application/json'
   if (op.token) headers['X-Participante-Token'] = op.token
   if (op.etag) headers['If-None-Match'] = op.etag
   let r: Response
+  const corte = typeof AbortController === 'undefined' ? null : new AbortController()
+  const reloj = corte ? setTimeout(() => corte.abort(), TOPE_MS) : undefined
   try {
     r = await fetch(ruta, {
       method: op.metodo ?? 'GET',
       headers,
       body: op.cuerpo === undefined ? undefined : JSON.stringify(op.cuerpo),
       cache: 'no-store',
+      signal: corte?.signal,
     })
   } catch {
     throw new ErrorApi(0, 'SIN_RED', 'Sin conexión')
+  } finally {
+    clearTimeout(reloj)
   }
   if (r.status === 304) return { status: 304, datos: null, etag: op.etag ?? null }
   let datos: unknown = null

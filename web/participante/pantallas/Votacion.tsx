@@ -45,14 +45,16 @@ export interface CalificarProps {
   onGuardado: (r: RespuestaVoto, proyecto: string) => void
   onVolver: () => void
   /** Sin señal: el voto pasa a la cola del celular y se reenvía solo. */
-  onSinSenal: (voto: VotoEnCola) => void
+  onSinSenal: (voto: Omit<VotoEnCola, 'id' | 'participante_id'>) => void
+  /** Espera el reenvío de la cola en curso antes del PUT. */
+  esperarCola?: () => Promise<void>
   /** 401: la página revisa la sesión y ofrece recuperarla (lo marcado queda en el borrador). */
   onSesionVencida: () => void
   marco: MarcoBase
 }
 
 /** 8.8 Calificar proyecto: 6 rúbricas obligatorias, borrador en sessionStorage. */
-export function Calificar({ yo, codigo, token, proyectoId, onGuardado, onVolver, onSinSenal, onSesionVencida, marco }: CalificarProps) {
+export function Calificar({ yo, codigo, token, proyectoId, onGuardado, onVolver, onSinSenal, onSesionVencida, esperarCola, marco }: CalificarProps) {
   const ronda = yo.sala.ronda_actual
   const proyecto = yo.contenido.portafolio.find((p) => p.id === proyectoId)
   const hoja = yo.contenido.hojas.find((h) => h.proyecto_id === proyectoId && h.perfil_id === yo.participante.perfil.id)
@@ -86,6 +88,7 @@ export function Calificar({ yo, codigo, token, proyectoId, onGuardado, onVolver,
     const resp = {} as Record<string, number>
     for (const c of yo.criterios) resp[c.id] = respuestas[c.id]
     try {
+      await esperarCola?.()
       const r = await guardarVoto(token, { proyecto_id: proyectoId, ronda, respuestas: resp })
       guardarBorrador(codigo, proyectoId, ronda, null)
       onGuardado(r, proyecto?.nombre ?? proyectoId)

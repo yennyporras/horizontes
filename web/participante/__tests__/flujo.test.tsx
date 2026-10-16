@@ -261,7 +261,7 @@ describe('votación', () => {
       return { status: 404 }
     })
     const respuestas = { alistamiento_tecnico: 3, conocimiento_cliente: 3, regulacion: 3, capacidades_organizacionales: 3, alineacion_core: 3, inversion_requerida: 3 }
-    localStorage.setItem(`hz_cola:${CODIGO}`, JSON.stringify([{ proyecto_id: 'nutriwhat', nombre: 'NUTRIWHAT', ronda: 1, respuestas }]))
+    localStorage.setItem(`hz_cola:${CODIGO}`, JSON.stringify([{ id: 'v1', participante_id: yoBase.participante.id, proyecto_id: 'nutriwhat', nombre: 'NUTRIWHAT', ronda: 1, respuestas }]))
     conToken()
     montar()
     expect(await screen.findByText(/La ronda 1 se cerró antes de que llegara tu calificación de NUTRIWHAT/)).toBeTruthy()
