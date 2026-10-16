@@ -35,3 +35,15 @@ node web/tablero/e2e/comparacion.mjs "http://localhost:5183/tablero/s_demo?t=dem
 ```
 
 Resultado R1 (16-oct): golden OK en los 3 anchos (error ≤ 0,0001); cierre de ronda reflejado en 2,1 s.
+
+## Aceptación con el simulador de T1 (R2)
+```bash
+PORT=8823 DB_PATH=/tmp/hz.sqlite SUPERADMIN_USUARIO=simt3 SUPERADMIN_CLAVE=clave-sim-t3-123 npx tsx server/index.ts &
+API_URL=http://127.0.0.1:8823 npx vite --host 127.0.0.1 --port 5193 --strictPort &
+node web/tablero/e2e/simulador_vivo.mjs http://127.0.0.1:5193 http://127.0.0.1:8823 simt3 clave-sim-t3-123 /tmp &   # espera "LISTO"
+npx tsx tools/simulador.ts --url http://127.0.0.1:8823 --usuario simt3 --clave clave-sim-t3-123
+```
+El observador detecta la sala del simulador, abre su tablero a 1920 px y cada 200 ms compara el SVG con la API.
+En Windows, `kill` sobre `npx` no detiene el hijo: usa `taskkill //PID <pid> //T //F`.
+
+Resultado R2 (16-oct): 40 personas, 4 mesas, 2 rondas. 58 estados de la API dibujados, retraso p95 2,5 s y máximo 2,7 s; puntos finales iguales a la API (≤ 0,0001) y vista final Comparación. Simulador: 0 errores, 0 descuadres.
