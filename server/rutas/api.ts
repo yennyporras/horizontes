@@ -23,7 +23,7 @@ import { autenticarParticipante, infoMesa, inscribir, resultadosParticipante, vi
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
 import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
-import { sha256 } from '../dominio/util.js'
+import { isoBogota, sha256 } from '../dominio/util.js'
 import { uno } from '../db/index.js'
 
 export interface OpcionesApi {
@@ -188,7 +188,8 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   app.get<{ Params: { id: string } }>('/api/admin/salas/:id', async (req, reply) => {
     const d = detalleSala(db, req.params.id, op.baseUrl)
     const a = req.admin!
-    return responderConVersion(req, reply, { ...d, admin_actual: { id: a.id, usuario: a.usuario, nombre: a.nombre, rol: a.rol } })
+    // servidor_at: hora del servidor, para que el panel programe cierres aunque el reloj del computador esté corrido.
+    return responderConVersion(req, reply, { ...d, admin_actual: { id: a.id, usuario: a.usuario, nombre: a.nombre, rol: a.rol }, servidor_at: isoBogota(ahora()) })
   })
 
   app.patch<{ Params: { id: string } }>('/api/admin/salas/:id/config', async (req) => {
@@ -196,7 +197,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     return salaResumen(s, op.baseUrl).config
   })
 
-  app.post<{ Params: { id: string }; Body: { accion?: string; ronda?: number } }>('/api/admin/salas/:id/acciones', async (req) => {
+  app.post<{ Params: { id: string }; Body: { accion?: string; ronda?: unknown } }>('/api/admin/salas/:id/acciones', async (req) => {
     const s = aplicarAccion(db, cargarSala(db, req.params.id).id, String(req.body?.accion ?? ''), ahora(), por(req), { ronda: req.body?.ronda })
     if (s.estado === 'cerrada') op.alCerrarSala(s.id)
     return { sala: salaResumen(s, op.baseUrl) }
