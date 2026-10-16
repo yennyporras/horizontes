@@ -7,7 +7,7 @@ import { TablaComparada } from './TablaComparada'
 import { CuadriculaMesas } from './CuadriculaMesas'
 import { usePollingTablero } from './usePollingTablero'
 import { usePantallaCompleta } from './usePantallaCompleta'
-import { esPreliminar, mensajeVacio, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
+import { insigniaResultado, mensajeVacio, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
 import type { DatosTablero, Vista } from './tipos'
 import './tablero.css'
 
@@ -146,7 +146,7 @@ function Encabezado({
   pantallaCompleta: boolean
   onPantalla: () => void
 }) {
-  const preliminar = esPreliminar(datos)
+  const insignia = insigniaResultado(datos)
   const alcanceTexto =
     mesa === 'mesas' ? 'Todas las mesas' : datos.alcance?.tipo === 'mesa' ? (datos.alcance.mesa_nombre ?? 'Mesa') : 'Toda la sala'
   return (
@@ -157,9 +157,14 @@ function Encabezado({
           <span>{nombreEstado(datos.sala?.estado)}</span>
           <span aria-hidden="true">·</span>
           <span>{alcanceTexto}</span>
-          {preliminar && (
-            <span className="hz-insignia hz-insignia-alerta" title="El admin aún no cierra la ronda">
+          {insignia === 'preliminar' && (
+            <span className="hz-insignia hz-insignia-alerta" title="Todos votaron. El resultado queda en firme cuando el facilitador cierre la ronda">
               Preliminar
+            </span>
+          )}
+          {insignia === 'en_vivo' && (
+            <span className="hz-insignia hz-insignia-vivo" title="La ronda sigue abierta: el resultado cambia con cada voto">
+              En vivo
             </span>
           )}
         </p>

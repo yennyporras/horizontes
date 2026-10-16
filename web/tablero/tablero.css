@@ -92,6 +92,11 @@ body:has(> #root > .hz-tablero) {
   background: var(--t-alerta-fondo);
   border: 1px solid currentColor;
 }
+.hz-insignia-vivo {
+  color: var(--t-azul);
+  background: var(--t-h1);
+  border: 1px solid currentColor;
+}
 .hz-cab-controles {
   display: flex;
   flex-wrap: wrap;
