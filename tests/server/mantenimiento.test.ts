@@ -6,8 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { construirApp } from '../../server/app'
 import { abrirDb } from '../../server/db/index'
 import { asegurarSuperadmin } from '../../server/dominio/admins'
-import { LimitadorPeticiones } from '../../server/dominio/mantenimiento'
+import { LimitadorPeticiones, reiniciarSalaLimpia } from '../../server/dominio/mantenimiento'
 import { type Entorno, T0, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from './ayuda'
+import { uno } from '../../server/db/index'
 
 let e: Entorno
 beforeEach(async () => {
@@ -99,5 +100,62 @@ describe('caché del tablero', () => {
     const c = (await e.app.inject(url)).json()
     expect(c.version).not.toBe(a.version)
     expect(c.proyectos_vivos[0].rondas[0].n_votos).toBe(1)
+  })
+})
+
+describe('respaldo antes y después de cada sala', () => {
+  it('respalda al arrancar la sala, antes de reiniciar una ronda y al cerrarla', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hz-resp-'))
+    const dbPath = join(dir, 'h.sqlite')
+    const db = abrirDb(dbPath)
+    asegurarSuperadmin(db, 'paola', 'superclave123', T0)
+    const app = await construirApp({ db, dbPath, ahora: () => T0, intervaloCierresMs: 0 })
+    try {
+      const cookie = await loginCookie(app, 'paola', 'superclave123')
+      const s = (await app.inject({ method: 'POST', url: '/api/admin/salas', headers: { cookie }, payload: { nombre: 'R', plantilla: 'foodsume_2026', mesas: 1 } })).json()
+      const acc = (accion: string) => app.inject({ method: 'POST', url: `/api/admin/salas/${s.id}/acciones`, headers: { cookie }, payload: { accion } })
+      const respaldos = () => readdirSync(join(dir, 'respaldos')).filter((f) => f.includes(s.id))
+      await acc('abrir_inscripcion')
+      expect(respaldos().filter((f) => f.includes('_inicio'))).toHaveLength(1)
+      await acc('abrir_ronda_1')
+      expect(respaldos()).toHaveLength(1) // abrir R1 desde inscripción no repite el respaldo de inicio
+      await acc('reiniciar_ronda')
+      await acc('reiniciar_ronda') // mismo milisegundo: no choca con el anterior
+      expect(respaldos().filter((f) => f.includes('_antes_reinicio'))).toHaveLength(2)
+      await acc('cerrar_sala')
+      expect(respaldos().filter((f) => f.includes('_cierre'))).toHaveLength(1)
+    } finally {
+      await app.close()
+      db.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('reinicio limpio de la sala del taller', () => {
+  it('borra participantes, consentimientos, votos y eventos; conserva mesas, código y tablero', async () => {
+    const s = await crearSala(e, 2)
+    await accion(e, s.id, 'abrir_inscripcion')
+    await accion(e, s.id, 'abrir_ronda_1')
+    const otra = await crearSala(e, 1)
+    await accion(e, otra.id, 'abrir_inscripcion')
+    const tOtra = (await inscribir(e, otra.mesas[0].codigo, 'otra@x.co')).json().token
+    for (let i = 0; i < 3; i++) {
+      const t = (await inscribir(e, s.mesas[i % 2].codigo, `p${i}@x.co`)).json().token
+      expect((await votar(e, t, 'insumex', 1)).statusCode).toBe(200)
+    }
+    const r = reiniciarSalaLimpia(e.db, s.id, e.reloj.ms)
+    expect(r.borrados).toMatchObject({ votos: 3, participantes: 3, consentimientos: 3 })
+    expect(r.sala).toMatchObject({ estado: 'preparada', ronda_actual: 0, codigo: s.codigo, revelar_hojas: 0, cierre_programado_ronda_at: null })
+    const n = (sql: string, id: string) => uno<{ n: number }>(e.db, sql, id)!.n
+    expect(n('SELECT COUNT(*) AS n FROM participantes WHERE sala_id = ?', s.id)).toBe(0)
+    expect(n('SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?', s.id)).toBe(2)
+    expect(n("SELECT COUNT(*) AS n FROM eventos WHERE sala_id = ? AND tipo = 'sala_reiniciada'", s.id)).toBe(1)
+    // La otra sala no se toca y el enlace del tablero sigue sirviendo.
+    expect((await e.app.inject({ url: '/api/yo', headers: { 'x-participante-token': tOtra } })).statusCode).toBe(200)
+    expect((await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).statusCode).toBe(200)
+    // Y la sala vuelve a arrancar desde cero.
+    expect((await accion(e, s.id, 'abrir_inscripcion')).statusCode).toBe(200)
+    expect((await inscribir(e, s.mesas[0].codigo, 'p0@x.co')).statusCode).toBe(201)
   })
 })

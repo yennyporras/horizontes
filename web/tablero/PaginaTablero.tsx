@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { MatrizHorizontes } from './MatrizHorizontes'
 import { PanelProyecto } from './PanelProyecto'
@@ -7,7 +7,7 @@ import { TablaComparada } from './TablaComparada'
 import { CuadriculaMesas } from './CuadriculaMesas'
 import { usePollingTablero } from './usePollingTablero'
 import { usePantallaCompleta } from './usePantallaCompleta'
-import { esPreliminar, mensajeVacio, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
+import { insigniaResultado, mensajeVacio, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
 import type { DatosTablero, Vista } from './tipos'
 import './tablero.css'
 
@@ -29,10 +29,14 @@ export default function PaginaTablero() {
   const { datos, error, cargando } = usePollingTablero(url)
 
   // La vista elegida a mano dura hasta que cambie el estado de la sala; entonces vuelve la de defecto.
+  // Se guarda con el estado en que se eligió (sin efecto que la borre: un atajo pulsado justo al
+  // llegar los datos no se pierde).
   const estado = datos?.sala?.estado
-  const [elegida, setElegida] = useState<Vista | null>(null)
-  useEffect(() => setElegida(null), [estado])
-  const vista = elegida ?? vistaPorDefecto(estado, datos?.sala?.ronda_actual)
+  const [elegida, setElegidaConEstado] = useState<{ vista: Vista; estado: typeof estado } | null>(null)
+  const estadoRef = useRef(estado)
+  estadoRef.current = estado
+  const setElegida = useCallback((v: Vista) => setElegidaConEstado({ vista: v, estado: estadoRef.current }), [])
+  const vista = elegida && elegida.estado === estado ? elegida.vista : vistaPorDefecto(estado, datos?.sala?.ronda_actual)
 
   const escalaTexto = useEscalaProyector()
   const pantalla = usePantallaCompleta(setElegida)
@@ -90,7 +94,7 @@ export default function PaginaTablero() {
         <div className="hz-cuerpo">
           <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
             <Vacio datos={datos} vista={vista} />
-            <div className="hz-lienzo">
+            <div className="hz-lienzo" data-version={datos.version}>
               <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} />
             </div>
             <Leyenda vista={vista} />
@@ -124,7 +128,7 @@ function useEscalaProyector() {
     m.addEventListener('change', cambio)
     return () => m.removeEventListener('change', cambio)
   }, [])
-  return ancho ? 1.3 : 1
+  return ancho ? 1.45 : 1
 }
 
 function Encabezado({
@@ -146,7 +150,7 @@ function Encabezado({
   pantallaCompleta: boolean
   onPantalla: () => void
 }) {
-  const preliminar = esPreliminar(datos)
+  const insignia = insigniaResultado(datos)
   const alcanceTexto =
     mesa === 'mesas' ? 'Todas las mesas' : datos.alcance?.tipo === 'mesa' ? (datos.alcance.mesa_nombre ?? 'Mesa') : 'Toda la sala'
   return (
@@ -157,9 +161,14 @@ function Encabezado({
           <span>{nombreEstado(datos.sala?.estado)}</span>
           <span aria-hidden="true">·</span>
           <span>{alcanceTexto}</span>
-          {preliminar && (
-            <span className="hz-insignia hz-insignia-alerta" title="El admin aún no cierra la ronda">
+          {insignia === 'preliminar' && (
+            <span className="hz-insignia hz-insignia-alerta" title="Todos votaron. El resultado queda en firme cuando el facilitador cierre la ronda">
               Preliminar
+            </span>
+          )}
+          {insignia === 'en_vivo' && (
+            <span className="hz-insignia hz-insignia-vivo" title="La ronda sigue abierta: el resultado cambia con cada voto">
+              En vivo
             </span>
           )}
         </p>

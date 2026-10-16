@@ -219,15 +219,20 @@ describe('votación', () => {
     expect(await screen.findByText('La ronda 1 ya se cerró. Tu última calificación guardada es la que cuenta.')).toBeTruthy()
   })
 
-  it('sin red al guardar ofrece reintentar y conserva lo marcado', async () => {
-    servidor((url) => {
+  it('sin red al guardar deja el voto en la cola y lo envía solo al volver la señal', async () => {
+    let conSenal = false
+    servidor((url, init) => {
       if (url === '/api/yo') return { status: 200, body: yoBase }
-      throw new TypeError('Failed to fetch')
+      if (url === '/api/votos') {
+        const v = JSON.parse(String(init.body))
+        return { status: 200, body: { voto: v, completo_ronda: false, progreso_mesa: { inscritos: 7, completos: 3, precierre: false } } }
+      }
+      return { status: 404 }
     })
     const f = globalThis.fetch as ReturnType<typeof vi.fn>
     const original = f.getMockImplementation()!
     f.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url === '/api/votos') throw new TypeError('Failed to fetch')
+      if (url === '/api/votos' && !conSenal) throw new TypeError('Failed to fetch')
       return original(url, init)
     })
     conToken()
@@ -237,7 +242,49 @@ describe('votación', () => {
     // INSUMEX ya tenía voto: las 6 respuestas vienen marcadas.
     expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(6)
     fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
-    expect(await screen.findByRole('button', { name: 'Reintentar guardado' })).toBeTruthy()
+    expect(await screen.findByText('1 calificación por enviar')).toBeTruthy()
+    expect(screen.getByText('Por enviar')).toBeTruthy()
+    const cola = JSON.parse(localStorage.getItem(`hz_cola:${CODIGO}`) ?? '[]')
+    expect(cola).toHaveLength(1)
+    expect(cola[0]).toMatchObject({ proyecto_id: 'insumex', ronda: 1 })
+    conSenal = true
+    window.dispatchEvent(new Event('online'))
+    expect(await screen.findByText('Volvió la señal: enviamos tu calificación de INSUMEX.')).toBeTruthy()
+    expect(localStorage.getItem(`hz_cola:${CODIGO}`)).toBeNull()
+    expect(screen.queryByText('1 calificación por enviar')).toBeNull()
+  })
+
+  it('si la ronda se cerró antes de enviar la cola, avisa y conserva lo marcado', async () => {
+    servidor((url) => {
+      if (url === '/api/yo') return { status: 200, body: yoBase }
+      if (url === '/api/votos') return { status: 409, body: { error: { codigo: 'RONDA_CERRADA', mensaje: 'La ronda 1 ya se cerró.' } } }
+      return { status: 404 }
+    })
+    const respuestas = { alistamiento_tecnico: 3, conocimiento_cliente: 3, regulacion: 3, capacidades_organizacionales: 3, alineacion_core: 3, inversion_requerida: 3 }
+    localStorage.setItem(`hz_cola:${CODIGO}`, JSON.stringify([{ id: 'v1', participante_id: yoBase.participante.id, proyecto_id: 'nutriwhat', nombre: 'NUTRIWHAT', ronda: 1, respuestas }]))
+    conToken()
+    montar()
+    expect(await screen.findByText(/La ronda 1 se cerró antes de que llegara tu calificación de NUTRIWHAT/)).toBeTruthy()
+    expect(localStorage.getItem(`hz_cola:${CODIGO}`)).toBeNull()
+    expect(JSON.parse(sessionStorage.getItem(`hz_borrador_nutriwhat_r1:${CODIGO}`) ?? 'null')).toEqual(respuestas)
+  })
+
+  it('la ronda se cierra mientras califica: mensaje claro y lo marcado se conserva', async () => {
+    let yo: Yo = yoBase as unknown as Yo
+    servidor((url) => (url === '/api/yo' ? { status: 200, body: yo, headers: { ETag: yo.version } } : { status: 404 }))
+    conToken()
+    sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:nutriwhat')
+    montar()
+    await screen.findByRole('heading', { name: 'NUTRIWHAT' })
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: /Alistamiento/ })).getAllByRole('radio')[2])
+    yo = yoCon((y) => {
+      y.version = 'v-cerrada'
+      y.sala.estado = 'r1_cerrada'
+      y.resultados = null
+    })
+    await waitFor(() => expect(screen.getByText(/La ronda 1 se cerró mientras calificabas NUTRIWHAT/)).toBeTruthy(), { timeout: 6000 })
+    expect(screen.getByText(/Esos cambios no alcanzaron a guardarse/)).toBeTruthy()
+    expect(JSON.parse(sessionStorage.getItem(`hz_borrador_nutriwhat_r1:${CODIGO}`) ?? '{}')).toHaveProperty('alistamiento_tecnico')
   })
 })
 
@@ -295,14 +342,30 @@ describe('estados de la sala', () => {
     expect(titulos[0]).toContain('Tu hoja')
   })
 
-  it('token no válido pide volver a inscribirse y borra el token', async () => {
-    servidor((url) => (url === '/api/yo' ? { status: 401, body: { error: { codigo: 'TOKEN_INVALIDO', mensaje: 'x' } } } : { status: 200, body: MESA }))
+  it('token vencido: recupera la sesión con el correo ya escrito y vuelve a donde iba', async () => {
+    let inscrito = false
+    servidor((url) => {
+      if (url === '/api/yo') return inscrito ? { status: 200, body: yoBase } : { status: 401, body: { error: { codigo: 'TOKEN_INVALIDO', mensaje: 'x' } } }
+      if (url === '/api/inscripcion') {
+        inscrito = true
+        return { status: 409, body: { error: { codigo: 'CORREO_YA_INSCRITO', mensaje: 'Ya' }, token: 'tok-2', participante: yoBase.participante } }
+      }
+      return { status: 200, body: MESA }
+    })
     conToken()
+    localStorage.setItem(`hz_datos:${CODIGO}`, JSON.stringify({ nombre: 'Ana Pérez', correo: 'ana@empresa.com' }))
+    sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:nutriwhat')
     montar()
     expect(await screen.findByRole('heading', { name: 'Tu sesión ya no está activa' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Volver a inscribirme' }))
-    expect(await screen.findByRole('heading', { name: 'Bienvenido al taller Horizontes' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Recuperar mi sesión' }))
+    expect(await screen.findByRole('heading', { name: 'Recupera tu sesión' })).toBeTruthy()
     expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBeNull()
+    expect((screen.getByLabelText(/Tu correo/) as HTMLInputElement).value).toBe('ana@empresa.com')
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Recuperar mi sesión' }))
+    // Vuelve a la pantalla en la que iba (calificar NUTRIWHAT), sin la bienvenida.
+    expect(await screen.findByRole('heading', { name: 'NUTRIWHAT' })).toBeTruthy()
+    expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBe('tok-2')
   })
 
   it('ningún texto de las pantallas lleva rayas', async () => {

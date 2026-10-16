@@ -89,10 +89,14 @@ export function usarYo(token: string | null) {
     setEstado({ yo: null, fatal: null, errorCarga: null, sinConexion: false, recuperada: false })
     if (token) void consultar(true)
     const alVolver = () => document.visibilityState === 'visible' && void consultar()
+    // Volvió la señal: no espera el resto del backoff.
+    const alConectar = () => void consultar()
     document.addEventListener('visibilitychange', alVolver)
+    window.addEventListener('online', alConectar)
     return () => {
       vivo.current = false
       document.removeEventListener('visibilitychange', alVolver)
+      window.removeEventListener('online', alConectar)
       if (temporizador.current) clearTimeout(temporizador.current)
       if (recuperacion.current) clearTimeout(recuperacion.current)
     }
