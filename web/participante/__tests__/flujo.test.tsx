@@ -78,6 +78,22 @@ describe('antes de inscribirse', () => {
     expect(await screen.findByRole('heading', { name: 'El taller ya terminó' })).toBeTruthy()
   })
 
+  it('con la inscripción cerrada permite recuperar la sesión por correo', async () => {
+    servidor((url) => {
+      if (url.startsWith('/api/mesas/')) return { status: 200, body: { ...MESA, inscripcion_abierta: false, sala: { ...MESA.sala, estado: 'r2_cerrada' } } }
+      if (url === '/api/inscripcion') return { status: 409, body: { error: { codigo: 'INSCRIPCION_CERRADA', mensaje: 'Cerrada' } } }
+      return { status: 404 }
+    })
+    montar()
+    fireEvent.click(await screen.findByRole('button', { name: 'Ya me inscribí: recuperar mi sesión' }))
+    expect(await screen.findByRole('heading', { name: 'Recupera tu sesión' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Tu nombre'), { target: { value: 'Ana' } })
+    fireEvent.change(screen.getByLabelText('Tu correo'), { target: { value: 'otro@empresa.com' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Recuperar mi sesión' }))
+    expect(await screen.findByText('No encontramos ese correo en esta sala. Escríbelo igual que cuando te inscribiste.')).toBeTruthy()
+  })
+
   it('inscripción: consentimiento obligatorio, validación y bienvenida con el perfil', async () => {
     let cuerpo: Record<string, unknown> | null = null
     servidor((url, init) => {
