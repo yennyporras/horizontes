@@ -5,6 +5,10 @@
 //   npm run simular -- --golden                       -> 20 personas con los votos de la prueba sintética del golden
 //   npm run simular -- --url https://staging-horizontes.estratek.com.co --usuario paola --clave '...'
 //   npm run simular -- --json informe.json            -> además guarda el informe completo
+//   npm run ensayo                                    -> ensayo general (tools/simulador/ensayo.ts): precierre por mesa,
+//                                                        cambios en vivo y cierre programado real a 10 min (--cierre-min N)
+//   npm run ensayo -- --md docs/ENSAYO_corrida.md      -> además escribe el informe en markdown
+//   --puerto 4101                                     -> puerto fijo para la API local (por defecto uno libre)
 //
 // Sale con 1 si hay errores HTTP, alguna verificación falla o el p95 supera 500 ms.
 import { fork } from 'node:child_process'
@@ -14,6 +18,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CRITERIOS, type Respuestas, generadorRealista } from './distribuciones.js'
+import { type InformeEnsayo, ensayarTaller } from './ensayo.js'
 import { type Informe, type VotosGolden, simularTaller } from './simular.js'
 
 const RAIZ = resolve(fileURLToPath(import.meta.url), '../../..')
@@ -48,9 +53,9 @@ export function cargarGolden(): VotosGolden {
  * así la latencia del cliente no se mezcla con la de 40 celulares simulados en el mismo event loop.
  * El tiempo dentro del servidor llega por IPC desde tools/simulador/servidor.ts.
  */
-export async function servidorLocal(usuario: string, clave: string) {
+export async function servidorLocal(usuario: string, clave: string, puerto?: number) {
   const dir = mkdtempSync(join(tmpdir(), 'hz-sim-'))
-  const port = await puertoLibre()
+  const port = puerto ?? (await puertoLibre())
   const hijo = fork(resolve(RAIZ, 'tools/simulador/servidor.ts'), [], {
     cwd: RAIZ,
     execArgv: ['--disable-warning=ExperimentalWarning', '--import', 'tsx'],
@@ -112,6 +117,27 @@ export function imprimir(inf: Informe, tiemposServidor?: number[]) {
   console.log(inf.ok ? 'SIMULACIÓN OK' : 'SIMULACIÓN CON FALLAS')
 }
 
+/** Informe del ensayo en markdown (para docs/ENSAYO.md). */
+export function informeMarkdown(e: InformeEnsayo, ctx: { personas: number; mesas: number; golden: boolean; base: string; tiemposServidor?: number[] }) {
+  const f = (x: number) => x.toFixed(1)
+  const s = ctx.tiemposServidor?.length ? [...ctx.tiemposServidor].sort((a, b) => a - b) : []
+  const l: string[] = []
+  l.push(`### Corrida ${new Date().toISOString().slice(0, 16)}Z · ${ctx.golden ? 'golden' : 'realista'} · ${ctx.personas} personas · ${ctx.mesas} mesas · ${ctx.base}`)
+  l.push('')
+  l.push(`Resultado: **${e.ok ? 'OK' : 'CON FALLAS'}** · sala ${e.sala.codigo} · ${(e.duracionMs / 60000).toFixed(1)} min · ${e.peticiones} peticiones · errores HTTP ${e.errores.length} · 5xx ${e.errores5xx} · p95 cliente ${f(e.p95Total)} ms${s.length ? ` · p95 servidor ${f(s[Math.ceil(s.length * 0.95) - 1])} ms` : ''}`)
+  l.push('')
+  l.push('| Verificación | | Detalle |', '|---|---|---|')
+  for (const v of e.verificaciones) l.push(`| ${v.nombre} | ${v.ok ? 'OK' : 'FALLA'} | ${(v.detalle ?? '').replace(/\|/g, '/')} |`)
+  l.push('', '| Cambio en vivo | Mediana | Último celular |', '|---|---|---|')
+  for (const p of e.propagacion) l.push(`| ${p.cambio} | ${p.p50Ms} ms | ${p.maxMs} ms |`)
+  l.push('', '| Cierre programado | Programado | Aplicado | Desfase | Último celular |', '|---|---|---|---|---|')
+  for (const c of e.cierres) l.push(`| ${c.que} | ${c.programado} | ${c.aplicado} | ${c.desfaseMs} ms | ${c.ultimoCelularMs} ms |`)
+  l.push('', '| Ruta | n | p50 | p95 | máx. |', '|---|---|---|---|---|')
+  for (const r of e.latencias) l.push(`| ${r.ruta} | ${r.n} | ${f(r.p50)} | ${f(r.p95)} | ${f(r.max)} |`)
+  if (e.errores.length) l.push('', 'Errores:', ...e.errores.slice(0, 20).map((x) => `- ${x}`))
+  return `${l.join('\n')}\n`
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const golden = bandera('golden') ? cargarGolden() : undefined
   const personas = golden ? 20 : Number(arg('personas', '40'))
@@ -124,15 +150,26 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error('Contra un servidor remoto indica --usuario y --clave (o SUPERADMIN_USUARIO y SUPERADMIN_CLAVE).')
     process.exit(2)
   }
-  const local = base ? null : await servidorLocal(usuario, clave)
+  const local = base ? null : await servidorLocal(usuario, clave, arg('puerto') ? Number(arg('puerto')) : undefined)
   base ??= local!.base
+  const comun = { base, usuario, clave, personas, mesas, pollMs: Number(arg('poll', '2500')), semilla, generador: generadorRealista(semilla, mesas), golden, log: console.log }
   let inf: Informe
   try {
-    inf = await simularTaller({ base, usuario, clave, personas, mesas, pollMs: Number(arg('poll', '2500')), semilla, generador: generadorRealista(semilla, mesas), golden, log: console.log })
+    inf = bandera('ensayo')
+      ? await ensayarTaller({ ...comun, cierreMin: Number(arg('cierre-min', '10')), cierreSalaSeg: Number(arg('cierre-sala-seg', '20')) })
+      : await simularTaller(comun)
   } finally {
     await local?.cerrar()
   }
   imprimir(inf, local?.tiempos)
+  if (bandera('ensayo')) {
+    const e = inf as InformeEnsayo
+    console.log(`\nErrores 5xx: ${e.errores5xx}`)
+    for (const p of e.propagacion) console.log(`  propagación ${p.cambio}: mediana ${p.p50Ms} ms, último celular ${p.maxMs} ms`)
+    for (const c of e.cierres) console.log(`  ${c.que}: programado ${c.programado}, aplicado ${c.aplicado} (desfase ${c.desfaseMs} ms), último celular ${c.ultimoCelularMs} ms`)
+    const md = arg('md')
+    if (md) writeFileSync(md, informeMarkdown(e, { personas, mesas, golden: Boolean(golden), base: arg('url') ?? 'local', tiemposServidor: local?.tiempos }))
+  }
   const json = arg('json')
   if (json) writeFileSync(json, JSON.stringify({ ...inf, tiempos_servidor_ms: local?.tiempos }, null, 2))
   process.exit(inf.ok ? 0 : 1)

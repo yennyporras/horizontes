@@ -13,7 +13,9 @@
     "test": "vitest run",
     "seed": "tsx server/seed.ts",
     "simular": "tsx tools/simulador/index.ts",
-    "simular:golden": "tsx tools/simulador/index.ts --golden"
+    "simular:golden": "tsx tools/simulador/index.ts --golden",
+    "ensayo": "tsx tools/simulador/index.ts --ensayo",
+    "ensayo:golden": "tsx tools/simulador/index.ts --ensayo --golden"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.0",
