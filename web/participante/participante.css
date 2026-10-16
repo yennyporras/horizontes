@@ -52,5 +52,7 @@
 .hzp-tabla tbody th { font-weight: 500; padding-right: var(--hz-sp-3); }
 .hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 4.5rem; font-weight: 700; }
 
-/* Matriz de T3 dentro del resultado: sale del padding lateral para ganar ancho en 360 px. */
-.hzp-matriz { margin-inline: calc(var(--hz-sp-2) * -1); min-height: 320px; }
+/* Matriz de T3 dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
+   (min-width: auto): sin min-width 0, el SVG inicial de 360 px ensancha la página. */
+.hzp-resultado > *, .hzp-matriz { min-width: 0; }
+.hzp-matriz { min-height: 320px; overflow: hidden; }
