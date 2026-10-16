@@ -140,3 +140,16 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
     return cargarSala(db, id)
   })
 }
+
+/** Sala nueva para ensayos: misma plantilla, mismas mesas y misma configuración de visibilidad; sin inscritos ni votos. */
+export function duplicarSala(db: Db, idOCodigo: string, nombre: string | undefined, ahora: number, por: string) {
+  const orig = cargarSala(db, idOCodigo)
+  const nMesas = mesasDeSala(db, orig.id).length
+  const nuevoNombre = (nombre ?? '').trim() || `${orig.nombre.slice(0, 110)} (copia)`
+  return transaccion(db, () => {
+    const s = crearSalaDesdePlantilla(db, { nombre: nuevoNombre, plantilla: orig.plantilla, mesas: Math.max(1, nMesas) }, ahora, por)
+    ejecutar(db, 'UPDATE salas SET alcance_resultados = ?, vista_participante = ? WHERE id = ?', orig.alcance_resultados, orig.vista_participante, s.id)
+    registrarEvento(db, s.id, ahora, 'sala_duplicada', por, { desde: orig.id })
+    return cargarSala(db, s.id)
+  })
+}

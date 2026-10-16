@@ -38,7 +38,9 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
     return reply.code(500).send(cuerpoError('ERROR_INTERNO', 'Algo falló en el servidor. Intenta de nuevo.'))
   })
 
-  app.get('/api/health', async () => ({ ok: true, modo: op.mocks ? 'mocks' : 'api' }))
+  // version: commit desplegado (Coolify pasa SOURCE_COMMIT a la imagen); el monitor /admin/salud lo muestra.
+  const version = process.env.SOURCE_COMMIT || process.env.APP_VERSION || undefined
+  app.get('/api/health', async () => ({ ok: true, modo: op.mocks ? 'mocks' : 'api', version }))
 
   if (op.mocks) {
     await app.register(rutasMocks)
@@ -84,9 +86,11 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
   // Producción: sirve el build de Vite (dist/web) con fallback SPA para /m, /tablero y /admin.
   const web = resolve(RAIZ, 'dist', 'web')
   const hayWeb = existsSync(web)
-  if (hayWeb) await app.register(fastifyStatic, { root: web, wildcard: false })
+  // wildcard: true busca cada archivo al pedirlo, así un build nuevo se sirve sin reiniciar el servidor.
+  if (hayWeb) await app.register(fastifyStatic, { root: web, wildcard: true })
   app.setNotFoundHandler((req, reply) => {
-    if (!hayWeb || req.url.startsWith('/api/')) return reply.code(404).send(cuerpoError('NO_ENCONTRADO', 'Ruta no encontrada.'))
+    // Un asset que no existe (build viejo en caché del celular) es 404, no la SPA.
+    if (!hayWeb || req.url.startsWith('/api/') || req.url.startsWith('/assets/')) return reply.code(404).send(cuerpoError('NO_ENCONTRADO', 'Ruta no encontrada.'))
     return reply.sendFile('index.html')
   })
 
