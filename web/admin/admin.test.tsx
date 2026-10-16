@@ -134,6 +134,17 @@ describe('panel admin contra el simulador', () => {
     expect(boton('Reabrir sala').disabled).toBe(false)
   })
 
+  it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {
+    montar('/admin/login')
+    await entrar('paola')
+    const botones = await screen.findAllByRole('button', { name: /^Duplicar .* para ensayo$/ })
+    const nombre = botones[0].getAttribute('aria-label')!.replace(/^Duplicar | para ensayo$/g, '')
+    fireEvent.click(botones[0])
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    expect(await screen.findByText(`${nombre} (ensayo)`)).toBeTruthy()
+    await screen.findByText('Preparada')
+  })
+
   it('el monitor de salud muestra el servidor y la latencia', async () => {
     montar('/admin/login')
     await entrar('jorge')
