@@ -1,3 +1,4 @@
+import type React from 'react'
 import { MatrizHorizontes } from './MatrizHorizontes'
 import { usePollingTablero } from './usePollingTablero'
 import { esPreliminar, mensajeVacio, rondaAbierta, urlApiTablero } from './logica'
@@ -6,17 +7,20 @@ import type { DatosTablero, ProgresoMesa, Vista } from './tipos'
 // Con muchas mesas cada una hace su propio polling: más lento que el tablero principal para no cargar el servidor.
 const INTERVALO_MESAS_MS = 5000
 
-function CeldaMesa({ sala, token, mesa, vista, escalaTexto }: { sala: string; token: string | null; mesa: ProgresoMesa; vista: Vista; escalaTexto: number }) {
+function CeldaMesa({ sala, token, mesa, vista, escalaTexto, llenar }: { sala: string; token: string | null; mesa: ProgresoMesa; vista: Vista; escalaTexto: number; llenar: boolean }) {
   const { datos, error } = usePollingTablero(urlApiTablero(sala, { mesa: mesa.mesa_id, t: token }), INTERVALO_MESAS_MS)
   const vacio = datos ? mensajeVacio(datos, vista) : null
   const idTitulo = `hz-celda-${mesa.mesa_id}`
-  const lista = mesa.precierre && rondaAbierta(datos?.sala?.estado)
+  // Conteo, "todos votaron" y "Preliminar" salen de la misma respuesta (la de la celda) para que no se
+  // contradigan entre polls; mientras llega, el progreso de la sala.
+  const propia = datos?.progreso?.por_mesa?.find((m) => m.mesa_id === mesa.mesa_id) ?? mesa
+  const lista = propia.precierre && rondaAbierta(datos?.sala?.estado)
   return (
     <section className="hz-celda-mesa" aria-labelledby={idTitulo}>
       <header className="hz-celda-cab">
         <h2 id={idTitulo}>{mesa.nombre}</h2>
         <span className={lista ? 'hz-mesa-n hz-ok-texto' : 'hz-mesa-n'}>
-          {mesa.completos} de {mesa.inscritos}
+          {propia.completos} de {propia.inscritos}
           {lista ? ', todos votaron' : ''}
         </span>
         {datos && esPreliminar(datos) && <span className="hz-insignia hz-insignia-alerta">Preliminar</span>}
@@ -27,7 +31,9 @@ function CeldaMesa({ sala, token, mesa, vista, escalaTexto }: { sala: string; to
         </p>
       )}
       {vacio && <p className="hz-vacio">{vacio}</p>}
-      <MatrizHorizontes datos={datos} vista={vista} escalaTexto={escalaTexto} animarComparacion={false} />
+      <div className="hz-celda-lienzo">
+        <MatrizHorizontes datos={datos} vista={vista} escalaTexto={escalaTexto} llenar={llenar} animarComparacion={false} />
+      </div>
     </section>
   )
 }
@@ -42,10 +48,15 @@ export function CuadriculaMesas({ sala, token, datos, vista, escalaTexto }: { sa
       </p>
     )
   }
+  // Proyector: las mesas llenan la pantalla (hasta 3 columnas con 2 o 3 mesas; 2 filas con hasta 8).
+  const n = mesas.length
+  const columnas = n <= 3 ? n : Math.min(4, Math.ceil(n / 2))
+  const filas = Math.ceil(n / columnas)
+  const proyector = escalaTexto > 1
   return (
-    <div className="hz-cuadricula">
+    <div className="hz-cuadricula" style={{ '--hz-cols': columnas, '--hz-filas': filas } as React.CSSProperties}>
       {mesas.map((m) => (
-        <CeldaMesa key={m.mesa_id} sala={sala} token={token} mesa={m} vista={vista} escalaTexto={escalaTexto} />
+        <CeldaMesa key={m.mesa_id} sala={sala} token={token} mesa={m} vista={vista} escalaTexto={escalaTexto} llenar={proyector} />
       ))}
     </div>
   )
