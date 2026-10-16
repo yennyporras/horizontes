@@ -39,7 +39,7 @@
 .hzp-hoja-plegable > .hz-boton { justify-self: start; padding: 0; }
 .hzp-hoja-plegable__texto { padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); font-size: var(--hz-fs-14); }
 
-/* Resultado provisional (hasta la matriz de T3) */
+/* Resultado del alcance */
 .hzp-resultado { display: grid; gap: var(--hz-sp-5); }
 .hzp-resultado__proyecto { display: grid; gap: var(--hz-sp-3); padding: var(--hz-sp-4); border: 1px solid var(--hz-h3); border-radius: var(--hz-r-l); }
 .hzp-posicion { margin: 0; display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
@@ -51,3 +51,6 @@
 .hzp-tabla thead th { font-weight: 700; color: var(--hz-tinta-2); }
 .hzp-tabla tbody th { font-weight: 500; padding-right: var(--hz-sp-3); }
 .hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 4.5rem; font-weight: 700; }
+
+/* Matriz de T3 dentro del resultado: sale del padding lateral para ganar ancho en 360 px. */
+.hzp-matriz { margin-inline: calc(var(--hz-sp-2) * -1); min-height: 320px; }

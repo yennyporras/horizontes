@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { Aviso, Boton, Campo, Casilla } from '../../shared/ui'
 import { ErrorApi, inscribirse, type Mesa } from '../api'
 import { Marco } from '../Comun'
+import { guardarDatos, leerDatos } from '../sesion'
 
 const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -11,12 +12,15 @@ export interface InscripcionProps {
   onInscrito: (token: string, yaInscrito: boolean) => void
   /** Inscripción cerrada: solo recupera la sesión de quien ya se inscribió con ese correo. */
   recuperar?: boolean
+  /** Por qué se recupera (sesión vencida): aviso arriba del formulario. */
+  motivo?: string
 }
 
 /** 8.1 Inscripción con el componente de consentimiento (patrón del IRMI, texto de Estratek). */
-export function Inscripcion({ codigo, mesa, onInscrito, recuperar }: InscripcionProps) {
-  const [nombre, setNombre] = useState('')
-  const [correo, setCorreo] = useState('')
+export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: InscripcionProps) {
+  // Si ya se inscribió en este celular, el formulario llega lleno (recuperar sesión en un toque).
+  const [nombre, setNombre] = useState(() => leerDatos(codigo)?.nombre ?? '')
+  const [correo, setCorreo] = useState(() => leerDatos(codigo)?.correo ?? '')
   const [acepta, setAcepta] = useState(false)
   const [errores, setErrores] = useState<{ nombre?: string; correo?: string }>({})
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
@@ -42,7 +46,9 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar }: Inscripcion
     setEnviando(true)
     setErrorEnvio(null)
     try {
-      const r = await inscribirse({ codigoMesa: codigo, nombre: nombre.trim(), correo: correo.trim().toLowerCase(), version: mesa.consentimiento.version })
+      const datos = { nombre: nombre.trim(), correo: correo.trim().toLowerCase() }
+      const r = await inscribirse({ codigoMesa: codigo, ...datos, version: mesa.consentimiento.version })
+      guardarDatos(codigo, datos)
       onInscrito(r.token, r.yaInscrito)
     } catch (err) {
       const ea = err instanceof ErrorApi ? err : null
@@ -78,6 +84,7 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar }: Inscripcion
           ? `Escribe el correo con el que te inscribiste en ${mesa.sala.nombre} y retomas donde ibas.`
           : `Estás en ${mesa.mesa.nombre} de ${mesa.sala.nombre}. Inscríbete para recibir el caso y tu hoja de información.`}
       </p>
+      {motivo && <Aviso tono="info">{motivo}</Aviso>}
       <form ref={formRef} className="hzp-form" noValidate onSubmit={enviar}>
         <Campo
           etiqueta="Tu nombre"

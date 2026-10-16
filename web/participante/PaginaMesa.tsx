@@ -1,13 +1,14 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { Aviso, BarraProgreso, Boton } from '../shared/ui'
 import { ErrorApi, obtenerMesa, type Mesa, type RespuestaVoto, type Yo } from './api'
+import { encolar, enviarCola, leerCola, quitar as quitarDeCola, type VotoEnCola } from './cola'
 import { Cargando, Marco, Mensaje, type MarcoBase } from './Comun'
 import { Inscripcion } from './pantallas/Inscripcion'
 import { Lectura } from './pantallas/Lectura'
 import { ResultadoAlcance, textoAlcance } from './pantallas/Resultado'
 import { Calificar, ElegirProyecto, proyectosVivos, votoDe } from './pantallas/Votacion'
-import { bienvenidaPendiente, guardarToken, guardarVista, leerToken, leerVista, marcarBienvenida, olvidarSesion } from './sesion'
+import { bienvenidaPendiente, guardarBorrador, guardarToken, guardarVista, leerBorrador, leerToken, leerVista, marcarBienvenida, olvidarSesion } from './sesion'
 import { usarYo } from './usarYo'
 
 // La muestra del sistema de diseño trae el mock de /api/yo: se carga aparte para no inflar el bundle.
@@ -28,15 +29,19 @@ export default function PaginaMesa() {
 function FlujoMesa({ codigo }: { codigo: string }) {
   const [token, setToken] = useState<string | null>(() => leerToken(codigo))
   const [yaInscrito, setYaInscrito] = useState(false)
+  // Token vencido o reemplazado (se inscribió con el mismo correo en otro celular): recuperar sesión.
+  const [recuperando, setRecuperando] = useState(false)
 
   if (!token) {
     return (
       <AntesDeInscribirse
         codigo={codigo}
+        recuperarSesion={recuperando}
         onInscrito={(t, ya) => {
           guardarToken(codigo, t)
-          marcarBienvenida(codigo, !ya)
+          marcarBienvenida(codigo, !ya && !recuperando)
           setYaInscrito(ya)
+          setRecuperando(false)
           setToken(t)
         }}
       />
@@ -48,8 +53,9 @@ function FlujoMesa({ codigo }: { codigo: string }) {
       token={token}
       yaInscrito={yaInscrito}
       onSalir={() => {
-        olvidarSesion(codigo)
+        olvidarSesion(codigo, true)
         setYaInscrito(false)
+        setRecuperando(true)
         setToken(null)
       }}
     />
@@ -58,7 +64,15 @@ function FlujoMesa({ codigo }: { codigo: string }) {
 
 // ── Antes de inscribirse: 8.0 a 8.3 ─────────────────────────────────────────
 
-function AntesDeInscribirse({ codigo, onInscrito }: { codigo: string; onInscrito: (token: string, yaInscrito: boolean) => void }) {
+function AntesDeInscribirse({
+  codigo,
+  onInscrito,
+  recuperarSesion,
+}: {
+  codigo: string
+  onInscrito: (token: string, yaInscrito: boolean) => void
+  recuperarSesion?: boolean
+}) {
   const [mesa, setMesa] = useState<Mesa | null>(null)
   const [error, setError] = useState<ErrorApi | null>(null)
   const [intento, setIntento] = useState(0)
@@ -110,6 +124,18 @@ function AntesDeInscribirse({ codigo, onInscrito }: { codigo: string; onInscrito
   }
   if (!mesa) return <Cargando />
 
+  if (recuperarSesion) {
+    return (
+      <Inscripcion
+        codigo={codigo}
+        mesa={mesa}
+        onInscrito={onInscrito}
+        recuperar
+        motivo="Tu sesión se cerró en este celular (venció o entraste desde otro). Confirma tu correo y retomas donde ibas; lo que habías marcado sigue aquí."
+      />
+    )
+  }
+
   if (!mesa.inscripcion_abierta) {
     if (recuperar) return <Inscripcion codigo={codigo} mesa={mesa} onInscrito={onInscrito} recuperar />
     const termino = mesa.sala.estado === 'cerrada' || mesa.sala.estado === 'r2_cerrada'
@@ -154,15 +180,84 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   const [bienvenida, setBienvenida] = useState(() => bienvenidaPendiente(codigo))
   const [avisoOk, setAvisoOk] = useState<string | null>(null)
   const [avisoInscrito, setAvisoInscrito] = useState(yaInscrito)
+  // Votos guardados sin señal, a la espera de reenvío (sobreviven a recargas).
+  const [cola, setCola] = useState<VotoEnCola[]>(() => leerCola(codigo))
+  // Avisos de error que se quedan hasta que la persona cambie de pantalla (ronda cerrada mientras votaba).
+  const [avisoPerdido, setAvisoPerdido] = useState<string | null>(null)
+  const enviando = useRef(false)
 
   const ir = useCallback(
     (v: Vista) => {
       setVistaEstado(v)
       guardarVista(codigo, v)
       setAvisoInscrito(false)
+      setAvisoPerdido(null)
     },
     [codigo],
   )
+
+  // Reenvío de la cola: al cargar, cada 4 s mientras haya algo pendiente y apenas vuelve la señal.
+  const vaciarCola = useCallback(async () => {
+    if (enviando.current || leerCola(codigo).length === 0) return
+    enviando.current = true
+    try {
+      const hechos = await enviarCola(codigo, token)
+      if (hechos.length === 0) return
+      for (const h of hechos) {
+        if (h.tipo === 'enviado') {
+          guardarBorrador(codigo, h.voto.proyecto_id, h.voto.ronda, null)
+          aplicar((y) => conVoto(y, h.respuesta))
+          setAvisoOk(`Volvió la señal: enviamos tu calificación de ${h.voto.nombre}.`)
+        } else {
+          // Rechazo definitivo: lo marcado vuelve al borrador para no perderlo.
+          guardarBorrador(codigo, h.voto.proyecto_id, h.voto.ronda, h.voto.respuestas)
+          const c = h.error.codigo
+          setAvisoPerdido(
+            c === 'RONDA_CERRADA' || c === 'RONDA_NO_ACTIVA'
+              ? `La ronda ${h.voto.ronda} se cerró antes de que llegara tu calificación de ${h.voto.nombre}. Lo que marcaste sigue en este celular por si el facilitador reabre la ronda.`
+              : `No pudimos guardar tu calificación de ${h.voto.nombre}. Ábrela de nuevo y guarda otra vez; lo que marcaste sigue aquí.`,
+          )
+        }
+      }
+      setCola(leerCola(codigo))
+      void refrescar()
+    } finally {
+      enviando.current = false
+    }
+  }, [codigo, token, aplicar, refrescar])
+
+  const hayCola = cola.length > 0
+  useEffect(() => {
+    if (!hayCola) return
+    void vaciarCola()
+    const t = setInterval(() => void vaciarCola(), 4000)
+    const alVolver = () => void vaciarCola()
+    window.addEventListener('online', alVolver)
+    return () => {
+      clearInterval(t)
+      window.removeEventListener('online', alVolver)
+    }
+  }, [hayCola, vaciarCola])
+
+  // La ronda se cerró mientras calificaba: aviso claro y lo marcado se conserva (borrador).
+  const estadoSala = yo?.sala.estado
+  const rondaSala = yo?.sala.ronda_actual ?? 0
+  useEffect(() => {
+    if (!yo || !vista.startsWith('calificar:')) return
+    if (estadoSala === 'r1_abierta' || estadoSala === 'r2_abierta') return
+    const pid = vista.slice('calificar:'.length)
+    const nombre = yo.contenido.portafolio.find((p) => p.id === pid)?.nombre ?? pid
+    const borrador = leerBorrador(codigo, pid, rondaSala)
+    const guardado = votoDe(yo, pid)?.respuestas
+    const cambios = Boolean(borrador && Object.entries(borrador).some(([k, v]) => guardado?.[k] !== v))
+    setVistaEstado('inicio')
+    guardarVista(codigo, 'inicio')
+    setAvisoPerdido(
+      cambios
+        ? `La ronda ${rondaSala} se cerró mientras calificabas ${nombre}. Esos cambios no alcanzaron a guardarse${guardado ? ' y cuenta tu calificación anterior' : ''}. Lo que marcaste sigue en este celular por si el facilitador reabre la ronda.`
+        : `La ronda ${rondaSala} se cerró mientras calificabas ${nombre}. ${guardado ? 'Cuenta tu última calificación guardada.' : 'No alcanzaste a guardar esa calificación.'}`,
+    )
+  }, [yo, vista, estadoSala, rondaSala, codigo])
 
   useEffect(() => {
     if (!avisoOk) return
@@ -173,8 +268,8 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   if (fatal) {
     if (fatal.codigo === 'PARTICIPANTE_INACTIVO' || fatal.codigo === 'PARTICIPANTE_DESACTIVADO') return <Desactivado />
     return (
-      <Mensaje titulo="Tu sesión ya no está activa" accion={{ texto: 'Volver a inscribirme', onClick: onSalir }}>
-        Inscríbete otra vez con el mismo correo y retomas donde ibas.
+      <Mensaje titulo="Tu sesión ya no está activa" accion={{ texto: 'Recuperar mi sesión', onClick: onSalir }}>
+        Confirma tu correo y retomas donde ibas. Lo que habías marcado sigue en este celular.
       </Mensaje>
     )
   }
@@ -195,7 +290,8 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   const abierta = estado === 'r1_abierta' || estado === 'r2_abierta'
   const alcance = yo.config.alcance_resultados
   const vivos = proyectosVivos(yo)
-  const completo = yo.completo_ronda || (vivos.length > 0 && vivos.every((p) => votoDe(yo, p.id)))
+  const porEnviar = cola.filter((v) => v.ronda === ronda).map((v) => v.proyecto_id)
+  const completo = yo.completo_ronda || (vivos.length > 0 && vivos.every((p) => votoDe(yo, p.id) || porEnviar.includes(p.id)))
   const precierreSala = alcance === 'sala' && Boolean(yo.resultados?.progreso?.precierre)
   const precierre = abierta && (yo.progreso_mesa.precierre || precierreSala)
   const donde = textoAlcance(yo.resultados, alcance)
@@ -208,6 +304,18 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
       </Aviso>,
     )
   else if (recuperada) arriba.push(<Aviso key="ok-red" tono="ok">Conexión recuperada.</Aviso>)
+  if (porEnviar.length > 0 && abierta)
+    arriba.push(
+      <Aviso key="cola" tono="alerta" titulo={porEnviar.length === 1 ? '1 calificación por enviar' : `${porEnviar.length} calificaciones por enviar`}>
+        Está guardada en este celular y la enviamos sola cuando vuelva la señal. No borres los datos del navegador.
+      </Aviso>,
+    )
+  if (avisoPerdido)
+    arriba.push(
+      <Aviso key="perdido" tono="error">
+        {avisoPerdido}
+      </Aviso>,
+    )
   if (avisoInscrito) arriba.push(<Aviso key="ya" tono="info">Ya estabas inscrito con este correo. Retomas donde ibas.</Aviso>)
   if (avisoOk) arriba.push(<Aviso key="ok" tono="ok">{avisoOk}</Aviso>)
   if (precierre)
@@ -266,11 +374,18 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
         marco={marco}
         onVolver={() => ir('elegir')}
         onGuardado={(r: RespuestaVoto, nombre) => {
+          setCola(quitarDeCola(codigo, r.voto))
           aplicar((y) => conVoto(y, r))
           setAvisoOk(`Calificación de ${nombre} guardada.`)
           ir('inicio')
           void refrescar()
         }}
+        onSinSenal={(voto) => {
+          setCola(encolar(codigo, voto))
+          ir('inicio')
+          setAvisoOk(null)
+        }}
+        onSesionVencida={() => void refrescar()}
       />
     )
   }
@@ -360,7 +475,7 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   if (!completo || vista === 'elegir') {
     return (
       <Marco {...marco} claveFoco={`elegir-${ronda}`}>
-        <ElegirProyecto yo={yo} onCalificar={(pid) => ir(`calificar:${pid}`)} />
+        <ElegirProyecto yo={yo} porEnviar={porEnviar} onCalificar={(pid) => ir(`calificar:${pid}`)} />
         {completo && (
           <Boton variante="secundario" onClick={() => ir('inicio')}>
             Listo, ya no voy a editar
@@ -398,9 +513,10 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   const { inscritos, completos } = yo.progreso_mesa
   return (
     <Marco {...marco} claveFoco={`registrado-${ronda}`}>
-      <h1 className="hz-titulo">Voto registrado</h1>
+      <h1 className="hz-titulo">{porEnviar.length > 0 ? 'Voto guardado en este celular' : 'Voto registrado'}</h1>
       <p className="hz-texto-2">
-        Calificaste {vivos.map((p) => p.nombre).join(' y ')} en la ronda {ronda}. Puedes editar mientras la ronda siga abierta.
+        Calificaste {vivos.map((p) => p.nombre).join(' y ')} en la ronda {ronda}.{' '}
+        {porEnviar.length > 0 ? 'Lo enviamos apenas vuelva la señal.' : 'Puedes editar mientras la ronda siga abierta.'}
       </p>
       <BarraProgreso
         actual={completos}
