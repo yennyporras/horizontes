@@ -9,10 +9,12 @@ export interface InscripcionProps {
   codigo: string
   mesa: Mesa
   onInscrito: (token: string, yaInscrito: boolean) => void
+  /** Inscripción cerrada: solo recupera la sesión de quien ya se inscribió con ese correo. */
+  recuperar?: boolean
 }
 
 /** 8.1 Inscripción con el componente de consentimiento (patrón del IRMI, texto de Estratek). */
-export function Inscripcion({ codigo, mesa, onInscrito }: InscripcionProps) {
+export function Inscripcion({ codigo, mesa, onInscrito, recuperar }: InscripcionProps) {
   const [nombre, setNombre] = useState('')
   const [correo, setCorreo] = useState('')
   const [acepta, setAcepta] = useState(false)
@@ -46,7 +48,12 @@ export function Inscripcion({ codigo, mesa, onInscrito }: InscripcionProps) {
       const ea = err instanceof ErrorApi ? err : null
       if (ea?.codigo === 'CONSENTIMIENTO_REQUERIDO') setErrorEnvio('Marca la autorización de tratamiento de datos para continuar.')
       else if (ea?.esRed) setErrorEnvio('Sin conexión. Revisa la señal e intenta de nuevo; lo que escribiste sigue aquí.')
-      else if (ea?.codigo === 'INSCRIPCION_CERRADA' || ea?.codigo === 'SALA_CERRADA') setErrorEnvio('La inscripción de esta sala está cerrada. Pregúntale al facilitador.')
+      else if (ea?.codigo === 'INSCRIPCION_CERRADA' || ea?.codigo === 'SALA_CERRADA')
+        setErrorEnvio(
+          recuperar
+            ? 'No encontramos ese correo en esta sala. Escríbelo igual que cuando te inscribiste.'
+            : 'La inscripción de esta sala está cerrada. Pregúntale al facilitador.',
+        )
       else if (ea && ea.status < 500 && ea.message) setErrorEnvio(ea.message)
       else setErrorEnvio('Algo falló de nuestro lado. Vuelve a intentarlo en unos segundos.')
       setEnviando(false)
@@ -61,13 +68,15 @@ export function Inscripcion({ codigo, mesa, onInscrito }: InscripcionProps) {
       notaBarra={!acepta ? 'Para inscribirte necesitamos tu autorización de tratamiento de datos.' : undefined}
       barra={
         <Boton bloque deshabilitado={!acepta} cargando={enviando} textoCargando="Inscribiendo…" onClick={() => void enviar()}>
-          Inscribirme
+          {recuperar ? 'Recuperar mi sesión' : 'Inscribirme'}
         </Boton>
       }
     >
-      <h1 className="hz-titulo">Bienvenido al taller Horizontes</h1>
+      <h1 className="hz-titulo">{recuperar ? 'Recupera tu sesión' : 'Bienvenido al taller Horizontes'}</h1>
       <p className="hz-texto-2">
-        Estás en {mesa.mesa.nombre} de {mesa.sala.nombre}. Inscríbete para recibir el caso y tu hoja de información.
+        {recuperar
+          ? `Escribe el correo con el que te inscribiste en ${mesa.sala.nombre} y retomas donde ibas.`
+          : `Estás en ${mesa.mesa.nombre} de ${mesa.sala.nombre}. Inscríbete para recibir el caso y tu hoja de información.`}
       </p>
       <form ref={formRef} className="hzp-form" noValidate onSubmit={enviar}>
         <Campo

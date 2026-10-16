@@ -54,6 +54,7 @@ function AntesDeInscribirse({ codigo, onInscrito }: { codigo: string; onInscrito
   const [mesa, setMesa] = useState<Mesa | null>(null)
   const [error, setError] = useState<ErrorApi | null>(null)
   const [intento, setIntento] = useState(0)
+  const [recuperar, setRecuperar] = useState(false)
 
   useEffect(() => {
     let vivo = true
@@ -102,12 +103,31 @@ function AntesDeInscribirse({ codigo, onInscrito }: { codigo: string; onInscrito
   if (!mesa) return <Cargando />
 
   if (!mesa.inscripcion_abierta) {
+    if (recuperar) return <Inscripcion codigo={codigo} mesa={mesa} onInscrito={onInscrito} recuperar />
     const termino = mesa.sala.estado === 'cerrada' || mesa.sala.estado === 'r2_cerrada'
-    return termino ? (
-      <Mensaje sala={mesa.sala.nombre} meta={mesa.mesa.nombre} titulo="El taller ya terminó">
-        Esta sala cerró y no recibe más inscripciones. Gracias por participar.
-      </Mensaje>
-    ) : (
+    if (mesa.sala.estado !== 'preparada') {
+      // Quien ya se inscribió (otro celular, borró datos) puede volver con su correo.
+      return (
+        <Marco
+          sala={mesa.sala.nombre}
+          meta={mesa.mesa.nombre}
+          claveFoco="inscripcion-cerrada"
+          barra={
+            <Boton bloque variante="secundario" onClick={() => setRecuperar(true)}>
+              Ya me inscribí: recuperar mi sesión
+            </Boton>
+          }
+        >
+          <h1 className="hz-titulo">{termino ? 'El taller ya terminó' : 'La inscripción está cerrada'}</h1>
+          <p className="hz-texto-2">
+            {termino
+              ? 'Esta sala cerró y no recibe más inscripciones. Gracias por participar.'
+              : 'Esta sala ya no recibe inscripciones nuevas. Si llegaste tarde, pídele ayuda al facilitador.'}
+          </p>
+        </Marco>
+      )
+    }
+    return (
       <Mensaje sala={mesa.sala.nombre} meta={mesa.mesa.nombre} titulo="Aún no abrimos la inscripción">
         El facilitador la abrirá en unos minutos. Deja esta pantalla abierta: se actualiza sola.
       </Mensaje>
