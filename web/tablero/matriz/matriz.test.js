@@ -85,3 +85,16 @@ test('escapa texto del servidor', () => {
   assert.ok(!svg.includes('<script>'));
   assert.ok(svg.includes('&lt;script&gt;'));
 });
+
+test('vista de una sola ronda: sin flecha ni etiqueta R1', () => {
+  for (const vista of [1, 2]) {
+    const svg = matrizSVG(mock, { ancho: 1280, vista });
+    assert.equal((svg.match(/class="hz-flecha"/g) || []).length, 0);
+    assert.equal((svg.match(/class="hz-r1"/g) || []).length, vista === 1 ? 2 : 0);
+    assert.equal((svg.match(/class="hz-r2"/g) || []).length, vista === 2 ? 2 : 0);
+    assert.ok(!svg.includes('>R1</text>'));
+    assert.ok(svg.includes('>NUTRIWHAT</text>'));
+  }
+  const L = calcularLayout(mock, { ancho: 1280, vista: 1 });
+  assert.ok(L.vivos.every((v) => v.r1.solido));
+});
