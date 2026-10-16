@@ -28,6 +28,7 @@ const fijosGolden = golden.casos_proyecto as { nombre: string; esperado: { eje_x
 const ANCHOS: [number, number][] = [
   [1920, 1080],
   [1366, 768],
+  [1280, 720],
   [360, 740],
 ]
 
@@ -233,8 +234,16 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       expect(r.letraCuerpo).toBeGreaterThanOrEqual(w >= 1900 ? 18 : 14)
       console.info(`[tablero e2e] ${w}px: letra cuerpo ${r.letraCuerpo} px, mínima ${r.letraMin} px, panel lateral oculto ${r.lateralOculto} px`)
       // En proyector (1920×1080 y 1366×768) todo el panel lateral se ve sin desplazarlo: nadie está al teclado.
-      if (w >= 1366) expect(r.lateralOculto, 'panel lateral con contenido oculto').toBeLessThanOrEqual(0)
+      if (w >= 1280) expect(r.lateralOculto, 'panel lateral con contenido oculto').toBeLessThanOrEqual(0)
       if (w >= 1900) expect(r.letraMin, 'letra mínima en proyector').toBeGreaterThanOrEqual(12)
+      else if (w >= 1280) expect(r.letraMin, 'letra mínima en proyector pequeño').toBeGreaterThanOrEqual(10)
+      // Nombres en la matriz: ninguno se solapa con otro, los de los fijos no tapan burbujas y nada sale del lienzo.
+      for (const [tecla, nombre] of [['1', 'Ronda 1'], ['2', 'Ronda 2'], ['c', 'Comparación']]) {
+        await page.keyboard.press(tecla)
+        await expect.poll(() => page.locator('.hz-segmento [aria-pressed="true"]').textContent()).toBe(nombre)
+        const solapes = await page.evaluate(solapesEtiquetas)
+        expect(solapes, `${nombre}: ${solapes.join('\n')}`).toEqual([])
+      }
       // Ninguna flecha ni burbuja sale del lienzo.
       expect(await page.locator('svg.hz-matriz').evaluate((s) => s.getBoundingClientRect().right <= innerWidth + 0.5)).toBe(true)
 
@@ -373,5 +382,39 @@ function contrasteAA(): string[] {
     const grande = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700)
     if (ratio < (grande ? 3 : 4.5)) fallas.push(`${ratio.toFixed(2)}:1 "${n.textContent.trim().slice(0, 40)}" (${cs.color} sobre rgb(${bg.slice(0, 3)}))`)
   }
+  return fallas
+}
+
+/** Revisa en el navegador (cajas reales de texto) que las etiquetas de la matriz no se solapen. */
+function solapesEtiquetas(): string[] {
+  const svg = document.querySelector('svg.hz-matriz') as SVGSVGElement
+  const W = Number(svg.getAttribute('width'))
+  const H = Number(svg.getAttribute('height'))
+  const m = 1 // 1 px de holgura: el halo blanco del texto ya separa.
+  const cajas = [...svg.querySelectorAll<SVGTextElement>('text.hz-etq')].map((t) => {
+    const b = t.getBBox()
+    return { texto: t.textContent ?? '', fijo: t.classList.contains('hz-etq-fijo'), x: b.x + m, y: b.y + m, w: b.width - 2 * m, h: b.height - 2 * m }
+  })
+  const circulos = [...svg.querySelectorAll<SVGCircleElement>('circle')].map((c) => ({
+    nombre: c.querySelector('title')?.textContent?.split(' · ')[0] ?? '',
+    cx: Number(c.getAttribute('cx')),
+    cy: Number(c.getAttribute('cy')),
+    r: Number(c.getAttribute('r')),
+  }))
+  const fallas: string[] = []
+  const nFijos = svg.querySelectorAll('circle.hz-fijo').length
+  if (cajas.filter((c) => c.fijo).length !== nFijos) fallas.push('falta el nombre de algún proyecto fijo')
+  cajas.forEach((a, i) => {
+    if (a.x < 0 || a.y < 0 || a.x + a.w > W || a.y + a.h > H) fallas.push(`${a.texto} sale del lienzo`)
+    for (const b of cajas.slice(i + 1)) {
+      if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) fallas.push(`${a.texto} se solapa con ${b.texto}`)
+    }
+    if (!a.fijo) return
+    for (const c of circulos) {
+      const px = Math.min(Math.max(c.cx, a.x), a.x + a.w)
+      const py = Math.min(Math.max(c.cy, a.y), a.y + a.h)
+      if ((c.cx - px) ** 2 + (c.cy - py) ** 2 < c.r * c.r) fallas.push(`${a.texto} tapa la burbuja ${c.nombre}`)
+    }
+  })
   return fallas
 }
