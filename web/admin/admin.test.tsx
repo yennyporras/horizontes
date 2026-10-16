@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
-import { ACCIONES_POR_ESTADO, bogotaLocalAIso, faltan, isoABogotaLocal, rutaApiTablero, urlTableroSala } from './textos'
+import { ACCIONES_POR_ESTADO, bogotaLocalAIso, faltan, isoABogotaLocal, rutaApiTablero, textoEvento, urlTableroSala } from './textos'
 
 function montar(ruta: string) {
   return render(
@@ -50,6 +50,13 @@ describe('textos del panel', () => {
     expect(urlTableroSala('/x', mesa)).toBe('/x')
     expect(rutaApiTablero('s_demo', mesa, 'm1')).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m1&t=TOK')
     expect(rutaApiTablero('s_demo', mesa)).toBe('/api/tablero/s_demo?alcance=sala&t=TOK')
+  })
+
+  it('describe los eventos de la bitácora en lenguaje claro', () => {
+    expect(textoEvento({ tipo: 'ronda_cerrada', detalle: { ronda: 1 }, por: 'admin:paola' })).toBe('Ronda 1 cerrada · paola')
+    expect(textoEvento({ tipo: 'inscripcion_abierta', detalle: {}, por: 'admin:paola' })).toBe('Inscripción abierta · paola')
+    expect(textoEvento({ tipo: 'cierre_programado', detalle: {}, por: 'programado' })).toBe('Cierre programado aplicado · automático')
+    expect(textoEvento({ tipo: 'precierre', detalle: { mensaje: 'Todos votaron en Mesa 1. Puedes cerrar la ronda.' }, por: 'sistema' })).toBe('Todos votaron en Mesa 1. Puedes cerrar la ronda.')
   })
 
   it('abrir R2 exige R1 cerrada y la sala cerrada solo se reabre', () => {
@@ -132,7 +139,7 @@ describe('panel admin contra el simulador', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     // En el simulador inicial la Mesa 1 tiene a todos sus inscritos completos.
-    expect(await screen.findByText(/Todos votaron en Mesa 1/)).toBeTruthy()
+    expect(await screen.findByText(/Todos votaron en Mesa 1/, { selector: 'strong' })).toBeTruthy()
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ver resultado de Mesa 1' }))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
