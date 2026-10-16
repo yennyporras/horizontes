@@ -1,0 +1,615 @@
+/*
+ * Tablero (T3). Usa los tokens --hz-* de docs/DISENO.md; los valores de respaldo son los mismos
+ * de web/shared/ui/tokens.css para que la vista funcione aunque ese archivo no esté cargado.
+ * Escala tipográfica fluida: ~15 px en 360, ~17 px en 1366 y ~20 px en 1920 (lectura a 6 m).
+ */
+.hz-tablero {
+  --t-azul: var(--hz-azul, #1c4587);
+  --t-azul-medio: var(--hz-azul-medio, #3f7cc8);
+  --t-cielo: var(--hz-cielo, #00a3ff);
+  --t-tinta: var(--hz-tinta, #0f2340);
+  --t-tinta-2: var(--hz-tinta-2, #3a4d6b);
+  --t-tinta-3: var(--hz-tinta-3, #5b6b84);
+  --t-h1: var(--hz-h1, #eef4fb);
+  --t-h2: var(--hz-h2, #dce8f6);
+  --t-h3: var(--hz-h3, #c5d8ef);
+  --t-ok: var(--hz-ok, #1d6b4f);
+  --t-ok-fondo: var(--hz-ok-fondo, #e6f4ee);
+  --t-alerta: var(--hz-alerta, #7a4b00);
+  --t-alerta-fondo: var(--hz-alerta-fondo, #fff4dc);
+  --t-error: var(--hz-error, #a3261b);
+  --t-error-fondo: var(--hz-error-fondo, #fdecea);
+  --t-foco: var(--hz-foco, 0 0 0 2px #fff, 0 0 0 5px #1c4587, 0 0 0 7px #00a3ff);
+
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0.75em 1em 1em;
+  font-family: var(--hz-fuente, 'Montserrat Variable', 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif);
+  font-size: clamp(15px, 0.55rem + 0.6vw, 22px);
+  line-height: 1.4;
+  color: var(--t-tinta);
+  background: #fff;
+  font-variant-numeric: tabular-nums;
+}
+body:has(> #root > .hz-tablero) {
+  margin: 0;
+}
+.hz-tablero *,
+.hz-tablero *::before,
+.hz-tablero *::after {
+  box-sizing: inherit;
+}
+.hz-tablero :focus-visible {
+  outline: none;
+  box-shadow: var(--t-foco);
+}
+.hz-oculto {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Encabezado */
+.hz-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em 1.5em;
+  padding-bottom: 0.6em;
+  border-bottom: 1px solid var(--t-h3);
+}
+.hz-cab h1 {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--t-azul);
+}
+.hz-cab-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25em 0.6em;
+  margin: 0.2em 0 0;
+  color: var(--t-tinta-2);
+  font-weight: 600;
+}
+.hz-insignia {
+  display: inline-block;
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+.hz-insignia-alerta {
+  color: var(--t-alerta);
+  background: var(--t-alerta-fondo);
+  border: 1px solid currentColor;
+}
+.hz-cab-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6em 1em;
+}
+.hz-alcance {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-weight: 600;
+  color: var(--t-tinta-2);
+}
+.hz-alcance select {
+  min-height: 2.4em;
+  padding: 0.3em 0.6em;
+  font: inherit;
+  font-weight: 600;
+  color: var(--t-azul);
+  background: #fff;
+  border: 1px solid var(--t-azul-medio);
+  border-radius: 10px;
+}
+.hz-segmento {
+  display: inline-flex;
+  padding: 0.2em;
+  background: var(--t-h1);
+  border-radius: 999px;
+}
+.hz-segmento button {
+  min-height: 2.4em;
+  padding: 0.3em 1em;
+  font: inherit;
+  font-weight: 600;
+  color: var(--t-tinta-2);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.hz-segmento button[aria-pressed='true'] {
+  color: var(--t-azul);
+  font-weight: 800;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 35, 64, 0.12);
+}
+
+/* Cuerpo */
+.hz-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  margin-top: 0.75em;
+}
+.hz-zona-matriz {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hz-lienzo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 85vh;
+}
+.hz-lienzo svg {
+  display: block;
+}
+.hz-vacio {
+  margin: 0 0 0.5em;
+  padding: 0.6em 0.9em;
+  font-weight: 700;
+  color: var(--t-azul);
+  background: var(--t-h1);
+  border-left: 4px solid var(--t-azul-medio);
+  border-radius: 6px;
+}
+.hz-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em 1.4em;
+  margin: 0.4em 0 0;
+  font-size: 0.85em;
+  color: var(--t-tinta-2);
+}
+.hz-leyenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.hz-leyenda i {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+}
+.hz-ley-fijo {
+  background: #7d8fa9;
+}
+.hz-ley-r1 {
+  background: rgba(58, 77, 107, 0.18);
+  border: 2px dashed var(--t-tinta-2);
+}
+.hz-ley-r2 {
+  background: var(--t-tinta-2);
+}
+.hz-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  min-width: 0;
+}
+
+/* Progreso */
+.hz-sub {
+  margin: 0 0 0.4em;
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--t-tinta-2);
+}
+.hz-progreso {
+  padding: 0.8em 1em;
+  background: var(--t-h1);
+  border-radius: 16px;
+}
+.hz-cifras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em 1.4em;
+}
+.hz-cifras > div:not(.hz-barra) {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+}
+.hz-cifra {
+  font-size: 1.8em;
+  font-weight: 800;
+  color: var(--t-azul);
+  line-height: 1;
+}
+.hz-cifra-et {
+  font-weight: 600;
+  color: var(--t-tinta-2);
+}
+.hz-barra {
+  flex: 1 1 8em;
+  height: 0.6em;
+  background: var(--t-h2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.hz-barra-relleno {
+  height: 100%;
+  background: var(--t-azul-medio);
+  border-radius: 999px;
+  transition: width 200ms ease;
+}
+.hz-avisos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin: 0.7em 0 0;
+  padding: 0;
+  list-style: none;
+}
+.hz-avisos li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.3em 0.8em;
+  font-weight: 700;
+  color: var(--t-ok);
+  background: var(--t-ok-fondo);
+  border: 1px solid currentColor;
+  border-radius: 10px;
+}
+.hz-mesas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1em;
+  margin: 0.6em 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--t-tinta-2);
+}
+.hz-mesa {
+  display: inline-flex;
+  gap: 0.4em;
+}
+.hz-mesa-nombre {
+  font-weight: 700;
+}
+.hz-mesa-lista .hz-mesa-n {
+  font-weight: 700;
+  color: var(--t-ok);
+}
+
+/* Panel por proyecto */
+.hz-panel {
+  padding: 0.8em 1em;
+  border: 1px solid var(--t-h3);
+  border-radius: 16px;
+}
+.hz-panel-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2em 0.6em;
+  margin-bottom: 0.4em;
+}
+.hz-panel-cab h2 {
+  margin: 0;
+  font-size: 1.25em;
+  font-weight: 800;
+}
+.hz-punto {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+}
+.hz-panel-meta {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--t-tinta-3);
+}
+.hz-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.hz-tabla th,
+.hz-tabla td {
+  padding: 0.28em 0.35em;
+  text-align: right;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--t-h1);
+}
+.hz-tabla th[scope='row'],
+.hz-tabla thead th:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: var(--t-tinta);
+}
+.hz-tabla thead th {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--t-tinta-3);
+}
+.hz-tabla td {
+  color: var(--t-tinta-3);
+  white-space: nowrap;
+}
+.hz-tabla td.hz-foco {
+  font-weight: 800;
+  color: var(--t-tinta);
+}
+.hz-delta {
+  font-size: 0.85em;
+  color: var(--t-tinta-2) !important;
+}
+.hz-resumen th[scope='row'] {
+  font-weight: 800;
+  color: var(--t-azul);
+}
+.hz-resumen tr:first-child > * {
+  border-top: 2px solid var(--t-h3);
+}
+.hz-votos > * {
+  border-bottom: 0 !important;
+}
+.hz-celda-dist {
+  width: 6.2em;
+}
+.hz-dist {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.15em;
+}
+.hz-dist-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 1em;
+}
+.hz-dist-pista {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 1.5em;
+  background: var(--t-h1);
+  border-radius: 2px;
+}
+.hz-dist-barra {
+  width: 100%;
+  background: var(--t-azul-medio);
+  border-radius: 2px;
+}
+.hz-dist-k {
+  font-size: 0.6em;
+  font-weight: 600;
+  color: var(--t-tinta-3);
+  line-height: 1.2;
+}
+
+/* Tabla comparada (proyector) */
+.hz-comparada {
+  padding: 0.6em 0.2em 0;
+}
+.hz-tabla thead th.hz-col-proy {
+  padding-bottom: 0.2em !important;
+  text-align: center !important;
+  font-size: 1.15em;
+  font-weight: 800;
+  border-bottom: 2px solid var(--t-h3) !important;
+  white-space: nowrap;
+}
+.hz-col-proy .hz-punto {
+  display: inline-block;
+  margin-right: 0.35em;
+  vertical-align: -0.05em;
+}
+.hz-col-proy .hz-panel-meta {
+  font-size: 0.7em;
+}
+.hz-comparada .hz-tabla td.hz-celda-dist,
+.hz-comparada .hz-tabla thead tr:nth-child(2) th:nth-child(3n + 1):not(:first-child) {
+  padding-right: 1em;
+}
+.hz-solo-ancho {
+  display: none;
+}
+
+/* Estados de error y carga */
+.hz-aviso-error {
+  margin: 0.6em 0 0;
+  padding: 0.5em 0.9em;
+  font-weight: 600;
+  color: var(--t-error);
+  background: var(--t-error-fondo);
+  border-radius: 10px;
+}
+.hz-tablero-solo {
+  display: grid;
+  place-items: center;
+}
+.hz-cargando {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--t-tinta-2);
+}
+.hz-error-grande {
+  max-width: 34rem;
+  padding: 1.5em;
+  text-align: center;
+  color: var(--t-error);
+  background: var(--t-error-fondo);
+  border-radius: 16px;
+}
+.hz-error-grande h1 {
+  margin: 0 0 0.4em;
+  font-size: 1.4em;
+}
+
+/* Proyector y escritorio: matriz a la izquierda, panel a la derecha, todo en una pantalla. */
+@media (min-width: 1100px) {
+  .hz-tablero:not(.hz-tablero-solo) {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .hz-cuerpo {
+    flex: 1 1 auto;
+    flex-direction: row;
+    min-height: 0;
+  }
+  .hz-zona-matriz {
+    /* La matriz es casi cuadrada: su ancho sigue al alto disponible y el resto va al panel. */
+    flex: 0 1 auto;
+    width: min(calc(100dvh - 7.5em), 56vw);
+  }
+  .hz-lienzo {
+    flex: 1 1 auto;
+    aspect-ratio: auto;
+    max-height: none;
+    min-height: 0;
+  }
+  .hz-lateral {
+    flex: 1 1 0;
+    overflow-y: auto;
+    padding-right: 0.2em;
+  }
+  .hz-solo-ancho {
+    display: block;
+  }
+  .hz-solo-angosto {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hz-barra-relleno {
+    transition: none;
+  }
+}
+
+/* Móvil (360 px): sin desborde horizontal. */
+.hz-segmento button {
+  white-space: nowrap;
+}
+@media (max-width: 599px) {
+  .hz-tablero {
+    padding: 0.6em 0.75em 1em;
+  }
+  .hz-cab-controles,
+  .hz-segmento {
+    width: 100%;
+  }
+  .hz-segmento button {
+    flex: 1 1 auto;
+    padding: 0.3em 0.5em;
+  }
+  .hz-panel {
+    padding: 0.6em 0.5em;
+  }
+  .hz-tabla th,
+  .hz-tabla td {
+    padding: 0.28em 0.2em;
+  }
+  .hz-panel .hz-delta,
+  .hz-panel thead th:nth-child(4) {
+    display: none;
+  }
+  .hz-celda-dist {
+    width: 5em;
+  }
+  .hz-dist-col {
+    width: 0.85em;
+  }
+}
+
+/* Pantalla completa (tecla F): sin controles; la vista se cambia con 1, 2 y C. */
+.hz-boton-pantalla {
+  min-height: 2.4em;
+  padding: 0.3em 0.9em;
+  font: inherit;
+  font-weight: 600;
+  color: var(--t-azul);
+  background: #fff;
+  border: 1px solid var(--t-azul-medio);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.hz-boton-pantalla kbd {
+  margin-left: 0.3em;
+  padding: 0 0.35em;
+  font: inherit;
+  font-size: 0.8em;
+  border: 1px solid var(--t-h3);
+  border-radius: 4px;
+}
+.hz-pantalla-completa .hz-cab-controles {
+  display: none;
+}
+.hz-cab-vista {
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: 800;
+  color: var(--t-azul);
+}
+@media (max-width: 1099px) {
+  .hz-boton-pantalla {
+    display: none;
+  }
+}
+
+/* Todas las mesas: una matriz por mesa. */
+.hz-cuadricula {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24em), 1fr));
+  gap: 1em;
+  margin-top: 0.75em;
+}
+.hz-celda-mesa {
+  padding: 0.6em 0.8em;
+  border: 1px solid var(--t-h3);
+  border-radius: 16px;
+}
+.hz-celda-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2em 0.8em;
+  margin-bottom: 0.4em;
+}
+.hz-celda-cab h2 {
+  margin: 0;
+  font-size: 1.25em;
+  font-weight: 800;
+  color: var(--t-azul);
+}
+.hz-ok-texto {
+  font-weight: 700;
+  color: var(--t-ok);
+}
+@media (min-width: 1100px) {
+  .hz-tablero:has(.hz-cuadricula) {
+    height: auto;
+    overflow: visible;
+  }
+}
+.hz-alcance {
+  min-width: 0;
+  max-width: 100%;
+}
+.hz-alcance select {
+  min-width: 0;
+  max-width: 100%;
+}
