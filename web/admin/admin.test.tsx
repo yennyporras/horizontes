@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
-import { ACCIONES_POR_ESTADO, bogotaLocalAIso, faltan, isoABogotaLocal, rutaApiTablero, textoEvento, urlTableroSala } from './textos'
+import { ACCIONES_POR_ESTADO, bogotaLocalAIso, estadoMesa, faltan, isoABogotaLocal, rutaApiTablero, textoEvento, urlTableroSala } from './textos'
 
 function montar(ruta: string) {
   return render(
@@ -57,6 +57,16 @@ describe('textos del panel', () => {
     expect(textoEvento({ tipo: 'inscripcion_abierta', detalle: {}, por: 'admin:paola' })).toBe('Inscripción abierta · paola')
     expect(textoEvento({ tipo: 'cierre_programado', detalle: {}, por: 'programado' })).toBe('Cierre programado aplicado · automático')
     expect(textoEvento({ tipo: 'precierre', detalle: { mensaje: 'Todos votaron en Mesa 1. Puedes cerrar la ronda.' }, por: 'sistema' })).toBe('Todos votaron en Mesa 1. Puedes cerrar la ronda.')
+  })
+
+  it('el estado de cada mesa sigue al de la sala: no dice Votando sin ronda abierta', () => {
+    const m = { inscritos: 3, precierre: false }
+    expect(estadoMesa('r1_abierta', m).texto).toBe('Votando')
+    expect(estadoMesa('r2_abierta', { ...m, precierre: true }).texto).toBe('Precierre')
+    expect(estadoMesa('r1_cerrada', m).texto).toBe('Ronda 1 cerrada')
+    expect(estadoMesa('cerrada', m).texto).toBe('Sala cerrada')
+    expect(estadoMesa('inscripcion', m).texto).toBe('Esperando la ronda')
+    expect(estadoMesa('cerrada', { inscritos: 0 }).texto).toBe('Sin inscritos')
   })
 
   it('abrir R2 exige R1 cerrada y la sala cerrada solo se reabre', () => {
