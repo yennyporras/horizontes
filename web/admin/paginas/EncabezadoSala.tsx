@@ -23,7 +23,10 @@ export function ConSala({ titulo, datos, error, children }: { titulo: string; da
       <div className="encabezado-sala">
         <h1>{titulo}</h1>
         <p>
-          <strong>{datos.sala.nombre}</strong> · {datos.sala.codigo} · <span className={`estado estado--${datos.sala.estado}`}>{ESTADOS[datos.sala.estado]}</span>
+          <strong>{datos.sala.nombre}</strong> · <span className="sin-corte">{datos.sala.codigo}</span>{' '}
+          <span className="sin-corte">
+            · <span className={`estado estado--${datos.sala.estado}`}>{ESTADOS[datos.sala.estado]}</span>
+          </span>
         </p>
       </div>
       {error && (

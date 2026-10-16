@@ -221,6 +221,7 @@
 .hz-admin .tarjeta-sala { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
 .hz-admin .tarjeta-sala > div { flex: 1; min-width: 200px; }
 .hz-admin .tarjeta-sala h2 { margin-bottom: 4px; }
+.hz-admin .sin-corte { white-space: nowrap; }
 .hz-admin .acciones-sala { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* Sala en vivo */
