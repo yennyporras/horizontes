@@ -332,7 +332,7 @@ describe('salas y mesas', () => {
 
   it('PATCH config acepta null para borrar un cierre programado', async () => {
     const s = await crearSala(e, 1)
-    await pedir('PATCH', `/api/admin/salas/${s.id}/config`, e.cookie, { cierre_programado_ronda_at: '2026-10-20T15:30:00Z' })
+    await pedir('PATCH', `/api/admin/salas/${s.id}/config`, e.cookie, { cierre_programado_ronda_at: '2026-10-20T20:30:00Z' })
     const r = await pedir('PATCH', `/api/admin/salas/${s.id}/config`, e.cookie, { cierre_programado_ronda_at: null })
     expect(r.statusCode).toBe(200)
     expect(r.json().cierre_programado_ronda_at).toBeNull()
@@ -431,7 +431,7 @@ describe('participantes desde el admin', () => {
     expect(lineas[0].split(';')[0]).toBe('id_hash')
     expect(lineas[0]).toContain(';')
     expect(lineas).toHaveLength(2)
-    expect(lineas[1].split(';')).toHaveLength(11)
+    expect(lineas[1].split(';')).toHaveLength(12)
     expect(r.body).not.toContain('Ana')
     expect(r.body).not.toContain('ana@correo.co')
     expect(r.body).not.toContain('@')
