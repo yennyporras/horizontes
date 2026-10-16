@@ -377,7 +377,6 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
       <BarraProgreso
         actual={completos}
         total={inscritos}
-        etiqueta={`Progreso de ${yo.participante.mesa.nombre}`}
         texto={`${completos} de ${inscritos} completaron en ${yo.participante.mesa.nombre}`}
       />
       <div className="hzp-acciones">
