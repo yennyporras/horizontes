@@ -51,7 +51,10 @@ export function semilla(): Semilla {
 
 /** La app no muestra rayas (—): un inciso entre rayas pasa a ir entre comas. data/ es de solo lectura, se corrige al cargar. */
 export function sinRayas(texto: string): string {
-  return texto.replace(/\s*—\s*/g, ', ').replace(/, ([.,;:])/g, '$1')
+  return texto
+    .replace(/^([ \t]*)—[ \t]*/gm, '$1- ') // viñeta con raya al inicio de línea → viñeta markdown
+    .replace(/[ \t]*—[ \t]*([.,;:]|$)/gm, '$1') // raya que cierra un inciso justo antes de puntuación o fin de línea
+    .replace(/[ \t]*—[ \t]*/g, ', ') // inciso entre rayas → entre comas
 }
 
 export const PLANTILLAS = ['foodsume_2026'] as const

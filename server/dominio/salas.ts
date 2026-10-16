@@ -142,9 +142,10 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
 }
 
 /** Sala nueva para ensayos: misma plantilla, mismas mesas y misma configuración de visibilidad; sin inscritos ni votos. */
-export function duplicarSala(db: Db, idOCodigo: string, nombre: string | undefined, ahora: number, por: string) {
+export function duplicarSala(db: Db, idOCodigo: string, nombre: unknown, ahora: number, por: string) {
   const orig = cargarSala(db, idOCodigo)
   const nMesas = mesasDeSala(db, orig.id).length
+  if (nombre !== undefined && nombre !== null && typeof nombre !== 'string') throw new ErrorApi(422, 'DATOS_INVALIDOS', 'El nombre de la sala debe ser texto.')
   const nuevoNombre = (nombre ?? '').trim() || `${orig.nombre.slice(0, 110)} (copia)`
   return transaccion(db, () => {
     const s = crearSalaDesdePlantilla(db, { nombre: nuevoNombre, plantilla: orig.plantilla, mesas: Math.max(1, nMesas) }, ahora, por)

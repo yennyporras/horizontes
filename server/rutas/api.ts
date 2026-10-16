@@ -53,7 +53,8 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   })
 
   // Límite por IP en las rutas de escritura abiertas. Todos los celulares del taller salen por la IP del wifi:
-  // los topes cubren una sala de 300 personas inscribiéndose en el mismo minuto (el simulador lo verifica).
+  // los topes cubren una sala de 300 personas inscribiéndose en el mismo minuto (probado con `npm run simular -- --personas 200`).
+  // Ojo en pruebas: la ventana usa el reloj inyectado; con el reloj fijo no se reinicia.
   const limites: Record<string, LimitadorPeticiones> = {
     'POST /api/inscripcion': new LimitadorPeticiones(600, 60_000),
     'PUT /api/votos': new LimitadorPeticiones(2000, 60_000),
@@ -179,7 +180,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     return reply.code(201).send({ ...salaResumen(sala, op.baseUrl), mesas: mesasAdmin(db, sala, op.baseUrl) })
   })
 
-  app.post<{ Params: { id: string }; Body: { nombre?: string } }>('/api/admin/salas/:id/duplicar', async (req, reply) => {
+  app.post<{ Params: { id: string }; Body: { nombre?: unknown } }>('/api/admin/salas/:id/duplicar', async (req, reply) => {
     const sala = duplicarSala(db, req.params.id, req.body?.nombre, ahora(), por(req))
     return reply.code(201).send({ ...salaResumen(sala, op.baseUrl), mesas: mesasAdmin(db, sala, op.baseUrl) })
   })

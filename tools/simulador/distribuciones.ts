@@ -1,6 +1,8 @@
 // Votos "realistas" para el simulador: cada proyecto tiene un valor de referencia por criterio,
 // cada mesa un sesgo propio y cada persona ruido. En R2 (con las 6 hojas reveladas) las opiniones
-// se acercan a la referencia informada y la dispersión baja. Todo sale de una semilla: misma semilla, mismos votos.
+// se acercan a la referencia informada y la dispersión baja. Los sesgos de mesa salen de la semilla; el ruido
+// individual depende del orden en que llegan las personas (asíncrono), así que dos corridas no repiten votos exactos.
+// La verificación no lo necesita: compara contra los votos que realmente se enviaron.
 export const ESCALA = [1, 3, 5, 7, 9] as const
 export const CRITERIOS = ['alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida'] as const
 export type Criterio = (typeof CRITERIOS)[number]

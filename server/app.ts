@@ -30,10 +30,11 @@ export interface OpcionesApp {
 export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstance> {
   // Sin log por petición: 40 celulares con polling son ~16 peticiones/s de ruido y escribir a stdout es síncrono
   // (en Windows, con el lector lento, frenaba el event loop segundos). Se registran solo las lentas y los 5xx.
-  const app = Fastify({ logger: op.logger ?? false, trustProxy: true, logController: new LogController({ disableRequestLogging: true }) })
+  // trustProxy: solo el primer salto (Traefik de Coolify) (Coolify); un X-Forwarded-For inventado por el cliente no cambia req.ip.
+  const app = Fastify({ logger: op.logger ?? false, trustProxy: (_ip: string, salto: number) => salto < 1, logController: new LogController({ disableRequestLogging: true }) })
   app.addHook('onResponse', async (req, reply) => {
     if (reply.elapsedTime > 500 || reply.statusCode >= 500) {
-      req.log.warn({ metodo: req.method, ruta: req.routeOptions.url ?? req.url, status: reply.statusCode, ms: Math.round(reply.elapsedTime) }, 'petición lenta o con error')
+      req.log.warn({ metodo: req.method, ruta: req.url.split('?')[0], status: reply.statusCode, ms: Math.round(reply.elapsedTime) }, 'petición lenta o con error')
     }
   })
   await app.register(cookie)
