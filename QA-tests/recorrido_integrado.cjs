@@ -166,6 +166,11 @@ async function votarUI(p, ancho, ronda, valores) {
 
     // --- Resto del panel ---
     for (const s of ['mesas', 'participantes', 'configuracion', 'export']) await paso(`admin ${s}`, async () => { await a.goto(`${BASE}/admin/salas/${salaId}/${s}`); await a.waitForLoadState('networkidle'); await revisar(a, ancho, `admin-${s}`) })
+    if (ancho > 800) await paso('hoja QR A4', async () => {
+      await a.goto(`${BASE}/admin/salas/${salaId}/mesas`); await a.waitForLoadState('networkidle')
+      await a.emulateMedia({ media: 'print' }); await a.screenshot({ path: `${OUT}/qr-impresion.png`, fullPage: true })
+      await a.pdf({ path: `${OUT}/qr-a4.pdf`, preferCSSPageSize: true }); await a.emulateMedia({ media: 'screen' })
+    })
     for (const s of ['administradores', 'salud']) await paso(`admin ${s}`, async () => { await a.goto(`${BASE}/admin/${s}`); await a.waitForLoadState('networkidle'); await revisar(a, ancho, `admin-${s}`) })
 
     // --- Cierre de la sala ---
