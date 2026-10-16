@@ -138,7 +138,7 @@ export function MuestraUI() {
           <Aviso tono="info">Ya puedes ver la información de los 6 perfiles.</Aviso>
           <Aviso tono="ok">Calificación de INSUMEX guardada.</Aviso>
           <Aviso tono="alerta" titulo="Todos votaron en Mesa 1">
-            Este es un resultado preliminar. El facilitador cerrará la ronda; hasta entonces puedes editar tus calificaciones.
+            Este es un resultado preliminar. Puedes editar tus calificaciones hasta que el facilitador cierre la ronda.
           </Aviso>
           <Aviso tono="alerta" titulo="Sin conexión">
             Seguimos intentando. Lo que marcaste está guardado en este celular.

@@ -53,7 +53,7 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: Ins
     } catch (err) {
       const ea = err instanceof ErrorApi ? err : null
       if (ea?.codigo === 'CONSENTIMIENTO_REQUERIDO') setErrorEnvio('Marca la autorización de tratamiento de datos para continuar.')
-      else if (ea?.esRed) setErrorEnvio('Sin conexión. Revisa la señal e intenta de nuevo; lo que escribiste sigue aquí.')
+      else if (ea?.esRed) setErrorEnvio('Sin conexión. Revisa la señal e intenta de nuevo. Lo que escribiste sigue aquí.')
       else if (ea?.codigo === 'INSCRIPCION_CERRADA' || ea?.codigo === 'SALA_CERRADA')
         setErrorEnvio(
           recuperar
@@ -78,7 +78,7 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: Ins
         </Boton>
       }
     >
-      <h1 className="hz-titulo">{recuperar ? 'Recupera tu sesión' : 'Bienvenido al taller Horizontes'}</h1>
+      <h1 className="hz-titulo">{recuperar ? 'Recupera tu sesión' : 'Te damos la bienvenida al taller Horizontes'}</h1>
       <p className="hz-texto-2">
         {recuperar
           ? `Escribe el correo con el que te inscribiste en ${mesa.sala.nombre} y retomas donde ibas.`
