@@ -44,6 +44,29 @@ export function usarTransporte(t: Transporte) {
 
 export const usaMocks = () => transporte === responderMock
 
+/** Últimas peticiones del panel (para /admin/salud). Solo en memoria de esta pestaña. */
+export interface Medicion { metodo: string; ruta: string; status: number; ms: number; at: number }
+export const salud = { mediciones: [] as Medicion[], ultimoError: null as (Medicion & { mensaje: string }) | null }
+
+async function medir(metodo: string, ruta: string, cuerpo?: unknown, etag?: string): Promise<Respuesta> {
+  const inicio = performance.now()
+  const anotar = (status: number, mensaje?: string) => {
+    const m = { metodo, ruta: ruta.split('?')[0], status, ms: Math.round(performance.now() - inicio), at: Date.now() }
+    salud.mediciones.unshift(m)
+    salud.mediciones.length = Math.min(salud.mediciones.length, 100)
+    if (status === 0 || status >= 500) salud.ultimoError = { ...m, mensaje: mensaje ?? `HTTP ${status}` }
+  }
+  try {
+    const r = await transporte(metodo, ruta, cuerpo, etag)
+    const e = (r.body as { error?: { mensaje?: string } } | null)?.error
+    anotar(r.status, e?.mensaje)
+    return r
+  } catch (e) {
+    anotar(0, e instanceof Error ? e.message : 'Sin conexión')
+    throw e
+  }
+}
+
 /** Algunas listas llegan como arreglo o envueltas ({salas:[...]}, {admins:[...]}). */
 export function lista<T>(cuerpo: unknown, llave: string): T[] {
   if (Array.isArray(cuerpo)) return cuerpo as T[]
@@ -54,7 +77,7 @@ export function lista<T>(cuerpo: unknown, llave: string): T[] {
 async function pedir<T>(metodo: string, ruta: string, cuerpo?: unknown): Promise<T> {
   let r: Respuesta
   try {
-    r = await transporte(metodo, ruta, cuerpo)
+    r = await medir(metodo, ruta, cuerpo)
   } catch {
     throw new ApiError(0, 'SIN_CONEXION', 'No hay conexión con el servidor. Revisa tu red e intenta de nuevo.')
   }
@@ -67,7 +90,7 @@ async function pedir<T>(metodo: string, ruta: string, cuerpo?: unknown): Promise
 
 /** GET con ETag: devuelve null si no hubo cambios (304). */
 export async function consultar<T>(ruta: string, etag?: string): Promise<{ datos: T; etag?: string } | null> {
-  const r = await transporte('GET', ruta, undefined, etag)
+  const r = await medir('GET', ruta, undefined, etag)
   if (r.status === 304) return null
   if (r.status >= 400) {
     const e = (r.body as { error?: { codigo: string; mensaje: string } } | null)?.error

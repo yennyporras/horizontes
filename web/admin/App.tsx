@@ -12,6 +12,7 @@ import { Exportar } from './paginas/Exportar'
 import { Administradores } from './paginas/Administradores'
 import { ElegirSala } from './paginas/ElegirSala'
 import { MesasQR } from './paginas/MesasQR'
+import { Salud } from './paginas/Salud'
 
 function RequiereSesion({ children }: { children: ReactNode }) {
   const { admin, cargando } = useSesion()
@@ -71,6 +72,7 @@ export function Rutas() {
             </SoloSuperadmin>
           }
         />
+        <Route path="salud" element={<Salud />} />
         <Route path="*" element={<Navigate to="/admin/salas" replace />} />
       </Route>
     </Routes>

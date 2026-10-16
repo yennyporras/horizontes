@@ -228,6 +228,8 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     return ok({ ok: true })
   }
 
+  if (metodo === 'GET' && camino === '/api/health') return ok({ ok: true, modo: 'simulado', version: 'simulador' })
+
   // Tablero (token por query; en el simulador no se valida).
   const t = /^\/api\/tablero\/([^/]+)$/.exec(camino)
   if (metodo === 'GET' && t) {

@@ -29,6 +29,7 @@ export function Marco() {
     { a: enSala('configuracion'), texto: 'Configuración' },
     { a: enSala('export'), texto: 'Export' },
   ]
+  enlaces.push({ a: '/admin/salud', texto: 'Salud' })
   if (admin?.rol === 'superadmin') enlaces.push({ a: '/admin/administradores', texto: 'Administradores' })
 
   return (
