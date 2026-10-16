@@ -44,3 +44,12 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - 2026-10-16 [T3] Colores de vivos: INSUMEX `#E8590C` (naranja) y NUTRIWHAT `#00A3FF` (cielo de rúbricas); fijos gris azulado `#7D8FA9`. Fondos H1/H2/H3 en azules claros. R1 = relleno 22 % con contorno punteado; R2 = sólido.
 - 2026-10-16 [T3] El mock de `GET /api/tablero` no trae `grafico.etiquetas_horizonte`; la matriz usa las posiciones de la semilla (H1 1,3/1,9; H2 4,3/4,0; H3 8,0/7,6) por defecto y respeta las del servidor si llegan.
 - 2026-10-16 [T3] Etiquetas sin solape: colocador voraz con 8 posiciones y hasta 5 anillos; prioridad nombres de vivos, luego "R1", luego fijos. Ancho de texto estimado (0,68 em) para poder probar en Node sin DOM. Pruebas: `node --test web/tablero/matriz/matriz.test.js`.
+- 2026-10-16 [T3] R1: traje el esqueleto con `git merge t1-backend` (solo commits de R0 de T1) porque `main` no lo tenía y `/tablero/:sala` vive ahí. No toqué archivos de T1.
+- 2026-10-16 [T3] El tablero usa los tokens `--hz-*` de `docs/DISENO.md` con valores de respaldo locales en `web/tablero/tablero.css`, para no depender de que `web/shared/ui/tokens.css` (T2) esté en la rama.
+- 2026-10-16 [T3] Proyector (≥ 1100 px): los 2 vivos van en una sola tabla comparada para que matriz, progreso y detalle quepan en 1920×1080 sin scroll. En móvil, un panel por proyecto.
+- 2026-10-16 [T3] La mini distribución muestra la ronda en foco: R1 en vista Ronda 1, R2 en Ronda 2 y en Comparación (R1 si R2 aún no tiene votos).
+- 2026-10-16 [T3] "Preliminar" se muestra si el servidor manda `preliminar: true` o si el alcance mostrado está en precierre con la ronda abierta. Con la ronda cerrada desaparece.
+- 2026-10-16 [T3] Vista por defecto: ronda actual (preparada, inscripción y R1 → Ronda 1; R2 abierta → Ronda 2; R2 cerrada o sala cerrada → Comparación). La elección manual se reinicia cuando cambia el estado de la sala.
+- 2026-10-16 [T3] Sin `?t=` el tablero no muestra el selector de alcance; usa `?mesa=` si viene (alcance mesa) o la sala. Con 401/403 muestra "Pide al facilitador el enlace completo con su token".
+- 2026-10-16 [T3] Etiquetas de vivos en color oscuro AA (INSUMEX `#A63C06`, NUTRIWHAT `#00609A`); la burbuja conserva el color de marca. Matriz con `escalaTexto` 1,3 en proyector.
+- 2026-10-16 [T3] `MatrizHorizontes` (embebible para T2): `import { MatrizHorizontes } from '../tablero'`; props `datos`, `vista` (1, 2 o 'comparacion'), `alto` o `llenar`, `escalaTexto`. Sin fetch interno.
