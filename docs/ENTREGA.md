@@ -24,7 +24,7 @@ App web del taller "Portafolio por Horizontes" (caso Foodsume). Los participante
 ## 5. Qué garantiza (SPEC §11) y con qué evidencia
 | Criterio | Evidencia | Estado |
 |---|---|---|
-| 40 celulares, 4 mesas, 2 rondas, p95 < 500 ms, sin errores | Simulador de T1 contra la imagen de producción: 0 errores, p95 296 ms y 457 ms (con el recorrido en navegador en paralelo) | En local. Falta repetirlo en staging y producción |
+| 40 celulares, 4 mesas, 2 rondas, p95 < 500 ms, sin errores | Simulador de T1 contra la imagen de producción: 0 errores en 3 corridas, p95 entre 231 y 457 ms (con el recorrido en navegador en paralelo) | En local. Falta repetirlo en staging y producción |
 | Puntos = cálculo independiente (golden) | `tests/golden/motor_golden.json` al 100 % en `tools/test.sh`; simulador verifica los puntos de la sala | Verde |
 | Precierre solo con todos los activos, preliminar, sin cerrar | e2e de T1, T2 y T4; recorrido en navegador | Verde |
 | Cierre programado a la hora (± 15 s) | e2e de T1 con reloj real | Verde |
@@ -36,7 +36,7 @@ App web del taller "Portafolio por Horizontes" (caso Foodsume). Los participante
 Nombre y correo solo con fines informativos, con autorización según la Política de Tratamiento de Datos Personales de Estratek. Se guarda versión del aviso, fecha, IP y user agent. Ningún resultado muestra nombres ni respuestas individuales; los datos salen solo en el export CSV del panel. Pendiente: confirmar el país del VPS (si está fuera de Colombia, aviso `hz-1.1` con transferencia internacional; ver `docs/BLOQUEOS.md`).
 
 ## 7. Calidad
-- `tools/test.sh`: typecheck + Vitest (motor, API, e2e en navegador de participante, tablero y panel). Integrado en R3: 369 pruebas en verde.
+- `tools/test.sh`: typecheck + Vitest (motor, API, e2e en navegador de participante, tablero y panel). Integrado en R3 (pasada 3): 409 pruebas en verde.
 - QA integrada y hallazgos: `docs/TRIAGE.md`.
 
 ## 8. Pendientes conocidos
