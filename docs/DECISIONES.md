@@ -39,3 +39,5 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - Un correo = una inscripción por sala; si la persona vuelve a entrar con el mismo correo, recupera su sesión.
 
 ## Registro de las terminales
+- 2026-10-16 [T4] Consentimiento: se reutiliza `consentimiento.ts` + bloque de UI del IRMI (solo la casilla obligatoria, sin la casilla comercial). Texto `hz-1.0` en `docs/CONSENTIMIENTO.md`, basado en el aviso v1.1 aprobado por jurídica — finalidad solo informativa del taller.
+- 2026-10-16 [T4] Despliegue igual al IRMI: Coolify en el VPS de Hostinger, Dockerfile en la raíz, 1 réplica, `TZ=America/Bogota`; cierres programados con chequeo perezoso + `setInterval` 15 s en el proceso (sin cron) — es lo que cumple ± 15 s.
