@@ -1,0 +1,14 @@
+# BuildKit usa este archivo por estar junto a deploy/Dockerfile.
+**/node_modules
+dist
+logs
+.git
+.claude
+.env
+.env.*
+**/*.sqlite*
+**/*.db
+QA-tests
+prompts
+docs/bitacora
+web/**/package-lock.json

@@ -39,7 +39,7 @@ No toques otros registros (el correo de Google Workspace depende de ellos). Veri
 ### 2.3 Aplicación
 
 - **+ New → Applications → Private Repository (with GitHub App)**, repo de Horizontes.
-- **Build Pack:** `Dockerfile`, ubicación `/Dockerfile`, base `/`. T1 deja el `Dockerfile` en la raíz con el mismo patrón del IRMI: build de la web (participante, tablero y admin) servida como estáticos por el mismo servidor, un solo puerto `3000`.
+- **Build Pack:** `Dockerfile`, ubicación `/deploy/Dockerfile`, base `/`. Mismo patrón del IRMI: build de la web (participante, tablero y admin) servida como estáticos por el mismo servidor Fastify, un solo puerto `3000`. Ver `deploy/README.md` y `deploy/desplegar.sh`.
 - **Ports Exposes:** `3000`. Sin *Ports Mappings*.
 - **Advanced:** Force HTTPS. Certificado Let's Encrypt automático cuando el DNS responda.
 - **Healthcheck:** `GET /api/health` → 200, puerto 3000, intervalo 30 s, timeout 10 s, 3 reintentos, start period 60 s. (T1 publica la ruta; si cambia, se ajusta aquí.)
@@ -47,10 +47,10 @@ No toques otros registros (el correo de Google Workspace depende de ellos). Veri
 
 ### 2.4 Base de datos
 
-Lo fija T1 en `docs/STACK.md`. Las dos opciones quedan listas:
+T1 fijó **SQLite** (`node:sqlite`) en `docs/STACK.md`. Se usa la segunda opción; la de Postgres queda como referencia por si se cambia el stack.
 
 - **Postgres (mismo stack del IRMI, recomendado):** + New → Databases → PostgreSQL, imagen `postgres:17-alpine`, sin acceso público. Copia la *Postgres URL (internal)* a `DATABASE_URL`. Migraciones y semilla `data/seed_foodsume.json` al arrancar.
-- **SQLite (fallback Node + Express + better-sqlite3):** *Persistent Storage → Volume Mount* `horizontes-datos-<ambiente>` en `/data`, y `DATABASE_PATH=/data/horizontes.db`. Debe ser volumen, no bind mount. Un volumen distinto por ambiente.
+- **SQLite (vigente):** *Persistent Storage → Volume Mount* `horizontes-datos-<ambiente>` en `/data`. La imagen ya trae `DB_PATH=/data/horizontes.sqlite`. Debe ser volumen, no bind mount. Un volumen distinto por ambiente.
 
 ### 2.5 Variables de entorno (todas solo Runtime; secretos con Literal + candado)
 
@@ -61,8 +61,8 @@ Lo fija T1 en `docs/STACK.md`. Las dos opciones quedan listas:
 | `PORT` | `3000` | `3000` | |
 | `BASE_URL` | `https://staging-horizontes.estratek.com.co` | `https://horizontes.estratek.com.co` | Sin `/` final. Se usa en las URL y QR de las mesas. |
 | `TZ` | `America/Bogota` | `America/Bogota` | Fechas y cierres programados en hora de Bogotá. |
-| `DATABASE_URL` o `DATABASE_PATH` | la de staging | la de prod | Nunca compartir la base entre ambientes. |
-| `SESSION_SECRET` | `openssl rand -hex 32` | otro distinto | Firma la cookie `hz_admin`. Si cambia, los admins vuelven a iniciar sesión. |
+| `DB_PATH` | `/data/horizontes.sqlite` (ya en la imagen) | igual, en el volumen de prod | Nunca compartir la base ni el volumen entre ambientes. |
+| `SESSION_SECRET` | `openssl rand -hex 32` | otro distinto | Solo si T1 firma la cookie `hz_admin` con secreto (ver `docs/STACK.md`). Si cambia, los admins vuelven a iniciar sesión. |
 | `SUPERADMIN_USUARIO` | `paola` | `paola` | Se crea la primera vez que arranca sobre una base vacía. |
 | `SUPERADMIN_CLAVE` | ≥ 12 caracteres | otra distinta | Solo cuenta la primera vez. Después, se cambia desde el panel o con el script de restablecer de T1. |
 | `POLITICA_PRIVACIDAD_URL` | `https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/` | igual | Ver `docs/CONSENTIMIENTO.md`. |
@@ -84,7 +84,7 @@ Por eso la app corre con **1 réplica** y `TZ=America/Bogota`.
 ### 2.7 Respaldo
 
 - **Postgres:** pestaña *Backups*, diario `0 8 * * *`; en el día del taller, agregar uno manual antes de empezar y otro al cerrar la sala.
-- **SQLite:** *Scheduled Tasks* de la app, `0 8 * * *`: `sqlite3 /data/horizontes.db ".backup /data/respaldo-$(date +%F).db"` (o el script de respaldo de T1), y conservar 7 días.
+- **SQLite:** *Scheduled Tasks* de la app, `0 8 * * *`: copia en caliente con `VACUUM INTO` (comando en `deploy/README.md`, no requiere el binario `sqlite3`) y conservar 7 días.
 - Además, el admin descarga los CSV (`inscritos.csv`, `votos.csv`) al cerrar cada sala.
 - Restaurar solo con aprobación de Paola.
 
