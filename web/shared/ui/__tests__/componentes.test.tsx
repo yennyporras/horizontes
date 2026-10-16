@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
@@ -58,12 +59,12 @@ describe('Rubrica', () => {
     expect(radios.map((r) => r.value)).toEqual(['9', '7', '5', '3', '1'])
     fireEvent.click(screen.getByLabelText(/Nivel 5/))
     expect(radios.find((r) => r.checked)?.value).toBe('5')
-    expect(screen.getByRole('group').textContent).toContain('Criterio 3 de 6')
+    expect(screen.getByRole('radiogroup').textContent).toContain('Criterio 3 de 6')
   })
 
   it('anuncia el error', () => {
     render(<Rubrica criterioId="c" nombre="C" pregunta="P" opciones={opciones} valor={null} onCambio={() => undefined} error="Elige una opción para este criterio." />)
-    expect(screen.getByRole('group').getAttribute('aria-describedby')).toBeTruthy()
+    expect(screen.getByRole('radiogroup').getAttribute('aria-describedby')).toBeTruthy()
     expect(screen.getByText('Elige una opción para este criterio.')).toBeTruthy()
   })
 })
@@ -118,7 +119,7 @@ describe('BarraProgreso y Aviso', () => {
 describe('MuestraUI', () => {
   it('renderiza todos los componentes base sin rayas en los textos', () => {
     const { container } = render(<MuestraUI />)
-    expect(screen.getAllByRole('radiogroup').length + screen.getAllByRole('group').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('radiogroup').length).toBeGreaterThan(0)
     expect(screen.getByRole('tablist')).toBeTruthy()
     expect(screen.getByRole('progressbar')).toBeTruthy()
     expect(screen.getByRole('checkbox')).toBeTruthy()
