@@ -152,3 +152,36 @@ test('animación R1 → R2 solo con animar y en comparación, con movimiento red
   assert.ok(!matrizSVG(mock, { ancho: 900, animar: true, vista: 2 }).includes('hz-anim'));
   assert.ok(svg.includes('style="display:block"'));
 });
+
+test('nombres de los fijos sin solaparse entre sí ni con otras etiquetas, con los vivos en cualquier punto', () => {
+  // Lienzos reales: 1920×1080 y 1280×720 (proyector, letra ×1,45), 1366×768 y 360 px.
+  const lienzos: [number, number, number][] = [[905, 905, 1.45], [655, 600, 1.45], [590, 560, 1.45], [314, 330, 1]];
+  const pasos = [0.6, 2, 3.4, 4.8, 6.2, 7.6, 9];
+  const fallas: string[] = [];
+  let omitidos = 0;
+  for (const [ancho, alto, escalaTexto] of lienzos) {
+    for (const x of pasos) {
+      for (const y of pasos) {
+        const datos = structuredClone(mock);
+        datos.proyectos_vivos.forEach((p, i) => {
+          p.rondas = [
+            { ...p.rondas[0], ronda: 1, eje_x: x, eje_y: Math.max(0.3, y - 0.8 - i) },
+            { ...p.rondas[1], ronda: 2, eje_x: Math.min(9.2, x + 0.5 * i), eje_y: y },
+          ];
+        });
+        const L = calcularLayout(datos, { ancho, alto, escalaTexto });
+        const fijas = L.etiquetas.filter((e) => e.tipo === 'fijo');
+        // Solo en móvil se acepta omitir un nombre de fijo (antes que pisar el de un vivo).
+        if (ancho > 400 && fijas.length !== L.fijos.length) fallas.push(`${ancho}px (${x},${y}): faltan nombres de fijos`);
+        omitidos += L.fijos.length - fijas.length;
+        for (const e of fijas) {
+          for (const o of L.etiquetas) if (o !== e && solapan(e.caja, o.caja)) fallas.push(`${ancho}px (${x},${y}): ${e.texto} con ${o.texto}`);
+          if (e.caja.x < L.x0 || e.caja.x + e.caja.w > L.x0 + L.P || e.caja.y < L.y0 || e.caja.y + e.caja.h > L.y0 + L.P) fallas.push(`${ancho}px: ${e.texto} fuera`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(fallas.slice(0, 15), [], `${fallas.length} solapes`);
+  console.info(`[matriz] nombres de fijos omitidos en 360 px: ${omitidos} de ${pasos.length ** 2 * 8}`);
+  assert.ok(omitidos <= 6, `${omitidos} nombres omitidos`);
+});

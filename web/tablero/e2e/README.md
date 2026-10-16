@@ -1,7 +1,15 @@
-# Verificación en navegador del tablero (manual)
+# Verificación en navegador del tablero
 
+## Automática (en `tools/test.sh`)
+`navegador.test.ts` levanta la API real con BD en memoria, Vite y Chromium headless (`playwright-core`, dependencia de desarrollo):
+- Prueba sintética del golden cerrada en R2: los puntos dibujados (vivos R1/R2 y los 8 fijos) coinciden con golden en 1920×1080, 1366×768 y 360×740; sin desborde horizontal; proyector sin scroll; vista Comparación automática; letra ≥ 18 px a 1920; contraste AA del texto; tecla F.
+- Sala con R1 abierta: 304 sin cambios con el mismo nodo `<svg>`, voto visible y cierre de R1 en < 5 s, "Preliminar" en precierre, paso solo a Ronda 2 y a Comparación al cerrar R2.
+
+Usa `PW_EXE` o el Chromium de la caché de `ms-playwright`. Si no hay o no arranca (Linux sin librerías), se omite con aviso (`npx playwright-core install chromium-headless-shell`). `HZ_E2E=0` la apaga.
+Dentro de la suite espera 25 s antes de levantar Vite y Chromium para no cargar la CPU mientras corren las pruebas de jsdom de otras áreas. Solo este archivo y con capturas: `HZ_E2E_ESPERA_MS=0 HZ_CAPTURAS=/ruta npx vitest run web/tablero/e2e`.
+
+## Manual (scripts sueltos)
 Scripts Node con `playwright-core` (el que trae `@playwright/cli` global) y el Chromium headless instalado.
-No corren en Vitest; se usan para la aceptación en navegador real.
 
 ```bash
 export PW_BASE="$(npm root -g)/@playwright/cli"
@@ -27,3 +35,15 @@ node web/tablero/e2e/comparacion.mjs "http://localhost:5183/tablero/s_demo?t=dem
 ```
 
 Resultado R1 (16-oct): golden OK en los 3 anchos (error ≤ 0,0001); cierre de ronda reflejado en 2,1 s.
+
+## Aceptación con el simulador de T1 (R2)
+```bash
+PORT=8823 DB_PATH=/tmp/hz.sqlite SUPERADMIN_USUARIO=simt3 SUPERADMIN_CLAVE=clave-sim-t3-123 npx tsx server/index.ts &
+API_URL=http://127.0.0.1:8823 npx vite --host 127.0.0.1 --port 5193 --strictPort &
+node web/tablero/e2e/simulador_vivo.mjs http://127.0.0.1:5193 http://127.0.0.1:8823 simt3 clave-sim-t3-123 /tmp &   # espera "LISTO"
+npx tsx tools/simulador.ts --url http://127.0.0.1:8823 --usuario simt3 --clave clave-sim-t3-123
+```
+El observador detecta la sala del simulador, abre su tablero a 1920 px y cada 200 ms compara la `version` dibujada (`data-version` del lienzo) con la de la API; al alcanzarla exige que los puntos del SVG coincidan con esa versión. El muestreo de 200 ms puede subestimar el retraso hasta en ~200 ms.
+En Windows, `kill` sobre `npx` no detiene el hijo: usa `taskkill //PID <pid> //T //F`.
+
+Resultado R2 (16-oct): 40 personas, 4 mesas, 2 rondas. 69 versiones de la API dibujadas, retraso p95 2,4 s y máximo 2,6 s; puntos finales iguales a la API (≤ 0,0001) y vista final Comparación. Simulador: 0 errores, 0 descuadres.

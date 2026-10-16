@@ -1,7 +1,8 @@
-// Respaldo de la BD al cerrar una sala y límite de peticiones por IP.
-import { mkdirSync, readdirSync, rmSync } from 'node:fs'
+// Respaldo de la BD (antes y después de cada sala), reinicio limpio de una sala y límite de peticiones.
+import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { Db } from '../db/index.js'
+import { type Db, ejecutar, transaccion } from '../db/index.js'
+import { cargarSala, registrarEvento, tocar } from './salas.js'
 
 export const RESPALDOS_A_CONSERVAR = 30
 
@@ -14,7 +15,10 @@ export function respaldarBd(db: Db, dbPath: string, etiqueta: string, ahora: num
   const dir = join(dirname(dbPath), 'respaldos')
   mkdirSync(dir, { recursive: true })
   const sello = new Date(ahora).toISOString().replace(/[:.]/g, '-')
-  const destino = join(dir, `horizontes_${sello}_${etiqueta.replace(/[^a-zA-Z0-9_-]/g, '')}.sqlite`)
+  const base = join(dir, `horizontes_${sello}_${etiqueta.replace(/[^a-zA-Z0-9_-]/g, '')}`)
+  // VACUUM INTO falla si el archivo existe (dos respaldos con la misma etiqueta en el mismo milisegundo).
+  let destino = `${base}.sqlite`
+  for (let i = 2; existsSync(destino); i++) destino = `${base}_${i}.sqlite`
   db.prepare('VACUUM INTO ?').run(destino)
   const archivos = readdirSync(dir)
     .filter((f) => f.startsWith('horizontes_') && f.endsWith('.sqlite'))
@@ -50,4 +54,31 @@ export class LimitadorPeticiones {
   private limpiar(ahora: number) {
     for (const [k, v] of this.ventanas) if (ahora - v.inicio >= this.ventanaMs) this.ventanas.delete(k)
   }
+}
+
+/**
+ * Reinicio limpio de una sala (después del ensayo y antes del taller real): borra participantes, consentimientos,
+ * votos y eventos, y la deja en `preparada` con la configuración por defecto. Conserva el id, el código, las mesas
+ * (los QR impresos siguen sirviendo), el contenido y el token del tablero. Quien lo llame debe respaldar antes.
+ */
+export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
+  return transaccion(db, () => {
+    const sala = cargarSala(db, salaId)
+    const ids = 'SELECT id FROM participantes WHERE sala_id = ?'
+    const borrados = {
+      votos: Number(ejecutar(db, 'DELETE FROM votos WHERE sala_id = ?', sala.id).changes),
+      consentimientos: Number(ejecutar(db, `DELETE FROM consentimientos WHERE participante_id IN (${ids})`, sala.id).changes),
+      participantes: Number(ejecutar(db, 'DELETE FROM participantes WHERE sala_id = ?', sala.id).changes),
+      eventos: Number(ejecutar(db, 'DELETE FROM eventos WHERE sala_id = ?', sala.id).changes),
+    }
+    ejecutar(
+      db,
+      `UPDATE salas SET estado = 'preparada', ronda_actual = 0, alcance_resultados = 'mesa', vista_participante = 'registrado',
+         revelar_hojas = 0, cierre_programado_ronda_at = NULL, cierre_programado_sala_at = NULL WHERE id = ?`,
+      sala.id,
+    )
+    registrarEvento(db, sala.id, ahora, 'sala_reiniciada', 'sistema', borrados)
+    tocar(db, sala.id)
+    return { sala: cargarSala(db, sala.id), borrados }
+  })
 }

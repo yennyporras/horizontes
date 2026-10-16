@@ -40,7 +40,7 @@ export function Exportar() {
   }
 
   return (
-    <ConSala titulo="Export" datos={datos} error={error}>
+    <ConSala titulo="Exportar datos" datos={datos} error={error}>
       {(d) => (
         <>
           <p className="pista">Archivos CSV en UTF-8 que abren bien en Excel. Se generan con los datos del momento.</p>

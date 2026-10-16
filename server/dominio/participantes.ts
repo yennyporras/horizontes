@@ -58,7 +58,8 @@ export function perfilBalanceado(db: Db, mesaId: string): string {
   return mejor
 }
 
-const RE_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const RE_CORREO = /^[^\s@<>"'`;,()\\]+@[^\s@<>"'`;,()\\]+\.[^\s@<>"'`;,()\\]+$/
+const RE_NOMBRE_PROHIBIDO = /[\u0000-\u001f\u007f<>{}\\`]/
 
 export interface DatosInscripcion {
   codigoMesa?: unknown
@@ -91,6 +92,8 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
   const nombre = typeof d.nombre === 'string' ? d.nombre.trim().replace(/\s+/g, ' ') : ''
   const correo = typeof d.correo === 'string' ? d.correo.trim().toLowerCase() : ''
   if (nombre.length < 2 || nombre.length > 120) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Escribe tu nombre (entre 2 y 120 caracteres).')
+  // Sin caracteres de control ni marcado: el nombre sale en el panel admin y en los CSV.
+  if (RE_NOMBRE_PROHIBIDO.test(nombre)) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Tu nombre solo puede tener letras, números y signos comunes.')
   if (!RE_CORREO.test(correo) || correo.length > 160) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Escribe un correo válido.')
 
   return transaccion(db, () => {
@@ -198,14 +201,15 @@ export interface DatosVoto {
 
 export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ahora: number) {
   if (!p.activo) throw new ErrorApi(403, 'PARTICIPANTE_INACTIVO', 'Tu inscripción está desactivada. Habla con el facilitador.')
-  const ronda = Number(d.ronda)
+  // Validación estricta: tipos exactos del contrato (ronda número, respuestas objeto con los 6 criterios y nada más).
+  const ronda = d.ronda
   if (ronda !== 1 && ronda !== 2) throw new ErrorApi(422, 'RESPUESTA_INVALIDA', 'La ronda debe ser 1 o 2.')
   const r = d.respuestas as Record<string, unknown> | undefined
-  const claves = r && typeof r === 'object' ? Object.keys(r) : []
+  const claves = r && typeof r === 'object' && !Array.isArray(r) ? Object.keys(r) : []
   if (claves.length !== CRITERIOS.length || !CRITERIOS.every((c) => [1, 3, 5, 7, 9].includes(r![c] as number))) {
     throw new ErrorApi(422, 'RESPUESTA_INVALIDA', 'Responde las 6 preguntas con 1, 3, 5, 7 o 9.')
   }
-  const proyectoId = String(d.proyecto_id ?? '')
+  const proyectoId = typeof d.proyecto_id === 'string' ? d.proyecto_id : ''
   if (!vivos(db, p.sala_id).some((x) => x.id === proyectoId)) {
     throw new ErrorApi(422, 'PROYECTO_INVALIDO', 'Solo se votan INSUMEX y NUTRIWHAT.')
   }

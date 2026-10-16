@@ -2,7 +2,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import QRCode from 'qrcode'
 import type { Db } from '../db/index.js'
-import { ErrorApi, responderConVersion } from '../http.js'
+import { ErrorApi, responderConVersion, yaLaTiene } from '../http.js'
 import {
   type AdminFila,
   adminDeSesion,
@@ -21,9 +21,9 @@ import { aplicarAccion, cambiarConfig } from '../dominio/estados.js'
 import { detalleSala, editarParticipante, eventosPaginados, exportInscritos, exportVotos, listarSalas, mesasAdmin, salaResumen, urls } from '../dominio/gestion.js'
 import { autenticarParticipante, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
-import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla } from '../dominio/salas.js'
+import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
-import { sha256 } from '../dominio/util.js'
+import { isoBogota, sha256 } from '../dominio/util.js'
 import { uno } from '../db/index.js'
 
 export interface OpcionesApi {
@@ -34,6 +34,8 @@ export interface OpcionesApi {
   revisarCierres: () => void
   /** Se llama después de cerrar una sala (respaldo de la BD). */
   alCerrarSala: (salaId: string) => void
+  /** Respaldo de la BD con una etiqueta de momento (antes de empezar la sala, antes de reiniciar una ronda). */
+  respaldar?: (salaId: string, momento: string) => void
 }
 
 const COOKIE = 'hz_admin'
@@ -52,10 +54,12 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     if (req.url.startsWith('/api/')) op.revisarCierres()
   })
 
-  // Límite por IP en las rutas de escritura abiertas (los celulares de un taller comparten IP: topes holgados).
+  // Límite por IP en las rutas de escritura abiertas. Todos los celulares del taller salen por la IP del wifi:
+  // los topes cubren una sala de 300 personas inscribiéndose en el mismo minuto (probado con `npm run simular -- --personas 200`).
+  // Ojo en pruebas: la ventana usa el reloj inyectado; con el reloj fijo no se reinicia.
   const limites: Record<string, LimitadorPeticiones> = {
-    'POST /api/inscripcion': new LimitadorPeticiones(120, 60_000),
-    'PUT /api/votos': new LimitadorPeticiones(600, 60_000),
+    'POST /api/inscripcion': new LimitadorPeticiones(600, 60_000),
+    'PUT /api/votos': new LimitadorPeticiones(2000, 60_000),
     'POST /api/admin/login': new LimitadorPeticiones(20, 60_000),
   }
   app.addHook('onRequest', async (req) => {
@@ -82,9 +86,23 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   const participante = (req: FastifyRequest) => autenticarParticipante(db, req.headers['x-participante-token'] as string | undefined)
 
-  app.get('/api/yo', async (req, reply) => responderConVersion(req, reply, vistaYo(db, participante(req))))
+  app.get('/api/yo', async (req, reply) => {
+    const p = participante(req)
+    // La ETag sale de la versión de la sala: si el celular ya la tiene, 304 sin armar la vista completa.
+    const version = `v-${cargarSala(db, p.sala_id).version}-${p.id}`
+    if (yaLaTiene(req, version)) return reply.header('ETag', `"${version}"`).header('Cache-Control', 'no-cache').code(304).send()
+    return responderConVersion(req, reply, vistaYo(db, p))
+  })
 
-  app.put('/api/votos', async (req) => votar(db, participante(req), (req.body ?? {}) as never, ahora()))
+  // Además del tope por IP, uno por participante: un celular con un bucle de reintentos no se come el cupo del wifi.
+  const votosPorParticipante = new LimitadorPeticiones(120, 60_000)
+  app.put('/api/votos', async (req) => {
+    const p = participante(req)
+    if (!votosPorParticipante.permitir(p.id, ahora())) {
+      throw new ErrorApi(429, 'DEMASIADAS_PETICIONES', 'Estás enviando demasiados votos seguidos. Espera un minuto e intenta de nuevo.')
+    }
+    return votar(db, p, (req.body ?? {}) as never, ahora())
+  })
 
   app.get<{ Querystring: { ronda?: string } }>('/api/resultados', async (req, reply) => {
     const p = participante(req)
@@ -172,10 +190,16 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     return reply.code(201).send({ ...salaResumen(sala, op.baseUrl), mesas: mesasAdmin(db, sala, op.baseUrl) })
   })
 
+  app.post<{ Params: { id: string }; Body: { nombre?: unknown } }>('/api/admin/salas/:id/duplicar', async (req, reply) => {
+    const sala = duplicarSala(db, req.params.id, req.body?.nombre, ahora(), por(req))
+    return reply.code(201).send({ ...salaResumen(sala, op.baseUrl), mesas: mesasAdmin(db, sala, op.baseUrl) })
+  })
+
   app.get<{ Params: { id: string } }>('/api/admin/salas/:id', async (req, reply) => {
     const d = detalleSala(db, req.params.id, op.baseUrl)
     const a = req.admin!
-    return responderConVersion(req, reply, { ...d, admin_actual: { id: a.id, usuario: a.usuario, nombre: a.nombre, rol: a.rol } })
+    // servidor_at: hora del servidor, para que el panel programe cierres aunque el reloj del computador esté corrido.
+    return responderConVersion(req, reply, { ...d, admin_actual: { id: a.id, usuario: a.usuario, nombre: a.nombre, rol: a.rol }, servidor_at: isoBogota(ahora()) })
   })
 
   app.patch<{ Params: { id: string } }>('/api/admin/salas/:id/config', async (req) => {
@@ -183,8 +207,13 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     return salaResumen(s, op.baseUrl).config
   })
 
-  app.post<{ Params: { id: string }; Body: { accion?: string; ronda?: number } }>('/api/admin/salas/:id/acciones', async (req) => {
-    const s = aplicarAccion(db, cargarSala(db, req.params.id).id, String(req.body?.accion ?? ''), ahora(), por(req), { ronda: req.body?.ronda })
+  app.post<{ Params: { id: string }; Body: { accion?: string; ronda?: unknown } }>('/api/admin/salas/:id/acciones', async (req) => {
+    const sala = cargarSala(db, req.params.id)
+    const accion = String(req.body?.accion ?? '')
+    // Respaldo antes de que la sala reciba datos (arranque) y antes de borrar votos (reinicio de ronda).
+    if (accion === 'abrir_inscripcion' || (accion === 'abrir_ronda_1' && sala.estado === 'preparada')) op.respaldar?.(sala.id, 'inicio')
+    if (accion === 'reiniciar_ronda' && sala.estado !== 'cerrada') op.respaldar?.(sala.id, 'antes_reinicio')
+    const s = aplicarAccion(db, sala.id, accion, ahora(), por(req), { ronda: req.body?.ronda })
     if (s.estado === 'cerrada') op.alCerrarSala(s.id)
     return { sala: salaResumen(s, op.baseUrl) }
   })
