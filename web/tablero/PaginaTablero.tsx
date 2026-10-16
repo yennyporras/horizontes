@@ -4,6 +4,7 @@ import { MatrizHorizontes } from './MatrizHorizontes'
 import { PanelProyecto } from './PanelProyecto'
 import { Progreso } from './Progreso'
 import { TablaComparada } from './TablaComparada'
+import { CuadriculaMesas } from './CuadriculaMesas'
 import { usePollingTablero } from './usePollingTablero'
 import { usePantallaCompleta } from './usePantallaCompleta'
 import { esPreliminar, mensajeVacio, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
@@ -22,7 +23,9 @@ export default function PaginaTablero() {
   const [params, setParams] = useSearchParams()
   const mesa = params.get('mesa')
   const token = params.get('t')
-  const url = sala ? urlApiTablero(sala, { mesa, t: token }) : null
+  // ?vista=mesas (solo con token): una matriz por mesa. La petición principal va a toda la sala.
+  const verMesas = !!token && params.get('vista') === 'mesas'
+  const url = sala ? urlApiTablero(sala, { mesa: verMesas ? null : mesa, t: token }) : null
   const { datos, error, cargando } = usePollingTablero(url)
 
   // La vista elegida a mano dura hasta que cambie el estado de la sala; entonces vuelve la de defecto.
@@ -36,7 +39,9 @@ export default function PaginaTablero() {
 
   const cambiarAlcance = (valor: string) => {
     const p = new URLSearchParams(params)
+    p.delete('vista')
     if (valor === 'sala') p.delete('mesa')
+    else if (valor === 'mesas') p.set('vista', 'mesas')
     else p.set('mesa', valor)
     setParams(p, { replace: true })
   }
@@ -69,7 +74,7 @@ export default function PaginaTablero() {
         vista={vista}
         onVista={setElegida}
         token={token}
-        mesa={mesa}
+        mesa={verMesas ? 'mesas' : mesa}
         onAlcance={cambiarAlcance}
         pantallaCompleta={pantalla.activa}
         onPantalla={pantalla.alternar}
@@ -79,27 +84,31 @@ export default function PaginaTablero() {
           {error.mensaje} Mostramos los últimos datos recibidos.
         </p>
       )}
-      <div className="hz-cuerpo">
-        <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
-          <Vacio datos={datos} vista={vista} />
-          <div className="hz-lienzo">
-            <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} />
-          </div>
-          <Leyenda vista={vista} />
-        </section>
-        <aside className="hz-lateral" aria-label="Detalle por proyecto y progreso">
-          <Progreso datos={datos} />
-          {/* Proyector (≥ 1100 px): tabla comparada. Móvil y tableta: un panel por proyecto. Solo se ve uno (CSS). */}
-          <div className="hz-solo-ancho">
-            <TablaComparada datos={datos} vista={vista} />
-          </div>
-          <div className="hz-solo-angosto">
-            {datos.proyectos_vivos.map((p, i) => (
-              <PanelProyecto key={p.id} proyecto={p} indice={i} datos={datos} vista={vista} />
-            ))}
-          </div>
-        </aside>
-      </div>
+      {verMesas ? (
+        <CuadriculaMesas sala={sala} token={token} datos={datos} vista={vista} escalaTexto={escalaTexto > 1 ? 1.5 : 1} />
+      ) : (
+        <div className="hz-cuerpo">
+          <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
+            <Vacio datos={datos} vista={vista} />
+            <div className="hz-lienzo">
+              <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} />
+            </div>
+            <Leyenda vista={vista} />
+          </section>
+          <aside className="hz-lateral" aria-label="Detalle por proyecto y progreso">
+            <Progreso datos={datos} />
+            {/* Proyector (≥ 1100 px): tabla comparada. Móvil y tableta: un panel por proyecto. Solo se ve uno (CSS). */}
+            <div className="hz-solo-ancho">
+              <TablaComparada datos={datos} vista={vista} />
+            </div>
+            <div className="hz-solo-angosto">
+              {datos.proyectos_vivos.map((p, i) => (
+                <PanelProyecto key={p.id} proyecto={p} indice={i} datos={datos} vista={vista} />
+              ))}
+            </div>
+          </aside>
+        </div>
+      )}
     </main>
   )
 }
@@ -139,7 +148,7 @@ function Encabezado({
 }) {
   const preliminar = esPreliminar(datos)
   const alcanceTexto =
-    datos.alcance?.tipo === 'mesa' ? (datos.alcance.mesa_nombre ?? 'Mesa') : 'Toda la sala'
+    mesa === 'mesas' ? 'Todas las mesas' : datos.alcance?.tipo === 'mesa' ? (datos.alcance.mesa_nombre ?? 'Mesa') : 'Toda la sala'
   return (
     <header className="hz-cab">
       <div className="hz-cab-titulo">
@@ -161,6 +170,7 @@ function Encabezado({
             <span>Alcance</span>
             <select value={mesa ?? 'sala'} onChange={(e) => onAlcance(e.target.value)}>
               <option value="sala">Toda la sala</option>
+              <option value="mesas">Todas las mesas</option>
               {(datos.progreso?.por_mesa ?? []).map((m) => (
                 <option key={m.mesa_id} value={m.mesa_id}>
                   {m.nombre}
