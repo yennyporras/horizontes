@@ -119,6 +119,8 @@ export interface RondaVivo {
   t2m: number | null
   eje_x: number | null
   eje_y: number | null
+  /** true si hay votos pero menos que `Tablero.minimo_votos`: promedios, distribución y punto van en null por privacidad. */
+  bajo_minimo?: boolean
 }
 export interface ProyectoTablero {
   id: string
@@ -139,6 +141,8 @@ export interface Tablero {
   proyectos_fijos: (ProyectoTablero & { t2m: number; eje_x: number; eje_y: number })[]
   proyectos_vivos: (ProyectoTablero & { rondas: RondaVivo[] })[]
   preliminar: boolean
+  /** Votos mínimos por proyecto y ronda para mostrar resultados de un alcance (hoy 2). */
+  minimo_votos?: number
 }
 
 // --- Admin -----------------------------------------------------------------------

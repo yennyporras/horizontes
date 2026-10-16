@@ -214,6 +214,12 @@ export async function simularTaller(op: OpcionesSimulacion): Promise<Informe> {
     const detalle: string[] = []
     for (const pv of t.proyectos_vivos) {
       for (const r of pv.rondas) {
+        // Con menos de 2 votos el servidor oculta promedios y punto (privacidad, SPEC §7).
+        if (grupo.length < 2) {
+          if (!(r.bajo_minimo === true && r.n_votos === grupo.length && r.promedios === null && r.eje_x === null)) mal++
+          detalle.push(`${pv.nombre} R${r.ronda} (oculto, ${r.n_votos} voto)`)
+          continue
+        }
         const e = calcular(grupo, r.ronda, pv.id)
         const ok =
           r.n_votos === grupo.length &&
