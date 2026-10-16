@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Insignia } from '../../shared/ui'
 import { MatrizHorizontes, type DatosTablero, type Vista } from '../../tablero'
 import type { Criterio, Resultados, RondaVivo } from '../api'
@@ -36,6 +37,21 @@ export function vistaMatriz(r: Resultados): Vista {
   return 1
 }
 
+/** En escritorio la matriz crece (triage #25) y sus etiquetas también. */
+const ESCRITORIO = '(min-width: 64rem)'
+function usarEscalaTexto(): number {
+  const consulta = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(ESCRITORIO).matches
+  const [ancho, setAncho] = useState(consulta)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const m = window.matchMedia(ESCRITORIO)
+    const cambio = () => setAncho(m.matches)
+    m.addEventListener?.('change', cambio)
+    return () => m.removeEventListener?.('change', cambio)
+  }, [])
+  return ancho ? 1.5 : 1
+}
+
 /**
  * Resultado del alcance (mesa o sala): matriz de T3 (solo props) y promedio por criterio.
  * Solo muestra lo que calcula el servidor; el celular nunca recalcula.
@@ -51,6 +67,7 @@ export function ResultadoAlcance({
   alcance: 'mesa' | 'sala'
   preliminar?: boolean
 }) {
+  const escalaTexto = usarEscalaTexto()
   const donde = textoAlcance(resultados, alcance)
   const vivos = resultados.proyectos_vivos ?? []
   const hayVotos = vivos.some((p) => p.rondas.some(conVotos))
@@ -77,7 +94,7 @@ export function ResultadoAlcance({
         </p>
       )}
       <div className="hzp-matriz">
-        <MatrizHorizontes datos={datosMatriz as unknown as DatosTablero} vista={vistaMatriz(datosMatriz)} />
+        <MatrizHorizontes datos={datosMatriz as unknown as DatosTablero} vista={vistaMatriz(datosMatriz)} escalaTexto={escalaTexto} />
       </div>
       {vivos.map((p) => {
         const r1 = p.rondas.find((r) => r.ronda === 1)
