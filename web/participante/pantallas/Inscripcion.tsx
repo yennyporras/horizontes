@@ -114,9 +114,10 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: Ins
           <h2 id="hzp-consentimiento-titulo" className="hzp-consentimiento__titulo">
             Autorización de tratamiento de datos
           </h2>
+          <AvisoDatos />
           <Casilla marcada={acepta} onCambio={setAcepta} nombre="consentimiento">
             {mesa.consentimiento.texto_autorizacion}{' '}
-            <a href={mesa.consentimiento.politica_url} target="_blank" rel="noopener noreferrer">
+            <a href={mesa.consentimiento.politica_url || POLITICA_ESTRATEK} target="_blank" rel="noopener noreferrer">
               Lee la Política de Tratamiento de Datos Personales de Estratek
             </a>
           </Casilla>
@@ -126,5 +127,36 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: Ins
         <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
       </form>
     </Marco>
+  )
+}
+
+/** Política publicada por Estratek (vigente desde el 25 de abril de 2016). Respaldo si el servidor no envía la URL. */
+export const POLITICA_ESTRATEK = 'https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/'
+export const CORREO_DATOS = 'info@estratek.com.co'
+
+/** Aviso de privacidad corto (Ley 1581), resumido de la política de Estratek. */
+function AvisoDatos() {
+  return (
+    <dl className="hzp-aviso-datos">
+      <div>
+        <dt>Quién trata tus datos</dt>
+        <dd>Estratek S.A.S., Medellín.</dd>
+      </div>
+      <div>
+        <dt>Qué datos</dt>
+        <dd>Tu nombre y tu correo. Tus calificaciones solo se ven en promedios, sin nombres.</dd>
+      </div>
+      <div>
+        <dt>Para qué</dt>
+        <dd>Fines informativos de este taller.</dd>
+      </div>
+      <div>
+        <dt>Tus derechos</dt>
+        <dd>
+          Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización. Escribe a <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>: respondemos en
+          máximo 10 días hábiles. También puedes acudir a la Superintendencia de Industria y Comercio.
+        </dd>
+      </div>
+    </dl>
   )
 }

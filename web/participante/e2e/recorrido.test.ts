@@ -44,7 +44,7 @@ async function sinDesborde(p: Page) {
  */
 async function tactiles(p: Page) {
   const chicos = await p.evaluate(() => {
-    const sel = 'button, [role="tab"], .hz-opcion, .hz-casilla__toque, a:not(p a):not(label a):not(li a)'
+    const sel = 'button, [role="tab"], .hz-opcion, .hz-casilla__toque, a:not(p a):not(label a):not(li a):not(dd a)'
     return [...document.querySelectorAll<HTMLElement>(sel)]
       .filter((el) => el.offsetParent !== null && !el.closest('.hz-visual-oculto'))
       .map((el) => ({ el: `${el.tagName}.${el.className} "${el.textContent?.trim().slice(0, 30)}"`, r: el.getBoundingClientRect() }))
@@ -114,6 +114,10 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await inscribirme.click({ force: true })
     await titulo(p, 'Te damos la bienvenida al taller Horizontes')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('target')).toBe('_blank')
+    // Aviso de datos (Ley 1581) resumido de la política real de Estratek, con canal para ejercer derechos.
+    await ver(p, 'Quién trata tus datos')
+    expect(await p.getByRole('link', { name: 'info@estratek.com.co' }).getAttribute('href')).toBe('mailto:info@estratek.com.co')
+    expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('href')).toMatch(/^https:\/\/estratek\.com\.co\/politica/)
     await capturar(p, '01-inscripcion')
     await tactiles(p)
     await focoVisible(p, 6)
