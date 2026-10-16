@@ -1,4 +1,5 @@
 import { Insignia } from '../../shared/ui'
+import { MatrizHorizontes, type DatosTablero, type Vista } from '../../tablero'
 import type { Criterio, Resultados, RondaVivo } from '../api'
 import { cifra } from '../Comun'
 
@@ -6,9 +7,17 @@ export const textoAlcance = (r: Resultados | null, alcance: 'mesa' | 'sala') => 
 
 const conVotos = (r: RondaVivo | undefined): r is RondaVivo => Boolean(r && r.n_votos > 0 && r.promedios)
 
+/** Ronda 1: solo R1. Con votos en las 2 rondas: comparación (R1 suave, R2 sólido y flecha). */
+export function vistaMatriz(r: Resultados): Vista {
+  const vivos = r.proyectos_vivos ?? []
+  const con = (n: number) => vivos.some((p) => conVotos(p.rondas.find((x) => x.ronda === n)))
+  if (con(2)) return con(1) ? 'comparacion' : 2
+  return 1
+}
+
 /**
- * Resultado del alcance (mesa o sala). Provisional: promedios por criterio y posición en la matriz
- * mientras llega el componente de matriz de T3 (web/tablero/). Solo muestra lo que calcula el servidor.
+ * Resultado del alcance (mesa o sala): matriz de T3 (solo props) y promedio por criterio.
+ * Solo muestra lo que calcula el servidor; el celular nunca recalcula.
  */
 export function ResultadoAlcance({
   resultados,
@@ -39,6 +48,9 @@ export function ResultadoAlcance({
           <Insignia tono="alerta">Preliminar</Insignia>
         </p>
       )}
+      <div className="hzp-matriz">
+        <MatrizHorizontes datos={resultados as unknown as DatosTablero} vista={vistaMatriz(resultados)} />
+      </div>
       {vivos.map((p) => {
         const r1 = p.rondas.find((r) => r.ronda === 1)
         const r2 = p.rondas.find((r) => r.ronda === 2)

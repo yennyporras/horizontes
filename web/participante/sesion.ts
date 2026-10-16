@@ -51,8 +51,26 @@ export function guardarBorrador(codigo: string, proyecto: string, ronda: number,
   escribir(sesion, clave(`borrador_${proyecto}_r${ronda}`, codigo), respuestas ? JSON.stringify(respuestas) : null)
 }
 
-export function olvidarSesion(codigo: string) {
+/** Nombre y correo de la inscripción, solo en este celular: rellenan la recuperación de sesión. */
+export function leerDatos(codigo: string): { nombre: string; correo: string } | null {
+  const t = leer(local, clave('datos', codigo))
+  if (!t) return null
+  try {
+    const d = JSON.parse(t) as { nombre?: unknown; correo?: unknown }
+    return typeof d.nombre === 'string' && typeof d.correo === 'string' ? { nombre: d.nombre, correo: d.correo } : null
+  } catch {
+    return null
+  }
+}
+export const guardarDatos = (codigo: string, datos: { nombre: string; correo: string }) => escribir(local, clave('datos', codigo), JSON.stringify(datos))
+
+/**
+ * Sale de la sesión. Con `conservarLugar` (token vencido) se guardan la pantalla, los borradores
+ * y la cola: al recuperar la sesión con el mismo correo retoma donde iba.
+ */
+export function olvidarSesion(codigo: string, conservarLugar = false) {
   guardarToken(codigo, null)
+  if (conservarLugar) return
   marcarBienvenida(codigo, false)
   escribir(sesion, clave('vista', codigo), null)
 }
