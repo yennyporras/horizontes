@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { MatrizHorizontes } from './MatrizHorizontes'
 import { PanelProyecto } from './PanelProyecto'
@@ -29,10 +29,14 @@ export default function PaginaTablero() {
   const { datos, error, cargando } = usePollingTablero(url)
 
   // La vista elegida a mano dura hasta que cambie el estado de la sala; entonces vuelve la de defecto.
+  // Se guarda con el estado en que se eligió (sin efecto que la borre: un atajo pulsado justo al
+  // llegar los datos no se pierde).
   const estado = datos?.sala?.estado
-  const [elegida, setElegida] = useState<Vista | null>(null)
-  useEffect(() => setElegida(null), [estado])
-  const vista = elegida ?? vistaPorDefecto(estado, datos?.sala?.ronda_actual)
+  const [elegida, setElegidaConEstado] = useState<{ vista: Vista; estado: typeof estado } | null>(null)
+  const estadoRef = useRef(estado)
+  estadoRef.current = estado
+  const setElegida = useCallback((v: Vista) => setElegidaConEstado({ vista: v, estado: estadoRef.current }), [])
+  const vista = elegida && elegida.estado === estado ? elegida.vista : vistaPorDefecto(estado, datos?.sala?.ronda_actual)
 
   const escalaTexto = useEscalaProyector()
   const pantalla = usePantallaCompleta(setElegida)
@@ -124,7 +128,7 @@ function useEscalaProyector() {
     m.addEventListener('change', cambio)
     return () => m.removeEventListener('change', cambio)
   }, [])
-  return ancho ? 1.3 : 1
+  return ancho ? 1.45 : 1
 }
 
 function Encabezado({
