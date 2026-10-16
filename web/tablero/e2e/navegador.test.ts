@@ -161,6 +161,15 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
           desbordeX: doc.scrollWidth - innerWidth,
           desbordeY: doc.scrollHeight - innerHeight,
           letraCuerpo: parseFloat(getComputedStyle(document.querySelector('.hz-tablero')!).fontSize),
+          lateralOculto: (() => {
+            const l = document.querySelector('.hz-lateral')!
+            return l.scrollHeight - l.clientHeight
+          })(),
+          letraMin: Math.min(
+            ...[...document.querySelectorAll('.hz-tablero *')]
+              .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim()) && !el.closest('svg') && (el as HTMLElement).offsetParent)
+              .map((el) => parseFloat(getComputedStyle(el).fontSize)),
+          ),
         }
       })
       const lin = (p: number[][]) => {
@@ -193,6 +202,10 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       if (w >= 1366) expect(r.desbordeY, 'scroll vertical en proyector').toBeLessThanOrEqual(0)
       // Legible a 6 m: cuerpo ≥ 18 px a 1920 (≈ 20 px), ≥ 14 px en 360.
       expect(r.letraCuerpo).toBeGreaterThanOrEqual(w >= 1900 ? 18 : 14)
+      console.info(`[tablero e2e] ${w}px: letra cuerpo ${r.letraCuerpo} px, mínima ${r.letraMin} px, panel lateral oculto ${r.lateralOculto} px`)
+      // En proyector (1920×1080 y 1366×768) todo el panel lateral se ve sin desplazarlo: nadie está al teclado.
+      if (w >= 1366) expect(r.lateralOculto, 'panel lateral con contenido oculto').toBeLessThanOrEqual(0)
+      if (w >= 1900) expect(r.letraMin, 'letra mínima en proyector').toBeGreaterThanOrEqual(13)
       // Ninguna flecha ni burbuja sale del lienzo.
       expect(await page.locator('svg.hz-matriz').evaluate((s) => s.getBoundingClientRect().right <= innerWidth + 0.5)).toBe(true)
 
