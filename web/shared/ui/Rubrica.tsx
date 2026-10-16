@@ -25,7 +25,7 @@ export function Rubrica({ criterioId, nombre, pregunta, opciones, valor, onCambi
   const id = useId()
   const ordenadas = [...opciones].sort((a, b) => b.valor - a.valor)
   return (
-    <fieldset className={['hz-rubrica', error && 'hz-rubrica--error'].filter(Boolean).join(' ')} aria-describedby={error ? `${id}-error` : undefined}>
+    <fieldset role="radiogroup" className={['hz-rubrica', error && 'hz-rubrica--error'].filter(Boolean).join(' ')} aria-describedby={error ? `${id}-error` : undefined}>
       <legend className="hz-rubrica__encabezado">
         <span className="hz-rubrica__criterio">
           {posicion ? `Criterio ${posicion.actual} de ${posicion.total}: ` : ''}
