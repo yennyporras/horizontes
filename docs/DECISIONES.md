@@ -39,3 +39,8 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - Un correo = una inscripción por sala; si la persona vuelve a entrar con el mismo correo, recupera su sesión.
 
 ## Registro de las terminales
+- 2026-10-16 [T3] La matriz es un módulo ES sin dependencias (`web/tablero/matriz/matriz.js`) que produce un string SVG en píxeles reales del contenedor (no un viewBox fijo escalado) — así la tipografía queda legible a 360 px y grande en proyector; se redibuja con ResizeObserver.
+- 2026-10-16 [T3] Si las burbujas R1 y R2 de un vivo se superponen (movimiento corto), la flecha va de centro a centro, encima, en azul Estratek con contorno blanco; si están separadas, de borde a borde en el color del proyecto. Sin flecha si el movimiento es menor que la punta.
+- 2026-10-16 [T3] Colores de vivos: INSUMEX `#E8590C` (naranja) y NUTRIWHAT `#00A3FF` (cielo de rúbricas); fijos gris azulado `#7D8FA9`. Fondos H1/H2/H3 en azules claros. R1 = relleno 22 % con contorno punteado; R2 = sólido.
+- 2026-10-16 [T3] El mock de `GET /api/tablero` no trae `grafico.etiquetas_horizonte`; la matriz usa las posiciones de la semilla (H1 1,3/1,9; H2 4,3/4,0; H3 8,0/7,6) por defecto y respeta las del servidor si llegan.
+- 2026-10-16 [T3] Etiquetas sin solape: colocador voraz con 8 posiciones y hasta 5 anillos; prioridad nombres de vivos, luego "R1", luego fijos. Ancho de texto estimado (0,68 em) para poder probar en Node sin DOM. Pruebas: `node --test web/tablero/matriz/matriz.test.js`.
