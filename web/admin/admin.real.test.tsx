@@ -192,7 +192,7 @@ describe('panel admin contra la API real', () => {
     const r = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}/export/inscritos.csv`, headers: { cookie } })
     expect(r.statusCode).toBe(200)
     expect(String(r.headers['content-type'])).toContain('text/csv')
-    fireEvent.click(nav().getByText('Export'))
+    fireEvent.click(nav().getByText('Exportar'))
     expect(await screen.findByRole('heading', { name: /inscritos/i })).toBeTruthy()
   }, 20_000)
 })

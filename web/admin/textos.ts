@@ -85,6 +85,18 @@ export const CONFIRMACIONES: Partial<Record<Accion, { titulo: string; texto: str
 /** Ronda abierta según el estado (null si no hay ronda abierta). */
 export const rondaAbierta = (e: EstadoSala) => (e === 'r1_abierta' ? 1 : e === 'r2_abierta' ? 2 : null)
 
+/** Estado de una mesa en el panel en vivo, coherente con el estado de la sala (no dice "Votando" si no hay ronda abierta). */
+export function estadoMesa(
+  estado: EstadoSala,
+  mesa: { inscritos: number; precierre?: boolean },
+): { texto: string; tono?: 'exito' | 'apagado' | 'aviso' } {
+  if (mesa.inscritos === 0) return { texto: 'Sin inscritos', tono: 'apagado' }
+  if (rondaAbierta(estado)) return mesa.precierre ? { texto: 'Precierre', tono: 'exito' } : { texto: 'Votando' }
+  if (estado === 'r1_cerrada' || estado === 'r2_cerrada') return { texto: ESTADOS[estado], tono: 'apagado' }
+  if (estado === 'cerrada') return { texto: 'Sala cerrada', tono: 'apagado' }
+  return { texto: 'Esperando la ronda', tono: 'apagado' }
+}
+
 /** Texto de cuenta regresiva: "1 h 05 min", "4 min 09 s". */
 export function faltan(ms: number): string {
   if (ms <= 0) return 'ya'
