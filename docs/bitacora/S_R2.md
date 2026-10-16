@@ -5,3 +5,4 @@
 - t2-participante: integrada con conflictos resueltos por Claude
 - t4-admin: integrada con conflictos resueltos por Claude
 - Pruebas: verde
+- main publicada en origin
