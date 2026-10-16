@@ -181,6 +181,13 @@ export async function simularTaller(op: OpcionesSimulacion): Promise<Informe> {
         }
       }),
     )
+    // Cada celular lee su vista al terminar de votar (no depender de que el polling haya alcanzado a pasar).
+    await Promise.all(
+      personas.map(async (p) => {
+        const y = await c.pedir('GET', '/api/yo', { headers: { 'x-participante-token': p.token } })
+        if (y.status === 200) p.hojas[n] = y.json.contenido.hojas.length
+      }),
+    )
     const t = (await tablero()).json
     verificar(`R${n}: precierre de sala al votar todos`, t?.progreso?.precierre === true && t?.preliminar === true, `${t?.progreso?.completos}/${t?.progreso?.inscritos}`)
     const res = await c.pedir('GET', '/api/resultados', { headers: { 'x-participante-token': personas[personas.length - 1].token } })
@@ -222,6 +229,7 @@ export async function simularTaller(op: OpcionesSimulacion): Promise<Informe> {
   }
   comparar('puntos de la sala = cálculo independiente', (await tablero()).json, personas)
   for (const [i, m] of sala.mesas.entries()) {
+    if (!personas.some((p) => p.mesa === i)) continue // más mesas que personas: mesa vacía
     comparar(`puntos de ${m.nombre}`, (await tablero(`&alcance=mesa&mesa=${m.id}`)).json, personas.filter((p) => p.mesa === i))
   }
   if (op.golden) {

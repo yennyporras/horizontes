@@ -14,6 +14,9 @@ describe('textos sin rayas', () => {
     expect(sinRayas('una tecnología desarrollada —y aún sin tracción— que')).toBe('una tecnología desarrollada, y aún sin tracción, que')
     expect(sinRayas('fin del inciso —.')).toBe('fin del inciso.')
     expect(sinRayas('sin cambios')).toBe('sin cambios')
+    expect(sinRayas('Intro:\n— uno\n— dos')).toBe('Intro:\n- uno\n- dos')
+    expect(sinRayas('fin —')).toBe('fin')
+    expect(sinRayas('a —b— c. Otra, frase.')).toBe('a, b, c. Otra, frase.')
   })
 
   it('la semilla cargada no trae rayas en ningún texto', () => {
@@ -57,6 +60,7 @@ describe('POST /api/admin/salas/:id/duplicar', () => {
     const r = await e.app.inject({ method: 'POST', url: `/api/admin/salas/${orig.id}/duplicar`, headers: { cookie: e.cookie }, payload: { nombre: 'Ensayo martes' } })
     expect(r.json().nombre).toBe('Ensayo martes')
     expect((await e.app.inject({ method: 'POST', url: `/api/admin/salas/${orig.id}/duplicar`, payload: {} })).statusCode).toBe(401)
+    expect((await e.app.inject({ method: 'POST', url: `/api/admin/salas/${orig.id}/duplicar`, headers: { cookie: e.cookie }, payload: { nombre: 123 } })).statusCode).toBe(422)
     expect((await e.app.inject({ method: 'POST', url: '/api/admin/salas/s_noexiste/duplicar', headers: { cookie: e.cookie }, payload: {} })).statusCode).toBe(404)
   })
 })
