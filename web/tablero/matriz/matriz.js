@@ -353,7 +353,7 @@ export function matrizSVG(datos, opciones = {}) {
   partes.push(`<g class="hz-fijos">`);
   for (const f of L.fijos) {
     partes.push(
-      `<circle cx="${r2(f.cx)}" cy="${r2(f.cy)}" r="${r2(f.r)}" fill="${C.fijo}" fill-opacity="0.85" stroke="${C.halo}" stroke-width="1.5"><title>${esc(f.nombre)} · X ${f.valor.x} · Y ${f.valor.y} · TAM ${esc(f.tam)}</title></circle>`,
+      `<circle class="hz-fijo" data-proyecto="${esc(f.id)}" cx="${r2(f.cx)}" cy="${r2(f.cy)}" r="${r2(f.r)}" fill="${C.fijo}" fill-opacity="0.85" stroke="${C.halo}" stroke-width="1.5"><title>${esc(f.nombre)} · X ${f.valor.x} · Y ${f.valor.y} · TAM ${esc(f.tam)}</title></circle>`,
     );
   }
   partes.push(`</g>`);

@@ -1,7 +1,15 @@
-# Verificación en navegador del tablero (manual)
+# Verificación en navegador del tablero
 
+## Automática (en `tools/test.sh`)
+`navegador.test.ts` levanta la API real con BD en memoria, Vite y Chromium headless (`playwright-core`, dependencia de desarrollo):
+- Prueba sintética del golden cerrada en R2: los puntos dibujados (vivos R1/R2 y los 8 fijos) coinciden con golden en 1920×1080, 1366×768 y 360×740; sin desborde horizontal; proyector sin scroll; vista Comparación automática; letra ≥ 18 px a 1920; contraste AA del texto; tecla F.
+- Sala con R1 abierta: 304 sin cambios con el mismo nodo `<svg>`, voto visible y cierre de R1 en < 5 s, "Preliminar" en precierre, paso solo a Ronda 2 y a Comparación al cerrar R2.
+
+Usa `PW_EXE` o el Chromium de la caché de `ms-playwright`; si no hay, se omite con aviso (`npx playwright-core install chromium-headless-shell`).
+Capturas: `HZ_CAPTURAS=/ruta npx vitest run web/tablero/e2e`.
+
+## Manual (scripts sueltos)
 Scripts Node con `playwright-core` (el que trae `@playwright/cli` global) y el Chromium headless instalado.
-No corren en Vitest; se usan para la aceptación en navegador real.
 
 ```bash
 export PW_BASE="$(npm root -g)/@playwright/cli"
