@@ -285,8 +285,16 @@
   }
   .hz-admin .tabla-tarjetas td::before { content: attr(data-label); color: var(--a-tinta-2); font-size: 13px; font-weight: 600; text-align: left; flex: 0 0 auto; max-width: 55%; }
   .hz-admin .tabla-tarjetas td .barra { display: none; }
+  .hz-admin .tabla-tarjetas td.td-largo { display: block; text-align: left; overflow-wrap: anywhere; }
+  .hz-admin .tabla-tarjetas td.td-largo::before { display: block; max-width: none; }
   .hz-admin .tabla-tarjetas td .enlaces { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .hz-admin .nav { flex-wrap: nowrap; overflow-x: auto; flex-basis: 100%; scrollbar-width: none; }
+  .hz-admin .nav {
+    flex-wrap: nowrap; overflow-x: auto; flex-basis: 100%; scrollbar-width: none;
+    /* El borde derecho se desvanece: avisa que el menú sigue hacia el lado */
+    -webkit-mask-image: linear-gradient(to right, #000 82%, transparent);
+    mask-image: linear-gradient(to right, #000 82%, transparent);
+    padding-right: 40px;
+  }
   .hz-admin .nav__item { white-space: nowrap; }
 }
 
