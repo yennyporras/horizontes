@@ -11,10 +11,11 @@ export const nombreEje = (eje: 'X' | 'Y', titulo: string) =>
   `Eje ${eje} (${titulo.toLowerCase().replace(/(^|\s)\p{L}/gu, (l) => l.toUpperCase())})`
 
 /**
- * SPEC §7: ningún resultado muestra respuestas individuales. Con 1 sola calificación el promedio ES la
- * respuesta de esa persona: el celular no la muestra (triage #1). Ocultar no es recalcular.
+ * SPEC §7: ningún resultado muestra respuestas individuales (triage #1). Con 1 calificación el promedio ES
+ * esa respuesta; con 2, quien votó despeja la del otro (otro = 2 · promedio − propia). Por eso 3.
+ * Ocultar no es recalcular.
  */
-export const MIN_VOTOS = 2
+export const MIN_VOTOS = 3
 const conVotos = (r: RondaVivo | undefined) => Boolean(r && r.n_votos >= MIN_VOTOS && r.promedios)
 const pocosVotos = (r: RondaVivo | undefined) => Boolean(r && r.n_votos > 0 && r.n_votos < MIN_VOTOS)
 
@@ -76,7 +77,7 @@ export function ResultadoAlcance({
   const ejeX = nombreEje('X', resultados.ejes?.x.titulo ?? 'Time 2 market')
   const ejeY = nombreEje('Y', resultados.ejes?.y.titulo ?? 'Value generation capacity')
 
-  const avisoPocos = `Hacen falta al menos ${MIN_VOTOS} calificaciones en ${donde} para mostrar un resultado. Así nadie ve las respuestas de una sola persona.`
+  const avisoPocos = `Hacen falta al menos ${MIN_VOTOS} calificaciones en ${donde} para mostrar un resultado. Así nadie ve las respuestas de otra persona.`
   if (!hayVotos) {
     return (
       <p className="hz-texto-2">

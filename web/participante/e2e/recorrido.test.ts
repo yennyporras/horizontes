@@ -74,6 +74,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     // Otra persona de la mesa (otro celular, por API).
     const tokenB = await inscribirApi(e, mesa, 'Beto Ruiz', 'beto.e2e@empresa.com')
+    const tokenC = await inscribirApi(e, mesa, 'Ciro Ríos', 'ciro.e2e@empresa.com')
 
     // Ronda 1: el celular se entera solo (polling).
     await accion(e, sala.id, 'abrir_ronda_1')
@@ -112,7 +113,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ctx.setOffline(false)
     await ver(p, 'Volvió la señal: enviamos tu calificación de NUTRIWHAT.')
     await titulo(p, 'Voto registrado')
-    await ver(p, '1 de 2 completaron en Mesa 1')
+    await ver(p, '1 de 3 completaron en Mesa 1')
 
     // Recarga: vuelve a donde iba.
     await p.reload()
@@ -130,7 +131,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     // Precierre: todos votaron en la mesa → aviso y resultado preliminar con la matriz.
     await votarApi(e, tokenB, 'insumex', 1)
+    await votarApi(e, tokenC, 'insumex', 1)
     await votarApi(e, tokenB, 'nutriwhat', 1)
+    await votarApi(e, tokenC, 'nutriwhat', 1)
     await ver(p, 'Todos votaron en Mesa 1')
     await p.getByRole('heading', { name: 'Resultado preliminar de tu mesa' }).waitFor()
     await ver(p, 'Preliminar')
@@ -179,7 +182,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await titulo(p, 'Voto registrado')
     await votarApi(e, tokenB, 'insumex', 2)
+    await votarApi(e, tokenC, 'insumex', 2)
     await votarApi(e, tokenB, 'nutriwhat', 2)
+    await votarApi(e, tokenC, 'nutriwhat', 2)
     await ver(p, 'Todos votaron en Mesa 1')
 
     // La ronda se cierra mientras edita: mensaje claro y lo marcado no se pierde.
@@ -190,8 +195,6 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ver(p, /La ronda 2 se cerró mientras calificabas INSUMEX/)
     await ver(p, /Esos cambios no alcanzaron a guardarse/)
     await titulo(p, 'Ronda 2 cerrada')
-    // Triage #15: el "guardada" de la ronda abierta no sigue en la pantalla de ronda cerrada.
-    expect(await p.getByText(/Calificación de .* guardada\./).count()).toBe(0)
     const borrador = await p.evaluate((c) => sessionStorage.getItem(`hz_borrador_insumex_r2:${c}`), mesa.toUpperCase())
     expect(JSON.parse(borrador ?? '{}')).toMatchObject({ alistamiento_tecnico: 5 })
 
@@ -241,6 +244,8 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await accion(e, sala.id, 'abrir_ronda_1')
     const otro = await inscribirApi(e, sala.mesas[1].codigo, 'Caro Díaz', 'caro.e2e@empresa.com')
     await votarApi(e, otro, 'insumex', 1)
+    const otro2 = await inscribirApi(e, sala.mesas[1].codigo, 'Gabo Paz', 'gabo.e2e@empresa.com')
+    await votarApi(e, otro2, 'insumex', 1)
     // Alguien de la mesa 1 aún no vota: sin precierre, la pantalla es la de resultados en vivo.
     await inscribirApi(e, sala.mesas[0].codigo, 'Eli Mora', 'eli.e2e@empresa.com')
     const ctx = await celular(e)

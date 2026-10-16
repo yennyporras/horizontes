@@ -34,21 +34,21 @@ describe('resultado del alcance', () => {
 
   it(`con menos de ${MIN_VOTOS} calificaciones no muestra respuestas individuales (triage #1)`, () => {
     const r = clonar(tablero) as unknown as Resultados
-    for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 1
+    for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 2
     const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
-    expect(screen.getByText(/Hacen falta al menos 2 calificaciones en tu mesa/)).toBeTruthy()
+    expect(screen.getByText(/Hacen falta al menos 3 calificaciones en tu mesa/)).toBeTruthy()
     expect(container.querySelector('table')).toBeNull()
     expect(container.querySelector('.hzp-matriz')).toBeNull()
   })
 
-  it('oculta solo el proyecto o la ronda con 1 calificación', () => {
+  it('oculta solo el proyecto o la ronda con menos de MIN_VOTOS calificaciones', () => {
     const r = clonar(tablero) as unknown as Resultados
     const [a, b] = r.proyectos_vivos
-    for (const x of a.rondas) x.n_votos = 1
-    for (const x of b.rondas) if (x.ronda === 2) x.n_votos = 1
+    for (const x of a.rondas) x.n_votos = 2
+    for (const x of b.rondas) if (x.ronda === 2) x.n_votos = 2
     render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
-    expect(screen.getByText('Hacen falta al menos 2 calificaciones para mostrar este proyecto.')).toBeTruthy()
-    expect(screen.getByText(/Ronda 2: hacen falta al menos 2 calificaciones para mostrarla/)).toBeTruthy()
+    expect(screen.getByText('Hacen falta al menos 3 calificaciones para mostrar este proyecto.')).toBeTruthy()
+    expect(screen.getByText(/Ronda 2: hacen falta al menos 3 calificaciones para mostrarla/)).toBeTruthy()
     // Solo queda la tabla de b con su ronda 1: una columna de datos, encabezada "Promedio".
     expect(screen.getAllByRole('table')).toHaveLength(1)
     expect(screen.getByRole('columnheader', { name: 'Promedio' })).toBeTruthy()

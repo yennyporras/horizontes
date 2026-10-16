@@ -47,7 +47,7 @@ export async function tactiles(p: Page) {
   expect(chicos).toEqual([])
 }
 
-/** Foco visible: recorre con Tab y cada elemento enfocado (o su opción de rúbrica) muestra anillo. */
+/** Foco visible: recorre con Tab y cada elemento enfocado (o su opción de rúbrica) muestra el anillo de --hz-foco (cielo). */
 export async function focoVisible(p: Page, pasos: number) {
   await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
   for (let i = 0; i < pasos; i++) {
@@ -57,7 +57,7 @@ export async function focoVisible(p: Page, pasos: number) {
       if (!a || a === document.body) return null
       const anillo = a.matches('.hz-opcion__input') ? a.closest('.hz-opcion')! : a
       const st = getComputedStyle(anillo)
-      return { el: `${a.tagName} ${a.textContent?.trim().slice(0, 20) ?? ''}`, ok: st.boxShadow !== 'none' || (st.outlineStyle !== 'none' && st.outlineColor !== 'rgba(0, 0, 0, 0)') }
+      return { el: `${a.tagName} ${a.textContent?.trim().slice(0, 20) ?? ''}`, ok: st.boxShadow.includes('rgb(0, 163, 255)') || (st.outlineStyle !== 'none' && st.outlineColor !== 'rgba(0, 0, 0, 0)') }
     })
     if (r) expect(r.ok, `sin foco visible: ${r.el}`).toBe(true)
   }
