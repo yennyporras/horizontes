@@ -1,3 +1,24 @@
+/* Respaldo con las métricas de Montserrat (ancho y alto de línea): mientras llega la fuente, el texto
+   ocupa casi lo mismo y al cambiar no hay saltos de diseño (CLS). Arial en escritorio, Roboto en Android. */
+@font-face {
+  font-family: 'Montserrat Respaldo';
+  font-weight: 100 600;
+  src: local('Arial'), local('ArialMT'), local('Roboto'), local('Helvetica');
+  size-adjust: 109%;
+  ascent-override: 88.8%;
+  descent-override: 23%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Montserrat Respaldo';
+  font-weight: 601 900;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Roboto Bold'), local('Roboto-Bold'), local('Helvetica Bold');
+  size-adjust: 108%;
+  ascent-override: 89.6%;
+  descent-override: 23.2%;
+  line-gap-override: 0%;
+}
+
 /*
  * Tokens del sistema visual de Horizontes. Fuente: docs/DISENO.md (§2 a §6).
  * Cambiar la marca = cambiar este archivo. Los componentes solo consumen tokens --hz-*.
@@ -31,7 +52,7 @@
   --hz-error-fondo: #FDECEA;
 
   /* Tipografía */
-  --hz-fuente: 'Montserrat Variable', 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --hz-fuente: 'Montserrat Variable', 'Montserrat', 'Montserrat Respaldo', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --hz-fs-12: 0.75rem;
   --hz-fs-14: 0.875rem;
   --hz-fs-16: 1rem;
