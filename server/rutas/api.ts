@@ -34,6 +34,8 @@ export interface OpcionesApi {
   revisarCierres: () => void
   /** Se llama después de cerrar una sala (respaldo de la BD). */
   alCerrarSala: (salaId: string) => void
+  /** Respaldo de la BD con una etiqueta de momento (antes de empezar la sala, antes de reiniciar una ronda). */
+  respaldar?: (salaId: string, momento: string) => void
 }
 
 const COOKIE = 'hz_admin'
@@ -92,7 +94,15 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     return responderConVersion(req, reply, vistaYo(db, p))
   })
 
-  app.put('/api/votos', async (req) => votar(db, participante(req), (req.body ?? {}) as never, ahora()))
+  // Además del tope por IP, uno por participante: un celular con un bucle de reintentos no se come el cupo del wifi.
+  const votosPorParticipante = new LimitadorPeticiones(120, 60_000)
+  app.put('/api/votos', async (req) => {
+    const p = participante(req)
+    if (!votosPorParticipante.permitir(p.id, ahora())) {
+      throw new ErrorApi(429, 'DEMASIADAS_PETICIONES', 'Estás enviando demasiados votos seguidos. Espera un minuto e intenta de nuevo.')
+    }
+    return votar(db, p, (req.body ?? {}) as never, ahora())
+  })
 
   app.get<{ Querystring: { ronda?: string } }>('/api/resultados', async (req, reply) => {
     const p = participante(req)
@@ -198,7 +208,12 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   })
 
   app.post<{ Params: { id: string }; Body: { accion?: string; ronda?: unknown } }>('/api/admin/salas/:id/acciones', async (req) => {
-    const s = aplicarAccion(db, cargarSala(db, req.params.id).id, String(req.body?.accion ?? ''), ahora(), por(req), { ronda: req.body?.ronda })
+    const sala = cargarSala(db, req.params.id)
+    const accion = String(req.body?.accion ?? '')
+    // Respaldo antes de que la sala reciba datos (arranque) y antes de borrar votos (reinicio de ronda).
+    if (accion === 'abrir_inscripcion' || (accion === 'abrir_ronda_1' && sala.estado === 'preparada')) op.respaldar?.(sala.id, 'inicio')
+    if (accion === 'reiniciar_ronda' && sala.estado !== 'cerrada') op.respaldar?.(sala.id, 'antes_reinicio')
+    const s = aplicarAccion(db, sala.id, accion, ahora(), por(req), { ronda: req.body?.ronda })
     if (s.estado === 'cerrada') op.alCerrarSala(s.id)
     return { sala: salaResumen(s, op.baseUrl) }
   })
