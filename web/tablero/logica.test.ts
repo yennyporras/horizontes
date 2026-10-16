@@ -5,6 +5,7 @@ import {
   avisosPrecierre,
   delta,
   esPreliminar,
+  insigniaResultado,
   mensajeVacio,
   numero,
   pedirTablero,
@@ -78,10 +79,15 @@ describe('precierre y preliminar', () => {
     const d = structuredClone(mock)
     d.alcance = { tipo: 'mesa', mesa_id: 'm2', mesa_nombre: 'Mesa 2' }
     expect(esPreliminar(d)).toBe(false)
-    d.alcance = { tipo: 'sala' }
+    d.alcance = { tipo: 'sala', mesa_id: null, mesa_nombre: null }
     expect(esPreliminar(d)).toBe(false)
+    // La API real manda preliminar: true con la ronda abierta aunque no haya precierre: no cuenta.
     d.preliminar = true
-    expect(esPreliminar(d)).toBe(true)
+    expect(esPreliminar(d)).toBe(false)
+    expect(insigniaResultado(d)).toBe('en_vivo')
+    expect(insigniaResultado(mock)).toBe('preliminar')
+    d.sala.estado = 'r2_cerrada'
+    expect(insigniaResultado(d)).toBe(null)
   })
 })
 
