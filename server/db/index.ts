@@ -9,7 +9,7 @@ export type Db = DatabaseSync
 export function abrirDb(ruta: string): Db {
   if (ruta !== ':memory:') mkdirSync(dirname(ruta), { recursive: true })
   const db = new DatabaseSync(ruta)
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;')
+  db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;')
   migrar(db)
   return db
 }
