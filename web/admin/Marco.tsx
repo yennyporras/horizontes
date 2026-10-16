@@ -19,16 +19,17 @@ export function Marco() {
   const navegar = useNavigate()
   if (salaId) recordarSala(salaId)
   const sala = salaId ?? salaRecordada()
-  const enSala = (seccion: string) => (sala ? `/salas/${sala}/${seccion}` : `/sala/${seccion}`)
+  const enSala = (seccion: string) => (sala ? `/admin/salas/${sala}/${seccion}` : `/admin/sala/${seccion}`)
 
   const enlaces = [
-    { a: '/salas', texto: 'Salas', end: true },
+    { a: '/admin/salas', texto: 'Salas', end: true },
     { a: enSala('vivo'), texto: 'Sala en vivo' },
+    { a: enSala('mesas'), texto: 'Mesas y QR' },
     { a: enSala('participantes'), texto: 'Participantes' },
     { a: enSala('configuracion'), texto: 'Configuración' },
     { a: enSala('export'), texto: 'Export' },
   ]
-  if (admin?.rol === 'superadmin') enlaces.push({ a: '/administradores', texto: 'Administradores' })
+  if (admin?.rol === 'superadmin') enlaces.push({ a: '/admin/administradores', texto: 'Administradores' })
 
   return (
     <div className="marco">
@@ -54,7 +55,7 @@ export function Marco() {
             className="btn btn--fantasma"
             onClick={async () => {
               await salir()
-              navegar('/login', { replace: true })
+              navegar('/admin/login', { replace: true })
             }}
           >
             Salir

@@ -37,8 +37,9 @@ export interface SalaResumen {
   codigo: string
   nombre: string
   estado: EstadoSala
-  ronda_actual: number
+  ronda_actual?: number
   creada_at: string
+  mesas?: number
 }
 
 export interface Mesa {
@@ -73,7 +74,8 @@ export interface Evento {
 
 export interface SalaDetalle {
   version: string
-  sala: SalaResumen & { config: ConfigSala }
+  /** url_tablero es opcional (CONTRATO: agregado por T4); si falta, se deriva del tablero de una mesa. */
+  sala: SalaResumen & { config: ConfigSala; url_tablero?: string }
   mesas: Mesa[]
   participantes: Participante[]
   eventos: Evento[]
@@ -90,3 +92,19 @@ export type Accion =
   | 'reiniciar_ronda'
   | 'cerrar_sala'
   | 'reabrir_sala'
+
+/** Lo que el panel usa de GET /api/tablero (ver mocks/GET_api_tablero.json). */
+export interface RondaVivo {
+  ronda: number
+  n_votos: number
+  t2m: number | null
+  eje_x: number | null
+  eje_y: number | null
+}
+
+export interface TableroResumen {
+  version: string
+  preliminar?: boolean
+  alcance: { tipo: 'sala' | 'mesa'; mesa_id?: string; mesa_nombre?: string }
+  proyectos_vivos: { id: string; nombre: string; rondas: RondaVivo[] }[]
+}

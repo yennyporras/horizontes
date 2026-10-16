@@ -1,8 +1,9 @@
 // Servidor simulado en memoria con la forma de docs/CONTRATO_API.md y los ejemplos de mocks/.
-// Solo para desarrollo: usuarios de prueba paola/demo1234 (superadmin) y jorge/demo1234 (admin).
-import detalleBase from '../../../../mocks/GET_api_admin_salas_id.json'
-import type { Accion, AdminFila, AdminYo, EstadoSala, SalaDetalle, SalaResumen } from '../tipos'
-import { ACCIONES_POR_ESTADO } from '../textos'
+// Solo para desarrollo (/admin?mock=1): usuarios de prueba paola/demo1234 (superadmin) y jorge/demo1234 (admin).
+import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
+import tableroBase from '../../../mocks/GET_api_tablero.json'
+import type { Accion, AdminFila, AdminYo, EstadoSala, Mesa, Participante, SalaDetalle, SalaResumen } from '../tipos'
+import { ACCIONES_POR_ESTADO, PERFILES, nombrePerfil, rondaAbierta } from '../textos'
 import type { Respuesta } from '../api'
 
 const CLAVE_DEMO = 'demo1234'
@@ -16,8 +17,49 @@ interface Estado {
   version: number
 }
 
+const NOMBRES = ['Ana Pérez', 'Luis Gómez', 'Marta Ríos', 'Carlos Díaz', 'Sofía Mejía', 'Andrés Rojas', 'Laura Vélez', 'Diego Castro', 'Paula Henao', 'Jorge Arango', 'Camila Ortiz', 'Felipe Duque']
+
+function mesa(codigo: string, i: number): Mesa {
+  return {
+    id: `m${i}`,
+    nombre: `Mesa ${i}`,
+    codigo: `${codigo}-${i}`,
+    url_participante: `https://horizontes.estratek.com.co/m/${codigo}-${i}`,
+    url_tablero: `https://horizontes.estratek.com.co/tablero/${codigo}?mesa=m${i}&t=TOKEN`,
+    inscritos: 0,
+    completos: 0,
+    precierre: false,
+    perfiles: {},
+  }
+}
+
+/** Recalcula conteos y precierre por mesa como lo haría el servidor (SPEC §4). */
+function derivar(s: SalaDetalle) {
+  for (const m of s.mesas) {
+    const activos = s.participantes.filter((p) => p.mesa_id === m.id && p.activo)
+    m.inscritos = activos.length
+    m.completos = activos.filter((p) => p.completo_ronda).length
+    m.precierre = rondaAbierta(s.sala.estado) !== null && m.inscritos > 0 && m.completos === m.inscritos
+    m.perfiles = Object.fromEntries(PERFILES.map((pf) => [pf.id, activos.filter((p) => p.perfil_id === pf.id).length]))
+  }
+}
+
 function inicial(): Estado {
   const base = structuredClone(detalleBase) as SalaDetalle
+  base.mesas = [1, 2, 3].map((i) => mesa(base.sala.codigo, i))
+  base.participantes = NOMBRES.map(
+    (nombre, i): Participante => ({
+      id: `p_${i + 1}`,
+      nombre,
+      correo: `${nombre.split(' ')[0].toLowerCase()}@ejemplo.com`,
+      mesa_id: `m${(i % 3) + 1}`,
+      perfil_id: PERFILES[Math.floor(i / 3) % PERFILES.length].id,
+      activo: true,
+      completo_ronda: i % 3 === 0,
+      consentimiento_at: base.sala.creada_at,
+    }),
+  )
+  derivar(base)
   return {
     version: 123,
     admins: [
@@ -30,8 +72,11 @@ function inicial(): Estado {
 
 let estado = inicial()
 
-export function reiniciarMock() {
+/** Vuelve al estado inicial. `simularVotos` en false evita votos aleatorios (pruebas deterministas). */
+let simular = true
+export function reiniciarMock(opciones: { simularVotos?: boolean } = {}) {
   estado = inicial()
+  simular = opciones.simularVotos ?? true
   sessionStorage.removeItem(LLAVE_SESION)
 }
 
@@ -51,8 +96,8 @@ function filaPublica(a: AdminInterno): AdminFila {
 }
 
 function resumen(s: SalaDetalle): SalaResumen {
-  const { config: _config, ...resto } = s.sala
-  return resto
+  const { config: _config, url_tablero: _u, ...resto } = s.sala
+  return { ...resto, mesas: s.mesas.length }
 }
 
 function tocar(s: SalaDetalle, tipo: string, por: string, detalle: Record<string, unknown> = {}) {
@@ -94,19 +139,10 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
     creada_at: new Date().toISOString(),
     config: { alcance_resultados: 'mesa', vista_participante: 'registrado', revelar_hojas: false, cierre_programado_ronda_at: null, cierre_programado_sala_at: null },
   }
-  nueva.mesas = Array.from({ length: n }, (_, i) => ({
-    id: `m${i + 1}`,
-    nombre: `Mesa ${i + 1}`,
-    codigo: `${codigo}-${i + 1}`,
-    url_participante: `https://horizontes.estratek.com.co/m/${codigo}-${i + 1}`,
-    url_tablero: `https://horizontes.estratek.com.co/tablero/${codigo}?mesa=m${i + 1}&t=TOKEN`,
-    inscritos: 0,
-    completos: 0,
-    precierre: false,
-    perfiles: {},
-  }))
+  nueva.mesas = Array.from({ length: n }, (_, i) => mesa(codigo, i + 1))
   nueva.participantes = []
   nueva.eventos = []
+  derivar(nueva)
   tocar(nueva, 'sala_creada', por)
   estado.salas.push(nueva)
   return ok(resumen(nueva), 201)
@@ -146,8 +182,39 @@ function admins(metodo: string, camino: string, b: Record<string, unknown>, a: A
   return error(404, 'NO_EXISTE', 'Ese administrador no existe.')
 }
 
+/** Simula que alguien termina de votar en algunas lecturas mientras la ronda está abierta (para ver el precierre). */
+function simularVoto(s: SalaDetalle) {
+  if (!simular || !rondaAbierta(s.sala.estado) || Math.random() < 0.6) return
+  const pendiente = s.participantes.find((p) => p.activo && !p.completo_ronda)
+  if (!pendiente) return
+  pendiente.completo_ronda = true
+  derivar(s)
+  tocar(s, 'voto', 'participante')
+}
+
+const celda = (v: unknown) => {
+  const t = String(v ?? '')
+  return /[",;\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
+}
+
+function csv(s: SalaDetalle, archivo: string): string {
+  const nombreMesa = (id: string) => s.mesas.find((m) => m.id === id)?.nombre ?? id
+  const filas: unknown[][] =
+    archivo === 'inscritos.csv'
+      ? [
+          ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at'],
+          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.0', p.consentimiento_at]),
+        ]
+      : [['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', 'alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida']]
+  return '﻿' + filas.map((f) => f.map(celda).join(',')).join('\n') + '\n'
+}
+
+function salaPorId(id: string) {
+  return estado.salas.find((x) => x.sala.id === id)
+}
+
 export async function responderMock(metodo: string, ruta: string, cuerpo?: unknown, etag?: string): Promise<Respuesta> {
-  const [camino] = ruta.split('?')
+  const [camino, consulta = ''] = ruta.split('?')
   const b = (cuerpo ?? {}) as Record<string, unknown>
 
   if (metodo === 'POST' && camino === '/api/admin/login') {
@@ -159,6 +226,16 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
   if (metodo === 'POST' && camino === '/api/admin/logout') {
     sessionStorage.removeItem(LLAVE_SESION)
     return ok({ ok: true })
+  }
+
+  // Tablero (token por query; en el simulador no se valida).
+  const t = /^\/api\/tablero\/([^/]+)$/.exec(camino)
+  if (metodo === 'GET' && t) {
+    const s = salaPorId(t[1])
+    if (!s) return error(404, 'SALA_NO_EXISTE', 'Esa sala no existe.')
+    const m = s.mesas.find((x) => x.id === new URLSearchParams(consulta).get('mesa'))
+    const alcance = m ? { tipo: 'mesa', mesa_id: m.id, mesa_nombre: m.nombre } : { tipo: 'sala' }
+    return ok({ ...structuredClone(tableroBase), version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null })
   }
 
   const a = sesion()
@@ -184,28 +261,43 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
 
   const m = /^\/api\/admin\/salas\/([^/]+)(\/.*)?$/.exec(camino)
   if (m) {
-    const s = estado.salas.find((x) => x.sala.id === m[1])
+    const s = salaPorId(m[1])
     if (!s) return error(404, 'SALA_NO_EXISTE', 'Esa sala no existe.')
     const resto = m[2] ?? ''
     if (metodo === 'GET' && resto === '') {
+      simularVoto(s)
       if (etag && etag === s.version) return { status: 304, body: null, etag }
       return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a) }, etag: s.version }
     }
+    if (metodo === 'GET' && resto.startsWith('/export/')) return ok(csv(s, resto.slice('/export/'.length)))
     if (metodo === 'PATCH' && resto === '/config') {
       Object.assign(s.sala.config, b)
       tocar(s, 'config', por, b)
       return ok(s.sala.config)
     }
+    if (metodo === 'POST' && resto === '/mesas') {
+      const n = Number(b.cantidad)
+      if (!(n >= 1 && n <= 20)) return error(422, 'DATOS_INVALIDOS', 'Agrega entre 1 y 20 mesas.')
+      const inicio = s.mesas.length
+      for (let i = 1; i <= n; i++) s.mesas.push(mesa(s.sala.codigo, inicio + i))
+      derivar(s)
+      tocar(s, 'mesas_agregadas', por, { cantidad: n })
+      return ok({ mesas: s.mesas }, 201)
+    }
     if (metodo === 'POST' && resto === '/acciones') {
-      const destino = aplicarAccion(s, b.accion as Accion)
+      const accion = b.accion as Accion
+      const destino = aplicarAccion(s, accion)
       if (!destino) return error(409, 'TRANSICION_INVALIDA', 'Esa acción no aplica en el estado actual de la sala.')
       s.sala.estado = destino
+      // Ronda nueva o votos reiniciados: nadie ha completado la ronda.
+      if (accion === 'abrir_ronda_1' || accion === 'abrir_ronda_2' || accion === 'reiniciar_ronda') s.participantes.forEach((p) => (p.completo_ronda = false))
       if (destino === 'r1_abierta') s.sala.ronda_actual = 1
       if (destino === 'r2_abierta') {
         s.sala.ronda_actual = 2
-        s.sala.config.revelar_hojas = true
+        if (accion === 'abrir_ronda_2') s.sala.config.revelar_hojas = true
       }
-      tocar(s, String(b.accion), por)
+      derivar(s)
+      tocar(s, accion, por)
       return ok({ estado: destino })
     }
   }
@@ -216,6 +308,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       const par = s.participantes.find((x) => x.id === p[1])
       if (par) {
         Object.assign(par, b)
+        derivar(s)
         tocar(s, 'participante_editado', por, { id: par.id })
         return ok(par)
       }

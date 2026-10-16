@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { api } from '../api'
+import { Link, useNavigate } from 'react-router-dom'
+import { api, lista } from '../api'
 import type { SalaResumen } from '../tipos'
 import { ESTADOS, fechaHora } from '../textos'
 
@@ -10,12 +10,14 @@ export function Salas() {
   const [nombre, setNombre] = useState('')
   const [mesas, setMesas] = useState(4)
   const [errorCrear, setErrorCrear] = useState<string | null>(null)
+  const [creando, setCreando] = useState(false)
+  const navegar = useNavigate()
 
   const cargar = () =>
     api
-      .get<SalaResumen[]>('/api/admin/salas')
-      .then((s) => {
-        setSalas(s)
+      .get<unknown>('/api/admin/salas')
+      .then((r) => {
+        setSalas(lista<SalaResumen>(r, 'salas'))
         setError(null)
       })
       .catch((e: Error) => setError(e.message))
@@ -27,12 +29,17 @@ export function Salas() {
   const crear = async (e: FormEvent) => {
     e.preventDefault()
     setErrorCrear(null)
+    setCreando(true)
     try {
-      await api.post('/api/admin/salas', { nombre: nombre.trim(), plantilla: 'foodsume_2026', mesas })
+      const r = await api.post<{ id?: string; sala?: { id: string } }>('/api/admin/salas', { nombre: nombre.trim(), plantilla: 'foodsume_2026', mesas })
       setNombre('')
-      await cargar()
+      const id = r?.id ?? r?.sala?.id
+      if (id) navegar(`/admin/salas/${id}/vivo`)
+      else await cargar()
     } catch (err) {
       setErrorCrear(err instanceof Error ? err.message : 'No se pudo crear la sala.')
+    } finally {
+      setCreando(false)
     }
   }
 
@@ -46,12 +53,18 @@ export function Salas() {
             <span>Nombre del taller</span>
             <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Taller Horizontes Nutresa" />
           </label>
+          <label className="campo">
+            <span>Plantilla</span>
+            <select name="plantilla" defaultValue="foodsume_2026">
+              <option value="foodsume_2026">Caso Foodsume 2026</option>
+            </select>
+          </label>
           <label className="campo campo--corto">
             <span>Mesas</span>
             <input type="number" min={1} max={20} required value={mesas} onChange={(e) => setMesas(Number(e.target.value))} />
           </label>
-          <button className="btn btn--primario" type="submit">
-            Crear con plantilla Foodsume
+          <button className="btn btn--primario" type="submit" disabled={creando} aria-busy={creando}>
+            {creando ? 'Creando…' : 'Crear sala'}
           </button>
         </form>
         {errorCrear && (
@@ -75,11 +88,12 @@ export function Salas() {
               <div>
                 <h2>{s.nombre}</h2>
                 <p className="pista">
-                  Código {s.codigo} · creada {fechaHora(s.creada_at)}
+                  Código {s.codigo}
+                  {s.mesas !== undefined && ` · ${s.mesas} ${s.mesas === 1 ? 'mesa' : 'mesas'}`} · creada {fechaHora(s.creada_at)}
                 </p>
               </div>
               <span className={`estado estado--${s.estado}`}>{ESTADOS[s.estado]}</span>
-              <Link className="btn btn--primario" to={`/salas/${s.id}/vivo`}>
+              <Link className="btn btn--primario" to={`/admin/salas/${s.id}/vivo`}>
                 Abrir
               </Link>
             </li>

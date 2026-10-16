@@ -17,7 +17,7 @@ export function CambiarClave() {
     try {
       await api.post('/api/admin/cambiar-clave', { actual, nueva })
       await refrescar()
-      navegar('/salas', { replace: true })
+      navegar('/admin/salas', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cambiar la clave.')
     }
