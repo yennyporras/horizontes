@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import mockJson from '../../mocks/GET_api_tablero.json'
 import PaginaTablero from './PaginaTablero'
@@ -62,6 +62,25 @@ describe('PaginaTablero', () => {
     montar('/tablero/s_demo')
     expect(await screen.findByText(/No pudimos abrir el tablero/)).toBeTruthy()
     expect(screen.getByText(/token/)).toBeTruthy()
+  })
+
+  test('atajos: C, 1 y 2 cambian la vista; F oculta los controles', async () => {
+    montar('/tablero/s_demo?t=tok')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    const pulsado = () => document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent
+    fireEvent.keyDown(window, { key: 'c' })
+    expect(pulsado()).toBe('Comparación')
+    expect(document.querySelectorAll('.hz-flecha').length).toBe(2)
+    fireEvent.keyDown(window, { key: '1' })
+    expect(pulsado()).toBe('Ronda 1')
+    // dentro del selector de alcance no se interceptan teclas
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: '2' })
+    expect(pulsado()).toBe('Ronda 1')
+    // jsdom no tiene requestFullscreen: F igual activa el modo sin controles
+    fireEvent.keyDown(window, { key: 'f' })
+    expect(document.querySelector('main')?.className).toContain('hz-pantalla-completa')
+    fireEvent.keyDown(window, { key: 'F' })
+    expect(document.querySelector('main')?.className).not.toContain('hz-pantalla-completa')
   })
 
   test('estado vacío de la ronda 1', async () => {
