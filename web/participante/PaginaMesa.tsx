@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNod
 import { useParams } from 'react-router-dom'
 import { Aviso, BarraProgreso, Boton } from '../shared/ui'
 import { ErrorApi, obtenerMesa, type Mesa, type RespuestaVoto, type Yo } from './api'
+import { usarFuenteLista } from './fuente'
 import { encolar, enviarCola, leerCola, quitar as quitarDeCola, type VotoEnCola } from './cola'
 import { Cargando, Marco, Mensaje, type MarcoBase } from './Comun'
 import { Inscripcion } from './pantallas/Inscripcion'
@@ -77,6 +78,7 @@ function AntesDeInscribirse({
   const [error, setError] = useState<ErrorApi | null>(null)
   const [intento, setIntento] = useState(0)
   const [recuperar, setRecuperar] = useState(false)
+  const fuente = usarFuenteLista()
 
   useEffect(() => {
     let vivo = true
@@ -122,7 +124,7 @@ function AntesDeInscribirse({
       </Mensaje>
     )
   }
-  if (!mesa) return <Cargando />
+  if (!mesa || !fuente) return <Cargando />
 
   if (recuperarSesion) {
     return (
@@ -185,6 +187,7 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   // Avisos de error que se quedan hasta que la persona cambie de pantalla (ronda cerrada mientras votaba).
   const [avisoPerdido, setAvisoPerdido] = useState<string | null>(null)
   const enviando = useRef(false)
+  const fuente = usarFuenteLista()
 
   const ir = useCallback(
     (v: Vista) => {
@@ -283,6 +286,7 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
     }
     return <Cargando />
   }
+  if (!fuente) return <Cargando />
   if (yo.participante.activo === false) return <Desactivado sala={yo.sala.nombre} />
 
   const ronda = yo.sala.ronda_actual

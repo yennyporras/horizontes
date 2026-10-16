@@ -1,12 +1,12 @@
 // Entorno del recorrido e2e del participante: API real (BD en memoria) + Vite + Chromium a 360 px.
 // Corre dentro de Vitest (tools/test.sh). Sin Chromium instalado, las pruebas se omiten con aviso.
-import { existsSync, readdirSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { createServer as servidorHttp, request, type Server } from 'node:http'
+import { homedir, tmpdir } from 'node:os'
+import { extname, join, normalize, resolve } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import type { FastifyInstance } from 'fastify'
 import type { Browser, BrowserContext } from 'playwright-core'
-import type { ViteDevServer } from 'vite'
 import { construirApp } from '../../../server/app'
 import { abrirDb } from '../../../server/db/index'
 import { asegurarSuperadmin } from '../../../server/dominio/admins'
@@ -28,7 +28,7 @@ export function hayChromium(): boolean {
 
 export interface Entorno {
   api: FastifyInstance
-  vite: ViteDevServer
+  web_server: Server
   browser: Browser
   web: string
   apiUrl: string
@@ -43,18 +43,15 @@ export async function iniciar(): Promise<Entorno> {
   await api.listen({ port: 0, host: '127.0.0.1' })
   const apiUrl = `http://127.0.0.1:${(api.server.address() as AddressInfo).port}`
 
-  // Misma raíz y proxy que vite.config.ts, pero sin el plugin de React (Babel): esbuild compila el TSX
-  // y la prueba gasta mucha menos CPU mientras corre en paralelo con el resto de la suite.
-  const { createServer } = await import('vite')
-  const vite = await createServer({
-    configFile: false,
-    root: join(RAIZ, 'web'),
-    logLevel: 'silent',
-    esbuild: { jsx: 'automatic' },
-    server: { port: 5600 + Math.floor(Math.random() * 300), strictPort: false, host: '127.0.0.1', hmr: false, proxy: { '/api': { target: apiUrl, changeOrigin: true } } },
-  })
-  await vite.listen()
-  const web = (vite.resolvedUrls?.local[0] ?? '').replace(/\/$/, '')
+  // Build de producción en una carpeta temporal (≈2 s, una vez) servido por un estático mínimo que
+  // reenvía /api. Más fiel que el servidor de desarrollo y gasta mucha menos CPU mientras el resto de
+  // la suite corre en paralelo. Sin el plugin de React: esbuild compila el TSX.
+  const salida = mkdtempSync(join(tmpdir(), 'hz-e2e-web-'))
+  const { build } = await import('vite')
+  await build({ configFile: false, root: join(RAIZ, 'web'), logLevel: 'silent', esbuild: { jsx: 'automatic' }, build: { outDir: salida, emptyOutDir: true } })
+  const web_server = estatico(salida, apiUrl)
+  await new Promise<void>((r) => web_server.listen(0, '127.0.0.1', r))
+  const web = `http://127.0.0.1:${(web_server.address() as AddressInfo).port}`
 
   const { chromium } = await import('playwright-core')
   const browser = await chromium.launch({ executablePath: process.env.PW_EXE || undefined, args: ['--disable-gpu'] })
@@ -65,17 +62,45 @@ export async function iniciar(): Promise<Entorno> {
 
   return {
     api,
-    vite,
+    web_server,
     browser,
     web,
     apiUrl,
     cookie,
     cerrar: async () => {
-      await browser.close().catch(() => {})
-      await vite.close().catch(() => {})
-      await api.close().catch(() => {})
+      // Las conexiones keep-alive (navegador → Vite → API) no deben colgar el cierre.
+      const conTope = (p: Promise<unknown>) => Promise.race([p.catch(() => {}), new Promise((r) => setTimeout(r, 5000))])
+      await conTope(browser.close())
+      web_server.closeAllConnections()
+      await conTope(new Promise((r) => web_server.close(r)))
+      api.server.closeAllConnections()
+      await conTope(api.close())
+      rmSync(salida, { recursive: true, force: true })
     },
   }
+}
+
+const TIPOS: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' }
+
+/** Sirve el build (con fallback SPA a index.html) y reenvía /api al servidor real. */
+function estatico(raiz: string, apiUrl: string): Server {
+  const destino = new URL(apiUrl)
+  return servidorHttp((req, res) => {
+    const url = req.url ?? '/'
+    if (url.startsWith('/api')) {
+      const p = request({ host: destino.hostname, port: destino.port, path: url, method: req.method, headers: req.headers }, (r) => {
+        res.writeHead(r.statusCode ?? 502, r.headers)
+        r.pipe(res)
+      })
+      p.on('error', () => res.writeHead(502).end())
+      req.pipe(p)
+      return
+    }
+    const ruta = normalize(join(raiz, decodeURIComponent(url.split('?')[0])))
+    const archivo = ruta.startsWith(raiz) && extname(ruta) && existsSync(ruta) ? ruta : join(raiz, 'index.html')
+    res.writeHead(200, { 'content-type': TIPOS[extname(archivo)] ?? 'application/octet-stream' })
+    res.end(readFileSync(archivo))
+  })
 }
 
 /** Celular de 360 px (táctil). */
