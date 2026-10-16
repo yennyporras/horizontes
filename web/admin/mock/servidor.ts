@@ -271,6 +271,13 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       if (etag && etag === s.version) return { status: 304, body: null, etag }
       return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a) }, etag: s.version }
     }
+    if (metodo === 'POST' && resto === '/duplicar') {
+      const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
+      const copia = estado.salas[estado.salas.length - 1]
+      copia.sala.config.alcance_resultados = s.sala.config.alcance_resultados
+      copia.sala.config.vista_participante = s.sala.config.vista_participante
+      return r
+    }
     if (metodo === 'GET' && resto.startsWith('/export/')) return ok(csv(s, resto.slice('/export/'.length)))
     if (metodo === 'PATCH' && resto === '/config') {
       Object.assign(s.sala.config, b)
