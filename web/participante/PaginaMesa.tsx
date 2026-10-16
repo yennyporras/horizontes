@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
-import { Aviso, BarraProgreso, Boton, MuestraUI } from '../shared/ui'
+import { Aviso, BarraProgreso, Boton } from '../shared/ui'
 import { ErrorApi, obtenerMesa, type Mesa, type RespuestaVoto, type Yo } from './api'
 import { Cargando, Marco, Mensaje, type MarcoBase } from './Comun'
 import { Inscripcion } from './pantallas/Inscripcion'
@@ -10,10 +10,18 @@ import { Calificar, ElegirProyecto, proyectosVivos, votoDe } from './pantallas/V
 import { bienvenidaPendiente, guardarToken, guardarVista, leerToken, leerVista, marcarBienvenida, olvidarSesion } from './sesion'
 import { usarYo } from './usarYo'
 
+// La muestra del sistema de diseño trae el mock de /api/yo: se carga aparte para no inflar el bundle.
+const MuestraUI = lazy(() => import('../shared/ui/MuestraUI').then((m) => ({ default: m.MuestraUI })))
+
 // T2: flujo del participante (DISENO §8). Ruta /m/:codigo; /m/_ui es la muestra del sistema de diseño.
 export default function PaginaMesa() {
   const { codigo = '' } = useParams()
-  if (codigo === '_ui') return <MuestraUI />
+  if (codigo === '_ui')
+    return (
+      <Suspense fallback={<Cargando />}>
+        <MuestraUI />
+      </Suspense>
+    )
   return <FlujoMesa key={codigo} codigo={codigo} />
 }
 
