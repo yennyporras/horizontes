@@ -72,17 +72,23 @@ export function avisosPrecierre(datos: DatosTablero | null | undefined): { id: s
 }
 
 /**
- * El resultado es preliminar si el servidor lo marca o si el alcance mostrado está en precierre
- * con la ronda todavía abierta. Se muestra "Preliminar" hasta que el admin cierre.
+ * "Preliminar" solo cuando el alcance mostrado está en precierre con la ronda todavía abierta.
+ * La API real manda `preliminar: true` durante toda la ronda abierta (todo resultado es provisional
+ * hasta el cierre); por eso el tablero no usa ese flag y deriva el precierre de `progreso`.
  */
 export function esPreliminar(datos: DatosTablero | null | undefined): boolean {
   if (!datos) return false
-  if (datos.preliminar) return true
   if (!rondaAbierta(datos.sala?.estado)) return false
   const p = datos.progreso
   if (!p) return false
   if (datos.alcance?.tipo === 'mesa') return !!p.por_mesa?.find((m) => m.mesa_id === datos.alcance.mesa_id)?.precierre
   return !!p.precierre
+}
+
+/** Insignia del encabezado: "Preliminar" en precierre, "En vivo" con la ronda abierta, nada al cerrar. */
+export function insigniaResultado(datos: DatosTablero | null | undefined): 'preliminar' | 'en_vivo' | null {
+  if (esPreliminar(datos)) return 'preliminar'
+  return rondaAbierta(datos?.sala?.estado) ? 'en_vivo' : null
 }
 
 const NOMBRES_ESTADO: Record<EstadoSala, string> = {
