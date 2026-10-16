@@ -186,7 +186,7 @@ export function calcularLayout(datos, opciones = {}) {
     const w = anchoTexto(etq.texto, etq.fs) + (etq.extraAncho || 0);
     const h = etq.fs * 1.25;
     const gap = Math.max(3, etq.fs * 0.3);
-    const anillos = prioridad ? [0, 1, 2, 3, 4] : [0, 1];
+    const anillos = prioridad ? [0, 1, 2, 3, 4] : [0, 1, 2];
     let mejor = null;
     for (const anillo of anillos) {
       const d = ancla.r + gap + anillo * etq.fs * 0.9;
@@ -212,13 +212,17 @@ export function calcularLayout(datos, opciones = {}) {
           if (circuloEnCaja(c, caja)) costo += (prioridad ? 5000 : 500) + c.r * c.r;
         }
         if (prioridad) for (const s of segmentos) if (segmentoEnCaja(s, caja)) costo += 4000;
-        for (const o of colocadas) costo += areaSolape(caja, o.caja) * (o.prioridad ? 50 : 4) + (cajasSeSolapan(caja, o.caja) ? 1000 : 0);
+        // Tapar otro texto es peor que rozar una burbuja: el nombre de un fijo nunca pisa el de un vivo.
+        for (const o of colocadas) costo += areaSolape(caja, o.caja) * (o.prioridad ? 50 : 4) + (cajasSeSolapan(caja, o.caja) ? (o.prioridad ? 20000 : 1000) : 0);
         costo += anillo * 10;
         if (!mejor || costo < mejor.costo) mejor = { caja, costo };
         if (costo === anillo * 10) break;
       }
       if (mejor && mejor.costo === anillo * 10) break;
     }
+    // Un fijo cuyo nombre solo cabe pisando el de un vivo o fuera del plano se queda sin nombre
+    // (pasa en 360 px con un vivo encima); la burbuja conserva su título.
+    if (!prioridad && mejor.costo >= 20000) return undefined;
     const resultado = { ...etq, caja: mejor.caja, prioridad, ancla };
     colocadas.push(resultado);
     return resultado;
@@ -353,7 +357,7 @@ export function matrizSVG(datos, opciones = {}) {
   partes.push(`<g class="hz-fijos">`);
   for (const f of L.fijos) {
     partes.push(
-      `<circle cx="${r2(f.cx)}" cy="${r2(f.cy)}" r="${r2(f.r)}" fill="${C.fijo}" fill-opacity="0.85" stroke="${C.halo}" stroke-width="1.5"><title>${esc(f.nombre)} · X ${f.valor.x} · Y ${f.valor.y} · TAM ${esc(f.tam)}</title></circle>`,
+      `<circle class="hz-fijo" data-proyecto="${esc(f.id)}" cx="${r2(f.cx)}" cy="${r2(f.cy)}" r="${r2(f.r)}" fill="${C.fijo}" fill-opacity="0.85" stroke="${C.halo}" stroke-width="1.5"><title>${esc(f.nombre)} · X ${f.valor.x} · Y ${f.valor.y} · TAM ${esc(f.tam)}</title></circle>`,
     );
   }
   partes.push(`</g>`);
