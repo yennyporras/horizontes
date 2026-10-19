@@ -94,22 +94,35 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     expect(await p.locator('.hzp-fase .hz-insignia--r1').textContent()).toBe('R1')
     await p.getByRole('button', { name: 'Calificar INSUMEX' }).click()
     await titulo(p, 'INSUMEX')
-    await p.getByRole('button', { name: 'Guardar calificación' }).click()
-    await ver(p, 'Te faltan 6 criterios. Elige una opción en cada uno.')
-    await calificar(p, 7)
-    await sinDesborde(p)
+    // C19-5 (P1): una pregunta por pantalla, con su encabezado, su grupo de radios y la barra de progreso.
+    await ver(p, 'Pregunta 1 de 6 · INSUMEX')
+    expect(await p.locator('fieldset.hz-rubrica').count()).toBe(1)
+    expect(await p.getByRole('heading', { level: 2, name: /^Pregunta 1 de 6: / }).count()).toBe(1)
     // Rúbrica para lector de pantalla: grupo con nombre del criterio, pregunta como descripción y opciones "9: texto".
-    const grupo = p.getByRole('radiogroup', { name: /^Criterio 1 de 6: / })
+    const grupo = p.getByRole('radiogroup')
     expect(await grupo.getAttribute('aria-required')).toBe('true')
     const descripcion = await grupo.evaluate((g) =>
       (g.getAttribute('aria-describedby') ?? '').split(' ').map((id) => document.getElementById(id)?.textContent ?? '').join(' '),
     )
     expect(descripcion.trim().length).toBeGreaterThan(10)
     expect(await grupo.getByRole('radio', { name: /^9: / }).count()).toBe(1)
-    expect(await grupo.getByRole('radio', { name: /^7: / }).isChecked()).toBe(true)
+    await sinDesborde(p)
     await tactiles(p)
     await focoVisible(p, 8)
     await capturar(p, '02-calificar')
+    // Siguiente sin responder y Anterior de vuelta.
+    await p.getByRole('button', { name: 'Siguiente' }).click()
+    await ver(p, 'Pregunta 2 de 6 · INSUMEX')
+    await p.getByRole('button', { name: 'Anterior' }).click()
+    await ver(p, 'Pregunta 1 de 6 · INSUMEX')
+    // Al elegir pasa sola; tras la sexta, el resumen con Guardar.
+    await calificar(p, 7)
+    await p.getByRole('heading', { name: 'Revisa tus respuestas' }).waitFor()
+    expect(await p.getByRole('button', { name: /^Cambiar / }).count()).toBe(6)
+    expect(await p.locator('.hzp-resumen__cifra').allTextContents()).toEqual(['7', '7', '7', '7', '7', '7'])
+    await sinDesborde(p)
+    await tactiles(p)
+    await capturar(p, '02b-resumen')
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, 'Calificación de INSUMEX guardada.')
 
@@ -135,8 +148,11 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await p.getByRole('button', { name: 'Editar mis calificaciones' }).click()
     await p.getByRole('button', { name: 'Editar INSUMEX' }).click()
     await titulo(p, 'INSUMEX')
-    expect(await p.locator('fieldset.hz-rubrica input:checked').count()).toBe(6)
+    // Con el voto guardado abre el resumen; corregir una pregunta vuelve al resumen.
+    expect(await p.locator('.hzp-resumen__cifra').allTextContents()).toEqual(['7', '7', '7', '7', '7', '7'])
     await calificar(p, 9, [0])
+    await p.getByRole('heading', { name: 'Revisa tus respuestas' }).waitFor()
+    expect(await p.locator('.hzp-resumen__cifra').allTextContents()).toEqual(['9', '7', '7', '7', '7', '7'])
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, 'Calificación de INSUMEX guardada.')
     await titulo(p, 'Voto registrado')
@@ -158,6 +174,10 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await titulo(p, 'Ronda 1 cerrada')
     await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
     expect(await p.getByText('Preliminar', { exact: true }).count()).toBe(0)
+    // C19-3 (P3): junto a cada promedio de INSUMEX, tu calificación (9 en la primera tras corregir, 7 en las demás).
+    const insumexR1 = p.locator('.hzp-resultado__proyecto', { hasText: 'INSUMEX' })
+    expect(await insumexR1.locator('.hzp-tabla__mia').allTextContents()).toEqual(['Tu calificación: Tú 9', ...Array(5).fill('Tu calificación: Tú 7')])
+    await sinDesborde(p)
 
     // Se inscribe con el mismo correo en otro celular: este pierde la sesión y la recupera.
     await inscribirApi(e, mesa, 'Ana Pérez', 'ana.e2e@empresa.com')
@@ -220,9 +240,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await sinDesborde(p)
     await capturar(p, '05-comparacion')
     // Estilos globales de otras áreas (p. ej. .hz-cifra del tablero) no deben agrandar el texto del celular.
-    const letra = await p.locator('.hzp-tabla__total td').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    const letra = await p.locator('.hzp-tabla td .hzp-tabla__promedio').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
     expect(letra).toBeLessThanOrEqual(16)
-    // Acta A3 y A4: 6 criterios y Total, sin ejes ni votos; R1 y R2 con su color y su forma.
+    // Acta A3 y A4 y preentrega 19-oct: solo los 6 criterios (sin Total), sin ejes ni votos; R1 y R2 con su color y su forma.
     await revisarTabla(p, mesa)
     const encabezado = await p.locator('.hzp-tabla thead th').last().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
     expect(encabezado).toBeLessThan(letra)
@@ -249,7 +269,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ctx.close()
   }, 240_000)
 
-  it('por defecto (acta A2, C5): tras votar ve el consolidado de la sala en vivo, con la fila Total', async () => {
+  it('por defecto (acta A2, C5): tras votar ve el consolidado de la sala en vivo, sin la fila Total', async () => {
     // Sin tocar la configuración: una sala nueva nace con alcance «sala» y vista «en vivo».
     const sala = await crearSala(e, 'En vivo e2e T2')
     await accion(e, sala.id, 'abrir_ronda_1')
@@ -278,7 +298,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
       throw err
     })
     await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
-    // INSUMEX suma 3 votos en la sala (2 de la mesa 2 y el propio): tabla con cifras y Total del servidor.
+    // INSUMEX suma 3 votos en la sala (2 de la mesa 2 y el propio): tabla con los promedios del servidor y tu calificación, sin Total.
     // NUTRIWHAT tiene 1: no se muestra.
     await revisarTabla(p, sala.mesas[0].codigo)
     await ver(p, 'Hace falta al menos 3 votos para mostrar este proyecto.')
