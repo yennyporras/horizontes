@@ -143,14 +143,34 @@ describe('Colores de ronda', () => {
     return (x + 0.05) / (y + 0.05)
   }
 
-  it('--hz-r1 y --hz-r2 cumplen AA (4,5:1) sobre blanco y sobre el horizonte claro', () => {
-    const css = readFileSync(join(__dirname, '..', 'tokens.css'), 'utf8')
-    const token = (n: string) => css.match(new RegExp(`--hz-${n}:\\s*(#[0-9A-Fa-f]{6})`))![1]
-    for (const r of ['r1', 'r2']) {
-      expect(contraste(token(r), '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
-      expect(contraste(token(r), token('h1'))).toBeGreaterThanOrEqual(4.5)
+  const css = readFileSync(join(__dirname, '..', 'tokens.css'), 'utf8')
+  /** Valor hex de un token, siguiendo los alias var(--hz-…). */
+  const token = (n: string): string => {
+    const v = css.match(new RegExp(`--hz-${n}:\\s*([^;]+);`))![1].trim()
+    const alias = v.match(/^var\(--hz-([a-z0-9-]+)\)$/)
+    return alias ? token(alias[1]) : v
+  }
+  const fondos = ['fondo', 'superficie-1', 'superficie-2', 'superficie-3', 'superficie-4']
+
+  it('--hz-r1 y --hz-r2 cumplen AA (4,5:1) sobre el lienzo y las cuatro superficies, sin usar el acento', () => {
+    for (const r of ['r1', 'r2']) for (const f of fondos) expect(contraste(token(r), token(f)), `${r} sobre ${f}`).toBeGreaterThanOrEqual(4.5)
+    expect([token('r1'), token('r2')]).toEqual(['#3FB25A', '#F36363'])
+    expect(token('r1')).not.toBe(token('acento'))
+    expect(contraste(token('sobre-r1'), token('r1'))).toBeGreaterThanOrEqual(4.5)
+    expect(contraste(token('sobre-r2'), token('r2'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('tinta, acento y estados cumplen AA sobre el sistema oscuro', () => {
+    for (const t of ['tinta', 'tinta-2', 'tinta-3', 'acento', 'cielo']) {
+      for (const f of fondos.slice(0, 4)) expect(contraste(token(t), token(f)), `${t} sobre ${f}`).toBeGreaterThanOrEqual(4.5)
     }
-    expect([token('r1'), token('r2')]).toEqual(['#1F7A3A', '#C62828'])
+    for (const e of ['ok', 'alerta', 'error']) expect(contraste(token(e), token(`${e}-fondo`)), e).toBeGreaterThanOrEqual(4.5)
+    expect(contraste(token('acento'), token('info-fondo'))).toBeGreaterThanOrEqual(4.5)
+    // Texto del botón primario sobre los dos extremos del degradado de marca.
+    for (const extremo of ['marca-teal', 'marca-azul']) expect(contraste(token('sobre-acento'), token(extremo))).toBeGreaterThanOrEqual(4.5)
+    expect(contraste(token('deshabilitado-texto'), token('deshabilitado-fondo'))).toBeGreaterThanOrEqual(4.5)
+    // Borde de campos y casillas: 3:1 (componente de interfaz, WCAG 1.4.11).
+    for (const f of ['fondo', 'superficie-1', 'superficie-2']) expect(contraste(token('borde-control'), token(f))).toBeGreaterThanOrEqual(3)
   })
 
   it('la insignia de ronda siempre lleva su texto y una forma distinta por ronda', () => {
