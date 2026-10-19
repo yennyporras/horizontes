@@ -129,7 +129,8 @@ CREATE TABLE eventos (
 );
 CREATE INDEX ix_eventos_sala ON eventos (sala_id, id);
 `,
-  // R4 (acta del 16-oct): país y zona horaria por sala; IP de la inscripción y del último voto (solo para el admin).
+  // R4 (acta del 16-oct): país y zona horaria por sala; IP de la inscripción y del último voto (solo para el admin);
+  // país del aviso aceptado (los tres textos comparten versión y el admin puede cambiar el país de la sala).
   // SQLite no cambia el DEFAULT de una columna existente: la visibilidad por defecto de las salas nuevas
   // (alcance 'sala', vista 'en_vivo') la fija CONFIG_POR_DEFECTO en el código; las salas existentes no cambian.
   `
@@ -137,5 +138,6 @@ ALTER TABLE salas ADD COLUMN pais VARCHAR(2) NOT NULL DEFAULT 'CO' CHECK (pais I
 ALTER TABLE salas ADD COLUMN zona_horaria VARCHAR(20) NOT NULL DEFAULT 'America/Bogota';
 ALTER TABLE participantes ADD COLUMN ip VARCHAR(45) NULL;
 ALTER TABLE votos ADD COLUMN ip VARCHAR(45) NULL;
+ALTER TABLE consentimientos ADD COLUMN pais VARCHAR(2) NOT NULL DEFAULT 'CO';
 `,
 ]
