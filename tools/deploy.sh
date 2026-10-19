@@ -13,6 +13,7 @@
 #   COOLIFY_URL, COOLIFY_TOKEN, COOLIFY_APP_STAGING, COOLIFY_APP_PROD
 #   SUPERADMIN_CLAVE_STAGING, SUPERADMIN_CLAVE_PROD   (opcionales: si faltan, no se tocan en Coolify)
 # Opciones: SIN_PRUEBAS=1 salta tools/test.sh · SIN_PUSH=1 no empuja main · RAMA=main rama que construye Coolify · FORZAR=1 produccion sin igualar staging.
+#   HZ_DOMINIO_PROD=horizontes.com.co cambia el dominio de producción (por defecto horizontes.estratek.com.co).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -22,12 +23,14 @@ IMAGEN="horizontes:local"
 RAMA="${RAMA:-main}"
 PUERTO_LOCAL="${PUERTO_LOCAL:-3999}"
 CONTENEDOR_LOCAL="horizontes-local"
+# Dominio de producción (acta A10: horizontes.com.co cuando tenga DNS). BASE_URL en Coolify sale de aquí.
+DOMINIO_PROD="${HZ_DOMINIO_PROD:-horizontes.estratek.com.co}"
 
 info() { printf '== %s\n' "$*"; }
 falla() { printf '!! %s\n' "$1" >&2; exit "${2:-1}"; }
 falta() { falla "Falta $1. Ver deploy/README.md (Credenciales) y docs/BLOQUEOS.md." 2; }
 
-dominio_de() { case "$1" in staging) echo staging-horizontes.estratek.com.co ;; produccion) echo horizontes.estratek.com.co ;; *) falla "Ambiente desconocido: $1" ;; esac; }
+dominio_de() { case "$1" in staging) echo staging-horizontes.estratek.com.co ;; produccion) echo "$DOMINIO_PROD" ;; *) falla "Ambiente desconocido: $1" ;; esac; }
 uuid_de() { case "$1" in staging) echo "${COOLIFY_APP_STAGING:-}" ;; produccion) echo "${COOLIFY_APP_PROD:-}" ;; esac; }
 clave_de() { case "$1" in staging) echo "${SUPERADMIN_CLAVE_STAGING:-}" ;; produccion) echo "${SUPERADMIN_CLAVE_PROD:-}" ;; esac; }
 

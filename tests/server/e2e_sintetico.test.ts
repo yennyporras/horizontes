@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { CRITERIOS } from '../../shared/motor/motor'
-import { type Entorno, accion, crearEntorno, crearSala, inscribir, votar } from './ayuda'
+import { type Entorno, VISTA_MESA_REGISTRADO, accion, crearEntorno, crearSala, inscribir, votar } from './ayuda'
 
 const golden = JSON.parse(readFileSync(resolve(__dirname, '../golden/motor_golden.json'), 'utf8'))
 const ps = golden.prueba_sintetica as {
@@ -19,7 +19,7 @@ const tokens = new Map<number, string>()
 
 beforeAll(async () => {
   e = await crearEntorno()
-  sala = await crearSala(e, 4, 'E2E sintético')
+  sala = await crearSala(e, 4, 'E2E sintético', VISTA_MESA_REGISTRADO)
 })
 afterAll(() => e.app.close())
 

@@ -1165,5 +1165,42 @@
     }
    }
   }
+ },
+ "caso_total": {
+  "nota": "Acta del 16-oct (P2): total = eje_x + eje_y por proyecto, calculado en el servidor. Fijos con tolerancia 1e-9.",
+  "casos": [
+   {
+    "nombre": "BIOSKIN",
+    "esperado_total": 10.25
+   },
+   {
+    "nombre": "CRYPTO TRADE",
+    "esperado_total": 2.42
+   },
+   {
+    "nombre": "TRUCKPOOL",
+    "esperado_total": 13.086
+   },
+   {
+    "nombre": "COOLING72",
+    "esperado_total": 9.886
+   },
+   {
+    "nombre": "SUMSNACK",
+    "esperado_total": 9.74
+   },
+   {
+    "nombre": "YUMMI",
+    "esperado_total": 14.62
+   },
+   {
+    "nombre": "DEHIDRA",
+    "esperado_total": 9.48
+   },
+   {
+    "nombre": "NUTREPET",
+    "esperado_total": 7.02
+   }
+  ]
  }
 }

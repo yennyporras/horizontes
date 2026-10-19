@@ -13,7 +13,9 @@ export const config = {
   useMocks: process.env.USE_MOCKS === '1' || process.argv.includes('--mocks'),
   dbPath: process.env.DB_PATH ?? resolve(RAIZ, 'data', 'horizontes.sqlite'),
   baseUrl: process.env.BASE_URL ?? 'http://localhost:5173',
-  politicaUrl: process.env.POLITICA_PRIVACIDAD_URL ?? 'https://estratek.com.co/politica-de-tratamiento-de-datos',
+  politicaUrl: process.env.POLITICA_PRIVACIDAD_URL ?? 'https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/',
+  /** Saltos de proxy de confianza delante del servidor (Traefik de Coolify = 1). Define la IP real que se guarda. */
+  trustProxyHops: /^\d+$/.test(process.env.TRUST_PROXY_HOPS ?? '') ? Number(process.env.TRUST_PROXY_HOPS) : 1,
   superadminUsuario: process.env.SUPERADMIN_USUARIO ?? '',
   superadminClave: process.env.SUPERADMIN_CLAVE ?? '',
 }
