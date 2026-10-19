@@ -1,5 +1,5 @@
 // Prueba del tablero en un navegador real (Chromium headless) contra la API real con BD en memoria.
-// Corre dentro de tools/test.sh. Si no hay Chromium instalado se omite con un aviso
+// Corre dentro de tools/test.sh. Si no hay Chromium instalado se omite con un aviso (en CI falla)
 // (instálalo con `npx playwright-core install chromium-headless-shell` o define PW_EXE).
 //
 // 1. Sala con la prueba sintética del golden cerrada en R2: los puntos dibujados (leídos del SVG y
@@ -17,6 +17,7 @@ import type { Browser, Page } from 'playwright-core'
 import type { ViteDevServer } from 'vite'
 import { CRITERIOS } from '../../../shared/motor/motor'
 import { nombreCorto } from '../logica'
+import { sinNavegador } from '../../../tests/navegador'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, votar } from '../../../tests/server/ayuda'
 
 const RAIZ = resolve(__dirname, '../../..')
@@ -71,7 +72,7 @@ async function chromiumUsable(): Promise<string | null> {
 }
 
 const CHROMIUM = await chromiumUsable()
-if (!CHROMIUM) console.warn('[tablero e2e] Sin Chromium usable (o HZ_E2E=0): se omite la prueba en navegador.')
+if (!CHROMIUM) sinNavegador('[tablero e2e]', 'Sin Chromium usable.')
 
 const normal = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '')
 

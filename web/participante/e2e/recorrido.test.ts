@@ -4,10 +4,11 @@
 // ronda cerrada mientras califica, comparación R1→R2 en la matriz y sala cerrada.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ESPERA, calificar, capturar, focoVisible, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
+import { sinNavegador } from '../../../tests/navegador'
 import { accion, celular, configurar, crearSala, hayChromium, iniciar, inscribirApi, votarApi, type Entorno } from './entorno'
 
 const conNavegador = hayChromium()
-if (!conNavegador) console.warn('[e2e participante] No hay Chromium de Playwright: se omite el recorrido en navegador.')
+if (!conNavegador) sinNavegador('[e2e participante]', 'No hay Chromium de Playwright para el recorrido.')
 
 describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la API real', () => {
   let e: Entorno
