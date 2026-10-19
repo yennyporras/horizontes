@@ -74,12 +74,13 @@ describe('validación estricta', () => {
       expect(r.statusCode, nombre).toBe(422)
       expect(r.json().error.codigo).toBe('DATOS_INVALIDOS')
     }
-    for (const correo of ['a<b>@x.co', 'a@x', 'ana"@x.co', 'a,b@x.co']) {
+    for (const correo of ['a<b>@x.co', 'a@x', 'ana"@x.co', 'a,b@x.co', 'a(b)@x.co']) {
       expect((await inscripcion({ nombre: 'Ana Pérez', correo })).statusCode, correo).toBe(422)
     }
     expect((await inscripcion({ nombre: 123, correo: 'num@x.co' })).statusCode).toBe(422)
     // Nombres reales con tildes, eñes, apóstrofos y guiones sí pasan.
     expect((await inscripcion({ nombre: "María José O'Neill-Núñez", correo: 'maria.jose+taller@estratek.com.co' })).statusCode).toBe(201)
+    expect((await inscripcion({ nombre: "Sean O'Brien", correo: "o'brien@estratek.com.co" })).statusCode).toBe(201)
   })
 
   it('votos: ronda y proyecto con el tipo exacto, respuestas como objeto con los 6 criterios y nada más', async () => {
