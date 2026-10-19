@@ -10,6 +10,8 @@ import { Pestanas } from '../Pestanas'
 import { BarraProgreso } from '../BarraProgreso'
 import { Aviso } from '../Aviso'
 import { MuestraUI } from '../MuestraUI'
+import { EncabezadoProducto } from '../EncabezadoProducto'
+import { useTemaDocumento } from '../tema'
 
 afterEach(cleanup)
 
@@ -131,7 +133,45 @@ describe('Colores de ronda', () => {
   // El contraste de R1, R2 y de todos los pares de los dos temas se mide en contraste.test.ts.
   it('la insignia de ronda siempre lleva su texto y una forma distinta por ronda', () => {
     render(<MuestraUI />)
-    expect(screen.getByText('R1').className).toContain('hz-insignia--r1')
-    expect(screen.getByText('R2').className).toContain('hz-insignia--r2')
+    for (const r of ['r1', 'r2']) {
+      const insignias = screen.getAllByText(r.toUpperCase())
+      expect(insignias.length).toBeGreaterThan(0)
+      for (const i of insignias) expect(i.className).toContain(`hz-insignia--${r}`)
+    }
+  })
+})
+
+describe('EncabezadoProducto', () => {
+  it('muestra el glifo, el nombre y la firma «por Estratek» con la » decorativa', () => {
+    render(
+      <EncabezadoProducto href="#inicio">
+        <span>Mesa 2</span>
+      </EncabezadoProducto>,
+    )
+    const marca = screen.getByRole('link')
+    expect(marca.getAttribute('href')).toBe('#inicio')
+    expect(marca.textContent).toBe('HHorizontespor Estratek »')
+    expect(screen.getByText('»').getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByRole('banner').textContent).toContain('Mesa 2')
+  })
+
+  it('sin href la marca no es enlace', () => {
+    render(<EncabezadoProducto nombre="IRMI" glifo="I" />)
+    expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.getByRole('banner').textContent).toContain('IRMI')
+  })
+})
+
+describe('useTemaDocumento', () => {
+  function Vista() {
+    useTemaDocumento('carbon')
+    return null
+  }
+
+  it('pone el tema en <html> mientras la vista está montada y lo quita al salir', () => {
+    const { unmount } = render(<Vista />)
+    expect(document.documentElement.getAttribute('data-tema')).toBe('carbon')
+    unmount()
+    expect(document.documentElement.hasAttribute('data-tema')).toBe(false)
   })
 })
