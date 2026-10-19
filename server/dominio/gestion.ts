@@ -4,7 +4,7 @@ import { ErrorApi } from '../http.js'
 import { CRITERIOS } from '../../shared/motor/motor.js'
 import type { ParticipanteFila } from './participantes.js'
 import { registrarCambiosPrecierre } from './participantes.js'
-import { configPublica, progreso, rondaReferencia, vivos } from './resultados.js'
+import { configPublica, preguntaGuiada, progreso, rondaReferencia, vivos } from './resultados.js'
 import { type MesaFila, type SalaFila, cargarSala, mesasDeSala, registrarEvento, tocar } from './salas.js'
 import { nombrePerfil, perfiles } from './semilla.js'
 import { isoEnZona, sha256 } from './util.js'
@@ -47,6 +47,7 @@ export function salaResumen(sala: SalaFila, baseUrl: string) {
     config: configPublica(sala),
     token_tablero: sala.token_tablero,
     url_tablero: urls(baseUrl, sala).url_tablero,
+    pregunta_guiada: preguntaGuiada(sala),
   }
 }
 
@@ -107,6 +108,39 @@ export function detalleSala(db: Db, idOCodigo: string, baseUrl: string) {
     })),
     perfiles: perfiles(),
     eventos: eventos.map((e) => ({ at: isoEnZona(e.at, sala.zona_horaria), tipo: e.tipo, detalle: e.detalle_json ? JSON.parse(e.detalle_json) : null, por: e.por })),
+  }
+}
+
+/**
+ * Respuestas por persona (solo admin, C19-3): una fila por participante, ronda y proyecto votado, con nombre y correo.
+ * Incluye a los desactivados (`activo: false`), cuyos votos no cuentan en la matriz. Nunca sale en rutas públicas.
+ */
+export function respuestasPorPersona(db: Db, idOCodigo: string) {
+  const sala = cargarSala(db, idOCodigo)
+  // Dentro de cada persona y ronda, en el orden del portafolio (INSUMEX antes que NUTRIWHAT).
+  const filas = todos<Record<string, string | number>>(
+    db,
+    `SELECT v.participante_id, p.nombre, p.correo, p.mesa_id, m.nombre AS mesa, p.perfil_id, p.activo, v.ronda, v.proyecto_id,
+            ${CRITERIOS.map((c) => `v.${c}`).join(', ')}, v.actualizado_at
+       FROM votos v JOIN participantes p ON p.id = v.participante_id JOIN mesas m ON m.id = p.mesa_id
+       JOIN proyectos pr ON pr.sala_id = v.sala_id AND pr.id = v.proyecto_id
+      WHERE v.sala_id = ? ORDER BY m.numero, p.creado_at, v.participante_id, v.ronda, pr.orden`,
+    sala.id,
+  )
+  return {
+    respuestas: filas.map((f) => ({
+      participante_id: f.participante_id,
+      nombre: f.nombre,
+      correo: f.correo,
+      mesa_id: f.mesa_id,
+      mesa: f.mesa,
+      perfil_id: f.perfil_id,
+      activo: Boolean(f.activo),
+      ronda: Number(f.ronda),
+      proyecto_id: f.proyecto_id,
+      respuestas: Object.fromEntries(CRITERIOS.map((c) => [c, Number(f[c])])),
+      actualizado_at: isoEnZona(String(f.actualizado_at), sala.zona_horaria),
+    })),
   }
 }
 

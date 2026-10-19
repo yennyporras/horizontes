@@ -27,7 +27,7 @@ export interface OpcionesApp {
   dbPath?: string
   /** Reloj inyectable para simular la hora en pruebas. */
   ahora?: Reloj
-  /** Intervalo del chequeo de cierres programados (ms). 0 lo apaga. Por defecto 15 s. */
+  /** Intervalo del chequeo de aperturas y cierres programados (ms). 0 lo apaga. Por defecto 15 s. */
   intervaloCierresMs?: number
   baseUrl?: string
 }
@@ -78,7 +78,7 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
     if (!process.env.POLITICA_PRIVACIDAD_URL) app.log.warn(`POLITICA_PRIVACIDAD_URL no está definida: se usa ${config.politicaUrl}`)
     const baseUrl = op.baseUrl ?? config.baseUrl
 
-    // Respaldo de la BD antes de empezar cada sala, antes de reiniciar una ronda y cada vez que una sala se cierra
+    // Respaldo de la BD al empezar cada sala, antes de reiniciar una ronda y cada vez que una sala se cierra
     // (a mano o programado). Un fallo no rompe la petición.
     const respaldar = (salaId: string, momento: string) => {
       try {
@@ -89,8 +89,11 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
       }
     }
     const alCerrarSala = (salaId: string) => respaldar(salaId, 'cierre')
+    // Aperturas y cierres programados. Una sala que arranca sola se respalda como al abrirla a mano (sin datos aún).
     const revisarCierres = () => {
-      for (const id of aplicarCierresProgramados(db, ahora()).salasCerradas) alCerrarSala(id)
+      const r = aplicarCierresProgramados(db, ahora())
+      for (const id of r.salasIniciadas) respaldar(id, 'inicio')
+      for (const id of r.salasCerradas) alCerrarSala(id)
     }
 
     await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala, respaldar })
