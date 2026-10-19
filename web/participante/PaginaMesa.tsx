@@ -4,7 +4,7 @@ import { Aviso, BarraProgreso, Boton } from '../shared/ui'
 import { ErrorApi, obtenerMesa, type Mesa, type RespuestaVoto, type Yo } from './api'
 import { usarFuenteLista } from './fuente'
 import { encolar, enviarCola, leerCola, nuevoId, quitar as quitarDeCola, type VotoEnCola } from './cola'
-import { Cargando, FaseRonda, Marco, Mensaje, type MarcoBase } from './Comun'
+import { Cargando, Marco, Mensaje, type MarcoBase } from './Comun'
 import { Inscripcion } from './pantallas/Inscripcion'
 import { Lectura } from './pantallas/Lectura'
 import { ResultadoAlcance, textoAlcance } from './pantallas/Resultado'
@@ -483,7 +483,6 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
     return (
       <Marco {...marco} claveFoco={`cerrada-${ronda}`}>
         <h1 className="hz-titulo">Ronda {ronda} cerrada</h1>
-        <FaseRonda ronda={ronda} />
         <p className="hz-texto-2">
           {ronda === 1
             ? `Este es el resultado de ${donde}. Discútanlo en la mesa antes de la ronda 2.`

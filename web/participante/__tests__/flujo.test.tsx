@@ -202,6 +202,8 @@ describe('votación', () => {
     conToken()
     montar()
     expect(await screen.findByRole('heading', { name: 'Ronda 1: califica los 2 proyectos' })).toBeTruthy()
+    // Acta A7: la ronda 1 es individual y en silencio, con su insignia R1.
+    expect(screen.getByText('Individual y en silencio').previousElementSibling?.className).toContain('hz-insignia--r1')
     expect(screen.getAllByText('Pendiente')).toHaveLength(2)
     expect((llamadas[0].init.headers as Record<string, string>)['X-Participante-Token']).toBe('tok-1')
 
