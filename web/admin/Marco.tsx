@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-rout
 import { useSesion } from './sesion'
 import { api, lista, usaMocks } from './api'
 import { dominioDistinto } from './textos'
+import { EncabezadoProducto } from '../shared/ui'
 
 const LLAVE_SALA = 'hz_admin_sala'
 
@@ -54,32 +55,30 @@ export function Marco() {
       <a className="saltar" href="#contenido">
         Saltar al contenido
       </a>
-      <header className="cabecera">
-        <span className="marca">
-          Horizontes <span className="marca__sub">Administración</span>
-        </span>
-        <nav aria-label="Secciones del panel" className="nav" ref={refNav}>
-          {enlaces.map((e) => (
-            <NavLink key={e.texto} to={e.a} end={e.end} className={({ isActive }) => (isActive ? 'nav__item nav__item--activo' : 'nav__item')}>
-              {e.texto}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="usuario">
-          <span>
-            {admin?.nombre} <span className="etiqueta">{admin?.rol === 'superadmin' ? 'Superadmin' : 'Admin'}</span>
-          </span>
-          <button
-            className="btn btn--fantasma"
-            onClick={async () => {
-              await salir()
-              navegar('/admin/login', { replace: true })
-            }}
-          >
-            Salir
-          </button>
-        </div>
-      </header>
+      <div className="cabecera" data-tema="carbon">
+        <EncabezadoProducto>
+          <nav aria-label="Secciones del panel" className="nav" ref={refNav}>
+            {enlaces.map((e) => (
+              <NavLink key={e.texto} to={e.a} end={e.end} className={({ isActive }) => (isActive ? 'nav__item nav__item--activo' : 'nav__item')}>
+                {e.texto}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="usuario">
+            <span className="usuario__nombre">{admin?.nombre}</span>
+            <span className="etiqueta">{admin?.rol === 'superadmin' ? 'Superadmin' : 'Admin'}</span>
+            <button
+              className="hz-boton hz-boton--fantasma"
+              onClick={async () => {
+                await salir()
+                navegar('/admin/login', { replace: true })
+              }}
+            >
+              Salir
+            </button>
+          </div>
+        </EncabezadoProducto>
+      </div>
       <AvisoDominio sala={sala} />
       {usaMocks() && <p className="aviso-mock">Modo simulado: los datos vienen de mocks/ y no se guardan.</p>}
       <main id="contenido" className="contenido">

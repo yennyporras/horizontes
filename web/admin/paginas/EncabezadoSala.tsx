@@ -14,7 +14,7 @@ export function ConSala({ titulo, datos, error, children }: { titulo: string; da
             <p className="alerta alerta--error" role="alert">
               No pudimos cargar la sala. {error}
             </p>
-            <Link className="btn" to="/admin/salas">
+            <Link className="hz-boton hz-boton--secundario" to="/admin/salas">
               Elegir otra sala
             </Link>
           </>
@@ -28,11 +28,10 @@ export function ConSala({ titulo, datos, error, children }: { titulo: string; da
     <>
       <div className="encabezado-sala">
         <h1>{titulo}</h1>
-        <p>
-          <strong>{datos.sala.nombre}</strong> · <span className="sin-corte">{datos.sala.codigo}</span>{' '}
-          <span className="sin-corte">
-            · <span className={`estado estado--${datos.sala.estado}`}>{ESTADOS[datos.sala.estado]}</span>
-          </span>
+        <p className="encabezado-sala__meta">
+          <strong>{datos.sala.nombre}</strong>
+          <span className="sin-corte">Código {datos.sala.codigo}</span>
+          <span className={`estado estado--${datos.sala.estado}`}>{ESTADOS[datos.sala.estado]}</span>
         </p>
       </div>
       {error && (

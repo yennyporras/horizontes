@@ -157,6 +157,24 @@ describe('panel admin contra el simulador', () => {
     expect(boton('Reabrir sala').disabled).toBe(false)
   })
 
+  it('marca Estratek: barra de producto carbón y una sola acción principal, el paso que sigue', async () => {
+    montar('/admin/login')
+    expect(screen.getByText('Horizontes').closest('[data-tema="carbon"]')).toBeTruthy()
+    expect(screen.getByText(/por Estratek/)).toBeTruthy()
+    await entrar('paola')
+    fireEvent.change(screen.getByLabelText('Nombre del taller'), { target: { value: 'Marca' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Crear sala' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    await screen.findByText('Preparada', { selector: '.estado' })
+    const principales = () => [...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)
+    expect(principales()).toEqual(['Abrir inscripción'])
+    expect(screen.getByRole('button', { name: 'Cerrar sala' }).className).toContain('hz-boton--destructivo')
+    expect(within(screen.getByRole('list', { name: 'Estado de la sala' })).getByText('Inscritos')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir inscripción' }))
+    await screen.findByText('Inscripción abierta', { selector: '.estado' })
+    expect(principales()).toEqual(['Abrir ronda 1'])
+  })
+
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {
     montar('/admin/login')
     await entrar('paola')
