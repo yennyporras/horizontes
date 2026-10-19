@@ -52,11 +52,11 @@ async function revisar(p, nombre, ancho, errores) {
   await p.screenshot({ path: `${OUT}/${nombre}-${ancho}.png`, fullPage: true })
 }
 
-/** Recorre con Tab los primeros controles y anota los que reciben el foco sin contorno visible. */
+/** Recorre con Tab los primeros controles y anota los que reciben el foco sin contorno visible (el foco que sale de la página queda en body). */
 async function focoVisible(p, nombre, ancho, errores) {
   for (let i = 0; i < 6; i++) {
     await p.keyboard.press('Tab')
-    const f = await p.evaluate(() => { const e = document.activeElement, s = getComputedStyle(e); return { t: (e.textContent || e.tagName).trim().slice(0, 30), ok: s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2 } })
+    const f = await p.evaluate(() => { const e = document.activeElement, s = getComputedStyle(e); return { t: (e.textContent || e.tagName).trim().slice(0, 30), ok: e === document.body || (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2) } })
     if (!f.ok) errores.push(`${ancho}: foco sin contorno en ${nombre}: ${f.t}`)
   }
 }
