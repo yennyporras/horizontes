@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { useState } from 'react'
 import { Boton } from '../Boton'
 import { Campo } from '../Campo'
@@ -12,6 +10,8 @@ import { Pestanas } from '../Pestanas'
 import { BarraProgreso } from '../BarraProgreso'
 import { Aviso } from '../Aviso'
 import { MuestraUI } from '../MuestraUI'
+import { EncabezadoProducto } from '../EncabezadoProducto'
+import { useTemaDocumento } from '../tema'
 
 afterEach(cleanup)
 
@@ -130,52 +130,48 @@ describe('MuestraUI', () => {
 })
 
 describe('Colores de ronda', () => {
-  // Luminancia relativa WCAG 2.1.
-  const lum = (hex: string) => {
-    const [r, g, b] = [1, 3, 5].map((i) => {
-      const c = parseInt(hex.slice(i, i + 2), 16) / 255
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-  }
-  const contraste = (a: string, b: string) => {
-    const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m)
-    return (x + 0.05) / (y + 0.05)
-  }
-
-  const css = readFileSync(join(__dirname, '..', 'tokens.css'), 'utf8')
-  /** Valor hex de un token, siguiendo los alias var(--hz-…). */
-  const token = (n: string): string => {
-    const v = css.match(new RegExp(`--hz-${n}:\\s*([^;]+);`))![1].trim()
-    const alias = v.match(/^var\(--hz-([a-z0-9-]+)\)$/)
-    return alias ? token(alias[1]) : v
-  }
-  const fondos = ['fondo', 'superficie-1', 'superficie-2', 'superficie-3', 'superficie-4']
-
-  it('--hz-r1 y --hz-r2 cumplen AA (4,5:1) sobre el lienzo y las cuatro superficies, sin usar el acento', () => {
-    for (const r of ['r1', 'r2']) for (const f of fondos) expect(contraste(token(r), token(f)), `${r} sobre ${f}`).toBeGreaterThanOrEqual(4.5)
-    expect([token('r1'), token('r2')]).toEqual(['#3FB25A', '#F36363'])
-    expect(token('r1')).not.toBe(token('acento'))
-    expect(contraste(token('sobre-r1'), token('r1'))).toBeGreaterThanOrEqual(4.5)
-    expect(contraste(token('sobre-r2'), token('r2'))).toBeGreaterThanOrEqual(4.5)
-  })
-
-  it('tinta, acento y estados cumplen AA sobre el sistema oscuro', () => {
-    for (const t of ['tinta', 'tinta-2', 'tinta-3', 'acento', 'cielo']) {
-      for (const f of fondos.slice(0, 4)) expect(contraste(token(t), token(f)), `${t} sobre ${f}`).toBeGreaterThanOrEqual(4.5)
-    }
-    for (const e of ['ok', 'alerta', 'error']) expect(contraste(token(e), token(`${e}-fondo`)), e).toBeGreaterThanOrEqual(4.5)
-    expect(contraste(token('acento'), token('info-fondo'))).toBeGreaterThanOrEqual(4.5)
-    // Texto del botón primario sobre los dos extremos del degradado de marca.
-    for (const extremo of ['marca-teal', 'marca-azul']) expect(contraste(token('sobre-acento'), token(extremo))).toBeGreaterThanOrEqual(4.5)
-    expect(contraste(token('deshabilitado-texto'), token('deshabilitado-fondo'))).toBeGreaterThanOrEqual(4.5)
-    // Borde de campos y casillas: 3:1 (componente de interfaz, WCAG 1.4.11).
-    for (const f of ['fondo', 'superficie-1', 'superficie-2']) expect(contraste(token('borde-control'), token(f))).toBeGreaterThanOrEqual(3)
-  })
-
+  // El contraste de R1, R2 y de todos los pares de los dos temas se mide en contraste.test.ts.
   it('la insignia de ronda siempre lleva su texto y una forma distinta por ronda', () => {
     render(<MuestraUI />)
-    expect(screen.getByText('R1').className).toContain('hz-insignia--r1')
-    expect(screen.getByText('R2').className).toContain('hz-insignia--r2')
+    for (const r of ['r1', 'r2']) {
+      const insignias = screen.getAllByText(r.toUpperCase())
+      expect(insignias.length).toBeGreaterThan(0)
+      for (const i of insignias) expect(i.className).toContain(`hz-insignia--${r}`)
+    }
+  })
+})
+
+describe('EncabezadoProducto', () => {
+  it('muestra el glifo, el nombre y la firma «por Estratek» con la » decorativa', () => {
+    render(
+      <EncabezadoProducto href="#inicio">
+        <span>Mesa 2</span>
+      </EncabezadoProducto>,
+    )
+    const marca = screen.getByRole('link')
+    expect(marca.getAttribute('href')).toBe('#inicio')
+    expect(marca.textContent).toBe('HHorizontespor Estratek »')
+    expect(screen.getByText('»').getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByRole('banner').textContent).toContain('Mesa 2')
+  })
+
+  it('sin href la marca no es enlace', () => {
+    render(<EncabezadoProducto nombre="IRMI" glifo="I" />)
+    expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.getByRole('banner').textContent).toContain('IRMI')
+  })
+})
+
+describe('useTemaDocumento', () => {
+  function Vista() {
+    useTemaDocumento('carbon')
+    return null
+  }
+
+  it('pone el tema en <html> mientras la vista está montada y lo quita al salir', () => {
+    const { unmount } = render(<Vista />)
+    expect(document.documentElement.getAttribute('data-tema')).toBe('carbon')
+    unmount()
+    expect(document.documentElement.hasAttribute('data-tema')).toBe(false)
   })
 })

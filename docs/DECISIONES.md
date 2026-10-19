@@ -293,3 +293,35 @@ Formato para nuevas entradas: `- AAAA-MM-DD [T#|Paola] decisión — razón`. Pr
 - 2026-10-19 Preentrega: al crear la sala, junto al número de mesas: «Recomendado: una mesa por cada 6 personas (hay 6 perfiles por mesa).».
 - 2026-10-19 Preentrega: Mesas y QR dice «Imprime el QR de cada mesa y ponlo en su mesa; no lo proyectes, así cada persona entra a su mesa.».
 - 2026-10-19 Preentrega: Respuestas y Participantes (correo, mesa y perfil) llevan el aviso «Solo administradores. No se proyecta.».
+
+## 2026-10-19 · Marca (familia Estratek, rama feat/marca-diseno)
+- 2026-10-19 [marca] `docs/marca/FAMILIA_ESTRATEK.md` (aprobada por Paola) reemplaza el tema provisional estilo IRMI (teal `#47EBC2`, lienzo `#0E0E0E`). `web/shared/ui/tokens.css` toma la paleta exacta de estratek.com.co. Por qué: Horizontes es el piloto de la línea gráfica común de las herramientas de Estratek; el azul Estratek es el único color de acción y cada herramienta solo tiene su acento propio (Horizontes: verde agua `#00CDA1`).
+- 2026-10-19 [marca] **Temas por contexto.** Claro por defecto en `:root` (celular y panel). Carbón con el atributo `data-tema="carbon"` en el elemento raíz de la vista (landing y tablero): `<div className="hz" data-tema="carbon">`. Dentro de una vista carbón, `data-tema="claro"` vuelve al claro (y al revés: la barra superior carbón del panel lleva `data-tema="carbon"`). Mismos nombres de token; solo cambian los valores. **Cuidado:** una variable local que use `var(--hz-…)` se resuelve donde se declara; si un área define alias propios (`--a-*` en `admin.css`, `--t-*` en `tablero.css`), deben declararse en el mismo elemento que lleva `data-tema` o dentro de él, no en `:root`. `useTemaDocumento('carbon')` (exportado de `web/shared/ui`) pone además el tema en `<html>` mientras la vista está montada: así el fondo del rebote y el `theme-color` del navegador coinciden.
+- 2026-10-19 [marca] **Tokens nuevos:** primitivos `--et-carbon`, `--et-hielo`, `--et-hielo-2`, `--et-azul`, `--et-azul-profundo`, `--et-verde-agua`, `--et-violeta`, `--et-rojo`, `--et-blanco`, `--et-grad`; semánticos `--hz-accion`, `--hz-sobre-accion`, `--hz-foco-color`, `--hz-acento-producto` (`#00CDA1`), `--hz-acento-producto-texto` (`#007A60` en claro, `#00CDA1` en carbón); tipografía `--hz-fw-regular` (400), `--hz-fw-display` (900), `--hz-fs-40`, `--hz-fs-56`, `--hz-fs-72`, `--hz-fs-96`; espaciado `--hz-sp-20` (80 px); radios `--hz-r-boton` (píldora), `--hz-r-campo` (12), `--hz-r-tarjeta` (16). Ningún `--hz-*` anterior se renombró ni se borró.
+- 2026-10-19 [marca] **Cambios de valor** (claro / carbón):
+
+  | Token | Antes (IRMI) | Ahora claro | Ahora carbón |
+  |---|---|---|---|
+  | `--hz-fondo` = `--hz-lienzo` | `#0E0E0E` | `#FFFFFF` | `#141414` |
+  | `--hz-superficie-1` / `-2` / `-3` | `#131313` / `#1A1A1A` / `#242424` | `#F3F8FF` / `#E8F1FF` / `#DCECFF` | `#1B1D22` / `#23262D` / `#2C3038` |
+  | `--hz-superficie-4` = `--hz-h3` | `#2A2A2A` | = `--hz-borde` `#C9D9F2` | = `--hz-borde` `#343944` |
+  | `--hz-borde` = `--hz-borde-suave` | blanco al 9 % / 5 % | `#C9D9F2` | `#343944` |
+  | `--hz-borde-fuerte` = `--hz-borde-control` | blanco al 16 % / `#6E7F78` | `#5A6680` | `#8A9BB8` |
+  | `--hz-tinta` / `-2` / `-3` | `#EDF2EE` / `#C8D4CE` / `#8A9E96` | `#141414` / `#44506A` / `#5A6680` | `#DCECFF` / `#A8B6CF` / `#8A9BB8` |
+  | `--hz-azul` = `--hz-acento` = `--hz-cielo` = `--hz-acento-2` → `--hz-accion` | teal `#47EBC2` (cielo `#1699DB`) | `#1A66D6` | `#3487FF` |
+  | `--hz-sobre-acento` → `--hz-sobre-accion` | `#0E0E0E` | `#FFFFFF` | `#141414` |
+  | `--hz-azul-medio` (gráfico, no texto sobre claro) | `#1A73B8` | `#3487FF` | `#3487FF` |
+  | `--hz-grad-marca` → `--et-grad` | `#47EBC2 → #1699DB` (120°) | `#442AAF 0 %, #3487FF 30 %, #00CDA1 100 %` (90°) | igual |
+  | `--hz-ok` / fondo | `#47EBC2` / `#192D28` | `#007A60` / `#DDF6EF` | `#00CDA1` / `#10332B` |
+  | `--hz-alerta` / fondo | `#FFBB44` / `#2B2418` | `#8A5A00` / `#FFF3D6` | `#FFBB44` / `#2B2418` |
+  | `--hz-error` / fondo | `#FF8585` / `#331818` | `#BF0029` / `#FDE7EB` | `#FF6B7F` / `#3A1620` |
+  | `--hz-info-fondo` | `#13262F` | `#E8F1FF` | `#16233A` |
+  | `--hz-r1` / `--hz-r2` | `#3FB25A` / `#F36363` | `#1B7F3A` / `#C62828` | `#3FB25A` / `#F36363` |
+  | `--hz-sobre-r1` / `--hz-sobre-r2` | `#0E0E0E` | `#FFFFFF` | `#141414` |
+  | `--hz-marca-teal` / `-azul` / `-azul-texto` | `#47EBC2` / `#1699DB` / `#1A73B8` | `#00CDA1` / `#3487FF` / `#1A66D6` | igual |
+  | `--hz-acento-tinte` / `-suave` / `-borde` | teal al 12 / 8 / 28 % | acción al 10 / 6 / 40 % | igual |
+  | `--hz-azul-presionado` | `#2FCFA8` | acción mezclada al 18 % con la tinta | igual |
+  | `--hz-r-s` / `--hz-r-m` / `--hz-r-l` | 8 / 8 / 12 px | 12 / 12 / 16 px | igual |
+  | `--hz-fs-h1` / `--hz-fs-display` / `--hz-fs-display-2` | 24→30 / 36→64 / 28→40 px | 24→32 / 40→56 / 32→40 px | igual |
+
+- 2026-10-19 [marca] Reglas para celular, tablero y panel: texto en acción solo sobre fondo, superficie 1 o `--hz-info-fondo` (en carbón la acción da 4,37:1 sobre la superficie 2); sobre un relleno de acción el texto va en `--hz-sobre-accion` (en carbón es carbón, **nunca blanco**); el degradado nunca detrás de texto (solo líneas, bordes, progreso y gráficos grandes); R1/R2 como texto sobre fondo o superficie 1, como forma sobre cualquier superficie; el acento de Horizontes no es acción ni estado.
