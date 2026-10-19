@@ -14,6 +14,8 @@ export function ElegirProyecto({ yo, porEnviar = [], onCalificar }: { yo: Yo; po
   const vivos = proyectosVivos(yo)
   const hechos = vivos.filter((p) => votoDe(yo, p.id) || porEnviar.includes(p.id)).length
   const ronda = yo.sala.ronda_actual
+  // Una sola acción principal por vista: el primer proyecto pendiente.
+  const siguiente = vivos.find((p) => !votoDe(yo, p.id) && !porEnviar.includes(p.id))?.id
   return (
     <>
       <h1 className="hz-titulo">Ronda {ronda}: califica los {vivos.length} proyectos</h1>
@@ -34,7 +36,7 @@ export function ElegirProyecto({ yo, porEnviar = [], onCalificar }: { yo: Yo; po
                 <p className="hzp-proyecto__nombre">{p.nombre}</p>
                 {enCola ? <Insignia tono="alerta">Por enviar</Insignia> : hecho ? <Insignia tono="ok">Guardado</Insignia> : <Insignia>Pendiente</Insignia>}
               </div>
-              <Boton variante={hecho ? 'secundario' : 'primario'} onClick={() => onCalificar(p.id)} aria-label={`${hecho ? 'Editar' : 'Calificar'} ${p.nombre}`}>
+              <Boton variante={p.id === siguiente ? 'primario' : 'secundario'} onClick={() => onCalificar(p.id)} aria-label={`${hecho ? 'Editar' : 'Calificar'} ${p.nombre}`}>
                 {hecho ? 'Editar' : 'Calificar'}
               </Boton>
             </li>
