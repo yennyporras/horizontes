@@ -50,12 +50,11 @@
 .hzp-tabla th, .hzp-tabla td { padding: var(--hz-sp-2) 0; border-bottom: 1px solid var(--hz-h3); text-align: left; vertical-align: top; }
 .hzp-tabla thead { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); }
 .hzp-tabla thead th { font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-/* Posición en la matriz (eje X y eje Y): lo más importante del resultado, primero y más marcado. */
-.hzp-tabla__ejes { font-size: var(--hz-fs-16); color: var(--hz-azul); }
-.hz .hzp-tabla__ejes th { font-weight: 700; }
-.hz .hzp-tabla__eje-nombre { display: block; font-size: var(--hz-fs-12); font-weight: 600; color: var(--hz-tinta-2); }
-.hzp-tabla__ejes tr:last-child > * { border-bottom: 2px solid var(--hz-h3); }
-.hzp-resultado__pie { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); font-variant-numeric: tabular-nums; }
+/* Total (eje X + eje Y del servidor): cierra la tabla, más marcado que los criterios. */
+.hzp-tabla__total { font-size: var(--hz-fs-16); color: var(--hz-azul); }
+.hz .hzp-tabla__total th { font-weight: 700; }
+.hzp-tabla__total tr > * { border-top: 2px solid var(--hz-h3); border-bottom: 0; }
+.hzp-resultado__pie { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); }
 .hzp-tabla tbody th { font-weight: 500; padding-right: var(--hz-sp-3); }
 /* Columnas de cifras justas ("7,00"): el nombre del criterio se queda con el resto del ancho (triage #23). */
 .hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 3.25rem; padding-left: var(--hz-sp-2); white-space: nowrap; }
