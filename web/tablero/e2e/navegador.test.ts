@@ -9,7 +9,7 @@
 //    (sin tablas) con su explicación a la vista; zoom vectorial con +, rueda y arrastre; clic o M, los datos.
 // 2. Sala con R1 abierta: un voto y el cierre de ronda se ven en el tablero en menos de 5 s, con 304
 //    mientras no hay cambios y sin reemplazar el nodo del SVG.
-import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { AddressInfo } from 'node:net'
@@ -128,7 +128,14 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       configFile: join(RAIZ, 'vite.config.ts'),
       root: join(RAIZ, 'web'),
       logLevel: 'error',
-      server: { port: 0, strictPort: false, host: '127.0.0.1', proxy: { '/api': { target: api, changeOrigin: true } } },
+      server: {
+        port: 0,
+        strictPort: false,
+        host: '127.0.0.1',
+        proxy: { '/api': { target: api, changeOrigin: true } },
+        // En un worktree node_modules puede ser un enlace: sin su ruta real Vite no sirve la Montserrat.
+        fs: { allow: [RAIZ, realpathSync(join(RAIZ, 'node_modules'))] },
+      },
     })
     await vite.listen()
     base = `http://127.0.0.1:${(vite.httpServer!.address() as AddressInfo).port}`
@@ -253,6 +260,9 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       // R1 verde y R2 rojo: con su etiqueta y forma propia, y contraste suficiente sobre los fondos.
       const fallasRondas = await page.evaluate(rondasLegibles)
       expect(fallasRondas, fallasRondas.join('\n')).toEqual([])
+      // Tema carbón y encabezado de marca: firma «Horizontes por Estratek »» y la línea del degradado.
+      const fallasMarca = await page.evaluate(marcaCarbon)
+      expect(fallasMarca, fallasMarca.join('\n')).toEqual([])
 
       if (capturas) await page.screenshot({ path: join(capturas, `tablero-${w}.png`), fullPage: w < 1100 })
 
@@ -636,8 +646,9 @@ function contrasteAA(): string[] {
 /**
  * Corre en el navegador sobre la matriz en Comparación: cada burbuja viva lleva su etiqueta «R1»/«R2»;
  * R1 es un aro hueco y R2 sólida (se distinguen sin color); el color de cada ronda contrasta 3:1 con
- * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo. Colores
- * calculados (los de los tokens del lienzo oscuro), no los atributos.
+ * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo. Tema carbón:
+ * H1, H2 y H3 en superficies distintas y los fijos en un gris neutro (ni R1, ni R2, ni el azul de acción)
+ * con 3:1 sobre cada horizonte. Colores calculados (los de los tokens del tema), no los atributos.
  */
 function rondasLegibles(): string[] {
   const rgb = (s: string) => (s.startsWith('#') ? [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16)) : (s.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number))
@@ -653,6 +664,7 @@ function rondasLegibles(): string[] {
   const fallas: string[] = []
   const fondos = [...svg.querySelectorAll('g[clip-path] > rect, g[clip-path] > path')].map((f) => rgb(getComputedStyle(f).fill))
   if (fondos.length < 3) fallas.push(`${fondos.length} fondos de horizonte`)
+  if (new Set(fondos.map((f) => f.join())).size < 3) fallas.push(`horizontes sin superficies escalonadas: ${fondos.map((f) => `rgb(${f})`).join(' ')}`)
   const colorRonda: Record<number, string> = {}
   for (const n of [1, 2]) {
     const circulos = [...svg.querySelectorAll<SVGCircleElement>(`circle.hz-r${n}`)]
@@ -674,6 +686,35 @@ function rondasLegibles(): string[] {
     }
   }
   if (colorRonda[1] === colorRonda[2]) fallas.push('R1 y R2 del mismo color')
+  const accion = rgb(getComputedStyle(document.querySelector('.hz-tablero')!).getPropertyValue('--hz-accion').trim())
+  for (const c of svg.querySelectorAll<SVGCircleElement>('circle.hz-fijo')) {
+    const color = rgb(getComputedStyle(c).fill)
+    if ([colorRonda[1], colorRonda[2], accion.join()].includes(color.join())) fallas.push(`fijo ${c.dataset.proyecto} con color de ronda o de acción rgb(${color})`)
+    if (Number(getComputedStyle(c).fillOpacity) < 1) fallas.push(`fijo ${c.dataset.proyecto} translúcido`)
+    for (const f of fondos) if (contraste(color, f) < 3) fallas.push(`fijo ${c.dataset.proyecto} ${contraste(color, f).toFixed(2)}:1 sobre rgb(${f})`)
+  }
+  return fallas
+}
+
+/**
+ * Corre en el navegador: el tablero usa el tema carbón (data-tema="carbon", fondo #141414 y tinta hielo),
+ * el encabezado lleva la firma «Horizontes por Estratek »» con la » en el azul de acción y la línea del
+ * degradado de marca de borde a borde.
+ */
+function marcaCarbon(): string[] {
+  const fallas: string[] = []
+  const raiz = document.querySelector<HTMLElement>('.hz-tablero')!
+  const cs = getComputedStyle(raiz)
+  if (raiz.dataset.tema !== 'carbon') fallas.push(`data-tema="${raiz.dataset.tema}"`)
+  if (cs.backgroundColor !== 'rgb(20, 20, 20)') fallas.push(`fondo ${cs.backgroundColor}, se esperaba carbón #141414`)
+  if (cs.color !== 'rgb(220, 236, 255)') fallas.push(`tinta ${cs.color}, se esperaba hielo #DCECFF`)
+  const firma = document.querySelector('.hz-cab .hz-firma')
+  if (firma?.textContent?.replace(/\s+/g, ' ').trim() !== 'Horizontes por Estratek »') fallas.push(`firma «${firma?.textContent}»`)
+  const flecha = document.querySelector('.hz-firma-flecha')
+  if (!flecha || getComputedStyle(flecha).color !== 'rgb(52, 135, 255)') fallas.push(`» sin el azul de acción #3487FF`)
+  const linea = getComputedStyle(document.querySelector('.hz-cab')!, '::after')
+  if (!linea.backgroundImage.startsWith('linear-gradient')) fallas.push(`línea del encabezado sin degradado: ${linea.backgroundImage}`)
+  if (Math.abs(parseFloat(linea.width) - document.documentElement.clientWidth) > 1) fallas.push(`línea del degradado de ${linea.width} en ${document.documentElement.clientWidth} px`)
   return fallas
 }
 
