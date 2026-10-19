@@ -335,6 +335,9 @@
 .hz-admin .ronda--2 { color: var(--hz-r2, #c62828); }
 .hz-admin .ronda--2::before { background: currentColor; }
 .hz-admin .tabla-resultado caption { text-align: left; font-weight: 700; font-size: 16px; color: var(--a-azul); padding-bottom: 4px; }
-.hz-admin .tabla-resultado tbody th { font-weight: 500; }
+.hz-admin .tabla-resultado tbody th { font-weight: 500; hyphens: auto; }
+.hz-admin .tabla-resultado th,
+.hz-admin .tabla-resultado td { padding: 8px 6px; }
+.hz-admin .tabla-resultado .num { white-space: nowrap; }
 .hz-admin .tabla-resultado .fila-total th,
 .hz-admin .tabla-resultado .fila-total td { font-weight: 800; color: var(--a-azul); border-top: 2px solid var(--a-azul); border-bottom: 0; }
