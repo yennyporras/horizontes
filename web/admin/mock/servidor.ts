@@ -2,7 +2,8 @@
 // Solo para desarrollo (/admin?mock=1): usuarios de prueba paola/demo1234 (superadmin) y jorge/demo1234 (admin).
 import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
-import type { Accion, AdminFila, AdminYo, EstadoSala, Mesa, Participante, SalaDetalle, SalaResumen } from '../tipos'
+import seed from '../../../data/seed_foodsume.json'
+import type { Accion, AdminFila, AdminYo, EstadoSala, Mesa, Participante, RubricasSala, SalaDetalle, SalaResumen } from '../tipos'
 import { ACCIONES_POR_ESTADO, PERFILES, nombrePerfil, rondaAbierta } from '../textos'
 import type { Respuesta } from '../api'
 
@@ -11,10 +12,16 @@ const LLAVE_SESION = 'hz_admin_mock'
 
 type AdminInterno = AdminFila & { clave: string }
 
+type CriterioRubrica = RubricasSala['criterios'][number]
+
 interface Estado {
   admins: AdminInterno[]
   salas: SalaDetalle[]
   version: number
+  /** Rúbricas por sala (se copian de la semilla y de rubricasNuevas al crear la sala). */
+  rubricas: Record<string, CriterioRubrica[]>
+  /** Las que el admin marcó «Usar también en las salas nuevas», por criterio. */
+  rubricasNuevas: Record<string, CriterioRubrica['rubrica']>
 }
 
 const NOMBRES = ['Ana Pérez', 'Luis Gómez', 'Marta Ríos', 'Carlos Díaz', 'Sofía Mejía', 'Andrés Rojas', 'Laura Vélez', 'Diego Castro', 'Paula Henao', 'Jorge Arango', 'Camila Ortiz', 'Felipe Duque']
@@ -69,6 +76,8 @@ function inicial(): Estado {
       { id: 2, usuario: 'jorge', nombre: 'Jorge Puentes', correo: null, rol: 'admin', activo: true, debe_cambiar_clave: false, clave: CLAVE_DEMO },
     ],
     salas: [base],
+    rubricas: {},
+    rubricasNuevas: {},
   }
 }
 
@@ -151,6 +160,7 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
     },
   }
   nueva.mesas = Array.from({ length: n }, (_, i) => mesa(codigo, i + 1))
+  estado.rubricas[nueva.sala.id] = rubricasIniciales()
   nueva.participantes = []
   nueva.eventos = []
   derivar(nueva)
@@ -220,6 +230,32 @@ function csv(s: SalaDetalle, archivo: string): string {
   return '﻿' + filas.map((f) => f.map(celda).join(',')).join('\n') + '\n'
 }
 
+function rubricasIniciales(): CriterioRubrica[] {
+  return seed.motor.criterios.map((c) => ({ id: c.id, nombre: c.nombre, pregunta: c.pregunta, rubrica: estado.rubricasNuevas[c.id] ?? c.rubrica }))
+}
+
+const MOTIVO_CON_VOTOS =
+  'La sala ya tiene votos. Las rúbricas solo se editan antes del primer voto, para que todos califiquen con los mismos rangos. Si necesitas otros rangos, duplica la sala y edítalos en la copia.'
+
+/** Como el servidor: sin votos (ninguna ronda abierta todavía) se editan solo los textos de los 5 niveles. */
+function rubricas(metodo: string, s: SalaDetalle, criterioId: string | undefined, b: Record<string, unknown>, por: string): Respuesta {
+  const criterios = (estado.rubricas[s.sala.id] ??= rubricasIniciales())
+  const editable = (s.sala.ronda_actual ?? 0) === 0
+  const vista = (): RubricasSala => ({ criterios: structuredClone(criterios), editable, ...(editable ? {} : { motivo_no_editable: MOTIVO_CON_VOTOS }) })
+  if (metodo === 'GET' && !criterioId) return ok(vista())
+  const c = criterios.find((x) => x.id === criterioId)
+  if (metodo !== 'PUT' || !c) return error(422, 'CRITERIO_NO_EXISTE', 'Ese criterio no existe en esta sala.')
+  const niveles = Array.isArray(b.rubrica) ? (b.rubrica as { valor: number; texto: string }[]) : []
+  const textos = new Map(niveles.map((n) => [n.valor, String(n.texto ?? '').trim()]))
+  if (niveles.length !== 5 || c.rubrica.some((r) => !textos.get(r.valor))) return error(422, 'RUBRICA_INVALIDA', 'Escribe el texto de los 5 niveles: 1, 3, 5, 7 y 9.')
+  if ([...textos.values()].some((t) => t.length > 300)) return error(422, 'RUBRICA_INVALIDA', 'Cada texto admite hasta 300 caracteres.')
+  if (!editable) return error(409, 'RUBRICA_CON_VOTOS', MOTIVO_CON_VOTOS)
+  c.rubrica = c.rubrica.map((r) => ({ valor: r.valor, texto: textos.get(r.valor)! }))
+  if (b.usar_en_salas_nuevas === true) estado.rubricasNuevas[c.id] = structuredClone(c.rubrica)
+  tocar(s, 'rubrica_editada', por, { criterio_id: c.id, usar_en_salas_nuevas: b.usar_en_salas_nuevas === true })
+  return ok(vista())
+}
+
 function salaPorId(id: string) {
   return estado.salas.find((x) => x.sala.id === id)
 }
@@ -283,8 +319,13 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a) }, etag: s.version }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
-      return crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
+      const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
+      // Como el servidor: la copia lleva las rúbricas de la original.
+      if (r.status === 201) estado.rubricas[estado.salas[estado.salas.length - 1].sala.id] = structuredClone(estado.rubricas[s.sala.id] ?? rubricasIniciales())
+      return r
     }
+    const r = /^\/rubricas(?:\/([^/]+))?$/.exec(resto)
+    if (r) return rubricas(metodo, s, r[1], b, por)
     if (metodo === 'GET' && resto.startsWith('/export/')) return ok(csv(s, resto.slice('/export/'.length)))
     if (metodo === 'PATCH' && resto === '/config') {
       Object.assign(s.sala.config, b)
