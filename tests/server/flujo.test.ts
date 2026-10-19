@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { construirApp } from '../../server/app'
 import { abrirDb } from '../../server/db/index'
 import { asegurarSuperadmin } from '../../server/dominio/admins'
-import { type Entorno, T0, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from './ayuda'
+import { type Entorno, T0, VISTA_MESA_REGISTRADO, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from './ayuda'
 
 let e: Entorno
 beforeEach(async () => {
@@ -19,7 +19,7 @@ async function detalle(salaId: string) {
 
 describe('precierre', () => {
   it('aparece solo cuando todos los inscritos activos completan, se recalcula y nunca cierra', async () => {
-    const s = await crearSala(e, 2)
+    const s = await crearSala(e, 2, 'Sala de prueba', VISTA_MESA_REGISTRADO)
     await accion(e, s.id, 'abrir_inscripcion')
     const a = (await inscribir(e, s.mesas[0].codigo, 'a@x.co')).json().token
     const b = (await inscribir(e, s.mesas[0].codigo, 'b@x.co')).json().token

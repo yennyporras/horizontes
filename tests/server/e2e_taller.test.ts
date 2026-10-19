@@ -3,7 +3,7 @@
 // y permisos superadmin / admin / participante.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ACCIONES } from '../../server/dominio/estados'
-import { type Entorno, RESPUESTAS_5, T0, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from './ayuda'
+import { type Entorno, RESPUESTAS_5, T0, VISTA_MESA_REGISTRADO, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from './ayuda'
 
 let e: Entorno
 beforeAll(async () => {
@@ -179,7 +179,7 @@ describe('taller con precierre, hojas en R2 y cierres programados (reloj simulad
   })
 
   it('cambiar alcance o vista se refleja en el siguiente polling del celular (ETag nueva)', async () => {
-    const s = await crearSala(e, 1)
+    const s = await crearSala(e, 1, 'Sala de prueba', VISTA_MESA_REGISTRADO)
     await accion(e, s.id, 'abrir_inscripcion')
     const { token } = (await inscribir(e, s.mesas[0].codigo, 'vista@prueba.co')).json()
     await inscribir(e, s.mesas[0].codigo, 'otra@prueba.co')

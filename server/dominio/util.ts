@@ -25,11 +25,21 @@ export function codigoSala(): string {
 /** Se guarda en UTC ISO (comparable como texto). */
 export const isoUtc = (ms: number) => new Date(ms).toISOString()
 
-/** Salida en hora de Bogotá (UTC-5 todo el año, sin horario de verano). */
-export function isoBogota(valor: string | number | null | undefined): string | null {
+export const PAISES = ['CO', 'PE', 'GT'] as const
+export type Pais = (typeof PAISES)[number]
+
+/** Desfase fijo en horas: ninguno de los tres países usa horario de verano. */
+export const DESFASES = { 'America/Bogota': -5, 'America/Lima': -5, 'America/Guatemala': -6 } as const
+export type ZonaHoraria = keyof typeof DESFASES
+
+export const ZONA_POR_PAIS: Record<Pais, ZonaHoraria> = { CO: 'America/Bogota', PE: 'America/Lima', GT: 'America/Guatemala' }
+
+/** Salida en la hora de la zona de la sala (por defecto Bogotá), con su desfase: 2026-10-19T09:00:00-05:00. */
+export function isoEnZona(valor: string | number | null | undefined, zona: ZonaHoraria = 'America/Bogota'): string | null {
   if (valor === null || valor === undefined || valor === '') return null
   const ms = typeof valor === 'number' ? valor : Date.parse(valor)
   if (Number.isNaN(ms)) return null
-  const d = new Date(ms - 5 * 3600_000)
-  return d.toISOString().replace(/\.\d{3}Z$/, '-05:00')
+  const h = DESFASES[zona]
+  const d = new Date(ms + h * 3600_000)
+  return d.toISOString().replace(/\.\d{3}Z$/, `-${String(-h).padStart(2, '0')}:00`)
 }

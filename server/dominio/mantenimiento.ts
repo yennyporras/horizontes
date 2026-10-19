@@ -1,28 +1,32 @@
 // Respaldo de la BD (antes y después de cada sala), reinicio limpio de una sala y límite de peticiones.
-import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { type Db, ejecutar, transaccion } from '../db/index.js'
-import { cargarSala, registrarEvento, tocar } from './salas.js'
+import { CONFIG_POR_DEFECTO, cargarSala, registrarEvento, tocar } from './salas.js'
+import { type ZonaHoraria, isoEnZona } from './util.js'
 
 export const RESPALDOS_A_CONSERVAR = 30
 
 /**
  * Copia consistente de la BD (VACUUM INTO) en `<dir de la BD>/respaldos/`. No hace nada con `:memory:`.
- * Conserva los últimos RESPALDOS_A_CONSERVAR archivos. Devuelve la ruta del respaldo o null.
+ * El nombre lleva la hora en la zona de la sala. Conserva los RESPALDOS_A_CONSERVAR más recientes. Devuelve la ruta o null.
  */
-export function respaldarBd(db: Db, dbPath: string, etiqueta: string, ahora: number): string | null {
+export function respaldarBd(db: Db, dbPath: string, etiqueta: string, ahora: number, zona?: ZonaHoraria): string | null {
   if (dbPath === ':memory:') return null
   const dir = join(dirname(dbPath), 'respaldos')
   mkdirSync(dir, { recursive: true })
-  const sello = new Date(ahora).toISOString().replace(/[:.]/g, '-')
+  const sello = (isoEnZona(ahora, zona) ?? '').replace(/:/g, '-')
   const base = join(dir, `horizontes_${sello}_${etiqueta.replace(/[^a-zA-Z0-9_-]/g, '')}`)
   // VACUUM INTO falla si el archivo existe (dos respaldos con la misma etiqueta en el mismo milisegundo).
   let destino = `${base}.sqlite`
   for (let i = 2; existsSync(destino); i++) destino = `${base}_${i}.sqlite`
   db.prepare('VACUUM INTO ?').run(destino)
+  // Por fecha del archivo y no por nombre: salas de países distintos llevan horas con desfases distintos.
   const archivos = readdirSync(dir)
     .filter((f) => f.startsWith('horizontes_') && f.endsWith('.sqlite'))
-    .sort()
+    .map((f) => ({ f, ms: statSync(join(dir, f)).mtimeMs }))
+    .sort((a, b) => a.ms - b.ms)
+    .map((x) => x.f)
   for (const f of archivos.slice(0, Math.max(0, archivos.length - RESPALDOS_A_CONSERVAR))) rmSync(join(dir, f), { force: true })
   return destino
 }
@@ -73,8 +77,10 @@ export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
     }
     ejecutar(
       db,
-      `UPDATE salas SET estado = 'preparada', ronda_actual = 0, alcance_resultados = 'mesa', vista_participante = 'registrado',
+      `UPDATE salas SET estado = 'preparada', ronda_actual = 0, alcance_resultados = ?, vista_participante = ?,
          revelar_hojas = 0, cierre_programado_ronda_at = NULL, cierre_programado_sala_at = NULL WHERE id = ?`,
+      CONFIG_POR_DEFECTO.alcance_resultados,
+      CONFIG_POR_DEFECTO.vista_participante,
       sala.id,
     )
     registrarEvento(db, sala.id, ahora, 'sala_reiniciada', 'sistema', borrados)
