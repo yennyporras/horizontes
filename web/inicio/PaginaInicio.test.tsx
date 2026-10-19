@@ -57,6 +57,17 @@ describe('landing de la raíz', () => {
     expect(container.textContent).not.toContain('—')
   })
 
+  it('se ve en el tema carbón con la marca de Horizontes y el logo oficial de Estratek', () => {
+    const { container, unmount } = montar()
+    expect(container.querySelector('.hz-inicio')!.getAttribute('data-tema')).toBe('carbon')
+    expect(document.documentElement.getAttribute('data-tema')).toBe('carbon')
+    expect(screen.getByRole('link', { name: /Horizontes\s*por Estratek/ }).getAttribute('href')).toBe('#inicio')
+    expect(screen.getByRole('heading', { level: 1 }).querySelector('.in-clave')!.textContent).toBe('portafolio')
+    expect(screen.getByRole('img', { name: 'Estratek' }).getAttribute('src')).toContain('estratek-logo-blanco')
+    unmount()
+    expect(document.documentElement.hasAttribute('data-tema')).toBe(false)
+  })
+
   it('explica los 6 criterios, los dos ejes y la escala impar sin pesos', () => {
     const { container } = montar()
     for (const n of ['Regulación', 'Capacidades Organizacionales', 'Inversión Requerida para Probar', 'Time 2 Market', 'Value Generation Capacity'])
