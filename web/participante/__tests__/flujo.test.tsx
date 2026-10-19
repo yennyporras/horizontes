@@ -94,6 +94,28 @@ describe('antes de inscribirse', () => {
     expect(await screen.findByText('No encontramos ese correo en esta sala. Escríbelo igual que cuando te inscribiste.')).toBeTruthy()
   })
 
+  it('aviso de datos con la norma del país de la sala y el texto de autorización del servidor (acta P4)', async () => {
+    const casos = [
+      { pais: undefined, norma: 'Ley 1581 de 2012', autoridad: /Superintendencia de Industria y Comercio/ },
+      { pais: 'PE', norma: 'Ley 29733', autoridad: /Autoridad Nacional de Protección de Datos Personales/ },
+      { pais: 'GT', norma: 'Política de Tratamiento de Datos Personales de Estratek', autoridad: null },
+    ]
+    for (const c of casos) {
+      const texto = `Autorizo a Estratek S.A.S. (${c.pais ?? 'CO'}).`
+      const mesa = { ...MESA, sala: { ...MESA.sala, pais: c.pais }, consentimiento: { ...MESA.consentimiento, version: 'hz-1.1', texto_autorizacion: texto } }
+      servidor(() => ({ status: 200, body: mesa }))
+      montar()
+      await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
+      const norma = screen.getByText('Qué norma aplica').nextElementSibling!.textContent!
+      expect(norma).toContain(c.norma)
+      const derechos = screen.getByText('Tus derechos').nextElementSibling!.textContent!
+      if (c.autoridad) expect(derechos).toMatch(c.autoridad)
+      else expect(derechos).not.toMatch(/Superintendencia|Autoridad Nacional/)
+      expect(screen.getByText(texto, { exact: false })).toBeTruthy()
+      cleanup()
+    }
+  })
+
   it('inscripción: consentimiento obligatorio, validación y bienvenida con el perfil', async () => {
     let cuerpo: Record<string, unknown> | null = null
     servidor((url, init) => {
@@ -180,6 +202,8 @@ describe('votación', () => {
     conToken()
     montar()
     expect(await screen.findByRole('heading', { name: 'Ronda 1: califica los 2 proyectos' })).toBeTruthy()
+    // Acta A7: la ronda 1 es individual y en silencio, con su insignia R1.
+    expect(screen.getByText('Individual y en silencio').previousElementSibling?.className).toContain('hz-insignia--r1')
     expect(screen.getAllByText('Pendiente')).toHaveLength(2)
     expect((llamadas[0].init.headers as Record<string, string>)['X-Participante-Token']).toBe('tok-1')
 

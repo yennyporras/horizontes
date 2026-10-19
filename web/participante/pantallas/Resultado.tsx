@@ -6,34 +6,31 @@ import { cifra } from '../Comun'
 
 export const textoAlcance = (r: Resultados | null, alcance: 'mesa' | 'sala') => ((r?.alcance?.tipo ?? alcance) === 'sala' ? 'la sala' : 'tu mesa')
 
-/** "TIME 2 MARKET" → "Eje X (Time 2 Market)": el mismo nombre que usa el tablero (triage #11). */
-export const nombreEje = (eje: 'X' | 'Y', titulo: string) =>
-  `Eje ${eje} (${titulo.toLowerCase().replace(/(^|\s)\p{L}/gu, (l) => l.toUpperCase())})`
-
 /**
- * SPEC §7: ningún resultado muestra respuestas individuales (triage #1). Con 1 calificación el promedio ES
- * esa respuesta; con 2, quien votó despeja la del otro (otro = 2 · promedio − propia). Por eso 3.
- * Ocultar no es recalcular.
+ * SPEC §7 y acta A1: ningún resultado muestra respuestas individuales. Con 1 voto el promedio ES esa respuesta;
+ * con 2, quien votó despeja la del otro (otro = 2 · promedio − propia). Por eso 3 (R4_CONTRATO C3).
+ * Manda `minimo_votos` del servidor; ocultar no es recalcular.
  */
 export const MIN_VOTOS = 3
-const conVotos = (r: RondaVivo | undefined) => Boolean(r && r.n_votos >= MIN_VOTOS && r.promedios)
-const pocosVotos = (r: RondaVivo | undefined) => Boolean(r && r.n_votos > 0 && r.n_votos < MIN_VOTOS)
+const minimoDe = (r: Resultados) => r.minimo_votos ?? MIN_VOTOS
+const conVotos = (x: RondaVivo | undefined, min: number) => Boolean(x && !x.bajo_minimo && x.n_votos >= min && x.promedios)
+const pocosVotos = (x: RondaVivo | undefined, min: number) => Boolean(x && x.n_votos > 0 && !conVotos(x, min))
 
-/** Copia para la matriz sin las rondas de menos de MIN_VOTOS calificaciones (sin punto). */
-function sinIndividuales(r: Resultados): Resultados {
+/** Copia para la matriz sin las rondas bajo el mínimo de votos (sin punto). */
+function sinIndividuales(r: Resultados, min: number): Resultados {
   return {
     ...r,
     proyectos_vivos: (r.proyectos_vivos ?? []).map((p) => ({
       ...p,
-      rondas: p.rondas.map((x) => (conVotos(x) ? x : { ...x, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null })),
+      rondas: p.rondas.map((x) => (conVotos(x, min) ? x : { ...x, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null })),
     })),
   }
 }
 
-/** Ronda 1: solo R1. Con votos en las 2 rondas: comparación (R1 suave, R2 sólido y flecha). */
+/** Ronda 1: solo R1. Con votos en las 2 rondas: comparación (R1 hueco, R2 sólido y flecha). */
 export function vistaMatriz(r: Resultados): Vista {
   const vivos = r.proyectos_vivos ?? []
-  const con = (n: number) => vivos.some((p) => conVotos(p.rondas.find((x) => x.ronda === n)))
+  const con = (n: number) => vivos.some((p) => conVotos(p.rondas.find((x) => x.ronda === n), minimoDe(r)))
   if (con(2)) return con(1) ? 'comparacion' : 2
   return 1
 }
@@ -70,22 +67,22 @@ export function ResultadoAlcance({
 }) {
   const escalaTexto = usarEscalaTexto()
   const donde = textoAlcance(resultados, alcance)
+  const min = minimoDe(resultados)
   const vivos = resultados.proyectos_vivos ?? []
-  const hayVotos = vivos.some((p) => p.rondas.some(conVotos))
-  const hayPocos = vivos.some((p) => p.rondas.some(pocosVotos))
+  const hayVotos = vivos.some((p) => p.rondas.some((x) => conVotos(x, min)))
+  const hayPocos = vivos.some((p) => p.rondas.some((x) => pocosVotos(x, min)))
   const marcarPreliminar = preliminar ?? resultados.preliminar
-  const ejeX = nombreEje('X', resultados.ejes?.x.titulo ?? 'Time 2 market')
-  const ejeY = nombreEje('Y', resultados.ejes?.y.titulo ?? 'Value generation capacity')
 
-  const avisoPocos = `Hacen falta al menos ${MIN_VOTOS} calificaciones en ${donde} para mostrar un resultado. Así nadie ve las respuestas de otra persona.`
   if (!hayVotos) {
     return (
       <p className="hz-texto-2">
-        {hayPocos ? avisoPocos : `Todavía no hay calificaciones en ${donde}. Los puntos aparecen con las primeras ${MIN_VOTOS}.`}
+        {hayPocos
+          ? `Hace falta al menos ${min} votos para mostrar estos resultados. Así nadie ve las respuestas de otra persona.`
+          : `Todavía no hay votos en ${donde}. Los resultados aparecen con los primeros ${min}.`}
       </p>
     )
   }
-  const datosMatriz = sinIndividuales(resultados)
+  const datosMatriz = sinIndividuales(resultados, min)
 
   return (
     <section className="hzp-resultado" aria-label={`Resultado de ${donde}`}>
@@ -98,59 +95,38 @@ export function ResultadoAlcance({
         <MatrizHorizontes datos={datosMatriz as unknown as DatosTablero} vista={vistaMatriz(datosMatriz)} escalaTexto={escalaTexto} />
       </div>
       {vivos.map((p) => {
-        const r1 = p.rondas.find((r) => r.ronda === 1)
-        const r2 = p.rondas.find((r) => r.ronda === 2)
-        const rondas = [r1, r2].filter((r): r is RondaVivo => conVotos(r))
-        if (rondas.length === 0) {
+        const rondas = [1, 2].map((n) => p.rondas.find((x) => x.ronda === n))
+        const visibles = rondas.filter((x): x is RondaVivo => conVotos(x, min))
+        const ocultas = rondas.filter((x): x is RondaVivo => pocosVotos(x, min))
+        if (visibles.length === 0) {
           return (
             <article key={p.id} className="hzp-resultado__proyecto">
               <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
-              <p className="hz-texto-3">
-                {p.rondas.some(pocosVotos) ? `Hacen falta al menos ${MIN_VOTOS} calificaciones para mostrar este proyecto.` : 'Sin calificaciones todavía.'}
-              </p>
+              <p className="hz-texto-3">{ocultas.length ? `Hace falta al menos ${min} votos para mostrar este proyecto.` : 'Sin votos todavía.'}</p>
             </article>
           )
         }
-        const dos = rondas.length === 2
         return (
           <article key={p.id} className="hzp-resultado__proyecto">
             <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
+            {/* Acta A3 y A4: solo los 6 criterios y el Total (eje X + eje Y) que entrega el servidor. */}
             <table className="hzp-tabla">
-              <caption className="hz-visual-oculto">Posición en la matriz y promedio por criterio de {p.nombre}</caption>
+              <caption className="hz-visual-oculto">Promedio por criterio y total de {p.nombre}</caption>
               <thead>
                 <tr>
-                  <th scope="col">{dos ? 'Ronda' : 'Posición y criterios'}</th>
-                  {rondas.map((r) => (
-                    <th key={r.ronda} scope="col" className="hz-cifra">
-                      {dos ? `R${r.ronda}` : 'Promedio'}
+                  <th scope="col">Promedio por criterio</th>
+                  {visibles.map((r) => (
+                    <th key={r.ronda} scope="col">
+                      <Insignia tono={r.ronda === 1 ? 'r1' : 'r2'}>R{r.ronda}</Insignia>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="hzp-tabla__ejes">
-                {(
-                  [
-                    [ejeX, 'eje_x'],
-                    [ejeY, 'eje_y'],
-                  ] as const
-                ).map(([nombre, campo]) => (
-                  <tr key={campo}>
-                    <th scope="row">
-                      {nombre.slice(0, 5)} <span className="hzp-tabla__eje-nombre">{nombre.slice(6)}</span>
-                    </th>
-                    {rondas.map((r) => (
-                      <td key={r.ronda} className="hz-cifra">
-                        {cifra(r[campo])}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
               <tbody>
                 {criterios.map((c) => (
                   <tr key={c.id}>
                     <th scope="row">{c.nombre}</th>
-                    {rondas.map((r) => (
+                    {visibles.map((r) => (
                       <td key={r.ronda} className="hz-cifra">
                         {cifra(r.promedios?.[c.id])}
                       </td>
@@ -158,17 +134,22 @@ export function ResultadoAlcance({
                   </tr>
                 ))}
               </tbody>
+              <tbody className="hzp-tabla__total">
+                <tr>
+                  <th scope="row">Total</th>
+                  {visibles.map((r) => (
+                    <td key={r.ronda} className="hz-cifra">
+                      {cifra(r.total)}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
             </table>
-            <p className="hzp-resultado__pie">
-              {[r1, r2]
-                .filter((r): r is RondaVivo => Boolean(r && r.n_votos > 0))
-                .map((r) =>
-                  conVotos(r)
-                    ? `${r.n_votos} calificaciones en la ronda ${r.ronda}`
-                    : `Ronda ${r.ronda}: hacen falta al menos ${MIN_VOTOS} calificaciones para mostrarla`,
-                )
-                .join(' · ')}
-            </p>
+            {ocultas.length > 0 && (
+              <p className="hzp-resultado__pie">
+                {ocultas.map((r) => `Ronda ${r.ronda}: hace falta al menos ${min} votos para mostrarla.`).join(' ')}
+              </p>
+            )}
           </article>
         )
       })}

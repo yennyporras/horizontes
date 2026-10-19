@@ -3,7 +3,7 @@
 // Inscripción, 2 rondas de votación, resultado de la ronda 1, comparación R1→R2, recarga y sala cerrada.
 // Sin WebKit instalado (`npx playwright-core install webkit`), ese perfil se omite con aviso.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { calificar, sinDesborde, tactiles, titulo, ver } from './ayudas'
+import { calificar, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
 import { accion, celularPerfil, crearSala, hayNavegador, iniciar, inscribirApi, PERFILES_MOVILES, votarApi, type Entorno } from './entorno'
 
 const disponibles = PERFILES_MOVILES.filter((p) => hayNavegador(p.motor))
@@ -66,7 +66,9 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
           await sinDesborde(p)
           await p.getByRole('button', { name: 'Guardar calificación' }).click()
         }
-        await titulo(p, 'Voto registrado', espera)
+        // Por defecto (acta A2, C5): tras votar, el consolidado de la sala en vivo. Con 1 voto, el aviso de mínimo.
+        await titulo(p, 'Resultados en vivo de la sala', espera)
+        await ver(p, 'Hace falta al menos 3 votos para mostrar estos resultados.', espera)
         await votarApi(e, tokenB, 'insumex', 1)
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)
@@ -96,8 +98,7 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         const matriz = p.locator('.hzp-matriz svg.hz-matriz')
         await matriz.waitFor()
         expect(await matriz.locator('.hz-r1').count()).toBeGreaterThanOrEqual(2)
-        await ver(p, 'Eje X (Time 2 Market)', espera)
-        expect(await p.locator('.hzp-tabla td').first().textContent()).toMatch(/^\d+,\d{2}$/)
+        await revisarTabla(p, mesa)
         await sinDesborde(p)
 
         // Recarga: vuelve a la misma pantalla (sesión guardada en el celular).
