@@ -158,7 +158,6 @@
 
   /* Foco: anillo teal de 2 px separado 2 px del elemento (se ve sobre el lienzo, las superficies y el blanco) */
   --hz-foco: 0 0 0 2px var(--hz-fondo), 0 0 0 4px var(--hz-acento);
-  --hz-foco-campo: 0 0 0 3px rgba(71, 235, 194, 0.55);
 
   /* Movimiento */
   --hz-t-rapido: 150ms;
