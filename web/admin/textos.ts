@@ -167,6 +167,7 @@ const TEXTO_EVENTO: Record<string, string> = {
   participante_editado: 'Participante editado',
   cierre_programado: 'Cierre programado aplicado',
   cierre_programado_descartado: 'Cierre programado descartado',
+  rubrica_editada: 'Rúbrica editada',
 }
 
 /** Texto legible de un evento de la bitácora de la sala. */
