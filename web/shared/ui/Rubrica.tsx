@@ -25,13 +25,21 @@ export function Rubrica({ criterioId, nombre, pregunta, opciones, valor, onCambi
   const id = useId()
   const ordenadas = [...opciones].sort((a, b) => b.valor - a.valor)
   return (
-    <fieldset role="radiogroup" className={['hz-rubrica', error && 'hz-rubrica--error'].filter(Boolean).join(' ')} aria-describedby={error ? `${id}-error` : undefined}>
+    <fieldset
+      role="radiogroup"
+      className={['hz-rubrica', error && 'hz-rubrica--error'].filter(Boolean).join(' ')}
+      // Lector de pantalla: "Criterio 3 de 6: Regulación, grupo de radio, requerido" y luego la pregunta (y el error).
+      aria-labelledby={`${id}-nombre`}
+      aria-describedby={[`${id}-pregunta`, error && `${id}-error`].filter(Boolean).join(' ')}
+      aria-required="true"
+      aria-invalid={error ? true : undefined}
+    >
       <legend className="hz-rubrica__encabezado">
-        <span className="hz-rubrica__criterio">
+        <span id={`${id}-nombre`} className="hz-rubrica__criterio">
           {posicion ? `Criterio ${posicion.actual} de ${posicion.total}: ` : ''}
           {nombre}
         </span>
-        <span className="hz-rubrica__pregunta">{pregunta}</span>
+        <span id={`${id}-pregunta`} className="hz-rubrica__pregunta">{pregunta}</span>
       </legend>
       <div className="hz-rubrica__opciones">
         {ordenadas.map((o) => (

@@ -2,11 +2,11 @@ import { Fragment, useEffect, useRef, type ReactNode } from 'react'
 import { Aviso, BarraAccion, Boton, EncabezadoHorizonte } from '../shared/ui'
 import './participante.css'
 
-/** Cifra con coma decimal (es-CO), máximo 2 decimales. */
-export function cifra(n: number | null | undefined, decimales = 1): string {
+/** Cifra con coma decimal (es-CO) y siempre 2 decimales, igual que el tablero (triage #11). */
+export function cifra(n: number | null | undefined, decimales = 2): string {
   if (n === null || n === undefined || Number.isNaN(n)) return 'sin dato'
   const f = 10 ** decimales
-  return String(Math.round(n * f) / f).replace('.', ',')
+  return (Math.round(n * f) / f).toFixed(decimales).replace('.', ',')
 }
 
 export interface MarcoProps {

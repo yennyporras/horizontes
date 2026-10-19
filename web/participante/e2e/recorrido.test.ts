@@ -3,40 +3,11 @@
 // recarga, precierre con resultado preliminar, token reemplazado (recuperar sesión), 6 hojas en R2,
 // ronda cerrada mientras califica, comparación R1→R2 en la matriz y sala cerrada.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { Page } from 'playwright-core'
+import { ESPERA, calificar, capturar, focoVisible, sinDesborde, tactiles, titulo, ver } from './ayudas'
 import { accion, celular, configurar, crearSala, hayChromium, iniciar, inscribirApi, votarApi, type Entorno } from './entorno'
 
 const conNavegador = hayChromium()
 if (!conNavegador) console.warn('[e2e participante] No hay Chromium de Playwright: se omite el recorrido en navegador.')
-
-const ESPERA = 15_000
-
-/** Espera un texto visible (string exacto o expresión). */
-async function ver(p: Page, texto: string | RegExp, timeout = ESPERA) {
-  await p.getByText(texto).first().waitFor({ state: 'visible', timeout })
-}
-
-async function titulo(p: Page, nombre: string | RegExp, timeout = ESPERA) {
-  await p.getByRole('heading', { name: nombre, level: 1 }).waitFor({ state: 'visible', timeout })
-}
-
-/** Marca el mismo valor en las 6 rúbricas (o en las indicadas). */
-async function calificar(p: Page, valor: number, criterios = [0, 1, 2, 3, 4, 5]) {
-  const grupos = p.locator('fieldset.hz-rubrica')
-  for (const i of criterios) await grupos.nth(i).locator('label.hz-opcion', { has: p.locator(`input[value="${valor}"]`) }).click()
-}
-
-/** Con HZ_CAPTURAS=carpeta guarda capturas de página completa para revisión visual. */
-async function capturar(p: Page, nombre: string) {
-  const dir = process.env.HZ_CAPTURAS
-  if (dir) await p.screenshot({ path: `${dir}/${nombre}.png`, fullPage: true })
-}
-
-/** Sin desborde horizontal en 360 px. */
-async function sinDesborde(p: Page) {
-  const ancho = await p.evaluate(() => document.documentElement.scrollWidth)
-  expect(ancho).toBeLessThanOrEqual(360)
-}
 
 describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la API real', () => {
   let e: Entorno
@@ -69,7 +40,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     // Inscripción: sin consentimiento el botón no avanza.
     await p.goto(`${e.web}/m/${mesa}`)
-    await titulo(p, 'Bienvenido al taller Horizontes', 60_000)
+    await titulo(p, 'Te damos la bienvenida al taller Horizontes', 60_000)
     await sinDesborde(p)
     await p.waitForTimeout(500)
     const cls = await p.evaluate(() => (window as unknown as { __cls: number }).__cls)
@@ -80,9 +51,15 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     const inscribirme = p.getByRole('button', { name: 'Inscribirme' })
     expect(await inscribirme.getAttribute('aria-disabled')).toBe('true')
     await inscribirme.click({ force: true })
-    await titulo(p, 'Bienvenido al taller Horizontes')
+    await titulo(p, 'Te damos la bienvenida al taller Horizontes')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('target')).toBe('_blank')
+    // Aviso de datos (Ley 1581) resumido de la política real de Estratek, con canal para ejercer derechos.
+    await ver(p, 'Quién trata tus datos')
+    expect(await p.getByRole('link', { name: 'info@estratek.com.co' }).getAttribute('href')).toBe('mailto:info@estratek.com.co')
+    expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('href')).toMatch(/^https:\/\/estratek\.com\.co\/politica/)
     await capturar(p, '01-inscripcion')
+    await tactiles(p)
+    await focoVisible(p, 6)
     await p.getByRole('checkbox').check()
     await inscribirme.click()
 
@@ -97,6 +74,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     // Otra persona de la mesa (otro celular, por API).
     const tokenB = await inscribirApi(e, mesa, 'Beto Ruiz', 'beto.e2e@empresa.com')
+    const tokenC = await inscribirApi(e, mesa, 'Ciro Ríos', 'ciro.e2e@empresa.com')
 
     // Ronda 1: el celular se entera solo (polling).
     await accion(e, sala.id, 'abrir_ronda_1')
@@ -108,6 +86,17 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ver(p, 'Te faltan 6 criterios. Elige una opción en cada uno.')
     await calificar(p, 7)
     await sinDesborde(p)
+    // Rúbrica para lector de pantalla: grupo con nombre del criterio, pregunta como descripción y opciones "9: texto".
+    const grupo = p.getByRole('radiogroup', { name: /^Criterio 1 de 6: / })
+    expect(await grupo.getAttribute('aria-required')).toBe('true')
+    const descripcion = await grupo.evaluate((g) =>
+      (g.getAttribute('aria-describedby') ?? '').split(' ').map((id) => document.getElementById(id)?.textContent ?? '').join(' '),
+    )
+    expect(descripcion.trim().length).toBeGreaterThan(10)
+    expect(await grupo.getByRole('radio', { name: /^9: / }).count()).toBe(1)
+    expect(await grupo.getByRole('radio', { name: /^7: / }).isChecked()).toBe(true)
+    await tactiles(p)
+    await focoVisible(p, 8)
     await capturar(p, '02-calificar')
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, 'Calificación de INSUMEX guardada.')
@@ -124,7 +113,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ctx.setOffline(false)
     await ver(p, 'Volvió la señal: enviamos tu calificación de NUTRIWHAT.')
     await titulo(p, 'Voto registrado')
-    await ver(p, '1 de 2 completaron en Mesa 1')
+    await ver(p, '1 de 3 completaron en Mesa 1')
 
     // Recarga: vuelve a donde iba.
     await p.reload()
@@ -142,7 +131,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     // Precierre: todos votaron en la mesa → aviso y resultado preliminar con la matriz.
     await votarApi(e, tokenB, 'insumex', 1)
+    await votarApi(e, tokenC, 'insumex', 1)
     await votarApi(e, tokenB, 'nutriwhat', 1)
+    await votarApi(e, tokenC, 'nutriwhat', 1)
     await ver(p, 'Todos votaron en Mesa 1')
     await p.getByRole('heading', { name: 'Resultado preliminar de tu mesa' }).waitFor()
     await ver(p, 'Preliminar')
@@ -179,6 +170,10 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await sinDesborde(p)
     await p.getByRole('button', { name: 'Calificar proyectos' }).click()
     await p.getByRole('button', { name: 'Calificar INSUMEX' }).click()
+    // Triage #16: con las 6 hojas abiertas, el plegable las muestra todas (la propia primero).
+    await p.getByRole('button', { name: 'Ver las hojas de este proyecto' }).click()
+    expect(await p.locator('#hzp-hojas-calificar .hz-hoja').count()).toBeGreaterThanOrEqual(6)
+    await p.getByRole('button', { name: 'Ocultar las hojas de este proyecto' }).click()
     await calificar(p, 9)
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, 'Calificación de INSUMEX guardada.')
@@ -187,7 +182,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await titulo(p, 'Voto registrado')
     await votarApi(e, tokenB, 'insumex', 2)
+    await votarApi(e, tokenC, 'insumex', 2)
     await votarApi(e, tokenB, 'nutriwhat', 2)
+    await votarApi(e, tokenC, 'nutriwhat', 2)
     await ver(p, 'Todos votaron en Mesa 1')
 
     // La ronda se cierra mientras edita: mensaje claro y lo marcado no se pierde.
@@ -209,8 +206,29 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await sinDesborde(p)
     await capturar(p, '05-comparacion')
     // Estilos globales de otras áreas (p. ej. .hz-cifra del tablero) no deben agrandar el texto del celular.
-    const letra = await p.locator('.hzp-posicion dd').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    const letra = await p.locator('.hzp-tabla__ejes td').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
     expect(letra).toBeLessThanOrEqual(16)
+    // Triage #10 y #11: mismo nombre de ejes que el tablero, 2 decimales y pie más pequeño que los datos.
+    await ver(p, 'Eje X (Time 2 Market)')
+    for (const td of await p.locator('.hzp-tabla td').allTextContents()) expect(td).toMatch(/^\d+,\d{2}$/)
+    const pie = await p.locator('.hzp-resultado__pie').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    expect(pie).toBeLessThan(letra)
+    const encabezado = await p.locator('.hzp-tabla thead th').last().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    expect(encabezado).toBeLessThan(letra)
+
+    // Triage #23: la columna del criterio se queda con el ancho; las cifras, lo justo.
+    const anchoCriterio = await p.locator('.hzp-tabla tbody th').first().evaluate((el) => el.getBoundingClientRect().width)
+    expect(anchoCriterio).toBeGreaterThan(170)
+
+    // Triage #25: el celular abierto en escritorio muestra la matriz grande y sin desborde.
+    await p.setViewportSize({ width: 1920, height: 1080 })
+    await p.waitForFunction(() => (document.querySelector('.hzp-matriz svg')?.getBoundingClientRect().width ?? 0) > 900)
+    expect(await p.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1920)
+    await capturar(p, '06-comparacion-1920')
+    await p.setViewportSize({ width: 360, height: 740 })
+
+    // Triage #17: sin el margen de 8 px del navegador alrededor de la página.
+    expect(await p.evaluate(() => getComputedStyle(document.body).marginTop)).toBe('0px')
 
     // Fin del taller.
     await accion(e, sala.id, 'cerrar_sala')
@@ -226,6 +244,8 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await accion(e, sala.id, 'abrir_ronda_1')
     const otro = await inscribirApi(e, sala.mesas[1].codigo, 'Caro Díaz', 'caro.e2e@empresa.com')
     await votarApi(e, otro, 'insumex', 1)
+    const otro2 = await inscribirApi(e, sala.mesas[1].codigo, 'Gabo Paz', 'gabo.e2e@empresa.com')
+    await votarApi(e, otro2, 'insumex', 1)
     // Alguien de la mesa 1 aún no vota: sin precierre, la pantalla es la de resultados en vivo.
     await inscribirApi(e, sala.mesas[0].codigo, 'Eli Mora', 'eli.e2e@empresa.com')
     const ctx = await celular(e)
