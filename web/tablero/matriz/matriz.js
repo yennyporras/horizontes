@@ -8,13 +8,13 @@ const ETIQUETAS_HORIZONTE_DEFECTO = { H1: [1.3, 1.9], H2: [4.3, 4.0], H3: [8.0, 
 // web/shared/ui/tokens.css, sin valores en duro. El mismo SVG sirve en el tema carbón (tablero) y en el
 // claro (celular y panel): cada var() toma el valor del tema de quien lo aloja.
 // Horizontes de afuera hacia adentro en superficies escalonadas: H3 superficie 1, H2 superficie 2 y
-// H1 superficie 3; su borde, el acento de Horizontes (gráfico propio, §1). R1, R2 y los fijos dan al
+// H1 superficie 3; su borde, el borde de control neutro (el verde agua se confundía con R1 en proyector). R1, R2 y los fijos dan al
 // menos 3:1 sobre las tres; el texto, más de 4,5:1 sobre su halo.
 export const COLORES = {
   fondoH3: 'var(--hz-superficie-1)',
   fondoH2: 'var(--hz-superficie-2)',
   fondoH1: 'var(--hz-superficie-3)',
-  curva: 'var(--hz-acento-producto-texto)',
+  curva: 'var(--hz-borde-control)',
   rejilla: 'var(--hz-tinta)',
   texto: 'var(--hz-tinta)',
   textoSuave: 'var(--hz-tinta-2)',
