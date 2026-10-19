@@ -94,6 +94,8 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 | Admin normal no ve gestión de admins (403) | Pruebas de T1 y del panel contra la API real | Verde |
 | Resultados anónimos, mínimo 3 votos, «Total» (acta) | Pruebas de T1, T2, T3 y del panel; `docs/TRIAGE.md` | Ver la pasada R4 en TRIAGE |
 
+Pruebas integradas al 19-oct 14:15 (`tools/test.sh` sobre las 4 ramas): 436 de 441 en verde; las 4 rojas son pruebas e2e del celular que aún esperan «Voto registrado» en vez de la vista en vivo por defecto (TRIAGE #31, T2). Recorrido en navegador a 360 y 1920 px en verde.
+
 ## 8. Pendientes conocidos
 - Staging y producción: sección 5.1 (credenciales de Coolify y DNS, solo Paola).
 - Hallazgos abiertos de `docs/TRIAGE.md`.
