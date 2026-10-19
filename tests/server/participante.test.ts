@@ -358,7 +358,8 @@ describe('PUT /api/votos', () => {
     const t = (await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).json()
     const ins = t.proyectos_vivos.find((p: { id: string }) => p.id === 'insumex').rondas[0]
     expect(ins.n_votos).toBe(1)
-    expect(ins.promedios.regulacion).toBe(9)
+    // Con un solo voto el tablero no lo muestra (sería la respuesta individual); el valor nuevo ya se verificó en la BD.
+    expect(ins).toMatchObject({ bajo_minimo: true, promedios: null })
   })
 
   it('completo_ronda se vuelve true tras votar los 2 vivos y progreso_mesa lo refleja', async () => {

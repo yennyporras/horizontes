@@ -118,7 +118,8 @@ describe('participante desactivado', () => {
     let t = await tablero(s)
     expect(t.progreso).toMatchObject({ inscritos: 1, completos: 1, precierre: true })
     expect(nVotos(t, 1)).toEqual([1, 1])
-    expect(t.proyectos_vivos[0].rondas[0].promedios.alineacion_core).toBe(5)
+    // Queda un solo voto activo: el promedio sería su respuesta individual, así que se oculta.
+    expect(t.proyectos_vivos[0].rondas[0]).toMatchObject({ bajo_minimo: true, promedios: null, eje_x: null })
 
     // Recuperar sesión con el mismo correo no lo reactiva: eso solo lo hace el admin.
     const rec = await inscribir(e, s.mesas[0].codigo, 'b@correo.co')
@@ -153,7 +154,8 @@ describe('doble pestaña', () => {
     expect(y.completo_ronda).toBe(true)
     const t = await tablero(s)
     expect(nVotos(t, 1)).toEqual([1, 1])
-    expect([5, 9]).toContain(t.proyectos_vivos[0].rondas[0].promedios.alineacion_core)
+    const fila = e.db.prepare("SELECT alineacion_core FROM votos WHERE participante_id = ? AND proyecto_id = 'insumex'").get(a.participante.id) as { alineacion_core: number }
+    expect([5, 9]).toContain(fila.alineacion_core)
   })
 
   it('las dos pestañas comparten ETag: la segunda recibe 304 y ambas ven el cambio a la vez', async () => {
@@ -269,13 +271,45 @@ describe('reinicio de ronda', () => {
   it('reiniciar y reabrir la R1 ya cerrada permite repetirla', async () => {
     const s = await sala('r1_abierta')
     const a = await inscrito(s.mesas[0].codigo, 'a@correo.co')
+    const b = await inscrito(s.mesas[0].codigo, 'b@correo.co')
     await votarAmbos(a.token, 1)
+    await votarAmbos(b.token, 1)
     await accion(e, s.id, 'cerrar_ronda_1')
     await accion(e, s.id, 'reiniciar_ronda')
     expect((await detalle(s.id)).sala.estado).toBe('r1_cerrada')
     await accion(e, s.id, 'reabrir_ronda')
     await votarAmbos(a.token, 1, RESPUESTAS_9)
+    await votarAmbos(b.token, 1, RESPUESTAS_9)
     await accion(e, s.id, 'cerrar_ronda_1')
     expect((await tablero(s)).proyectos_vivos[0].rondas[0].promedios.alineacion_core).toBe(9)
+  })
+})
+
+describe('mínimo de votos para mostrar resultados (triage #1)', () => {
+  it('una mesa con un solo voto no muestra promedios, distribución ni punto, ni en el tablero ni en el celular', async () => {
+    const s = await sala('r1_abierta', 2)
+    const solo = await inscrito(s.mesas[0].codigo, 'solo@correo.co')
+    const b = await inscrito(s.mesas[1].codigo, 'b@correo.co')
+    const c = await inscrito(s.mesas[1].codigo, 'c@correo.co')
+    await votarAmbos(solo.token, 1, RESPUESTAS_9)
+    await votarAmbos(b.token, 1)
+    await votarAmbos(c.token, 1)
+
+    const mesa1 = await tablero(s, `&alcance=mesa&mesa=${s.mesas[0].id}`)
+    expect(mesa1.minimo_votos).toBe(2)
+    for (const pv of mesa1.proyectos_vivos) {
+      expect(pv.rondas[0]).toEqual({ ronda: 1, n_votos: 1, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, bajo_minimo: true })
+    }
+    // El celular de la mesa 1 en precierre recibe lo mismo: nada que delate su respuesta.
+    const y = (await yo(solo.token)).json()
+    expect(JSON.stringify(y.resultados)).not.toContain('"alineacion_core":9')
+    expect(y.resultados.proyectos_vivos[0].rondas[0].bajo_minimo).toBe(true)
+
+    // La mesa 2 (2 votos) y la sala (3 votos) sí se muestran, sin marca.
+    const mesa2 = await tablero(s, `&alcance=mesa&mesa=${s.mesas[1].id}`)
+    expect(mesa2.proyectos_vivos[0].rondas[0]).toMatchObject({ n_votos: 2, promedios: { alineacion_core: 5 } })
+    expect(mesa2.proyectos_vivos[0].rondas[0].bajo_minimo).toBeUndefined()
+    const sala3 = await tablero(s)
+    expect(sala3.proyectos_vivos[0].rondas[0].promedios.alineacion_core).toBeCloseTo(19 / 3, 9)
   })
 })
