@@ -20,7 +20,7 @@ export const COLORES = {
   // Colores por ronda. Los proyectos vivos se distinguen por su nombre, no por color;
   // la ronda, por color, forma (R1 hueco, R2 sólido) y la etiqueta «R1»/«R2».
   r1: 'var(--hz-r1, #3FB25A)',
-  r2: 'var(--hz-r2, #F25C5C)',
+  r2: 'var(--hz-r2, #F36363)',
 };
 
 // Los colores van en reglas CSS (los atributos de presentación no aceptan var()), limitadas a cada SVG por su id.
