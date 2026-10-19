@@ -9,6 +9,4 @@ logs
 **/*.sqlite*
 **/*.db
 QA-tests
-prompts
-docs/bitacora
 web/**/package-lock.json

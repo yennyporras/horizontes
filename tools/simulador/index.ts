@@ -1,4 +1,4 @@
-// Simulador de taller (SPEC §11.1). Ver la sección "Simulador" de docs/bitacora/R2_T1.md.
+// Simulador de taller (SPEC §11.1). Resultados del ensayo en docs/ENSAYO.md.
 //
 //   npm run simular                                   -> API real en proceso (BD temporal), 40 personas, 4 mesas
 //   npm run simular -- --personas 40 --mesas 4 --poll 2500 --semilla 7
