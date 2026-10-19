@@ -248,10 +248,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (!s) return error(404, 'SALA_NO_EXISTE', 'Esa sala no existe.')
     const m = s.mesas.find((x) => x.id === new URLSearchParams(consulta).get('mesa'))
     const alcance = m ? { tipo: 'mesa', mesa_id: m.id, mesa_nombre: m.nombre } : { tipo: 'sala' }
-    // R4_CONTRATO C1 y C3: el servidor entrega `total` = eje X + eje Y y el mínimo de 3 votos (el simulador hace de servidor).
-    const vivos = tableroBase.proyectos_vivos.map((p) => ({ ...p, rondas: p.rondas.map((r) => ({ ...r, total: r.eje_x + r.eje_y })) }))
-    const cuerpo = { ...structuredClone(tableroBase), proyectos_vivos: vivos, minimo_votos: 3 }
-    return ok({ ...cuerpo, version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null })
+    return ok({ ...structuredClone(tableroBase), version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null })
   }
 
   const a = sesion()
