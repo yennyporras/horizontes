@@ -11,6 +11,8 @@ export function Salas() {
   const [mesas, setMesas] = useState(4)
   const [errorCrear, setErrorCrear] = useState<string | null>(null)
   const [creando, setCreando] = useState(false)
+  const [duplicando, setDuplicando] = useState<string | null>(null)
+  const [errorDuplicar, setErrorDuplicar] = useState<string | null>(null)
   const navegar = useNavigate()
 
   const cargar = () =>
@@ -40,6 +42,22 @@ export function Salas() {
       setErrorCrear(err instanceof Error ? err.message : 'No se pudo crear la sala.')
     } finally {
       setCreando(false)
+    }
+  }
+
+  // Copia vacía (mismas mesas y visibilidad, sin inscritos ni votos) para ensayar sin tocar la sala real.
+  const duplicar = async (s: SalaResumen) => {
+    setErrorDuplicar(null)
+    setDuplicando(s.id)
+    try {
+      const r = await api.post<{ id?: string; sala?: { id: string } }>(`/api/admin/salas/${s.id}/duplicar`, { nombre: `${s.nombre} (ensayo)` })
+      const id = r?.id ?? r?.sala?.id
+      if (id) navegar(`/admin/salas/${id}/vivo`)
+      else await cargar()
+    } catch (err) {
+      setErrorDuplicar(err instanceof Error ? `No pudimos duplicar "${s.nombre}". ${err.message}` : 'No pudimos duplicar la sala.')
+    } finally {
+      setDuplicando(null)
     }
   }
 
@@ -81,6 +99,11 @@ export function Salas() {
       )}
       {!salas && !error && <p role="status">Cargando salas…</p>}
       {salas?.length === 0 && <p className="vacio">Aún no hay salas. Crea la primera con el formulario de arriba.</p>}
+      {errorDuplicar && (
+        <p className="alerta alerta--error" role="alert">
+          {errorDuplicar}
+        </p>
+      )}
       {salas && salas.length > 0 && (
         <ul className="lista-salas">
           {salas.map((s) => (
@@ -93,9 +116,21 @@ export function Salas() {
                 </p>
               </div>
               <span className={`estado estado--${s.estado}`}>{ESTADOS[s.estado]}</span>
-              <Link className="btn btn--primario" to={`/admin/salas/${s.id}/vivo`}>
-                Abrir
-              </Link>
+              <span className="acciones-sala">
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => void duplicar(s)}
+                  disabled={duplicando !== null}
+                  aria-busy={duplicando === s.id}
+                  aria-label={`Duplicar ${s.nombre} para ensayo`}
+                >
+                  {duplicando === s.id ? 'Duplicando…' : 'Duplicar para ensayo'}
+                </button>
+                <Link className="btn btn--primario" to={`/admin/salas/${s.id}/vivo`}>
+                  Abrir
+                </Link>
+              </span>
             </li>
           ))}
         </ul>

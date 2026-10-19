@@ -195,4 +195,17 @@ describe('panel admin contra la API real', () => {
     fireEvent.click(nav().getByText('Exportar'))
     expect(await screen.findByRole('heading', { name: /inscritos/i })).toBeTruthy()
   }, 20_000)
+
+  it('duplica una sala para ensayo contra la API real: mismas mesas, sin inscritos', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    await crearSalaDesdePanel('Original real', 3)
+    fireEvent.click(nav().getByText('Salas'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Duplicar Original real para ensayo' }))
+    await screen.findByText('Original real (ensayo)')
+    await screen.findByText('Preparada', { selector: '.estado' })
+    const copia = e.db.prepare('SELECT id FROM salas WHERE nombre = ?').get('Original real (ensayo)') as { id: string }
+    expect((e.db.prepare('SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?').get(copia.id) as { n: number }).n).toBe(3)
+    expect((e.db.prepare('SELECT COUNT(*) AS n FROM participantes WHERE sala_id = ?').get(copia.id) as { n: number }).n).toBe(0)
+  }, 20_000)
 })

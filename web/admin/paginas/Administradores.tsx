@@ -133,7 +133,7 @@ export function Administradores() {
         {admins?.length === 0 && <p className="vacio">No hay cuentas para mostrar.</p>}
         {admins && admins.length > 0 && (
           <div className="tabla-envoltura">
-            <table>
+            <table className="tabla-tarjetas">
               <thead>
                 <tr>
                   <th scope="col">Nombre</th>
@@ -148,10 +148,10 @@ export function Administradores() {
                 {admins.map((a) => (
                   <tr key={a.id} className={a.activo ? undefined : 'inactivo'}>
                     <th scope="row">{a.nombre}</th>
-                    <td>{a.usuario}</td>
-                    <td>{a.correo ?? 'Sin correo'}</td>
-                    <td>{a.rol === 'superadmin' ? 'Superadmin' : 'Admin'}</td>
-                    <td>
+                    <td data-label="Usuario">{a.usuario}</td>
+                    <td data-label="Correo" className="td-largo">{a.correo ?? 'Sin correo'}</td>
+                    <td data-label="Rol">{a.rol === 'superadmin' ? 'Superadmin' : 'Admin'}</td>
+                    <td data-label="Estado">
                       {!a.activo ? (
                         <span className="etiqueta etiqueta--apagado">Inactivo</span>
                       ) : a.debe_cambiar_clave ? (
@@ -160,7 +160,7 @@ export function Administradores() {
                         <span className="etiqueta etiqueta--exito">Activo</span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Acciones">
                       {a.rol === 'superadmin' ? (
                         <span className="pista">Se administra desde el servidor</span>
                       ) : (
