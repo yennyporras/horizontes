@@ -14,7 +14,7 @@ import { respaldarBd } from './dominio/mantenimiento.js'
 import { cargarSala } from './dominio/salas.js'
 import type { Reloj } from './dominio/util.js'
 import { rutasApi } from './rutas/api.js'
-import { LIMITE_CUERPO, cabecerasSeguridad, errorDeFastify, opcionesLogger } from './seguridad.js'
+import { LIMITE_CUERPO, ROBOTS_TXT, cabecerasSeguridad, errorDeFastify, opcionesLogger } from './seguridad.js'
 
 export interface OpcionesApp {
   mocks?: boolean
@@ -64,6 +64,7 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
   // version: commit desplegado (Coolify pasa SOURCE_COMMIT a la imagen); el monitor /admin/salud lo muestra.
   const version = process.env.SOURCE_COMMIT || process.env.APP_VERSION || undefined
   app.get('/api/health', async () => ({ ok: true, modo: op.mocks ? 'mocks' : 'api', version }))
+  app.get('/robots.txt', async (_req, reply) => reply.type('text/plain; charset=utf-8').send(ROBOTS_TXT))
 
   if (op.mocks) {
     await app.register(rutasMocks)
