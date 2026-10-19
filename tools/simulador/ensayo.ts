@@ -280,9 +280,9 @@ export async function ensayarTaller(op: OpcionesEnsayo): Promise<InformeEnsayo> 
     let mal = 0
     for (const pv of t.proyectos_vivos) {
       for (const rr of pv.rondas) {
-        // Con menos de 2 votos el servidor oculta promedios y punto (privacidad, SPEC §7).
-        if (grupo.length < 2) {
-          if (!(rr.bajo_minimo === true && rr.n_votos === grupo.length && rr.promedios === null && rr.eje_x === null)) mal++
+        // Con menos de `minimo_votos` el servidor oculta promedios, punto y total (privacidad, SPEC §7).
+        if (grupo.length < t.minimo_votos) {
+          if (!(rr.bajo_minimo === true && rr.n_votos === grupo.length && rr.promedios === null && rr.eje_x === null && rr.total === null)) mal++
           continue
         }
         const e = calcular(grupo, rr.ronda, pv.id)
@@ -291,11 +291,12 @@ export async function ensayarTaller(op: OpcionesEnsayo): Promise<InformeEnsayo> 
           Math.abs(rr.t2m - e.t2m) < 1e-9 &&
           Math.abs(rr.eje_x - e.x) < 1e-9 &&
           Math.abs(rr.eje_y - e.y) < 1e-9 &&
+          Math.abs(rr.total - (e.x + e.y)) < 1e-9 &&
           CRITERIOS.every((k) => Math.abs(rr.promedios[k] - e.prom[k]) < 1e-9)
         if (!ok) mal++
       }
     }
-    verificar(nombre, mal === 0 && t.proyectos_vivos.length === 2, t.proyectos_vivos.map((pv: any) => pv.rondas.map((rr: any) => rr.eje_x === null ? `${pv.nombre} R${rr.ronda} (oculto, ${rr.n_votos} voto)` : `${pv.nombre} R${rr.ronda} (${rr.eje_x.toFixed(2)}, ${rr.eje_y.toFixed(2)})`).join(' · ')).join(' · '))
+    verificar(nombre, mal === 0 && t.proyectos_vivos.length === 2, t.proyectos_vivos.map((pv: any) => pv.rondas.map((rr: any) => rr.eje_x === null ? `${pv.nombre} R${rr.ronda} (oculto, ${rr.n_votos} votos)` : `${pv.nombre} R${rr.ronda} (${rr.eje_x.toFixed(2)}, ${rr.eje_y.toFixed(2)})`).join(' · ')).join(' · '))
   }
   comparar('puntos de la sala = cálculo independiente', (await tablero()).json, personas)
   for (const m of mesasConGente()) comparar(`puntos de ${sala.mesas[m].nombre}`, (await tablero(`&alcance=mesa&mesa=${sala.mesas[m].id}`)).json, deMesa(m))

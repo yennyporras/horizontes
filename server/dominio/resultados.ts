@@ -2,7 +2,7 @@ import { type Db, todos } from '../db/index.js'
 import { CRITERIOS, type Entradas, type Pesos, agregar, calcularPunto } from '../../shared/motor/motor.js'
 import type { CriterioSemilla } from './semilla.js'
 import { type MesaFila, type SalaFila, mesasDeSala } from './salas.js'
-import { isoBogota } from './util.js'
+import { isoEnZona } from './util.js'
 
 export interface Contenido {
   caso: { titulo: string; descripcion_md: string; situacion_md: string }
@@ -131,8 +131,11 @@ export function progreso(db: Db, sala: SalaFila, mesas: MesaFila[] = mesasDeSala
 
 export type Alcance = { tipo: 'sala' } | { tipo: 'mesa'; mesa: MesaFila }
 
-/** Votos mínimos de un proyecto en un alcance y ronda para mostrar promedios, distribución y punto (privacidad). */
-export const MINIMO_VOTOS = 2
+/**
+ * Votos mínimos de un proyecto en un alcance y ronda para mostrar promedios, distribución, punto y total (privacidad).
+ * 3 y no 2: con 2 votos, quien votó despeja la respuesta del otro (acta del 16-oct P6).
+ */
+export const MINIMO_VOTOS = 3
 
 function votosPorProyecto(db: Db, salaId: string, ronda: number, mesaId?: string): Map<string, Entradas[]> {
   const columnas = CRITERIOS.map((c) => `v.${c}`).join(', ')
@@ -215,12 +218,12 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
         tam: p.tam,
         rondas: op.rondas.map((r) => {
           const a = agregar(porRonda.get(r)?.get(p.id) ?? [], c.pesos)
-          if (!a) return { ronda: r, n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null }
-          // SPEC §7: nunca respuestas individuales. Con un solo voto en el alcance, el promedio ES esa respuesta.
+          if (!a) return { ronda: r, n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null }
+          // SPEC §7: nunca respuestas individuales. Con pocos votos en el alcance, el promedio delata cada respuesta.
           if (a.n_votos < MINIMO_VOTOS) {
-            return { ronda: r, n_votos: a.n_votos, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, bajo_minimo: true }
+            return { ronda: r, n_votos: a.n_votos, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null, bajo_minimo: true }
           }
-          return { ronda: r, n_votos: a.n_votos, promedios: a.promedios, distribucion: a.distribucion, t2m: a.t2m, eje_x: a.eje_x, eje_y: a.eje_y }
+          return { ronda: r, n_votos: a.n_votos, promedios: a.promedios, distribucion: a.distribucion, t2m: a.t2m, eje_x: a.eje_x, eje_y: a.eje_y, total: a.total }
         }),
       })),
     preliminar: op.preliminar,
@@ -233,7 +236,9 @@ export function configPublica(s: SalaFila) {
     alcance_resultados: s.alcance_resultados,
     vista_participante: s.vista_participante,
     revelar_hojas: Boolean(s.revelar_hojas),
-    cierre_programado_ronda_at: isoBogota(s.cierre_programado_ronda_at),
-    cierre_programado_sala_at: isoBogota(s.cierre_programado_sala_at),
+    cierre_programado_ronda_at: isoEnZona(s.cierre_programado_ronda_at, s.zona_horaria),
+    cierre_programado_sala_at: isoEnZona(s.cierre_programado_sala_at, s.zona_horaria),
+    pais: s.pais,
+    zona_horaria: s.zona_horaria,
   }
 }

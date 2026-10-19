@@ -1,5 +1,5 @@
 // Endurecimiento HTTP (R3): cabeceras de seguridad, errores 4xx de Fastify con forma de contrato
-// y logs sin datos personales (Ley 1581: ni nombres, ni correos, ni tokens en los logs de Coolify).
+// y logs sin datos personales (Ley 1581: ni nombres, ni correos, ni tokens, ni IP en los logs de Coolify).
 import type { Writable } from 'node:stream'
 import type { FastifyError, FastifyInstance, FastifyServerOptions } from 'fastify'
 
@@ -75,7 +75,9 @@ export function opcionesLogger(stream?: Writable): FastifyServerOptions['logger'
         'req.headers.cookie',
         'req.headers["x-participante-token"]',
         'req.headers.authorization',
+        'req.headers["x-forwarded-for"]',
         'req.query.t',
+        '*.ip',
         '*.correo',
         '*.nombre',
         '*.clave',
