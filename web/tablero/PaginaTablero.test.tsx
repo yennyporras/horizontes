@@ -51,6 +51,8 @@ describe('PaginaTablero', () => {
     expect(document.querySelector('main')!.dataset.tema).toBe('carbon')
     const firma = titulo.closest('.hz-cab')!.querySelector('.hz-firma')!
     expect(firma.textContent!.replace(/\s+/g, ' ').trim()).toBe('Horizontes por Estratek »')
+    // También en <html> (fondo del rebote y theme-color).
+    expect(document.documentElement.dataset.tema).toBe('carbon')
     // La » es la marca gráfica: decorativa para el lector de pantalla.
     expect(firma.querySelector('.hz-firma-flecha')!.getAttribute('aria-hidden')).toBe('true')
   })

@@ -13,8 +13,8 @@ import { usePollingTablero } from './usePollingTablero'
 import { usePantallaCompleta } from './usePantallaCompleta'
 import { insigniaResultado, mensajeVacio, mostrarR2, nombreEstado, preguntaGuiadaActual, urlApiTablero, vistaPorDefecto } from './logica'
 import { useZoomMatriz } from './zoom'
+import { useTemaDocumento } from '../shared/ui'
 import type { DatosTablero, EstadoSala, Vista } from './tipos'
-import '../shared/ui/tokens.css'
 import './tablero.css'
 
 const VISTAS: { id: Vista; texto: string }[] = [
@@ -42,6 +42,8 @@ export default function PaginaTablero() {
   const verMesas = !!token && params.get('vista') === 'mesas'
   const url = sala ? urlApiTablero(sala, { mesa: verMesas ? null : mesa, t: token }) : null
   const { datos, error, cargando } = usePollingTablero(url)
+  // Tema carbón también en <html>: el rebote del desplazamiento y el theme-color del navegador van en carbón.
+  useTemaDocumento('carbon')
 
   // La vista elegida a mano dura hasta que cambie el estado de la sala; entonces vuelve la de defecto.
   // Se guarda con el estado en que se eligió (sin efecto que la borre: un atajo pulsado justo al
