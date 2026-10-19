@@ -130,7 +130,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
   transition: border-color var(--hz-t-rapido), box-shadow var(--hz-t-rapido);
 }
 .hz-campo__entrada::placeholder { color: var(--hz-tinta-3); opacity: 1; }
-.hz .hz-campo__entrada:focus-visible { outline: none; border-color: var(--hz-acento); box-shadow: var(--hz-foco-campo); }
+.hz-campo__entrada:focus-visible { border-color: var(--hz-acento); }
 .hz-campo__entrada:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 100px var(--hz-superficie-2) inset;
   -webkit-text-fill-color: var(--hz-tinta);
