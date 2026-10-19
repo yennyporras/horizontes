@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { RAIZ } from './config.js'
 import { cuerpoError, responderConVersion } from './http.js'
+import { consentimientoVigente } from './dominio/consentimiento.js'
 
 // Servidor de mocks (USE_MOCKS=1 o --mocks): sirve mocks/*.json en las rutas del contrato.
 // Se relee el archivo en cada petición: editar un mock se ve sin reiniciar.
@@ -25,15 +26,10 @@ export async function rutasMocks(app: FastifyInstance) {
     }
     const yo = leer('GET_api_yo')
     return {
-      sala: { id: yo.sala.id, nombre: yo.sala.nombre, estado: yo.sala.estado },
+      sala: { id: yo.sala.id, nombre: yo.sala.nombre, estado: yo.sala.estado, pais: yo.config.pais },
       mesa: { id: yo.participante.mesa.id, nombre: yo.participante.mesa.nombre },
       inscripcion_abierta: true,
-      consentimiento: {
-        version: 'estratek-v1',
-        texto_autorizacion:
-          'Autorizo a Estratek a tratar mi nombre y correo con fines informativos, según su Política de Tratamiento de Datos Personales.',
-        politica_url: 'https://estratek.com.co/politica-de-tratamiento-de-datos',
-      },
+      consentimiento: consentimientoVigente(yo.config.pais),
     }
   })
 

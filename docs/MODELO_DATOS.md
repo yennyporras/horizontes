@@ -23,11 +23,13 @@ CREATE TABLE salas (
   plantilla                   VARCHAR(40)  NOT NULL,        -- foodsume_2026
   estado                      VARCHAR(20)  NOT NULL,        -- preparada|inscripcion|r1_abierta|r1_cerrada|r2_abierta|r2_cerrada|cerrada
   ronda_actual                TINYINT      NOT NULL DEFAULT 0,
-  alcance_resultados          VARCHAR(5)   NOT NULL DEFAULT 'mesa',       -- mesa|sala
-  vista_participante          VARCHAR(10)  NOT NULL DEFAULT 'registrado', -- registrado|en_vivo
+  alcance_resultados          VARCHAR(5)   NOT NULL DEFAULT 'mesa',       -- mesa|sala (salas nuevas desde R4: 'sala', lo fija el código)
+  vista_participante          VARCHAR(10)  NOT NULL DEFAULT 'registrado', -- registrado|en_vivo (salas nuevas desde R4: 'en_vivo')
   revelar_hojas               BOOLEAN      NOT NULL DEFAULT FALSE,
   cierre_programado_ronda_at  DATETIME     NULL,
   cierre_programado_sala_at   DATETIME     NULL,
+  pais                        VARCHAR(2)   NOT NULL DEFAULT 'CO',             -- CO|PE|GT (R4)
+  zona_horaria                VARCHAR(20)  NOT NULL DEFAULT 'America/Bogota', -- America/Bogota|America/Lima|America/Guatemala (R4)
   token_tablero_hash          VARCHAR(255) NOT NULL,
   version                     INTEGER      NOT NULL DEFAULT 1, -- sube con cada cambio
   creada_at                   DATETIME     NOT NULL
@@ -80,6 +82,7 @@ CREATE TABLE participantes (
   token_hash  VARCHAR(255) NOT NULL,
   activo      BOOLEAN      NOT NULL DEFAULT TRUE,
   creado_at   DATETIME     NOT NULL,
+  ip          VARCHAR(45)  NULL,              -- IP de la inscripción (R4, solo admin)
   UNIQUE (sala_id, correo)
 );
 
@@ -90,7 +93,8 @@ CREATE TABLE consentimientos (
   politica_url    VARCHAR(255) NOT NULL,   -- política de tratamiento de datos de Estratek vigente
   texto_hash      VARCHAR(64) NOT NULL,    -- sha256 del aviso mostrado
   aceptado_at     DATETIME    NOT NULL,
-  ip              VARCHAR(45), user_agent VARCHAR(255)
+  ip              VARCHAR(45), user_agent VARCHAR(255),
+  pais            VARCHAR(2)  NOT NULL DEFAULT 'CO'  -- país del aviso aceptado (R4)
 );
 
 CREATE TABLE votos (
@@ -105,6 +109,7 @@ CREATE TABLE votos (
   alineacion_core               TINYINT NOT NULL CHECK (alineacion_core IN (1,3,5,7,9)),
   inversion_requerida           TINYINT NOT NULL CHECK (inversion_requerida IN (1,3,5,7,9)),
   actualizado_at  DATETIME NOT NULL,
+  ip              VARCHAR(45) NULL,           -- IP del último guardado (R4, solo admin)
   PRIMARY KEY (participante_id, proyecto_id, ronda)
 );
 CREATE INDEX ix_votos_sala_ronda ON votos (sala_id, ronda, proyecto_id);

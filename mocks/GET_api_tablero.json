@@ -16,7 +16,9 @@
     "vista_participante": "registrado",
     "revelar_hojas": false,
     "cierre_programado_ronda_at": "2026-10-20T16:30:00-05:00",
-    "cierre_programado_sala_at": null
+    "cierre_programado_sala_at": null,
+    "pais": "CO",
+    "zona_horaria": "America/Bogota"
   },
   "progreso": {
     "inscritos": 20,
@@ -114,7 +116,8 @@
       "tam": 10,
       "t2m": 5.25,
       "eje_x": 4.35,
-      "eje_y": 5.9
+      "eje_y": 5.9,
+      "total": 10.25
     },
     {
       "id": "crypto-trade",
@@ -124,7 +127,8 @@
       "tam": 6,
       "t2m": 1.7,
       "eje_x": 1.42,
-      "eje_y": 1.0
+      "eje_y": 1.0,
+      "total": 2.42
     },
     {
       "id": "truckpool",
@@ -134,7 +138,8 @@
       "tam": 7,
       "t2m": 5.81,
       "eje_x": 4.686,
-      "eje_y": 8.4
+      "eje_y": 8.4,
+      "total": 13.086
     },
     {
       "id": "cooling72",
@@ -144,7 +149,8 @@
       "tam": 4,
       "t2m": 2.81,
       "eje_x": 2.886,
-      "eje_y": 7.0
+      "eje_y": 7.0,
+      "total": 9.886
     },
     {
       "id": "sumsnack",
@@ -154,7 +160,8 @@
       "tam": 2,
       "t2m": 4.9,
       "eje_x": 4.14,
-      "eje_y": 5.6
+      "eje_y": 5.6,
+      "total": 9.74
     },
     {
       "id": "yummi",
@@ -164,7 +171,8 @@
       "tam": 1,
       "t2m": 7.7,
       "eje_x": 8.22,
-      "eje_y": 6.4
+      "eje_y": 6.4,
+      "total": 14.62
     },
     {
       "id": "dehidra",
@@ -174,7 +182,8 @@
       "tam": 1,
       "t2m": 2.8,
       "eje_x": 5.28,
-      "eje_y": 4.2
+      "eje_y": 4.2,
+      "total": 9.48
     },
     {
       "id": "nutrepet",
@@ -184,7 +193,8 @@
       "tam": 8,
       "t2m": 3.7,
       "eje_x": 4.22,
-      "eje_y": 2.8
+      "eje_y": 2.8,
+      "total": 7.02
     }
   ],
   "proyectos_vivos": [
@@ -252,7 +262,8 @@
           },
           "t2m": 5.355,
           "eje_x": 4.893,
-          "eje_y": 4.76
+          "eje_y": 4.76,
+          "total": 9.653
         },
         {
           "ronda": 2,
@@ -311,7 +322,8 @@
           },
           "t2m": 4.855,
           "eje_x": 4.553,
-          "eje_y": 4.65
+          "eje_y": 4.65,
+          "total": 9.203
         }
       ]
     },
@@ -379,7 +391,8 @@
           },
           "t2m": 5.045,
           "eje_x": 5.147,
-          "eje_y": 4.83
+          "eje_y": 4.83,
+          "total": 9.977
         },
         {
           "ronda": 2,
@@ -438,10 +451,12 @@
           },
           "t2m": 4.72,
           "eje_x": 4.752,
-          "eje_y": 5.42
+          "eje_y": 5.42,
+          "total": 10.172
         }
       ]
     }
   ],
-  "preliminar": false
+  "preliminar": false,
+  "minimo_votos": 3
 }

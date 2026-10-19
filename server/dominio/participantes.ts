@@ -6,7 +6,7 @@ import { VERSION_CONSENTIMIENTO, consentimientoVigente, hashTextoConsentimiento 
 import { construirTablero, contenido, progreso, proyectos, rondaAbierta, rondaCerrada, vivos } from './resultados.js'
 import { type MesaFila, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
 import { nombrePerfil, perfiles } from './semilla.js'
-import { idAleatorio, isoBogota, isoUtc, sha256, tokenAleatorio } from './util.js'
+import { type ZonaHoraria, idAleatorio, isoEnZona, isoUtc, sha256, tokenAleatorio } from './util.js'
 
 export interface ParticipanteFila {
   id: string
@@ -18,6 +18,7 @@ export interface ParticipanteFila {
   token_hash: string
   activo: number
   creado_at: string
+  ip: string | null
 }
 
 export const ESTADOS_INSCRIPCION = ['inscripcion', 'r1_abierta', 'r1_cerrada', 'r2_abierta']
@@ -32,10 +33,10 @@ export function infoMesa(db: Db, codigo: string) {
   const m = mesaPorCodigo(db, codigo)
   const s = cargarSala(db, m.sala_id)
   return {
-    sala: { id: s.id, nombre: s.nombre, estado: s.estado },
+    sala: { id: s.id, nombre: s.nombre, estado: s.estado, pais: s.pais },
     mesa: { id: m.id, nombre: m.nombre },
     inscripcion_abierta: ESTADOS_INSCRIPCION.includes(s.estado),
-    consentimiento: consentimientoVigente(),
+    consentimiento: consentimientoVigente(s.pais),
   }
 }
 
@@ -72,6 +73,8 @@ export interface ContextoPeticion {
   ip?: string
   userAgent?: string
 }
+
+const ipGuardable = (ctx: ContextoPeticion) => ctx.ip?.slice(0, 45) ?? null
 
 export function participantePublico(p: ParticipanteFila, mesa: MesaFila) {
   return { id: p.id, nombre: p.nombre, mesa: { id: mesa.id, nombre: mesa.nombre }, perfil: { id: p.perfil_id, nombre: nombrePerfil(p.perfil_id) } }
@@ -119,10 +122,11 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
         token_hash: sha256(token),
         activo: 1,
         creado_at: isoUtc(ahora),
+        ip: ipGuardable(ctx),
       }
       ejecutar(
         db,
-        'INSERT INTO participantes (id, sala_id, mesa_id, nombre, correo, perfil_id, token_hash, activo, creado_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)',
+        'INSERT INTO participantes (id, sala_id, mesa_id, nombre, correo, perfil_id, token_hash, activo, creado_at, ip) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)',
         p.id,
         p.sala_id,
         p.mesa_id,
@@ -131,21 +135,23 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
         p.perfil_id,
         p.token_hash,
         p.creado_at,
+        p.ip,
       )
       registrarEvento(db, sala.id, ahora, 'inscripcion', 'sistema', { participante_id: p.id, mesa_id: mesa.id, perfil_id: p.perfil_id })
       registrarCambiosPrecierre(db, sala, antes, ahora)
     }
-    const c = consentimientoVigente()
+    const c = consentimientoVigente(sala.pais)
     ejecutar(
       db,
-      'INSERT INTO consentimientos (participante_id, version_aviso, politica_url, texto_hash, aceptado_at, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO consentimientos (participante_id, version_aviso, politica_url, texto_hash, aceptado_at, ip, user_agent, pais) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       p.id,
       c.version,
       c.politica_url,
-      hashTextoConsentimiento(),
+      hashTextoConsentimiento(sala.pais),
       isoUtc(ahora),
-      ctx.ip?.slice(0, 45) ?? null,
+      ipGuardable(ctx),
       ctx.userAgent?.slice(0, 255) ?? null,
+      sala.pais,
     )
     tocar(db, sala.id)
     const mesaP = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ?', p.mesa_id)!
@@ -182,11 +188,11 @@ interface VotoFila extends Entradas {
   actualizado_at: string
 }
 
-const votoPublico = (v: VotoFila) => ({
+const votoPublico = (v: VotoFila, zona: ZonaHoraria) => ({
   proyecto_id: v.proyecto_id,
   ronda: v.ronda,
   respuestas: Object.fromEntries(CRITERIOS.map((c) => [c, v[c]])) as Entradas,
-  actualizado_at: isoBogota(v.actualizado_at),
+  actualizado_at: isoEnZona(v.actualizado_at, zona),
 })
 
 function misVotos(db: Db, p: ParticipanteFila, ronda: number) {
@@ -199,7 +205,7 @@ export interface DatosVoto {
   respuestas?: unknown
 }
 
-export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ahora: number) {
+export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ctx: ContextoPeticion, ahora: number) {
   if (!p.activo) throw new ErrorApi(403, 'PARTICIPANTE_INACTIVO', 'Tu inscripción está desactivada. Habla con el facilitador.')
   // Validación estricta: tipos exactos del contrato (ronda número, respuestas objeto con los 6 criterios y nada más).
   const ronda = d.ronda
@@ -225,16 +231,17 @@ export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ahora: number) 
     const vals = CRITERIOS.map((c) => r![c] as number)
     ejecutar(
       db,
-      `INSERT INTO votos (participante_id, sala_id, proyecto_id, ronda, ${CRITERIOS.join(', ')}, actualizado_at)
-       VALUES (?, ?, ?, ?, ${CRITERIOS.map(() => '?').join(', ')}, ?)
+      `INSERT INTO votos (participante_id, sala_id, proyecto_id, ronda, ${CRITERIOS.join(', ')}, actualizado_at, ip)
+       VALUES (?, ?, ?, ?, ${CRITERIOS.map(() => '?').join(', ')}, ?, ?)
        ON CONFLICT (participante_id, proyecto_id, ronda) DO UPDATE SET
-       ${CRITERIOS.map((c) => `${c} = excluded.${c}`).join(', ')}, actualizado_at = excluded.actualizado_at`,
+       ${CRITERIOS.map((c) => `${c} = excluded.${c}`).join(', ')}, actualizado_at = excluded.actualizado_at, ip = excluded.ip`,
       p.id,
       p.sala_id,
       proyectoId,
       ronda,
       ...vals,
       isoUtc(ahora),
+      ipGuardable(ctx),
     )
     registrarCambiosPrecierre(db, sala, antes, ahora)
     tocar(db, sala.id)
@@ -243,7 +250,7 @@ export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ahora: number) 
     const prog = progreso(db, s2)
     const pm = prog.por_mesa.find((m) => m.mesa_id === p.mesa_id)!
     return {
-      voto: votoPublico(mios.find((v) => v.proyecto_id === proyectoId)!),
+      voto: votoPublico(mios.find((v) => v.proyecto_id === proyectoId)!, s2.zona_horaria),
       completo_ronda: mios.length >= vivos(db, p.sala_id).length,
       progreso_mesa: { inscritos: pm.inscritos, completos: pm.completos, precierre: pm.precierre },
     }
@@ -314,7 +321,13 @@ export function vistaYo(db: Db, p: ParticipanteFila) {
     version: `v-${sala.version}-${p.id}`,
     participante: { ...participantePublico(p, mesa), activo: Boolean(p.activo) },
     sala: { id: sala.id, nombre: sala.nombre, estado: sala.estado, ronda_actual: sala.ronda_actual },
-    config: { vista_participante: sala.vista_participante, alcance_resultados: sala.alcance_resultados, revelar_hojas: Boolean(sala.revelar_hojas) },
+    config: {
+      vista_participante: sala.vista_participante,
+      alcance_resultados: sala.alcance_resultados,
+      revelar_hojas: Boolean(sala.revelar_hojas),
+      pais: sala.pais,
+      zona_horaria: sala.zona_horaria,
+    },
     contenido: {
       caso: c.caso,
       portafolio: prs.map((x) => ({ id: x.id, nombre: x.nombre, tipo: x.tipo, sector: x.sector, descripcion: x.descripcion, modo: x.modo })),
@@ -322,7 +335,7 @@ export function vistaYo(db: Db, p: ParticipanteFila) {
     },
     criterios: c.criterios.map((k) => ({ id: k.id, nombre: k.nombre, pregunta: k.pregunta, perfil_informante: k.perfil_informante, rubrica: k.rubrica })),
     escala: c.escala,
-    mis_votos: mios.map(votoPublico),
+    mis_votos: mios.map((v) => votoPublico(v, sala.zona_horaria)),
     pendientes: idsVivos.filter((id) => !mios.some((v) => v.proyecto_id === id)),
     completo_ronda: ronda > 0 && mios.length >= idsVivos.length,
     progreso_mesa: { inscritos: pm.inscritos, completos: pm.completos, precierre: pm.precierre },
