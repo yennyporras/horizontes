@@ -33,6 +33,8 @@ Ejemplos completos de respuesta en `mocks/`. T2, T3 y T4 trabajan contra esos mo
 | `PATCH /api/admin/salas/{id}/config` | Cualquiera de: `alcance_resultados, vista_participante, revelar_hojas, cierre_programado_ronda_at, cierre_programado_sala_at, pais (CO, PE, GT), zona_horaria (America/Bogota, America/Lima, America/Guatemala)`. Cambiar `pais` sin `zona_horaria` pone la zona del país. Una sala nueva, duplicada o reiniciada nace con `alcance_resultados: sala` y `vista_participante: en_vivo` |
 | `POST /api/admin/salas/{id}/acciones` | `{accion}` con: `abrir_inscripcion, abrir_ronda_1, cerrar_ronda_1, abrir_ronda_2, cerrar_ronda_2, reabrir_ronda, reiniciar_ronda, cerrar_sala, reabrir_sala`. 409 `TRANSICION_INVALIDA` |
 | `POST /api/admin/salas/{id}/mesas` | `{cantidad}` agrega mesas |
+| `GET /api/admin/salas/{id}/rubricas` | `{criterios:[{id, nombre, pregunta, rubrica:[{valor, texto}]}], editable, motivo_no_editable?}`. `editable` es false si la sala tiene votos en cualquier ronda; entonces trae `motivo_no_editable` |
+| `PUT /api/admin/salas/{id}/rubricas/{criterio_id}` | `{rubrica:[{valor, texto}], usar_en_salas_nuevas?}` → misma forma del GET. Solo cambian los textos: exactamente los valores 1, 3, 5, 7 y 9 sin repetir; texto recortado, no vacío, hasta 300 caracteres, sin caracteres de control, llaves ni `<` pegado a una letra (marcado); las rayas se cambian por comas. 422 `RUBRICA_INVALIDA` · 422 `CRITERIO_NO_EXISTE` · 409 `RUBRICA_CON_VOTOS` si la sala ya tiene votos. Registra el evento `rubrica_editada` y sube `version`. `usar_en_salas_nuevas: true` la deja también para las salas que se creen después con la misma plantilla. Admin y superadmin |
 | `GET /api/admin/mesas/{mesaId}/qr.svg` | QR de la URL de la mesa |
 | `PATCH /api/admin/participantes/{id}` | `{perfil_id?, mesa_id?, activo?}` |
 | `GET /api/admin/yo` | `{id, usuario, nombre, rol}` (para mostrar u ocultar la gestión de admins) |
@@ -43,5 +45,5 @@ Ejemplos completos de respuesta en `mocks/`. T2, T3 y T4 trabajan contra esos mo
 ## Reglas que el servidor garantiza
 - Un voto por participante, proyecto y ronda (upsert).
 - Cierres programados y auto-cierre aplicados antes de responder cualquier petición.
-- `version` cambia con cualquier voto, inscripción, acción o cambio de config de la sala.
+- `version` cambia con cualquier voto, inscripción, acción, cambio de config o de rúbrica de la sala.
 - Respuestas sin datos personales fuera de `/api/admin/*`. La IP (detrás de `TRUST_PROXY_HOPS` proxies) se guarda en cada inscripción y voto; solo sale en `participantes[].ip` del detalle de sala y en el export, nunca en vistas públicas ni en logs.

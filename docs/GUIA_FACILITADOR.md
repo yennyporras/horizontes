@@ -7,7 +7,8 @@ Una página. Lo que tienes que hacer, en orden, para que el taller corra sin sus
 2. En **Configuración** elige el **país** de la sala (Colombia, Perú o Guatemala). Define la ley que cita el aviso de datos y la hora de los cierres programados.
 3. Revisa la visibilidad. Por defecto **toda la sala ve el resultado consolidado apenas vota** (tablero en vivo con alcance de sala). Si quieres que cada mesa discuta solo su matriz, cambia a "Cada mesa ve su resultado". Lo puedes cambiar en vivo.
 4. En **Mesas y QR** imprime la hoja A4 (cuatro mesas por hoja, con código y enlace). Deja cada QR en el centro de su mesa.
-5. Ensayo de 5 minutos: en **Salas** usa *Duplicar para ensayo*, escanea un QR de la copia, inscríbete, vota y mira el tablero. La sala real queda limpia.
+5. Si los rangos de alguna rúbrica cambiaron (por ejemplo, los montos de inversión), ajústalos en **Configuración → Rúbricas** antes de que alguien vote: después del primer voto quedan bloqueadas. La casilla *Usar también en las salas nuevas* los deja para las próximas salas. Si usas plan B, regenera la papeleta (`docs/PLAN_B.md`).
+6. Ensayo de 5 minutos: en **Salas** usa *Duplicar para ensayo*, escanea un QR de la copia, inscríbete, vota y mira el tablero. La sala real queda limpia.
 
 ## En el salón
 - Proyector: abre el tablero desde **Sala en vivo** (*Abrir tablero de la sala*, ya trae su token). Tecla **F** para pantalla completa; **1**, **2** y **C** cambian entre ronda 1, ronda 2 y comparación.
