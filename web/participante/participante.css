@@ -39,8 +39,25 @@
 .hzp-elegir__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-4) 0; border-bottom: 1px solid var(--hz-h3); }
 .hzp-elegir__info { display: grid; gap: var(--hz-sp-1); justify-items: start; }
 
-/* Calificar */
-.hzp-rubricas { display: grid; gap: var(--hz-sp-8); }
+/* Calificar: una pregunta por pantalla (C19-5, P1) */
+.hzp-pregunta { display: grid; gap: var(--hz-sp-5); min-width: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .hzp-pregunta .hz-rubrica { animation: hzp-entra var(--hz-t-medio) var(--hz-curva, ease-out); }
+}
+@keyframes hzp-entra { from { opacity: 0; transform: translateX(var(--hz-sp-4)); } }
+/* Anterior y Siguiente lado a lado en la barra del pulgar (cada uno de 44 px o más). */
+.hzp-navegacion { display: grid; grid-template-columns: 1fr 1fr; gap: var(--hz-sp-3); }
+.hzp-navegacion > .hz-boton { width: 100%; min-height: 44px; }
+/* Resumen antes de guardar */
+.hzp-resumen { display: grid; gap: var(--hz-sp-4); }
+.hzp-resumen__lista { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--hz-h3); }
+.hzp-resumen__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-3) 0; border-bottom: 1px solid var(--hz-h3); }
+.hzp-resumen__dato { display: grid; gap: var(--hz-sp-1); min-width: 0; }
+.hzp-resumen__criterio { font-size: var(--hz-fs-14); font-weight: 700; color: var(--hz-tinta); }
+.hzp-resumen__valor { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
+.hzp-resumen__cifra { font-size: var(--hz-fs-18); font-weight: 800; color: var(--hz-azul); margin-right: var(--hz-sp-1); font-variant-numeric: tabular-nums; }
+.hzp-resumen__valor--falta { font-weight: 700; color: var(--hz-error); }
+.hzp-resumen__fila > .hz-boton { flex: none; min-height: 44px; min-width: 44px; }
 .hzp-hoja-plegable { display: grid; gap: var(--hz-sp-2); }
 .hzp-hoja-plegable > .hz-boton { justify-self: start; padding: 0; }
 .hzp-hoja-plegable__texto { padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); font-size: var(--hz-fs-14); }
@@ -52,16 +69,16 @@
 .hzp-tabla th, .hzp-tabla td { padding: var(--hz-sp-2) 0; border-bottom: 1px solid var(--hz-h3); text-align: left; vertical-align: top; }
 .hzp-tabla thead { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); }
 .hzp-tabla thead th { font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-/* Total (eje X + eje Y del servidor): cierra la tabla, más marcado que los criterios. */
-.hzp-tabla__total { font-size: var(--hz-fs-16); color: var(--hz-azul); }
-.hz .hzp-tabla__total th { font-weight: 700; }
-.hzp-tabla__total tr > * { border-top: 2px solid var(--hz-h3); border-bottom: 0; }
+.hzp-tabla tbody tr:last-child > * { border-bottom: 0; }
 .hzp-resultado__pie { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); }
 .hzp-tabla tbody th { font-weight: 500; padding-right: var(--hz-sp-3); }
 /* Columnas de cifras justas ("7,00"): el nombre del criterio se queda con el resto del ancho (triage #23). */
-/* Sin nowrap: si el servidor aún no envía el Total, "sin dato" baja de línea y no le roba ancho al criterio. */
+/* Sin nowrap: si falta un promedio, "sin dato" baja de línea y no le roba ancho al criterio. */
 .hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 3.25rem; padding-left: var(--hz-sp-2); }
 .hzp-tabla td { font-weight: 700; }
+/* P3: tu calificación debajo del promedio, más chica y en otro tono para no confundirla con él. */
+.hzp-tabla__promedio, .hzp-tabla__mia { display: block; }
+.hz .hzp-tabla__mia { font-size: var(--hz-fs-12); font-weight: 600; color: var(--hz-tinta-2); white-space: nowrap; }
 
 /* Matriz de T3 dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
    (min-width: auto): sin min-width 0, el SVG inicial de 360 px ensancha la página. */

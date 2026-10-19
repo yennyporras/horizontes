@@ -5,7 +5,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import yoBase from '../../../mocks/GET_api_yo.json'
 import tablero from '../../../mocks/GET_api_tablero.json'
 import PaginaMesa from '../PaginaMesa'
-import type { Yo } from '../api'
+import { AVANCE_MS } from '../pantallas/Votacion'
+import type { PreguntaGuiada, Yo } from '../api'
 
 const CODIGO = 'HZ7K2-1'
 const MESA = {
@@ -181,8 +182,19 @@ describe('antes de inscribirse', () => {
   })
 })
 
-describe('votación', () => {
-  it('pide los 6 criterios, guarda con PUT y muestra voto registrado', async () => {
+const progreso = () => screen.getAllByRole('progressbar')[0].getAttribute('aria-valuetext')
+/** Elige la opción `i` (0 = 9 puntos) de la única pregunta en pantalla. */
+const elegir = (i = 0) => fireEvent.click(within(screen.getByRole('radiogroup')).getAllByRole('radio')[i])
+/** Responde la pregunta y espera a que la pantalla pase sola a la siguiente (o al resumen). */
+async function responder(i = 0) {
+  const antes = progreso()
+  elegir(i)
+  await waitFor(() => expect(screen.queryByRole('radiogroup') ? progreso() : 'resumen').not.toBe(antes))
+}
+const TODAS = { alistamiento_tecnico: 3, conocimiento_cliente: 3, regulacion: 3, capacidades_organizacionales: 3, alineacion_core: 3, inversion_requerida: 3 }
+
+describe('votación (modo automático, una pregunta por pantalla)', () => {
+  it('pasa sola de pregunta, muestra el resumen, guarda con PUT y muestra voto registrado', async () => {
     let yo = yoCon((y) => {
       y.mis_votos = []
       y.pendientes = ['insumex', 'nutriwhat']
@@ -209,10 +221,19 @@ describe('votación', () => {
 
     for (const nombre of ['INSUMEX', 'NUTRIWHAT']) {
       fireEvent.click(await screen.findByRole('button', { name: `Calificar ${nombre}` }))
-      await screen.findByRole('heading', { name: nombre })
-      fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
-      expect(await screen.findByText('Te faltan 6 criterios. Elige una opción en cada uno.')).toBeTruthy()
-      for (const grupo of screen.getAllByRole('radiogroup')) fireEvent.click(within(grupo).getAllByRole('radio')[0])
+      await screen.findByRole('heading', { name: nombre, level: 1 })
+      for (let n = 1; n <= 6; n++) {
+        // Una sola pregunta, con su encabezado, su grupo de radios y la barra «Pregunta n de 6 · proyecto».
+        expect(screen.getAllByRole('radiogroup')).toHaveLength(1)
+        expect(progreso()).toBe(`Pregunta ${n} de 6 · ${nombre}`)
+        expect(screen.getByRole('heading', { level: 2, name: new RegExp(`^Pregunta ${n} de 6: `) })).toBeTruthy()
+        await responder(0)
+        // El foco pasa al encabezado de la pregunta nueva (lector de pantalla y teclado).
+        if (n < 6) expect(document.activeElement?.textContent).toMatch(new RegExp(`^Pregunta ${n + 1} de 6: `))
+      }
+      expect(await screen.findByRole('heading', { name: 'Revisa tus respuestas' })).toBeTruthy()
+      expect(screen.getAllByRole('button', { name: /^Cambiar / })).toHaveLength(6)
+      expect(puts.filter((x) => x.proyecto_id === nombre.toLowerCase())).toHaveLength(0)
       fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
       expect(await screen.findByText(`Calificación de ${nombre} guardada.`)).toBeTruthy()
     }
@@ -222,7 +243,62 @@ describe('votación', () => {
     expect(Object.values(puts[0].respuestas as object)).toEqual([9, 9, 9, 9, 9, 9])
     expect(await screen.findByRole('heading', { name: 'Voto registrado' })).toBeTruthy()
     expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe('6 de 7 completaron en Mesa 1')
-    // 12 clics de rúbrica y 2 guardados: con la suite completa en paralelo pasa de 5 s.
+    // 12 respuestas con su pausa de avance y 2 guardados: con la suite completa en paralelo pasa de 5 s.
+  }, 20_000)
+
+  it('Anterior y Siguiente, flechas sin saltar de pregunta, corrección desde el resumen y faltantes', async () => {
+    const puts: Record<string, unknown>[] = []
+    servidor((url, init) => {
+      if (url === '/api/yo') return { status: 200, body: yoBase }
+      if (url === '/api/votos') {
+        const b = JSON.parse(String(init.body))
+        puts.push(b)
+        return { status: 200, body: { voto: b, completo_ronda: true, progreso_mesa: { inscritos: 7, completos: 3, precierre: false } } }
+      }
+      return { status: 404 }
+    })
+    conToken()
+    sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:nutriwhat')
+    montar()
+    await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })
+    expect(progreso()).toBe('Pregunta 1 de 6 · NUTRIWHAT')
+    expect(screen.getByRole('button', { name: 'Anterior' }).getAttribute('aria-disabled')).toBe('true')
+    // Con las flechas del teclado la persona recorre las opciones: elegir así no pasa de pregunta.
+    const grupo = screen.getByRole('radiogroup')
+    fireEvent.keyDown(grupo, { key: 'ArrowDown' })
+    elegir(1)
+    fireEvent.keyUp(grupo, { key: 'ArrowDown' })
+    await new Promise((r) => setTimeout(r, AVANCE_MS + 150))
+    expect(progreso()).toBe('Pregunta 1 de 6 · NUTRIWHAT')
+    expect((screen.getAllByRole('radio')[1] as HTMLInputElement).checked).toBe(true)
+    // Siguiente y Anterior a mano, sin responder la 2: lo marcado sigue.
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(progreso()).toBe('Pregunta 2 de 6 · NUTRIWHAT')
+    fireEvent.click(screen.getByRole('button', { name: 'Anterior' }))
+    expect(progreso()).toBe('Pregunta 1 de 6 · NUTRIWHAT')
+    expect((screen.getAllByRole('radio')[1] as HTMLInputElement).checked).toBe(true)
+    for (let n = 1; n < 6; n++) fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(progreso()).toBe('Pregunta 6 de 6 · NUTRIWHAT')
+    fireEvent.click(screen.getByRole('button', { name: 'Ver resumen' }))
+    // Resumen con 5 sin responder: Guardar no envía y lo dice.
+    await screen.findByRole('heading', { name: 'Revisa tus respuestas' })
+    expect(screen.getAllByText('Sin responder')).toHaveLength(5)
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
+    expect(await screen.findByText('Te faltan 5 preguntas. Respóndelas para guardar.')).toBeTruthy()
+    expect(puts).toHaveLength(0)
+    // Responder desde el resumen: pasa sola por las que faltan y vuelve al resumen.
+    fireEvent.click(screen.getByRole('button', { name: 'Responder Nivel de Conocimiento del Cliente/Mercado' }))
+    expect(progreso()).toBe('Pregunta 2 de 6 · NUTRIWHAT')
+    for (let n = 2; n <= 6; n++) await responder(4)
+    await screen.findByRole('heading', { name: 'Revisa tus respuestas' })
+    // Corregir una ya respondida vuelve directo al resumen.
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar Regulación' }))
+    expect(progreso()).toBe('Pregunta 3 de 6 · NUTRIWHAT')
+    await responder(2)
+    await screen.findByRole('heading', { name: 'Revisa tus respuestas' })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
+    await waitFor(() => expect(puts).toHaveLength(1))
+    expect(puts[0].respuestas).toEqual({ alistamiento_tecnico: 7, conocimiento_cliente: 1, regulacion: 5, capacidades_organizacionales: 1, alineacion_core: 1, inversion_requerida: 1 })
   }, 15_000)
 
   it('conserva lo marcado tras recargar y avisa si la ronda se cerró', async () => {
@@ -239,7 +315,10 @@ describe('votación', () => {
     )
     montar()
     await screen.findByRole('heading', { name: 'NUTRIWHAT' })
-    expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(6)
+    // Con las 6 marcadas abre el resumen: cada una con su valor y su botón Cambiar.
+    expect(screen.getByRole('heading', { name: 'Revisa tus respuestas' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /^Cambiar / })).toHaveLength(6)
+    expect(screen.queryByText('Sin responder')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
     expect(await screen.findByText('La ronda 1 ya se cerró. Tu última calificación guardada es la que cuenta.')).toBeTruthy()
   })
@@ -264,8 +343,8 @@ describe('votación', () => {
     sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:insumex')
     montar()
     await screen.findByRole('heading', { name: 'INSUMEX' })
-    // INSUMEX ya tenía voto: las 6 respuestas vienen marcadas.
-    expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(6)
+    // INSUMEX ya tenía voto: abre el resumen con las 6 respuestas.
+    expect(screen.getAllByRole('button', { name: /^Cambiar / })).toHaveLength(6)
     fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
     expect(await screen.findByText('1 calificación por enviar')).toBeTruthy()
     expect(screen.getByText('Por enviar')).toBeTruthy()
@@ -313,6 +392,98 @@ describe('votación', () => {
   })
 })
 
+describe('votación en modo guiado', () => {
+  const guiado = (pregunta: PreguntaGuiada | null, cambios: (y: Yo) => void = () => {}) =>
+    yoCon((y) => {
+      y.config.modo_preguntas = 'guiado'
+      y.sala.pregunta_guiada = pregunta
+      cambios(y)
+    })
+  const SIN_INVERSION = { ...TODAS } as Partial<typeof TODAS>
+  delete SIN_INVERSION.inversion_requerida
+
+  it('sin pregunta elegida, espera al facilitador', async () => {
+    servidor(() => ({ status: 200, body: guiado(null) }))
+    conToken()
+    montar()
+    expect(await screen.findByRole('heading', { name: 'Espera la pregunta del facilitador' })).toBeTruthy()
+    expect(screen.queryByRole('radiogroup')).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Calificar / })).toBeNull()
+  })
+
+  it('muestra solo la pregunta del facilitador, la guarda en el celular y espera la siguiente', async () => {
+    let yo = guiado({ proyecto_id: 'nutriwhat', criterio_id: 'regulacion' })
+    servidor((url) => (url === '/api/yo' ? { status: 200, body: yo, headers: { ETag: yo.version } } : { status: 500 }))
+    conToken()
+    montar()
+    await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })
+    expect(screen.getAllByRole('radiogroup')).toHaveLength(1)
+    expect(screen.getByRole('radiogroup', { name: 'Regulación' })).toBeTruthy()
+    expect(progreso()).toBe('Pregunta 3 de 6 · NUTRIWHAT')
+    // En guiado avanza el facilitador: sin Anterior ni Siguiente.
+    expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Anterior' })).toBeNull()
+    elegir(1)
+    expect(await screen.findByText('Espera la siguiente pregunta del facilitador')).toBeTruthy()
+    expect(screen.getByText(/Tu respuesta quedó en este celular.*\(llevas 1\)/)).toBeTruthy()
+    expect(JSON.parse(sessionStorage.getItem(`hz_borrador_nutriwhat_r1:${CODIGO}`) ?? '{}')).toEqual({ regulacion: 7 })
+    expect(llamadas.some((l) => l.url === '/api/votos')).toBe(false)
+    // El facilitador pasa a la siguiente: aparece sola, sin respuesta marcada, y la anterior sigue guardada.
+    yo = guiado({ proyecto_id: 'nutriwhat', criterio_id: 'capacidades_organizacionales' }, (y) => (y.version = 'v-2'))
+    await waitFor(() => expect(progreso()).toBe('Pregunta 4 de 6 · NUTRIWHAT'), { timeout: 6000 })
+    expect(screen.queryAllByRole('radio', { checked: true })).toHaveLength(0)
+    expect(screen.queryByText('Espera la siguiente pregunta del facilitador')).toBeNull()
+    elegir(0)
+    expect(JSON.parse(sessionStorage.getItem(`hz_borrador_nutriwhat_r1:${CODIGO}`) ?? '{}')).toEqual({ regulacion: 7, capacidades_organizacionales: 9 })
+  }, 10_000)
+
+  it('envía el voto al completar las 6 del proyecto y reenvía una corrección', async () => {
+    const yo = guiado({ proyecto_id: 'nutriwhat', criterio_id: 'inversion_requerida' })
+    const puts: Record<string, unknown>[] = []
+    servidor((url, init) => {
+      if (url === '/api/yo') return { status: 200, body: yo }
+      if (url === '/api/votos') {
+        const b = JSON.parse(String(init.body))
+        puts.push(b)
+        return { status: 200, body: { voto: b, completo_ronda: true, progreso_mesa: { inscritos: 7, completos: 4, precierre: false } } }
+      }
+      return { status: 404 }
+    })
+    sessionStorage.setItem(`hz_borrador_nutriwhat_r1:${CODIGO}`, JSON.stringify(SIN_INVERSION))
+    conToken()
+    montar()
+    await screen.findByRole('radiogroup', { name: 'Inversión Requerida para Probar' })
+    elegir(0)
+    await waitFor(() => expect(puts).toHaveLength(1))
+    expect(puts[0]).toEqual({ proyecto_id: 'nutriwhat', ronda: 1, respuestas: { ...TODAS, inversion_requerida: 9 } })
+    expect(await screen.findByText('Tus 6 respuestas de NUTRIWHAT quedaron guardadas. Puedes cambiar esta mientras la ronda siga abierta.')).toBeTruthy()
+    expect(screen.getByText('Calificación de NUTRIWHAT guardada.')).toBeTruthy()
+    expect(sessionStorage.getItem(`hz_borrador_nutriwhat_r1:${CODIGO}`)).toBeNull()
+    // Corrección con la ronda abierta: el voto completo sale otra vez con el valor nuevo.
+    elegir(4)
+    await waitFor(() => expect(puts).toHaveLength(2))
+    expect(puts[1]).toMatchObject({ respuestas: { ...TODAS, inversion_requerida: 1 } })
+  })
+
+  it('sin señal al completar, el voto pasa a la cola sin salir de la pregunta', async () => {
+    servidor((url) => (url === '/api/yo' ? { status: 200, body: guiado({ proyecto_id: 'nutriwhat', criterio_id: 'inversion_requerida' }) } : { status: 404 }))
+    const f = globalThis.fetch as ReturnType<typeof vi.fn>
+    const original = f.getMockImplementation()!
+    f.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/votos') throw new TypeError('Failed to fetch')
+      return original(url, init)
+    })
+    sessionStorage.setItem(`hz_borrador_nutriwhat_r1:${CODIGO}`, JSON.stringify(SIN_INVERSION))
+    conToken()
+    montar()
+    await screen.findByRole('radiogroup', { name: 'Inversión Requerida para Probar' })
+    elegir(2)
+    expect(await screen.findByText('1 calificación por enviar')).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Inversión Requerida para Probar' })).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem(`hz_cola:${CODIGO}`) ?? '[]')[0]).toMatchObject({ proyecto_id: 'nutriwhat', respuestas: { ...TODAS, inversion_requerida: 5 } })
+  })
+})
+
 describe('estados de la sala', () => {
   it('precierre muestra el aviso y el resultado preliminar', async () => {
     const yo = yoCon((y) => {
@@ -343,6 +514,10 @@ describe('estados de la sala', () => {
     expect(screen.getByText(/Así se movieron INSUMEX y NUTRIWHAT de la ronda 1 a la ronda 2 en tu mesa/)).toBeTruthy()
     expect(screen.getAllByRole('columnheader', { name: 'R2' }).length).toBeGreaterThan(0)
     expect(screen.queryByText('Preliminar')).toBeNull()
+    // P3: tu calificación de INSUMEX en R1 (mis_votos) junto al promedio; en NUTRIWHAT no votaste.
+    const [insumex, nutriwhat] = screen.getAllByRole('table')
+    expect(within(insumex).getByRole('rowheader', { name: 'Regulación' }).closest('tr')!.textContent).toContain('Tu calificación: Tú 7')
+    expect(within(nutriwhat).queryByText(/Tu calificación/)).toBeNull()
   })
 
   it('en ronda 2 con revelar_hojas muestra las 6 hojas con la propia primero', async () => {

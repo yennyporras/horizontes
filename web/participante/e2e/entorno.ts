@@ -204,6 +204,12 @@ export async function configurar(e: Entorno, salaId: string, cambios: Record<str
   if (r.status !== 200) throw new Error(`config: ${r.status} ${JSON.stringify(r.datos)}`)
 }
 
+/** Modo guiado (C19-5, S4): el facilitador fija la pregunta que ve toda la sala (null la quita). */
+export async function fijarPregunta(e: Entorno, salaId: string, pregunta: { proyecto_id: string; criterio_id: string } | null) {
+  const r = await json(e, 'PUT', `/api/admin/salas/${salaId}/pregunta-guiada`, pregunta, { cookie: e.cookie })
+  if (r.status !== 200) throw new Error(`pregunta guiada: ${r.status} ${JSON.stringify(r.datos)}`)
+}
+
 /** Inscribe por API (otro celular de la mesa). Devuelve el token. */
 export async function inscribirApi(e: Entorno, codigoMesa: string, nombre: string, correo: string): Promise<string> {
   const mesa = await json(e, 'GET', `/api/mesas/${codigoMesa}`)
