@@ -14,9 +14,10 @@ export const COLORES = {
   textoSuave: '#4A5D7A',
   fijo: '#7D8FA9',
   halo: '#FFFFFF',
-  vivos: ['#E8590C', '#00A3FF', '#2B8A3E', '#AE3EC9'],
-  // Texto de las etiquetas de vivos: variante oscura del color (AA ≥ 4,5:1 incluso sobre el fondo H1).
-  vivosTexto: ['#A63C06', '#00609A', '#1E6B30', '#86279C'],
+  // Colores por ronda (tokens de T2). Los proyectos vivos se distinguen por su nombre, no por color;
+  // la ronda, por color, forma (R1 hueco, R2 sólido) y la etiqueta «R1»/«R2».
+  r1: 'var(--hz-r1, #1F7A3A)',
+  r2: 'var(--hz-r2, #C62828)',
 };
 
 const esc = (s) =>
@@ -125,9 +126,7 @@ export function calcularLayout(datos, opciones = {}) {
       valor: { x: p.eje_x, y: p.eje_y },
     }));
 
-  const vivos = (datos?.proyectos_vivos || []).map((p, i) => {
-    const color = colores.vivos[i % colores.vivos.length];
-    const colorTexto = colores.vivosTexto[i % colores.vivosTexto.length];
+  const vivos = (datos?.proyectos_vivos || []).map((p) => {
     const r = radioPorTam(p.tam, rmin, rmax);
     const ronda = (n) => {
       const rd = (p.rondas || []).find((x) => x.ronda === n);
@@ -143,7 +142,6 @@ export function calcularLayout(datos, opciones = {}) {
     const vista = opciones.vista ?? 'comparacion';
     const r1 = vista === 2 ? null : ronda(1);
     const r2_ = vista === 1 ? null : ronda(2);
-    if (r1 && vista === 1) r1.solido = true;
     let flecha = null;
     if (r1 && r2_) {
       const dx = r2_.cx - r1.cx;
@@ -166,7 +164,7 @@ export function calcularLayout(datos, opciones = {}) {
         flecha = { x1: r1.cx, y1: r1.cy, x2: r2_.cx - ux * 2, y2: r2_.cy - uy * 2, encima: true };
       }
     }
-    return { id: p.id, nombre: p.nombre, tam: p.tam, color, colorTexto, r1, r2: r2_, flecha };
+    return { id: p.id, nombre: p.nombre, tam: p.tam, r1, r2: r2_, flecha };
   });
 
   // Obstáculos: todas las burbujas y flechas.
@@ -186,7 +184,8 @@ export function calcularLayout(datos, opciones = {}) {
     const w = anchoTexto(etq.texto, etq.fs) + (etq.extraAncho || 0);
     const h = etq.fs * 1.25;
     const gap = Math.max(3, etq.fs * 0.3);
-    const anillos = prioridad ? [0, 1, 2, 3, 4] : [0, 1, 2];
+    const sep = etq.fs * 0.3;
+    const anillos = prioridad ? [0, 1, 2, 3, 4] : [0, 1, 2, 3];
     let mejor = null;
     for (const anillo of anillos) {
       const d = ancla.r + gap + anillo * etq.fs * 0.9;
@@ -213,7 +212,9 @@ export function calcularLayout(datos, opciones = {}) {
         }
         if (prioridad) for (const s of segmentos) if (segmentoEnCaja(s, caja)) costo += 4000;
         // Tapar otro texto es peor que rozar una burbuja: el nombre de un fijo nunca pisa el de un vivo.
-        for (const o of colocadas) costo += areaSolape(caja, o.caja) * (o.prioridad ? 50 : 4) + (cajasSeSolapan(caja, o.caja) ? (o.prioridad ? 20000 : 1000) : 0);
+        // Entre nombres queda un espacio (sin él, dos nombres seguidos se leen como uno).
+        const holgada = { x: x - sep, y, w: w + 2 * sep, h };
+        for (const o of colocadas) costo += areaSolape(holgada, o.caja) * (o.prioridad ? 50 : 4) + (cajasSeSolapan(holgada, o.caja) ? (o.prioridad ? 20000 : 1000) : 0);
         costo += anillo * 10;
         if (!mejor || costo < mejor.costo) mejor = { caja, costo };
         if (costo === anillo * 10) break;
@@ -228,16 +229,15 @@ export function calcularLayout(datos, opciones = {}) {
     return resultado;
   }
 
-  // Prioridad: nombres de vivos, luego etiquetas R1, luego fijos (de mayor a menor burbuja).
+  // Prioridad: nombre y ronda de cada vivo en su burbuja principal (R2 si está), luego en su R1
+  // (comparación), luego fijos (de mayor a menor burbuja).
+  const etiquetaVivo = (v, ronda, fs, tipo) =>
+    colocar({ texto: `${v.nombre} R${ronda}`, nombre: v.nombre, ronda, fs, color: colores.texto, peso: 800, tipo }, ronda === 1 ? v.r1 : v.r2, true);
   for (const v of vivos) {
-    const principal = v.r2 || v.r1;
-    if (!principal) continue;
-    v.etiqueta = colocar({ texto: v.nombre, fs: fsVivo, color: v.colorTexto, peso: 800, tipo: 'vivo' }, principal, true);
+    if (v.r2 || v.r1) v.etiqueta = etiquetaVivo(v, v.r2 ? 2 : 1, fsVivo, 'vivo');
   }
   for (const v of vivos) {
-    if (v.r1 && v.r2) {
-      v.etiquetaR1 = colocar({ texto: 'R1', fs: fsTag, color: v.colorTexto, peso: 700, tipo: 'r1' }, v.r1, true);
-    }
+    if (v.r1 && v.r2) v.etiquetaR1 = etiquetaVivo(v, 1, fsTag, 'r1');
   }
   for (const f of [...fijos].sort((a, b) => b.r - a.r)) {
     f.etiqueta = colocar({ texto: f.nombre, fs: fsFijo, color: colores.textoSuave, peso: 600, tipo: 'fijo' }, f, false);
@@ -270,10 +270,13 @@ export function matrizSVG(datos, opciones = {}) {
   const animar = !!opciones.animar && L.vivos.some((v) => v.r1 && v.r2);
   if (animar) {
     // Animación R1 → R2: la burbuja R2 sale desde la posición R1; flecha y etiquetas aparecen después.
+    // Si el SVG se redibuja a mitad de camino (cambio de tamaño, datos nuevos), animarDesdeMs la
+    // continúa donde iba (retraso negativo) en vez de volver a empezar desde R1.
+    const desde = Math.max(0, Math.round(esNumero(opciones.animarDesdeMs) ? opciones.animarDesdeMs : 0));
     partes.push(
       `<style>` +
-        `.hz-anim-mov{animation:hzMover 1.2s cubic-bezier(.22,.8,.3,1) both}` +
-        `.hz-anim-apar{animation:hzAparecer .5s ease-out .9s both}` +
+        `.hz-anim-mov{animation:hzMover 1.2s cubic-bezier(.22,.8,.3,1) ${-desde}ms both}` +
+        `.hz-anim-apar{animation:hzAparecer .5s ease-out ${900 - desde}ms both}` +
         `@keyframes hzMover{from{transform:translate(var(--dx),var(--dy))}to{transform:translate(0,0)}}` +
         `@keyframes hzAparecer{from{opacity:0}to{opacity:1}}` +
         `@media (prefers-reduced-motion: reduce){.hz-anim-mov,.hz-anim-apar{animation:none}}` +
@@ -290,13 +293,7 @@ export function matrizSVG(datos, opciones = {}) {
   partes.push(`<desc id="${id}-d">${esc(desc)}</desc>`);
   partes.push(
     `<defs><clipPath id="${id}-clip"><rect x="${r2(x0)}" y="${r2(y0)}" width="${r2(P)}" height="${r2(P)}"/></clipPath>` +
-      L.vivos
-        .map(
-          (v, i) =>
-            `<marker id="${id}-flecha${i}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="${r2(fs * 0.45)}" markerHeight="${r2(fs * 0.45)}" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${v.color}"/></marker>`,
-        )
-        .join('') +
-      `<marker id="${id}-flechaE" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="${r2(fs * 0.45)}" markerHeight="${r2(fs * 0.45)}" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.texto}" stroke="${C.halo}" stroke-width="1"/></marker>` +
+      `<marker id="${id}-flecha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="${r2(fs * 0.45)}" markerHeight="${r2(fs * 0.45)}" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.texto}" stroke="${C.halo}" stroke-width="1"/></marker>` +
       `</defs>`,
   );
 
@@ -362,44 +359,28 @@ export function matrizSVG(datos, opciones = {}) {
   }
   partes.push(`</g>`);
 
-  // Vivos: R1 suave, flecha, R2 sólido.
+  // Vivos: R2 sólido y rojo; flecha R1 → R2; R1 hueco y verde encima (se ve aunque caiga sobre una R2).
+  const sw = r2(Math.max(2.5, fs * 0.2));
+  const flecha = (a) =>
+    `<line x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${C.halo}" stroke-width="${r2(sw * 2.4)}" stroke-linecap="round"/>` +
+    `<line class="hz-flecha" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${C.texto}" stroke-width="${sw}" stroke-linecap="round" marker-end="url(#${id}-flecha)"/>`;
+  const conFlecha = (encima) => L.vivos.filter((v) => v.flecha && v.flecha.encima === encima);
   partes.push(`<g class="hz-vivos">`);
-  L.vivos.forEach((v, i) => {
-    const sw = r2(Math.max(2, fs * 0.16));
-    if (v.r1) {
-      partes.push(
-        `<circle class="hz-r1" data-proyecto="${esc(v.id)}" cx="${r2(v.r1.cx)}" cy="${r2(v.r1.cy)}" r="${r2(v.r1.r)}" fill="${v.color}" ${
-          v.r1.solido
-            ? `stroke="${C.halo}" stroke-width="2"`
-            : `fill-opacity="0.22" stroke="${v.color}" stroke-width="${sw}" stroke-dasharray="${r2(fs * 0.35)} ${r2(fs * 0.25)}"`
-        }><title>${esc(v.nombre)} ronda 1 · X ${v.r1.valor.x} · Y ${v.r1.valor.y}</title></circle>`,
-      );
-    }
-    if (v.flecha && !v.flecha.encima) {
-      const a = v.flecha;
-      partes.push(
-        `<line class="hz-flecha${animar ? ' hz-anim-apar' : ''}" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${v.color}" stroke-width="${sw}" stroke-linecap="round" marker-end="url(#${id}-flecha${i})"/>`,
-      );
-    }
-    if (v.r2) {
-      partes.push(
-        `<circle class="hz-r2${animar && v.r1 ? ' hz-anim-mov' : ''}"${
-          animar && v.r1 ? ` style="--dx:${r2(v.r1.cx - v.r2.cx)}px;--dy:${r2(v.r1.cy - v.r2.cy)}px"` : ''
-        } data-proyecto="${esc(v.id)}" cx="${r2(v.r2.cx)}" cy="${r2(v.r2.cy)}" r="${r2(v.r2.r)}" fill="${v.color}" stroke="${C.halo}" stroke-width="2"><title>${esc(v.nombre)} ronda 2 · X ${v.r2.valor.x} · Y ${v.r2.valor.y}</title></circle>`,
-      );
-    }
-  });
-  L.vivos.forEach((v, i) => {
-    if (!v.flecha?.encima) return;
-    const a = v.flecha;
-    const sw = r2(Math.max(2, fs * 0.16));
+  for (const v of L.vivos) {
+    if (!v.r2) continue;
+    const mover = animar && v.r1;
     partes.push(
-      `<g${animar ? ' class="hz-anim-apar"' : ''}>`,
-      `<line x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${C.halo}" stroke-width="${r2(sw * 2.6)}" stroke-linecap="round"/>`,
-      `<line class="hz-flecha" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${C.texto}" stroke-width="${sw}" stroke-linecap="round" marker-end="url(#${id}-flechaE)"/>`,
-      `</g>`,
+      `<circle class="hz-r2${mover ? ' hz-anim-mov' : ''}" style="fill:${C.r2}${mover ? `;--dx:${r2(v.r1.cx - v.r2.cx)}px;--dy:${r2(v.r1.cy - v.r2.cy)}px` : ''}" data-proyecto="${esc(v.id)}" cx="${r2(v.r2.cx)}" cy="${r2(v.r2.cy)}" r="${r2(v.r2.r)}" stroke="${C.halo}" stroke-width="2"><title>${esc(v.nombre)} ronda 2 · X ${v.r2.valor.x} · Y ${v.r2.valor.y}</title></circle>`,
     );
-  });
+  }
+  for (const v of conFlecha(false)) partes.push(`<g${animar ? ' class="hz-anim-apar"' : ''}>${flecha(v.flecha)}</g>`);
+  for (const v of L.vivos) {
+    if (!v.r1) continue;
+    partes.push(
+      `<circle class="hz-r1" style="fill:${C.r1};fill-opacity:0.14;stroke:${C.r1}" data-proyecto="${esc(v.id)}" cx="${r2(v.r1.cx)}" cy="${r2(v.r1.cy)}" r="${r2(v.r1.r)}" stroke-width="${sw}"><title>${esc(v.nombre)} ronda 1 · X ${v.r1.valor.x} · Y ${v.r1.valor.y}</title></circle>`,
+    );
+  }
+  for (const v of conFlecha(true)) partes.push(`<g${animar ? ' class="hz-anim-apar"' : ''}>${flecha(v.flecha)}</g>`);
   partes.push(`</g>`);
 
   // Etiquetas (fijos primero para que los vivos queden encima).
@@ -408,7 +389,9 @@ export function matrizSVG(datos, opciones = {}) {
   for (const e of orden) {
     const { caja } = e;
     partes.push(
-      `<text class="hz-etq hz-etq-${e.tipo}${animar && e.tipo !== 'fijo' ? ' hz-anim-apar' : ''}" x="${r2(caja.x + caja.w / 2)}" y="${r2(caja.y + caja.h / 2)}" font-size="${r2(e.fs)}" font-weight="${e.peso}" fill="${e.color}" text-anchor="middle" dominant-baseline="central" stroke="${C.halo}" stroke-width="${r2(e.fs * 0.28)}" stroke-linejoin="round" paint-order="stroke">${esc(e.texto)}</text>`,
+      `<text class="hz-etq hz-etq-${e.tipo}${animar && e.tipo !== 'fijo' ? ' hz-anim-apar' : ''}" x="${r2(caja.x + caja.w / 2)}" y="${r2(caja.y + caja.h / 2)}" font-size="${r2(e.fs)}" font-weight="${e.peso}" fill="${e.color}" text-anchor="middle" dominant-baseline="central" stroke="${C.halo}" stroke-width="${r2(e.fs * 0.28)}" stroke-linejoin="round" paint-order="stroke">${
+        e.ronda ? `${esc(e.nombre)} <tspan class="hz-etq-ronda" style="fill:${C[`r${e.ronda}`]}">R${e.ronda}</tspan>` : esc(e.texto)
+      }</text>`,
     );
   }
   partes.push(`</g></svg>`);

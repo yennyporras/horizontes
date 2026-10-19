@@ -21,7 +21,10 @@ test('radio por TAM: área proporcional y acotada', () => {
 test('dibuja 8 fijos, 2 vivos con R1, R2 y flecha', () => {
   const svg = matrizSVG(mock, { ancho: 1280, idPrefijo: 't' });
   for (const p of mock.proyectos_fijos) assert.ok(svg.includes(`>${p.nombre}</text>`), p.nombre);
-  for (const p of mock.proyectos_vivos) assert.ok(svg.includes(`>${p.nombre}</text>`), p.nombre);
+  for (const p of mock.proyectos_vivos) {
+    assert.ok(svg.includes(`>${p.nombre} <tspan class="hz-etq-ronda" style="fill:var(--hz-r2, #C62828)">R2</tspan></text>`), `${p.nombre} R2`);
+    assert.ok(svg.includes(`>${p.nombre} <tspan class="hz-etq-ronda" style="fill:var(--hz-r1, #1F7A3A)">R1</tspan></text>`), `${p.nombre} R1`);
+  }
   assert.equal((svg.match(/class="hz-r1"/g) || []).length, 2);
   assert.equal((svg.match(/class="hz-r2"/g) || []).length, 2);
   assert.equal((svg.match(/class="hz-flecha"/g) || []).length, 2);
@@ -71,7 +74,17 @@ test('ronda sin votos no se dibuja ni deja flecha', () => {
   assert.equal((svg.match(/class="hz-r2"/g) || []).length, 0);
   assert.equal((svg.match(/class="hz-flecha"/g) || []).length, 0);
   assert.equal((svg.match(/class="hz-r1"/g) || []).length, 2);
-  assert.ok(svg.includes('>INSUMEX</text>'));
+  assert.ok(svg.includes('>INSUMEX <tspan class="hz-etq-ronda" style="fill:var(--hz-r1, #1F7A3A)">R1</tspan>'));
+});
+
+test('ronda por color y forma: R1 hueco verde, R2 sólido rojo; los fijos sin verde ni rojo', () => {
+  const svg = matrizSVG(mock, { ancho: 1280 });
+  const r1 = svg.match(/<circle class="hz-r1"[^>]*>/g)!;
+  const r2 = svg.match(/<circle class="hz-r2"[^>]*>/g)!;
+  for (const c of r1) assert.match(c, /style="fill:var\(--hz-r1, #1F7A3A\);fill-opacity:0\.14;stroke:var\(--hz-r1, #1F7A3A\)"/);
+  for (const c of r2) assert.match(c, /style="fill:var\(--hz-r2, #C62828\)"/);
+  const fijos = svg.match(/<circle class="hz-fijo"[^>]*>/g)!;
+  for (const c of fijos) assert.ok(!/hz-r1|hz-r2|1F7A3A|C62828/i.test(c));
 });
 
 test('datos vacíos no rompen', () => {
@@ -87,17 +100,16 @@ test('escapa texto del servidor', () => {
   assert.ok(svg.includes('&lt;script&gt;'));
 });
 
-test('vista de una sola ronda: sin flecha ni etiqueta R1', () => {
+test('vista de una sola ronda: sin flecha, una etiqueta por vivo con su ronda', () => {
   for (const vista of [1, 2] as Vista[]) {
     const svg = matrizSVG(mock, { ancho: 1280, vista });
     assert.equal((svg.match(/class="hz-flecha"/g) || []).length, 0);
     assert.equal((svg.match(/class="hz-r1"/g) || []).length, vista === 1 ? 2 : 0);
     assert.equal((svg.match(/class="hz-r2"/g) || []).length, vista === 2 ? 2 : 0);
-    assert.ok(!svg.includes('>R1</text>'));
-    assert.ok(svg.includes('>NUTRIWHAT</text>'));
+    assert.ok(!svg.includes('hz-etq-r1'));
+    assert.ok(svg.includes(`>NUTRIWHAT <tspan class="hz-etq-ronda" style="fill:var(--hz-r${vista}`));
+    assert.equal((svg.match(/hz-etq-ronda/g) || []).length, 2);
   }
-  const L = calcularLayout(mock, { ancho: 1280, vista: 1 });
-  assert.ok(L.vivos.every((v) => v.r1?.solido));
 });
 
 // Aceptación R1: el punto dibujado coincide con el golden (prueba sintética, tolerancia 0,001).
@@ -183,5 +195,7 @@ test('nombres de los fijos sin solaparse entre sí ni con otras etiquetas, con l
   }
   assert.deepEqual(fallas.slice(0, 15), [], `${fallas.length} solapes`);
   console.info(`[matriz] nombres de fijos omitidos en 360 px: ${omitidos} de ${pasos.length ** 2 * 8}`);
-  assert.ok(omitidos <= 6, `${omitidos} nombres omitidos`);
+  // Desde R4 la etiqueta de R1 lleva el nombre del vivo (se lee sin color): ocupa más y en 360 px
+  // se omiten unos pocos nombres más de fijos (10 de 392, antes 4).
+  assert.ok(omitidos <= 12, `${omitidos} nombres omitidos`);
 });

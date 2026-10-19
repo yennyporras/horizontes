@@ -8,7 +8,7 @@ import { CuadriculaMesas } from './CuadriculaMesas'
 import { usePollingTablero } from './usePollingTablero'
 import { usePantallaCompleta } from './usePantallaCompleta'
 import { insigniaResultado, mensajeVacio, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
-import type { DatosTablero, Vista } from './tipos'
+import type { DatosTablero, EstadoSala, Vista } from './tipos'
 import './tablero.css'
 
 const VISTAS: { id: Vista; texto: string }[] = [
@@ -83,6 +83,7 @@ export default function PaginaTablero() {
         pantallaCompleta={pantalla.activa}
         onPantalla={pantalla.alternar}
       />
+      <FranjaFase estado={datos.sala?.estado} />
       {error && (
         <p className="hz-aviso-error" role="alert">
           {error.mensaje} Mostramos los últimos datos recibidos.
@@ -106,8 +107,8 @@ export default function PaginaTablero() {
               <TablaComparada datos={datos} vista={vista} />
             </div>
             <div className="hz-solo-angosto">
-              {datos.proyectos_vivos.map((p, i) => (
-                <PanelProyecto key={p.id} proyecto={p} indice={i} datos={datos} vista={vista} />
+              {datos.proyectos_vivos.map((p) => (
+                <PanelProyecto key={p.id} proyecto={p} datos={datos} vista={vista} />
               ))}
             </div>
           </aside>
@@ -218,26 +219,32 @@ function Vacio({ datos, vista }: { datos: DatosTablero; vista: Vista }) {
   )
 }
 
+/** Qué se hace en la ronda abierta, en el color de la ronda y legible a 6 m. */
+function FranjaFase({ estado }: { estado: EstadoSala | undefined }) {
+  const n = estado === 'r1_abierta' ? 1 : estado === 'r2_abierta' ? 2 : null
+  if (!n) return null
+  return (
+    <p className={`hz-franja hz-franja-r${n}`}>
+      <i className={`hz-marca-r${n}`} aria-hidden="true" />
+      {n === 1 ? 'Ronda 1 · individual y en silencio' : 'Ronda 2 · discusión en la mesa'}
+    </p>
+  )
+}
+
+/** Leyenda por ronda: R1 aro hueco verde, R2 punto sólido rojo, siempre con su texto. */
 function Leyenda({ vista }: { vista: Vista }) {
+  const rondas = vista === 'comparacion' ? ([1, 2] as const) : [vista]
   return (
     <p className="hz-leyenda">
       <span>
         <i className="hz-ley-fijo" aria-hidden="true" /> Proyectos fijos
       </span>
-      {vista === 'comparacion' ? (
-        <>
-          <span>
-            <i className="hz-ley-r1" aria-hidden="true" /> Ronda 1
-          </span>
-          <span>
-            <i className="hz-ley-r2" aria-hidden="true" /> Ronda 2
-          </span>
-        </>
-      ) : (
-        <span>
-          <i className="hz-ley-r2" aria-hidden="true" /> Ronda {vista}
+      {rondas.map((n) => (
+        <span key={n}>
+          <i className={`hz-marca-r${n}`} aria-hidden="true" />
+          <b className={`hz-txt-r${n}`}>R{n}</b> Ronda {n}
         </span>
-      )}
+      ))}
       <span>Tamaño de la burbuja: TAM</span>
     </p>
   )

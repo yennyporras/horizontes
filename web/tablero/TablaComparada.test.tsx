@@ -10,15 +10,36 @@ afterEach(cleanup)
 
 const encabezados = (c: HTMLElement) => within(c).getAllByRole('columnheader').map((th) => th.textContent)
 
-test('con ronda 2 muestra R1, R2 y votos por proyecto', () => {
-  const { container } = render(<TablaComparada datos={mock} vista="comparacion" />)
+const filas = (c: HTMLElement) => within(c).getAllByRole('rowheader').map((th) => th.textContent)
+
+test('6 criterios y «Total» del servidor con 2 decimales; sin T2M, ejes ni votos (acta A3 y A4)', () => {
+  const datos: DatosTablero = structuredClone(mock)
+  datos.proyectos_vivos[0].rondas[0].total = 11.256
+  datos.proyectos_vivos[0].rondas[1].total = 9.5
+  const { container } = render(<TablaComparada datos={datos} vista="comparacion" />)
+  expect(filas(container)).toEqual([...datos.criterios.map((c) => expect.any(String)), 'Total'])
+  expect(filas(container)).toHaveLength(7)
+  expect(container.textContent).not.toMatch(/T2M|Eje X|Eje Y|Votos/)
+  const total = within(container).getByRole('rowheader', { name: 'Total' }).parentElement!
+  expect([...total.querySelectorAll('td')].map((td) => td.textContent).slice(0, 2)).toEqual(['11,26', '9,50'])
+  // R1 y R2 se leen sin color: texto y marca de forma distinta.
   expect(encabezados(container).filter((t) => t === 'R2')).toHaveLength(mock.proyectos_vivos.length)
+  expect(container.querySelectorAll('.hz-col-r1 .hz-marca-r1')).toHaveLength(mock.proyectos_vivos.length)
+  expect(container.querySelectorAll('.hz-col-r2 .hz-marca-r2')).toHaveLength(mock.proyectos_vivos.length)
+})
+
+test('sin «total» del servidor no lo calcula', () => {
+  const datos: DatosTablero = structuredClone(mock)
+  datos.proyectos_vivos.forEach((p) => p.rondas.forEach((r) => delete r.total))
+  const { container } = render(<TablaComparada datos={datos} vista="comparacion" />)
+  const total = within(container).getByRole('rowheader', { name: 'Total' }).parentElement!
+  expect([...total.querySelectorAll('td')].every((td) => td.textContent === 'Sin votos')).toBe(true)
 })
 
 test('antes de la ronda 2 no muestra la columna R2 (solo diría "Sin votos")', () => {
   const datos: DatosTablero = structuredClone(mock)
   datos.sala.ronda_actual = 1
-  datos.proyectos_vivos.forEach((p) => (p.rondas = p.rondas.filter((r) => r.ronda === 1)))
+  datos.proyectos_vivos.forEach((p) => (p.rondas = p.rondas.filter((r) => r.ronda === 1).map((r) => ({ ...r, total: 10 }))))
   const { container } = render(<TablaComparada datos={datos} vista={1} />)
   expect(encabezados(container)).not.toContain('R2')
   expect(container.textContent).not.toContain('Sin votos')
