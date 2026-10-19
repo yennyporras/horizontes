@@ -127,7 +127,7 @@ Elevación tonal, como el IRMI: lienzo → superficie 1 con borde al 5 % (tarjet
 
 ## 6. Foco, movimiento y accesibilidad
 
-- Foco visible en todo lo interactivo con `:focus-visible`: contorno teal de 2 px separado 2 px (`outline`, se ve también en alto contraste de Windows). La opción de la rúbrica usa 3 px. Los campos de texto: borde teal y anillo `--hz-foco-campo`. `--hz-foco` (anillo de lienzo y teal en `box-shadow`) queda para quien lo use como sombra; se ve sobre oscuro y sobre blanco.
+- Foco visible en todo lo interactivo con `:focus-visible`: contorno teal de 2 px separado 2 px (`outline`, se ve también en alto contraste de Windows). La opción de la rúbrica usa 3 px. Los campos de texto suman el borde teal. `--hz-foco` (anillo de lienzo y teal en `box-shadow`) queda para quien lo use como sombra; se ve sobre oscuro y sobre blanco.
 - Movimiento solo como respuesta: la opción elegida rellena su arco (150 ms), el botón se hunde a 0,98 al presionarlo y el progreso avanza con `--hz-curva` (250 ms). Con `prefers-reduced-motion: reduce` no hay transiciones.
 - Formularios: cada campo con `<label>` visible, error asociado con `aria-describedby` y `aria-invalid`. Los errores no dependen del color.
 - Rúbrica: `role="radiogroup"` con `aria-labelledby` a la pregunta; cada opción es un `input type="radio"` nativo, navegable con flechas.
