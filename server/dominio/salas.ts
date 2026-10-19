@@ -1,6 +1,6 @@
 import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
-import { semilla } from './semilla.js'
+import { type CriterioSemilla, semilla } from './semilla.js'
 import { type Pais, type ZonaHoraria, codigoSala, idAleatorio, isoUtc, sha256, tokenAleatorio } from './util.js'
 
 export type EstadoSala = 'preparada' | 'inscripcion' | 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cerrada' | 'cerrada'
@@ -85,6 +85,17 @@ export interface NuevaSala {
   mesas: number
 }
 
+/** Criterios de la semilla con las rúbricas que el admin guardó para las salas nuevas de la plantilla. */
+function criteriosDePlantilla(db: Db, plantilla: string, criterios: CriterioSemilla[]): CriterioSemilla[] {
+  const guardadas = new Map(
+    todos<{ criterio_id: string; rubrica_json: string }>(db, 'SELECT criterio_id, rubrica_json FROM rubricas_plantilla WHERE plantilla = ?', plantilla).map((f) => [
+      f.criterio_id,
+      JSON.parse(f.rubrica_json) as CriterioSemilla['rubrica'],
+    ]),
+  )
+  return criterios.map((c) => ({ ...c, rubrica: guardadas.get(c.id) ?? c.rubrica }))
+}
+
 /** Crea sala desde la plantilla foodsume_2026: proyectos, hojas, contenido, mesas y token del tablero. */
 export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number, por: string) {
   const sem = semilla()
@@ -138,7 +149,7 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
       'INSERT INTO contenido_sala (sala_id, caso_json, criterios_json, pesos_json, grafico_json) VALUES (?, ?, ?, ?, ?)',
       id,
       JSON.stringify(sem.plantilla.caso),
-      JSON.stringify(sem.motor.criterios),
+      JSON.stringify(criteriosDePlantilla(db, sem.plantilla.id, sem.motor.criterios)),
       JSON.stringify(sem.motor.pesos),
       JSON.stringify({ ejes: sem.motor.ejes, grafico: sem.motor.grafico, escala: sem.motor.escala_permitida }),
     )
@@ -148,7 +159,7 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
   })
 }
 
-/** Sala nueva para ensayos: misma plantilla, mismas mesas y mismo país; visibilidad por defecto; sin inscritos ni votos. */
+/** Sala nueva para ensayos: misma plantilla, mismas mesas, mismo país y mismas rúbricas; visibilidad por defecto; sin inscritos ni votos. */
 export function duplicarSala(db: Db, idOCodigo: string, nombre: unknown, ahora: number, por: string) {
   const orig = cargarSala(db, idOCodigo)
   const nMesas = mesasDeSala(db, orig.id).length
@@ -157,6 +168,7 @@ export function duplicarSala(db: Db, idOCodigo: string, nombre: unknown, ahora: 
   return transaccion(db, () => {
     const s = crearSalaDesdePlantilla(db, { nombre: nuevoNombre, plantilla: orig.plantilla, mesas: Math.max(1, nMesas) }, ahora, por)
     ejecutar(db, 'UPDATE salas SET pais = ?, zona_horaria = ? WHERE id = ?', orig.pais, orig.zona_horaria, s.id)
+    ejecutar(db, 'UPDATE contenido_sala SET criterios_json = (SELECT criterios_json FROM contenido_sala WHERE sala_id = ?) WHERE sala_id = ?', orig.id, s.id)
     registrarEvento(db, s.id, ahora, 'sala_duplicada', por, { desde: orig.id })
     return cargarSala(db, s.id)
   })
