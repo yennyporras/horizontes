@@ -59,7 +59,8 @@
 .hzp-resultado__pie { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); }
 .hzp-tabla tbody th { font-weight: 500; padding-right: var(--hz-sp-3); }
 /* Columnas de cifras justas ("7,00"): el nombre del criterio se queda con el resto del ancho (triage #23). */
-.hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 3.25rem; padding-left: var(--hz-sp-2); white-space: nowrap; }
+/* Sin nowrap: si el servidor aún no envía el Total, "sin dato" baja de línea y no le roba ancho al criterio. */
+.hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 3.25rem; padding-left: var(--hz-sp-2); }
 .hzp-tabla td { font-weight: 700; }
 
 /* Matriz de T3 dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
