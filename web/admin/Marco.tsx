@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSesion } from './sesion'
-import { usaMocks } from './api'
+import { api, lista, usaMocks } from './api'
+import { dominioDistinto } from './textos'
 
 const LLAVE_SALA = 'hz_admin_sala'
 
@@ -11,6 +12,11 @@ export function recordarSala(id: string) {
 
 export function salaRecordada(): string | null {
   return localStorage.getItem(LLAVE_SALA)
+}
+
+/** La sala recordada ya no existe (otra base, sala de otro ambiente): las secciones vuelven a pedir sala. */
+export function olvidarSala(id: string) {
+  if (salaRecordada() === id) localStorage.removeItem(LLAVE_SALA)
 }
 
 /** Navegación del panel. Las secciones de sala usan la sala abierta en la URL o la última que se usó. */
@@ -35,6 +41,7 @@ export function Marco() {
     { a: enSala('vivo'), texto: 'Sala en vivo' },
     { a: enSala('mesas'), texto: 'Mesas y QR' },
     { a: enSala('participantes'), texto: 'Participantes' },
+    { a: enSala('respuestas'), texto: 'Respuestas' },
     { a: enSala('hojas'), texto: 'Hojas' },
     { a: enSala('configuracion'), texto: 'Configuración' },
     { a: enSala('export'), texto: 'Exportar' },
@@ -73,10 +80,36 @@ export function Marco() {
           </button>
         </div>
       </header>
+      <AvisoDominio sala={sala} />
       {usaMocks() && <p className="aviso-mock">Modo simulado: los datos vienen de mocks/ y no se guardan.</p>}
       <main id="contenido" className="contenido">
         <Outlet />
       </main>
     </div>
+  )
+}
+
+/**
+ * C19-1 (A5): si los QR y enlaces que arma el servidor (BASE_URL) no son del dominio desde el que se abre el panel,
+ * los participantes entrarían a otro ambiente. base_url es del servidor y viene en el detalle de cualquier sala: la
+ * abierta, la recordada o, si no hay, la primera de la lista.
+ */
+function AvisoDominio({ sala }: { sala: string | null }) {
+  const [baseUrl, setBaseUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let vigente = true
+    const id = sala ? Promise.resolve(sala) : api.get<unknown>('/api/admin/salas').then((r) => lista<{ id: string }>(r, 'salas')[0]?.id)
+    id.then((i) => (i ? api.get<{ base_url?: string }>(`/api/admin/salas/${i}`).then((d) => d.base_url ?? null) : null))
+      .catch(() => null)
+      .then((b) => vigente && setBaseUrl(b))
+    return () => {
+      vigente = false
+    }
+  }, [sala])
+  if (!baseUrl || !dominioDistinto(baseUrl, window.location.origin)) return null
+  return (
+    <p className="alerta alerta--error aviso-dominio" role="alert">
+      Los QR apuntan a {baseUrl}, pero estás en {window.location.origin}. Corrige BASE_URL en Coolify.
+    </p>
   )
 }

@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
 import { Rubricas } from './Rubricas'
-import type { ConfigSala, Pais, SalaDetalle, ZonaHoraria } from '../tipos'
-import { PAISES, ZONAS, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala } from '../textos'
+import type { ConfigSala, EstadoSala, Pais, SalaDetalle, ZonaHoraria } from '../tipos'
+import { PAISES, ZONAS, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala, type CampoProgramado } from '../textos'
 
 type Aviso = { tono: 'exito' | 'error'; texto: string } | null
+type GuardarCampo = (cambio: Partial<ConfigSala>) => Promise<void>
 
 export function Configuracion() {
   const { salaId } = useParams()
@@ -25,6 +26,12 @@ export function Configuracion() {
     }
   }
 
+  /** Para los campos que muestran su resultado al lado: si el servidor rechaza, lanza el error con su mensaje. */
+  const guardarCampo: GuardarCampo = async (cambio) => {
+    await api.patch(`/api/admin/salas/${salaId}/config`, cambio)
+    await refrescar()
+  }
+
   return (
     <ConSala titulo="Configuración" datos={datos} error={error}>
       {(d) => (
@@ -37,11 +44,9 @@ export function Configuracion() {
           )}
           <div className="rejilla">
             <Visibilidad d={d} guardar={guardar} />
-            <div>
-              <PaisSala d={d} guardar={guardar} />
-              <Cierres d={d} guardar={guardar} />
-            </div>
+            <PaisSala d={d} guardar={guardar} />
           </div>
+          <Programacion d={d} guardarCampo={guardarCampo} />
           <Rubricas salaId={d.sala.id} version={d.version} />
         </>
       )}
@@ -132,6 +137,33 @@ function Visibilidad({ d, guardar }: PropsSeccion) {
           </span>
         </label>
       </fieldset>
+      <fieldset>
+        <legend>Preguntas en el celular</legend>
+        <label className="opcion">
+          <input
+            type="radio"
+            name="modo"
+            checked={c.modo_preguntas !== 'guiado'}
+            onChange={() => guardar({ modo_preguntas: 'automatico' }, 'Cada persona avanza sola: al responder pasa a la siguiente pregunta.')}
+          />
+          <span>
+            Automático <span className="etiqueta">Por defecto</span>
+            <small>Una pregunta por pantalla. Al responder, pasa sola a la siguiente.</small>
+          </span>
+        </label>
+        <label className="opcion">
+          <input
+            type="radio"
+            name="modo"
+            checked={c.modo_preguntas === 'guiado'}
+            onChange={() => guardar({ modo_preguntas: 'guiado' }, 'Modo guiado: todos ven la pregunta que elijas en Sala en vivo.')}
+          />
+          <span>
+            Guiado
+            <small>Todos ven la misma pregunta y tú decides cuándo pasar a la siguiente, desde Sala en vivo.</small>
+          </span>
+        </label>
+      </fieldset>
     </section>
   )
 }
@@ -183,101 +215,220 @@ function PaisSala({ d, guardar }: PropsSeccion) {
   )
 }
 
-function Cierres({ d, guardar }: PropsSeccion) {
+/** Programación de C19-4 (S2). El servidor aplica cada campo a su hora, aunque nadie tenga el panel abierto. */
+interface Paso {
+  campo: CampoProgramado
+  etiqueta: string
+  /** Qué pasa a esa hora, en una línea (preentrega 19-oct). */
+  descripcion: string
+  /** «La ronda 1 se abrirá»: se completa con la fecha. */
+  efecto: string
+  quitado: string
+  /** Por qué ya no aplica en el estado actual (null si aún aplica). */
+  yaNo: (estado: EstadoSala, ronda: number) => string | null
+}
+
+const GRUPOS: { titulo: string; pasos: Paso[] }[] = [
+  {
+    titulo: 'Sala',
+    pasos: [
+      {
+        campo: 'apertura_programada_sala_at',
+        etiqueta: 'Abrir inscripción el',
+        descripcion: 'A partir de esta hora se puede entrar con el QR.',
+        efecto: 'La inscripción se abrirá',
+        quitado: 'Quitamos la apertura programada de la inscripción.',
+        yaNo: (e) => (e === 'preparada' ? null : 'La inscripción ya se abrió.'),
+      },
+      {
+        campo: 'cierre_programado_sala_at',
+        etiqueta: 'Cerrar la sala el',
+        descripcion: 'Después de esta hora nadie más puede inscribirse ni responder. Los resultados quedan a la vista.',
+        efecto: 'La sala se cerrará',
+        quitado: 'Quitamos el cierre programado de la sala.',
+        yaNo: () => null,
+      },
+    ],
+  },
+  {
+    titulo: 'Ronda 1',
+    pasos: [
+      {
+        campo: 'apertura_programada_r1_at',
+        etiqueta: 'Abrir el',
+        descripcion: 'A partir de esta hora se califica la ronda 1, individual y en silencio.',
+        efecto: 'La ronda 1 se abrirá',
+        quitado: 'Quitamos la apertura programada de la ronda 1.',
+        yaNo: (_e, r) => (r >= 1 ? 'La ronda 1 ya se abrió.' : null),
+      },
+      {
+        campo: 'cierre_programado_r1_at',
+        etiqueta: 'Cerrar el',
+        descripcion: 'Después de esta hora nadie más puede responder la ronda 1.',
+        efecto: 'La ronda 1 se cerrará',
+        quitado: 'Quitamos el cierre programado de la ronda 1.',
+        yaNo: (e, r) => (r >= 2 || e === 'r1_cerrada' ? 'La ronda 1 ya se cerró.' : null),
+      },
+    ],
+  },
+  {
+    titulo: 'Ronda 2',
+    pasos: [
+      {
+        campo: 'apertura_programada_r2_at',
+        etiqueta: 'Abrir el',
+        descripcion: 'A partir de esta hora se califica la ronda 2, con discusión en la mesa.',
+        efecto: 'La ronda 2 se abrirá',
+        quitado: 'Quitamos la apertura programada de la ronda 2.',
+        yaNo: (_e, r) => (r >= 2 ? 'La ronda 2 ya se abrió.' : null),
+      },
+      {
+        campo: 'cierre_programado_r2_at',
+        etiqueta: 'Cerrar el',
+        descripcion: 'Después de esta hora nadie más puede responder la ronda 2.',
+        efecto: 'La ronda 2 se cerrará',
+        quitado: 'Quitamos el cierre programado de la ronda 2.',
+        yaNo: (e) => (e === 'r2_cerrada' ? 'La ronda 2 ya se cerró.' : null),
+      },
+    ],
+  },
+]
+
+/** Hora del servidor que avanza cada segundo: el desfase se mide al recibir `servidor_at`. */
+function HoraServidor({ servidorAt, zona }: { servidorAt?: string; zona: ZonaHoraria }) {
+  const desfase = useMemo(() => (servidorAt ? Date.parse(servidorAt) - Date.now() : 0), [servidorAt])
+  const [ahora, setAhora] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const instante = new Date(ahora + desfase)
+  return (
+    <p className="pista">
+      {servidorAt ? 'Hora del servidor' : 'Hora de este equipo'}:{' '}
+      <time dateTime={instante.toISOString()} className="cuenta">
+        {instante.toLocaleString('es-CO', { timeZone: zona, dateStyle: 'medium', timeStyle: 'medium' })}
+      </time>
+    </p>
+  )
+}
+
+function Programacion({ d, guardarCampo }: { d: SalaDetalle; guardarCampo: GuardarCampo }) {
   const c = d.sala.config
   const zona = zonaSala(c)
+  const ronda = d.sala.ronda_actual ?? 0
   return (
-    <section className="panel" aria-labelledby="t-cierres">
-      <h2 id="t-cierres">Cierres programados</h2>
-      <p className="pista">Hora de {ZONAS[zona].nombre}. El servidor cierra a esa hora aunque nadie tenga el panel abierto.</p>
-      <CampoCierre
-        id="cierre-ronda"
-        zona={zona}
-        etiqueta="Cerrar la ronda abierta el"
-        valor={c.cierre_programado_ronda_at}
-        inactivo={
-          d.sala.estado === 'r2_cerrada' || d.sala.estado === 'cerrada'
-            ? 'Ya no quedan rondas por cerrar.'
-            : 'Cierra la ronda que esté abierta a esa hora. Si a esa hora no hay ronda abierta, se descarta.'
-        }
-        bloquear={d.sala.estado === 'r2_cerrada' || d.sala.estado === 'cerrada'}
-        alGuardar={(iso) =>
-          guardar({ cierre_programado_ronda_at: iso }, iso ? `La ronda se cerrará el ${fechaHora(iso, zona)}.` : 'Quitamos el cierre programado de la ronda.')
-        }
-      />
-      <CampoCierre
-        id="cierre-sala"
-        zona={zona}
-        etiqueta="Cerrar la sala el"
-        valor={c.cierre_programado_sala_at}
-        bloquear={d.sala.estado === 'cerrada'}
-        inactivo={d.sala.estado === 'cerrada' ? 'La sala ya está cerrada.' : undefined}
-        alGuardar={(iso) =>
-          guardar({ cierre_programado_sala_at: iso }, iso ? `La sala se cerrará el ${fechaHora(iso, zona)}.` : 'Quitamos el cierre programado de la sala.')
-        }
-      />
+    <section className="panel" aria-labelledby="t-programacion">
+      <h2 id="t-programacion">Apertura y cierre programados</h2>
+      <p className="pista">
+        Hora de {ZONAS[zona].nombre}. A esa hora el servidor abre o cierra solo, aunque nadie tenga el panel abierto. Si en ese momento no aplica (por
+        ejemplo, la ronda ya está abierta), lo descarta y lo anota en la bitácora. Los botones de Sala en vivo siguen funcionando.
+      </p>
+      <HoraServidor servidorAt={d.servidor_at} zona={zona} />
+      <div className="rejilla">
+        {GRUPOS.map((g) => (
+          <fieldset key={g.titulo}>
+            <legend>{g.titulo}</legend>
+            {g.pasos.map((p) => (
+              <CampoHora
+                key={p.campo}
+                id={p.campo}
+                zona={zona}
+                etiqueta={p.etiqueta}
+                descripcion={p.descripcion}
+                valor={c[p.campo] ?? null}
+                bloqueo={d.sala.estado === 'cerrada' ? 'La sala está cerrada.' : p.yaNo(d.sala.estado, ronda)}
+                alGuardar={(iso) => guardarCampo({ [p.campo]: iso })}
+                exito={(iso) => (iso ? `${p.efecto} el ${fechaHora(iso, zona)}.` : p.quitado)}
+              />
+            ))}
+          </fieldset>
+        ))}
+      </div>
     </section>
   )
 }
 
-function CampoCierre({
+/**
+ * Fecha y hora en la zona de la sala, con Programar y Quitar. El resultado sale junto al campo; los rechazos del
+ * servidor (422 HORA_PASADA, 422 ORDEN_INVALIDO) se muestran tal cual.
+ */
+function CampoHora({
   id,
   zona,
   etiqueta,
+  descripcion,
   valor,
   alGuardar,
-  inactivo,
-  bloquear = false,
+  exito,
+  bloqueo,
 }: {
   id: string
   zona: ZonaHoraria
   etiqueta: string
+  descripcion: string
   valor: string | null
-  /** Pista bajo el campo (por qué está bloqueado o cómo se aplica). */
-  inactivo?: string
-  bloquear?: boolean
+  /** Por qué ya no se puede programar (null si se puede). */
+  bloqueo: string | null
   alGuardar: (iso: string | null) => Promise<void>
+  exito: (iso: string | null) => string
 }) {
   const [local, setLocal] = useState(isoAHoraLocal(valor, zona))
-  const [error, setError] = useState<string | null>(null)
+  const [resultado, setResultado] = useState<{ tono: 'exito' | 'error'; texto: string } | null>(null)
+  const [guardando, setGuardando] = useState(false)
   useEffect(() => setLocal(isoAHoraLocal(valor, zona)), [valor, zona])
+
+  const enviar = async (iso: string | null) => {
+    setGuardando(true)
+    setResultado(null)
+    try {
+      await alGuardar(iso)
+      setResultado({ tono: 'exito', texto: exito(iso) })
+    } catch (e) {
+      setResultado({ tono: 'error', texto: e instanceof Error ? e.message : 'No se pudo guardar la hora.' })
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   const programar = () => {
     const iso = horaLocalAIso(local, zona)
-    if (!iso) return setError('Elige fecha y hora completas.')
-    if (new Date(iso).getTime() <= Date.now()) return setError('Elige una hora que aún no haya pasado.')
-    setError(null)
-    void alGuardar(iso)
+    if (!iso) return setResultado({ tono: 'error', texto: 'Elige fecha y hora completas.' })
+    void enviar(iso)
   }
 
+  const describe = [`${id}-descripcion`, bloqueo && `${id}-bloqueo`, resultado && `${id}-resultado`].filter(Boolean).join(' ')
   return (
-    <div className="fila-form">
+    <div className="fila-form campo-hora">
       <label className="campo" htmlFor={id}>
-        <span>{etiqueta}</span>
+        <span id={`${id}-etiqueta`}>{etiqueta}</span>
         <input
           id={id}
           type="datetime-local"
           value={local}
-          disabled={bloquear}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${id}-error` : inactivo ? `${id}-pista` : undefined}
+          disabled={bloqueo !== null}
+          aria-invalid={resultado?.tono === 'error' ? true : undefined}
+          aria-describedby={describe}
           onChange={(e) => setLocal(e.target.value)}
         />
       </label>
-      <button className="btn btn--primario" type="button" onClick={programar} disabled={bloquear}>
+      <button className="btn btn--primario" type="button" onClick={programar} disabled={bloqueo !== null || guardando} aria-describedby={`${id}-etiqueta`}>
         Programar
       </button>
-      <button className="btn" type="button" disabled={!valor} onClick={() => void alGuardar(null)}>
+      <button className="btn" type="button" disabled={!valor || guardando} onClick={() => void enviar(null)} aria-describedby={`${id}-etiqueta`}>
         Quitar
       </button>
-      {inactivo && (
-        <p id={`${id}-pista`} className="pista" style={{ flexBasis: '100%', margin: 0 }}>
-          {inactivo}
+      <p id={`${id}-descripcion`} className="pista campo-hora__nota">
+        {descripcion}
+      </p>
+      {bloqueo && (
+        <p id={`${id}-bloqueo`} className="pista campo-hora__nota">
+          <strong>{bloqueo}</strong>
         </p>
       )}
-      {error && (
-        <p id={`${id}-error`} className="alerta alerta--error" role="alert" style={{ flexBasis: '100%' }}>
-          {error}
+      {resultado && (
+        <p id={`${id}-resultado`} className={`alerta alerta--${resultado.tono} campo-hora__nota`} role={resultado.tono === 'error' ? 'alert' : 'status'}>
+          {resultado.texto}
         </p>
       )}
     </div>

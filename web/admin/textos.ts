@@ -1,7 +1,17 @@
 import seed from '../../data/seed_foodsume.json'
+import { nombreCorto } from '../tablero/logica'
+import type { CriterioId } from '../shared/api/contrato'
 import type { Accion, EstadoSala, Pais, ZonaHoraria } from './tipos'
 
 export const PERFILES: { id: string; nombre: string }[] = seed.perfiles
+
+/** Los 6 criterios de la plantilla, en el orden del motor (el mismo de la hoja de votación). */
+export const CRITERIOS = seed.motor.criterios.map((c) => ({ id: c.id as CriterioId, nombre: c.nombre, corto: nombreCorto(c.id, c.nombre), pregunta: c.pregunta }))
+
+/** Los proyectos vivos que califica la sala (INSUMEX y NUTRIWHAT), en el orden de la plantilla. */
+export const PROYECTOS_VIVOS = seed.plantilla.proyectos.filter((p) => p.modo === 'vivo').map((p) => ({ id: p.id, nombre: p.nombre }))
+
+export const nombreProyecto = (id: string) => seed.plantilla.proyectos.find((p) => p.id === id)?.nombre ?? id
 
 /** País de la sala (R4_CONTRATO C4) con su zona horaria por defecto. */
 export const PAISES: Record<Pais, { nombre: string; zona: ZonaHoraria }> = {
@@ -167,6 +177,9 @@ const TEXTO_EVENTO: Record<string, string> = {
   participante_editado: 'Participante editado',
   cierre_programado: 'Cierre programado aplicado',
   cierre_programado_descartado: 'Cierre programado descartado',
+  apertura_programada: 'Apertura programada aplicada',
+  apertura_programada_descartada: 'Apertura programada descartada',
+  pregunta_guiada: 'Pregunta guiada cambiada',
   rubrica_editada: 'Rúbrica editada',
 }
 
@@ -178,4 +191,37 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
   if (/^ronda_/.test(ev.tipo) && typeof d.ronda === 'number') t = t.replace('Ronda', `Ronda ${d.ronda}`)
   const por = ev.por === 'sistema' ? '' : ev.por === 'programado' ? ' · automático' : ` · ${ev.por.replace(/^admin:/, '')}`
   return t + por
+}
+
+/** Orden de las preguntas en modo guiado (C19-5): los proyectos vivos y, en cada uno, los 6 criterios. */
+export const ORDEN_PREGUNTAS = PROYECTOS_VIVOS.flatMap((p) => CRITERIOS.map((c) => ({ proyecto_id: p.id, criterio_id: c.id })))
+
+/** Aperturas y cierres programados de la sala (C19-4), en el orden del taller, para Sala en vivo. */
+export function programaciones(c: Partial<Record<CampoProgramado, string | null>>): { texto: string; at: string }[] {
+  const pasos: [string, CampoProgramado][] = [
+    ['Abre la inscripción', 'apertura_programada_sala_at'],
+    ['Abre la ronda 1', 'apertura_programada_r1_at'],
+    ['Cierra la ronda 1', 'cierre_programado_r1_at'],
+    ['Abre la ronda 2', 'apertura_programada_r2_at'],
+    ['Cierra la ronda 2', 'cierre_programado_r2_at'],
+    ['Cierra la sala', 'cierre_programado_sala_at'],
+  ]
+  return pasos.flatMap(([texto, campo]) => (c[campo] ? [{ texto, at: c[campo]! }] : []))
+}
+
+export type CampoProgramado =
+  | 'apertura_programada_sala_at'
+  | 'apertura_programada_r1_at'
+  | 'cierre_programado_r1_at'
+  | 'apertura_programada_r2_at'
+  | 'cierre_programado_r2_at'
+  | 'cierre_programado_sala_at'
+
+/** C19-1: true si BASE_URL del servidor no es el origen desde el que se abre el panel. */
+export function dominioDistinto(baseUrl: string, origen: string): boolean {
+  try {
+    return new URL(baseUrl).origin !== new URL(origen).origin
+  } catch {
+    return true
+  }
 }

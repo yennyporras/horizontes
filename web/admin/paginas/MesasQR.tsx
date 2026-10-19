@@ -65,6 +65,9 @@ export function MesasQR() {
                 Imprimir hoja de QR
               </button>
             </form>
+            <p>
+              <strong>Imprime el QR de cada mesa y ponlo en su mesa; no lo proyectes, así cada persona entra a su mesa.</strong>
+            </p>
             <p className="pista">La hoja imprimible trae cuatro mesas por página A4, con código y enlace.</p>
             {aviso && (
               <p className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
