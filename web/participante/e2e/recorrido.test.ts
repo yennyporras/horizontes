@@ -3,7 +3,7 @@
 // recarga, precierre con resultado preliminar, token reemplazado (recuperar sesión), 6 hojas en R2,
 // ronda cerrada mientras califica, comparación R1→R2 en la matriz y sala cerrada.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ESPERA, calificar, capturar, focoVisible, sinDesborde, tactiles, titulo, ver } from './ayudas'
+import { ESPERA, calificar, capturar, focoVisible, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
 import { accion, celular, configurar, crearSala, hayChromium, iniciar, inscribirApi, votarApi, type Entorno } from './entorno'
 
 const conNavegador = hayChromium()
@@ -55,6 +55,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('target')).toBe('_blank')
     // Aviso de datos (Ley 1581) resumido de la política real de Estratek, con canal para ejercer derechos.
     await ver(p, 'Quién trata tus datos')
+    // Acta P4: sala sin país = Colombia, con su ley y su autoridad.
+    await ver(p, 'La Ley 1581 de 2012 de Colombia')
+    await ver(p, /Superintendencia de Industria y Comercio/)
     expect(await p.getByRole('link', { name: 'info@estratek.com.co' }).getAttribute('href')).toBe('mailto:info@estratek.com.co')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('href')).toMatch(/^https:\/\/estratek\.com\.co\/politica/)
     await capturar(p, '01-inscripcion')
@@ -80,6 +83,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await accion(e, sala.id, 'abrir_ronda_1')
     await p.getByRole('button', { name: 'Calificar proyectos' }).click({ timeout: ESPERA })
     await titulo(p, 'Ronda 1: califica los 2 proyectos')
+    // Acta A7: la ronda 1 es individual y en silencio, con R1 en su insignia.
+    await ver(p, 'Individual y en silencio')
+    expect(await p.locator('.hzp-fase .hz-insignia--r1').textContent()).toBe('R1')
     await p.getByRole('button', { name: 'Calificar INSUMEX' }).click()
     await titulo(p, 'INSUMEX')
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
@@ -160,6 +166,8 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     // Ronda 2: se revelan las 6 hojas, con la propia primero.
     await accion(e, sala.id, 'abrir_ronda_2')
     await titulo(p, 'Ronda 2: califica los 2 proyectos')
+    await ver(p, 'Discusión en la mesa')
+    expect(await p.locator('.hzp-fase .hz-insignia--r2').textContent()).toBe('R2')
     await p.getByRole('button', { name: 'Leer el caso y las hojas' }).click()
     await titulo(p, 'El caso y las hojas')
     await p.getByRole('tab', { name: 'Hojas' }).click()
@@ -206,13 +214,10 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await sinDesborde(p)
     await capturar(p, '05-comparacion')
     // Estilos globales de otras áreas (p. ej. .hz-cifra del tablero) no deben agrandar el texto del celular.
-    const letra = await p.locator('.hzp-tabla__ejes td').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+    const letra = await p.locator('.hzp-tabla__total td').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
     expect(letra).toBeLessThanOrEqual(16)
-    // Triage #10 y #11: mismo nombre de ejes que el tablero, 2 decimales y pie más pequeño que los datos.
-    await ver(p, 'Eje X (Time 2 Market)')
-    for (const td of await p.locator('.hzp-tabla td').allTextContents()) expect(td).toMatch(/^\d+,\d{2}$/)
-    const pie = await p.locator('.hzp-resultado__pie').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
-    expect(pie).toBeLessThan(letra)
+    // Acta A3 y A4: 6 criterios y Total, sin ejes ni votos; R1 y R2 con su color y su forma.
+    await revisarTabla(p, mesa)
     const encabezado = await p.locator('.hzp-tabla thead th').last().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
     expect(encabezado).toBeLessThan(letra)
 
