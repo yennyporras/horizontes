@@ -4,3 +4,4 @@
 *.jpg binary
 *.xlsx binary
 *.zip binary
+docs/DECISIONES.md merge=union
