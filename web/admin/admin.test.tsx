@@ -186,7 +186,7 @@ describe('panel admin contra el simulador', () => {
     expect(within(tabla).getByRole('columnheader', { name: 'R1' }).querySelector('.ronda--1')).toBeTruthy()
     expect(within(tabla).queryByText(/eje|votos|time to market/i)).toBeNull()
     const total = within(tabla).getByRole('rowheader', { name: 'Total' }).parentElement
-    expect(total?.textContent).toBe('Total9,65') // 4,893 + 4,76 del mock, con 2 decimales
+    expect(total?.textContent).toBe('Total9,65') // `total` 9,653 del mock del servidor, con 2 decimales
   })
 
   it('una sala nueva muestra la sala completa tras votar y el país cambia la zona de los cierres', async () => {
