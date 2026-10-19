@@ -9,6 +9,7 @@ import type {
   CuerpoRubrica,
   CuerpoVoto,
   DetalleSala,
+  HojasSala,
   InfoMesa,
   RespuestaInscripcion,
   RespuestaVoto,
@@ -114,6 +115,7 @@ export const api = {
     datos(pedir<Admin>(`/api/admin/admins/${id}`, { metodo: 'PATCH', cuerpo: c })),
   rubricas: (id: string) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas`)),
   editarRubrica: (id: string, criterio: string, c: CuerpoRubrica) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas/${criterio}`, { metodo: 'PUT', cuerpo: c })),
+  hojas: (id: string) => datos(pedir<HojasSala>(`/api/admin/salas/${id}/hojas`)),
   urlQr: (mesaId: string) => `/api/admin/mesas/${mesaId}/qr.svg`,
   urlExport: (salaId: string, archivo: 'inscritos.csv' | 'votos.csv') => `/api/admin/salas/${salaId}/export/${archivo}`,
 }

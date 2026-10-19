@@ -289,6 +289,27 @@ export function resultadosParticipante(db: Db, sala: SalaFila, p: ParticipanteFi
   })
 }
 
+// --- Hojas de los perfiles --------------------------------------------------------------
+
+/**
+ * Hojas de la sala con el nombre del proyecto y del perfil, en el orden del catálogo de perfiles y luego del proyecto.
+ * Con `perfilPrimero`, las hojas de ese perfil van adelante (las del participante en /api/yo).
+ */
+export function hojasDeSala(db: Db, salaId: string, perfilPrimero?: string) {
+  const prs = proyectos(db, salaId)
+  const nombreProyecto = new Map(prs.map((x) => [x.id, x.nombre]))
+  const ordenProyecto = new Map(prs.map((x) => [x.id, x.orden]))
+  const ordenPerfil = new Map(perfiles().map((x, i) => [x.id, i]))
+  return todos<{ proyecto_id: string; perfil_id: string; texto: string }>(db, 'SELECT proyecto_id, perfil_id, texto FROM hojas WHERE sala_id = ?', salaId)
+    .sort(
+      (a, b) =>
+        Number(b.perfil_id === perfilPrimero) - Number(a.perfil_id === perfilPrimero) ||
+        ordenPerfil.get(a.perfil_id)! - ordenPerfil.get(b.perfil_id)! ||
+        ordenProyecto.get(a.proyecto_id)! - ordenProyecto.get(b.proyecto_id)!,
+    )
+    .map((h) => ({ proyecto_id: h.proyecto_id, proyecto: nombreProyecto.get(h.proyecto_id), perfil_id: h.perfil_id, perfil: nombrePerfil(h.perfil_id), texto: h.texto }))
+}
+
 // --- GET /api/yo ---------------------------------------------------------------------
 
 export function vistaYo(db: Db, p: ParticipanteFila) {
@@ -296,22 +317,8 @@ export function vistaYo(db: Db, p: ParticipanteFila) {
   const mesa = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ?', p.mesa_id)!
   const c = contenido(db, sala.id)
   const prs = proyectos(db, sala.id)
-  const nombreProyecto = new Map(prs.map((x) => [x.id, x.nombre]))
-  const hojas = todos<{ proyecto_id: string; perfil_id: string; texto: string }>(
-    db,
-    sala.revelar_hojas
-      ? 'SELECT proyecto_id, perfil_id, texto FROM hojas WHERE sala_id = ?'
-      : 'SELECT proyecto_id, perfil_id, texto FROM hojas WHERE sala_id = ? AND perfil_id = ?',
-    ...(sala.revelar_hojas ? [sala.id] : [sala.id, p.perfil_id]),
-  )
-  const ordenPerfil = new Map(perfiles().map((x, i) => [x.id, i]))
-  const ordenProyecto = new Map(prs.map((x) => [x.id, x.orden]))
-  hojas.sort(
-    (a, b) =>
-      Number(b.perfil_id === p.perfil_id) - Number(a.perfil_id === p.perfil_id) ||
-      (ordenPerfil.get(a.perfil_id)! - ordenPerfil.get(b.perfil_id)!) ||
-      (ordenProyecto.get(a.proyecto_id)! - ordenProyecto.get(b.proyecto_id)!),
-  )
+  // Ronda 1: solo la hoja propia. Con revelar_hojas, las 6 (la propia primero).
+  const hojas = hojasDeSala(db, sala.id, p.perfil_id).filter((h) => sala.revelar_hojas || h.perfil_id === p.perfil_id)
   const ronda = sala.ronda_actual
   const mios = ronda > 0 ? misVotos(db, p, ronda) : []
   const idsVivos = vivos(db, sala.id).map((x) => x.id)
@@ -331,7 +338,7 @@ export function vistaYo(db: Db, p: ParticipanteFila) {
     contenido: {
       caso: c.caso,
       portafolio: prs.map((x) => ({ id: x.id, nombre: x.nombre, tipo: x.tipo, sector: x.sector, descripcion: x.descripcion, modo: x.modo })),
-      hojas: hojas.map((h) => ({ proyecto_id: h.proyecto_id, proyecto: nombreProyecto.get(h.proyecto_id), perfil_id: h.perfil_id, perfil: nombrePerfil(h.perfil_id), texto: h.texto })),
+      hojas,
     },
     criterios: c.criterios.map((k) => ({ id: k.id, nombre: k.nombre, pregunta: k.pregunta, perfil_informante: k.perfil_informante, rubrica: k.rubrica })),
     escala: c.escala,

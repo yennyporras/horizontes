@@ -98,6 +98,11 @@ export interface RubricasSala {
   motivo_no_editable?: string
 }
 
+/** GET /api/admin/salas/{id}/hojas: las 6 hojas de cada proyecto vivo, en el orden del catálogo de perfiles. */
+export interface HojasSala {
+  hojas: { proyecto_id: string; proyecto: string; perfil_id: string; perfil: string; texto: string }[]
+}
+
 export type Accion =
   | 'abrir_inscripcion'
   | 'abrir_ronda_1'
@@ -114,6 +119,8 @@ export interface RondaVivo {
   ronda: number
   n_votos: number
   promedios: Record<string, number> | null
+  /** Conteo de 1, 3, 5, 7 y 9 por criterio (bloque «Cómo votó»); null sin votos o bajo el mínimo. */
+  distribucion?: Record<string, Record<'1' | '3' | '5' | '7' | '9', number>> | null
   /** R4_CONTRATO C1: eje X + eje Y, calculado en el servidor; null sin votos o bajo el mínimo. */
   total?: number | null
   bajo_minimo?: boolean

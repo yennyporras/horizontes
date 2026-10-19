@@ -5,7 +5,7 @@
 - Prueba sintética del golden cerrada en R2: los puntos dibujados (vivos R1/R2 y los 8 fijos) coinciden con golden en 1920×1080, 1366×768 y 360×740; sin desborde horizontal; proyector sin scroll; vista Comparación automática; letra ≥ 18 px a 1920; contraste AA del texto; tecla F.
 - Sala con R1 abierta: 304 sin cambios con el mismo nodo `<svg>`, voto visible y cierre de R1 en < 5 s, "Preliminar" en precierre, paso solo a Ronda 2 y a Comparación al cerrar R2.
 
-Usa `PW_EXE` o el Chromium de la caché de `ms-playwright`. Si no hay o no arranca (Linux sin librerías), se omite con aviso (`npx playwright-core install chromium-headless-shell`). `HZ_E2E=0` la apaga.
+Usa `PW_EXE` o el Chromium de la caché de `ms-playwright`. Si no hay o no arranca (Linux sin librerías), se omite con aviso (`npx playwright-core install chromium-headless-shell`); con `CI=true` falla en vez de omitirse (`tests/navegador.ts`). `HZ_E2E=0` la apaga a propósito.
 Dentro de la suite espera 25 s antes de levantar Vite y Chromium para no cargar la CPU mientras corren las pruebas de jsdom de otras áreas. Solo este archivo y con capturas: `HZ_E2E_ESPERA_MS=0 HZ_CAPTURAS=/ruta npx vitest run web/tablero/e2e`.
 
 ## Manual (scripts sueltos)

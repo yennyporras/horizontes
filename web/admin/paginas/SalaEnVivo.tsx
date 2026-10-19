@@ -4,6 +4,7 @@ import { api, consultar } from '../api'
 import { useSala } from '../useSala'
 import { useConfirmar } from '../componentes/Confirmar'
 import { ConSala } from './EncabezadoSala'
+import { ComoVoto } from '../../tablero'
 import type { Accion, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
 import {
   ACCIONES,
@@ -88,6 +89,7 @@ export function SalaEnVivo() {
               </p>
             )}
           </section>
+          {d.sala.ronda_actual ? <ComoVotoSala d={d} /> : null}
           <Mesas d={d} />
           <Eventos d={d} />
         </>
@@ -300,6 +302,62 @@ function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResu
           </tr>
         </tbody>
       </table>
+    </div>
+  )
+}
+
+/**
+ * «Cómo votó la sala» (o una mesa) para la plenaria: conteo 1-3-5-7-9 por criterio en R1 y R2, del mismo
+ * tablero que ve el proyector. Se relee con cada cambio de la sala (version).
+ */
+function ComoVotoSala({ d }: { d: SalaDetalle }) {
+  const [mesaId, setMesaId] = useState('')
+  const [t, setT] = useState<TableroResumen | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const mesa = d.mesas.find((m) => m.id === mesaId)
+  const urlTablero = mesa ? mesa.url_tablero : urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero)
+
+  useEffect(() => {
+    if (!urlTablero) return
+    let vigente = true
+    consultar<TableroResumen>(rutaApiTablero(d.sala.id, urlTablero, mesa?.id))
+      .then((r) => {
+        if (vigente && r) {
+          setT(r.datos)
+          setError(null)
+        }
+      })
+      .catch((e: Error) => vigente && setError(e.message))
+    return () => {
+      vigente = false
+    }
+  }, [d.sala.id, d.version, urlTablero, mesa?.id])
+
+  if (!urlTablero) return null
+  const alcance = (
+    <label className="campo-linea">
+      <span>Alcance</span>
+      <select className="chico" value={mesaId} onChange={(e) => setMesaId(e.target.value)}>
+        <option value="">Toda la sala</option>
+        {d.mesas.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.nombre}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+  return (
+    <div className="panel">
+      {error ? (
+        <p className="alerta alerta--error" role="alert">
+          No pudimos cargar cómo votó la sala. {error}
+        </p>
+      ) : !t ? (
+        <p role="status">Cargando cómo votó la sala…</p>
+      ) : (
+        <ComoVoto datos={t} rondas={d.sala.ronda_actual === 2 ? [1, 2] : [1]} controles={alcance} />
+      )}
     </div>
   )
 }
