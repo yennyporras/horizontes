@@ -21,6 +21,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
   it('2 rondas completas con resiliencia, precierre y comparación R1→R2', async () => {
     const sala = await crearSala(e, 'Ensayo e2e T2')
     const mesa = sala.mesas[0].codigo
+    // Este recorrido prueba «Voto registrado» y el resultado de la mesa. Por defecto (C5) una sala nueva muestra
+    // el consolidado de la sala en vivo; eso lo prueba el segundo caso.
+    await configurar(e, sala.id, { vista_participante: 'registrado', alcance_resultados: 'mesa' })
     await accion(e, sala.id, 'abrir_inscripcion')
     const ctx = await celular(e)
     const p = await ctx.newPage()
@@ -58,6 +61,8 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     // Acta P4: sala sin país = Colombia, con su ley y su autoridad.
     await ver(p, 'La Ley 1581 de 2012 de Colombia')
     await ver(p, /Superintendencia de Industria y Comercio/)
+    // La casilla trae el texto hz-1.1 que sirve el servidor para Colombia (C6).
+    expect(await p.locator('.hz-casilla__texto').textContent()).toContain('Ley 1581 de 2012')
     expect(await p.getByRole('link', { name: 'info@estratek.com.co' }).getAttribute('href')).toBe('mailto:info@estratek.com.co')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('href')).toMatch(/^https:\/\/estratek\.com\.co\/politica/)
     await capturar(p, '01-inscripcion')
@@ -243,9 +248,9 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ctx.close()
   }, 240_000)
 
-  it('vista en vivo con alcance sala: tras votar ve la matriz de la sala', async () => {
+  it('por defecto (acta A2, C5): tras votar ve el consolidado de la sala en vivo, con la fila Total', async () => {
+    // Sin tocar la configuración: una sala nueva nace con alcance «sala» y vista «en vivo».
     const sala = await crearSala(e, 'En vivo e2e T2')
-    await configurar(e, sala.id, { vista_participante: 'en_vivo', alcance_resultados: 'sala' })
     await accion(e, sala.id, 'abrir_ronda_1')
     const otro = await inscribirApi(e, sala.mesas[1].codigo, 'Caro Díaz', 'caro.e2e@empresa.com')
     await votarApi(e, otro, 'insumex', 1)
@@ -272,6 +277,10 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
       throw err
     })
     await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
+    // INSUMEX suma 3 votos en la sala (2 de la mesa 2 y el propio): tabla con cifras y Total del servidor.
+    // NUTRIWHAT tiene 1: no se muestra.
+    await revisarTabla(p, sala.mesas[0].codigo)
+    await ver(p, 'Hace falta al menos 3 votos para mostrar este proyecto.')
     await sinDesborde(p)
     await ctx.close()
   }, 120_000)
