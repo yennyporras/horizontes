@@ -1,6 +1,11 @@
 /* Estilos propios de las pantallas del participante. Solo tokens de web/shared/ui/tokens.css. Prefijo hzp-.
    Línea gráfica: docs/marca/FAMILIA_ESTRATEK.md (tema claro, retícula de 8 px, tarjetas por superficie y borde). */
 
+/* Sala y mesa debajo del encabezado de producto */
+.hzp-contexto { max-width: var(--hz-medida); margin: 0 auto; padding: var(--hz-sp-4) 0 var(--hz-sp-2); display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
+.hzp-contexto__sala { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
+.hzp-contexto__meta { color: var(--hz-tinta-2); }
+
 .hzp-form { display: grid; gap: var(--hz-sp-6); }
 .hzp-avisos { display: grid; gap: var(--hz-sp-2); }
 .hzp-acciones { display: grid; gap: var(--hz-sp-2); justify-items: center; }
