@@ -1,4 +1,5 @@
-// Tipos del contrato (docs/CONTRATO_API.md). Cuando T1 publique web/shared/api, se reemplazan por los generados.
+// Tipos del contrato (docs/CONTRATO_API.md). Lo nuevo se toma de web/shared/api/contrato.ts; lo anterior sigue aquí.
+import type { DetalleSala as DetalleContrato, Config, PreguntaGuiada } from '../shared/api/contrato'
 
 export type Rol = 'superadmin' | 'admin'
 
@@ -27,32 +28,8 @@ export type EstadoSala =
 export type Pais = 'CO' | 'PE' | 'GT'
 export type ZonaHoraria = 'America/Bogota' | 'America/Lima' | 'America/Guatemala'
 
-export interface ConfigSala {
-  alcance_resultados: 'mesa' | 'sala'
-  vista_participante: 'registrado' | 'en_vivo'
-  revelar_hojas: boolean
-  cierre_programado_ronda_at: string | null
-  cierre_programado_sala_at: string | null
-  /** R4_CONTRATO C4: si faltan, el servidor usa CO y la zona del país. */
-  pais?: Pais
-  zona_horaria?: ZonaHoraria
-  /** C19-4 (S2): apertura y cierre programados por sala y por ronda. ISO con el desfase de la sala; null sin programar. */
-  apertura_programada_sala_at?: string | null
-  apertura_programada_r1_at?: string | null
-  cierre_programado_r1_at?: string | null
-  apertura_programada_r2_at?: string | null
-  cierre_programado_r2_at?: string | null
-  /** C19-5 (S4): automático (pasa sola al responder) o guiado (el admin elige la pregunta). Por defecto automático. */
-  modo_preguntas?: ModoPreguntas
-}
-
-export type ModoPreguntas = 'automatico' | 'guiado'
-
-/** C19-5 (S4): la pregunta que ven todos en modo guiado. */
-export interface PreguntaGuiada {
-  proyecto_id: string
-  criterio_id: string
-}
+// Config, programación (C19-4), modo de preguntas (C19-5) y respuestas por persona (C19-3): tipos del contrato.
+export type { Config as ConfigSala, ModoPreguntas, PreguntaGuiada, RespuestaPersona } from '../shared/api/contrato'
 
 export interface SalaResumen {
   id: string
@@ -100,29 +77,13 @@ export interface Evento {
 export interface SalaDetalle {
   version: string
   /** url_tablero es opcional (CONTRATO: agregado por T4); si falta, se deriva del tablero de una mesa. */
-  sala: SalaResumen & { config: ConfigSala; url_tablero?: string; pregunta_guiada?: PreguntaGuiada | null }
+  sala: SalaResumen & { config: Config; url_tablero?: string; pregunta_guiada?: PreguntaGuiada | null }
   mesas: Mesa[]
   participantes: Participante[]
   eventos: Evento[]
   admin_actual: AdminYo
-  /** Hora del servidor con el desfase de la sala. */
-  servidor_at?: string
-  /** C19-1 (S5): dominio con el que el servidor arma QR y enlaces. */
-  base_url?: string
-}
-
-/** GET /api/admin/salas/{id}/respuestas (C19-3, S3): solo admin. */
-export interface RespuestaPersona {
-  participante_id: string
-  nombre: string
-  correo: string
-  mesa_id: string
-  mesa: string
-  perfil_id: string
-  ronda: number
-  proyecto_id: string
-  respuestas: Record<string, number>
-  actualizado_at: string
+  servidor_at?: DetalleContrato['servidor_at']
+  base_url?: DetalleContrato['base_url']
 }
 
 /** GET /api/admin/salas/{id}/rubricas y respuesta del PUT de un criterio. */

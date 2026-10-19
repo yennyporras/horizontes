@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSesion } from './sesion'
-import { api, usaMocks } from './api'
+import { api, lista, usaMocks } from './api'
 import { dominioDistinto } from './textos'
 
 const LLAVE_SALA = 'hz_admin_sala'
@@ -91,16 +91,16 @@ export function Marco() {
 
 /**
  * C19-1 (A5): si los QR y enlaces que arma el servidor (BASE_URL) no son del dominio desde el que se abre el panel,
- * los participantes entrarían a otro ambiente. base_url sale de /api/admin/salud o, si no existe, del detalle de la sala.
+ * los participantes entrarían a otro ambiente. base_url es del servidor y viene en el detalle de cualquier sala: la
+ * abierta, la recordada o, si no hay, la primera de la lista.
  */
 function AvisoDominio({ sala }: { sala: string | null }) {
   const [baseUrl, setBaseUrl] = useState<string | null>(null)
   useEffect(() => {
     let vigente = true
-    const leer = (ruta: string) => api.get<{ base_url?: string } | null>(ruta).then((r) => r?.base_url ?? null)
-    leer('/api/admin/salud')
+    const id = sala ? Promise.resolve(sala) : api.get<unknown>('/api/admin/salas').then((r) => lista<{ id: string }>(r, 'salas')[0]?.id)
+    id.then((i) => (i ? api.get<{ base_url?: string }>(`/api/admin/salas/${i}`).then((d) => d.base_url ?? null) : null))
       .catch(() => null)
-      .then((b) => b ?? (sala ? leer(`/api/admin/salas/${sala}`).catch(() => null) : null))
       .then((b) => vigente && setBaseUrl(b))
     return () => {
       vigente = false
