@@ -6,9 +6,13 @@ import { Progreso } from './Progreso'
 import { TablaComparada } from './TablaComparada'
 import { CuadriculaMesas } from './CuadriculaMesas'
 import { ComoVoto } from './ComoVoto'
+import { ControlesZoom } from './ControlesZoom'
+import { ExplicacionMatriz } from './ExplicacionMatriz'
+import { PreguntaGuiada } from './PreguntaGuiada'
 import { usePollingTablero } from './usePollingTablero'
 import { usePantallaCompleta } from './usePantallaCompleta'
-import { insigniaResultado, mensajeVacio, mostrarR2, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
+import { insigniaResultado, mensajeVacio, mostrarR2, nombreEstado, preguntaGuiadaActual, urlApiTablero, vistaPorDefecto } from './logica'
+import { useZoomMatriz } from './zoom'
 import type { DatosTablero, EstadoSala, Vista } from './tipos'
 import './tablero.css'
 
@@ -48,12 +52,29 @@ export default function PaginaTablero() {
   const setElegida = useCallback((v: Vista) => setElegidaConEstado({ vista: v, estado: estadoRef.current }), [])
   const vista = elegida && elegida.estado === estado ? elegida.vista : vistaPorDefecto(estado, datos?.sala?.ronda_actual)
 
-  // Panel lateral: promedios (tabla) o «Cómo votó la sala» (conteo 1-3-5-7-9). Cambia con el botón o la tecla D.
+  // Preentrega del 19-oct: el público ve solo la matriz (la tabla la leían como coordenadas). Clic en la
+  // matriz, el botón o la tecla M muestran los datos (panel lateral) y vuelven; Esc vuelve a los datos.
+  const [soloMatriz, setSoloMatriz] = useState(true)
+  const alternarMatriz = useCallback((sola: boolean | null = null) => setSoloMatriz((s) => sola ?? !s), [])
+
+  // Panel lateral: promedios (tabla) o «Cómo votó la sala» (conteo 1-3-5-7-9). Cambia con el botón o la tecla D,
+  // que con la matriz sola abre los datos en «Cómo votó» (para el facilitador; no se ve por defecto).
   const [detalle, setDetalle] = useState<Detalle>('promedios')
-  const alternarDetalle = useCallback(() => setDetalle((d) => (d === 'promedios' ? 'votos' : 'promedios')), [])
+  const soloRef = useRef(soloMatriz)
+  soloRef.current = soloMatriz
+  const alternarDetalle = useCallback(() => {
+    if (soloRef.current) {
+      setSoloMatriz(false)
+      setDetalle('votos')
+    } else setDetalle((d) => (d === 'promedios' ? 'votos' : 'promedios'))
+  }, [])
 
   const escalaTexto = useEscalaProyector()
-  const pantalla = usePantallaCompleta(setElegida, alternarDetalle)
+  // Zoom de la matriz (T1): el lienzo se guarda en estado porque se monta cuando llegan los datos.
+  const [lienzo, setLienzo] = useState<HTMLDivElement | null>(null)
+  const zoom = useZoomMatriz(lienzo, alternarMatriz)
+  const pantalla = usePantallaCompleta({ onVista: setElegida, onDetalle: alternarDetalle, onZoom: zoom.accion, onMatriz: alternarMatriz })
+  const pregunta = preguntaGuiadaActual(datos)
 
   const cambiarAlcance = (valor: string) => {
     const p = new URLSearchParams(params)
@@ -86,7 +107,10 @@ export default function PaginaTablero() {
   }
 
   return (
-    <main className={pantalla.activa ? 'hz-tablero hz-pantalla-completa' : 'hz-tablero'} data-ruta="tablero">
+    <main
+      className={['hz-tablero', pantalla.activa && 'hz-pantalla-completa', soloMatriz && !verMesas && 'hz-matriz-sola'].filter(Boolean).join(' ')}
+      data-ruta="tablero"
+    >
       <Encabezado
         datos={datos}
         vista={vista}
@@ -107,38 +131,53 @@ export default function PaginaTablero() {
         <CuadriculaMesas sala={sala} token={token} datos={datos} vista={vista} escalaTexto={escalaTexto > 1 ? 1.5 : 1} />
       ) : (
         <div className="hz-cuerpo">
-          <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
-            <Vacio datos={datos} vista={vista} />
-            <div className="hz-lienzo" data-version={datos.version}>
-              <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} />
-            </div>
-            <Leyenda vista={vista} />
-          </section>
-          <aside className="hz-lateral" aria-label="Detalle por proyecto y progreso">
-            <Progreso datos={datos} />
-            <div className="hz-detalle" role="group" aria-label="Detalle del panel">
-              {DETALLES.map((d) => (
-                <button key={d.id} type="button" aria-pressed={detalle === d.id} aria-keyshortcuts="D" onClick={() => setDetalle(d.id)}>
-                  {d.texto}
-                </button>
-              ))}
-            </div>
-            {detalle === 'votos' ? (
-              <ComoVoto datos={datos} rondas={rondasDe(vista, mostrarR2(datos))} />
-            ) : (
-              <>
-                {/* Proyector (≥ 1100 px): tabla comparada. Móvil y tableta: un panel por proyecto. Solo se ve uno (CSS). */}
-                <div className="hz-solo-ancho">
-                  <TablaComparada datos={datos} vista={vista} />
+          {pregunta ? (
+            <PreguntaGuiada p={pregunta} />
+          ) : (
+            <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
+              <Vacio datos={datos} vista={vista} />
+              <div ref={setLienzo} className={zoom.encuadre.k > 1 ? 'hz-lienzo hz-con-zoom' : 'hz-lienzo'} data-version={datos.version}>
+                <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} encuadre={zoom.encuadre} />
+              </div>
+              <div className="hz-pie-matriz">
+                <Leyenda vista={vista} />
+                <div className="hz-pie-controles">
+                  <ControlesZoom encuadre={zoom.encuadre} onAccion={zoom.accion} />
+                  <button type="button" className="hz-boton-datos" aria-keyshortcuts="M" onClick={() => alternarMatriz()}>
+                    {soloMatriz ? 'Ver datos' : 'Solo la matriz'} <kbd>M</kbd>
+                  </button>
                 </div>
-                <div className="hz-solo-angosto">
-                  {datos.proyectos_vivos.map((p) => (
-                    <PanelProyecto key={p.id} proyecto={p} datos={datos} vista={vista} />
-                  ))}
-                </div>
-              </>
-            )}
-          </aside>
+              </div>
+              <ExplicacionMatriz datos={datos} />
+            </section>
+          )}
+          {!soloMatriz && (
+            <aside className="hz-lateral" aria-label="Detalle por proyecto y progreso">
+              <Progreso datos={datos} />
+              <div className="hz-detalle" role="group" aria-label="Detalle del panel">
+                {DETALLES.map((d) => (
+                  <button key={d.id} type="button" aria-pressed={detalle === d.id} aria-keyshortcuts="D" onClick={() => setDetalle(d.id)}>
+                    {d.texto}
+                  </button>
+                ))}
+              </div>
+              {detalle === 'votos' ? (
+                <ComoVoto datos={datos} rondas={rondasDe(vista, mostrarR2(datos))} />
+              ) : (
+                <>
+                  {/* Proyector (≥ 1100 px): tabla comparada. Móvil y tableta: un panel por proyecto. Solo se ve uno (CSS). */}
+                  <div className="hz-solo-ancho">
+                    <TablaComparada datos={datos} vista={vista} />
+                  </div>
+                  <div className="hz-solo-angosto">
+                    {datos.proyectos_vivos.map((p) => (
+                      <PanelProyecto key={p.id} proyecto={p} datos={datos} vista={vista} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </aside>
+          )}
         </div>
       )}
     </main>

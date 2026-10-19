@@ -13,7 +13,7 @@ export function ColRonda({ n }: { n: 1 | 2 }) {
 
 /**
  * Proyector: los proyectos vivos lado a lado en una sola tabla para que todo quepa en 1080 px de alto.
- * Por proyecto: promedio R1 y R2 de cada criterio y la fila «Total» (eje X + eje Y, del servidor).
+ * Por proyecto: promedio R1 y R2 de cada criterio. Sin fila «Total»: no dice nada al público (preentrega del 19-oct).
  */
 export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: Vista }) {
   const conR2 = mostrarR2(datos)
@@ -44,7 +44,7 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
         Promedios por criterio
       </h2>
       <table className="hz-tabla">
-        <caption className="hz-oculto">Promedio {conR2 ? 'de la ronda 1 y la ronda 2' : 'de la ronda 1'} por criterio y proyecto, y total</caption>
+        <caption className="hz-oculto">Promedio {conR2 ? 'de la ronda 1 y la ronda 2' : 'de la ronda 1'} por criterio y proyecto</caption>
         <thead>
           <tr>
             <td />
@@ -61,7 +61,6 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
           </tr>
         </thead>
         <tbody>{datos.criterios.map((c) => fila(c.id, nombreCorto(c.id, c.nombre), c.nombre, prom(c.id)))}</tbody>
-        <tbody className="hz-resumen">{fila('total', 'Total', 'Eje X más eje Y', (r) => r?.total)}</tbody>
       </table>
     </section>
   )

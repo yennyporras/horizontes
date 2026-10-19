@@ -5,7 +5,8 @@
 // 1. Sala con la prueba sintética del golden cerrada en R2: los puntos dibujados (leídos del SVG y
 //    convertidos con las marcas de los ejes) coinciden con golden y con los 8 fijos, en 1920, 1366 y 360 px.
 //    Además: sin desborde horizontal, 1920×1080 sin scroll, vista Comparación automática, letra legible
-//    en proyector, contraste AA del texto HTML y tecla F (pantalla completa).
+//    en proyector, contraste AA del texto HTML y tecla F (pantalla completa). Por defecto, la matriz sola
+//    (sin tablas) con su explicación a la vista; zoom vectorial con +, rueda y arrastre; clic o M, los datos.
 // 2. Sala con R1 abierta: un voto y el cierre de ronda se ven en el tablero en menos de 5 s, con 304
 //    mientras no hay cambios y sin reemplazar el nodo del SVG.
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
@@ -164,6 +165,10 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     async (w, h) => {
       const page = await abrir(w, h, `/tablero/${golden1.id}?t=${golden1.token}`)
       await page.evaluate(() => document.fonts.ready)
+      await matrizSolaYZoom(page, w)
+      // Con los datos (tecla M): panel lateral con progreso y promedios.
+      await page.keyboard.press('m')
+      await page.waitForSelector('.hz-lateral')
       const r = await page.evaluate(() => {
         const svg = document.querySelector('svg.hz-matriz')!
         const textos = [...svg.querySelectorAll('text')]
@@ -269,6 +274,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
           lateralOculto: l.scrollHeight - l.clientHeight,
           // El bloque va al lado de la matriz en el proyector y debajo en el celular, nunca encima.
           tapaMatriz: bloque.left < matriz.right - 0.5 && bloque.top < matriz.bottom - 0.5,
+          tieneTotal: /Total/.test(document.querySelector('.hz-tablero')!.textContent ?? ''),
           letraMin: Math.min(
             ...[...document.querySelectorAll('.hz-cv *')]
               .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim()))
@@ -289,6 +295,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       }
       console.info(`[tablero e2e] ${w}px «Cómo votó»: letra mínima ${cv.letraMin} px, panel lateral oculto ${cv.lateralOculto} px`)
       expect(cv.desbordeX, '«Cómo votó»: desborde horizontal').toBeLessThanOrEqual(0)
+      expect(cv.tieneTotal, 'sin fila «Total» (preentrega 19-oct)').toBe(false)
       expect(cv.tapaMatriz, '«Cómo votó» tapa la matriz').toBe(false)
       if (w >= 1280) expect(cv.lateralOculto, '«Cómo votó»: panel lateral con contenido oculto').toBeLessThanOrEqual(0)
       if (w >= 1900) expect(cv.letraMin, '«Cómo votó»: letra mínima en proyector').toBeGreaterThanOrEqual(14)
@@ -372,12 +379,15 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       .poll(() => p.locator('.hz-vacio').textContent(), { timeout: 10_000, interval: 100 })
       .toBe('Hace falta al menos 3 votos para mostrar estos resultados')
     expect(await p.locator('svg.hz-matriz circle.hz-r1').count()).toBe(0)
+    await p.keyboard.press('m')
     expect(await p.locator('.hz-comparada').textContent()).toContain('Faltan votos')
     const mesa = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}&mesa=${s2.mesas[0].id}`, '.hz-vacio')
     expect(await mesa.locator('.hz-vacio').textContent()).toBe('Hace falta al menos 3 votos para mostrar esta mesa')
     await mesa.context().close()
     // En el celular (360 px), con «Faltan votos» en las celdas, nada se desborda (triage #5).
-    const cel = await abrir(360, 740, `/tablero/${vivo.id}?t=${vivo.token}`, '.hz-panel')
+    const cel = await abrir(360, 740, `/tablero/${vivo.id}?t=${vivo.token}`, '.hz-boton-datos')
+    await cel.click('.hz-boton-datos')
+    await cel.waitForSelector('.hz-panel')
     expect(await cel.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'desborde a 360 px').toBeLessThanOrEqual(0)
     await cel.context().close()
 
@@ -520,6 +530,74 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
   }, 240_000)
 })
 
+/**
+ * Por defecto el público ve solo la matriz (preentrega 19-oct): sin panel lateral ni tablas, sin desborde,
+ * con la explicación a la vista y AA. Zoom vectorial (C19-6): +, rueda y arrastre cambian el viewBox del
+ * mismo SVG (el texto no se pixela: crece con su caja y su tamaño de letra no cambia), 0 vuelve a todo.
+ * Un clic sin arrastre sobre la matriz muestra los datos y otro la deja sola.
+ */
+async function matrizSolaYZoom(page: Page, w: number) {
+  const sola = await page.evaluate(() => {
+    const exp = document.querySelector('.hz-explica')!.getBoundingClientRect()
+    return {
+      lateral: !!document.querySelector('.hz-lateral, .hz-comparada, .hz-panel'),
+      explica: document.querySelector('.hz-explica')!.textContent,
+      explicaAlto: exp.height,
+      explicaFuera: exp.bottom - innerHeight,
+      desbordeX: document.documentElement.scrollWidth - innerWidth,
+      desbordeY: document.documentElement.scrollHeight - innerHeight,
+      matriz: document.querySelector('svg.hz-matriz')!.getBoundingClientRect().width,
+    }
+  })
+  expect(sola.lateral, 'matriz sola: sin panel lateral ni tablas').toBe(false)
+  expect(sola.explica).toContain('Eje X, Time to Market')
+  expect(sola.explica).not.toMatch(/%|—/)
+  expect(sola.explicaAlto, 'explicación bajo la matriz').toBeGreaterThan(0)
+  if (w >= 1280) expect(sola.explicaFuera, 'explicación a la vista sin desplazar en el proyector').toBeLessThanOrEqual(0.5)
+  expect(sola.desbordeX, 'matriz sola: desborde horizontal').toBeLessThanOrEqual(0)
+  if (w >= 1280) expect(sola.desbordeY, 'matriz sola: scroll vertical en proyector').toBeLessThanOrEqual(0)
+  // Protagonista: en el proyector la matriz ocupa casi todo el alto útil.
+  if (w >= 1280) expect(sola.matriz, 'matriz sola en proyector').toBeGreaterThan(w >= 1900 ? 820 : 520)
+  const fallas = await page.evaluate(contrasteAA)
+  expect(fallas, fallas.join('\n')).toEqual([])
+
+  const svg = page.locator('svg.hz-matriz')
+  const estado = () =>
+    svg.evaluate((s) => {
+      const t = s.querySelector('text.hz-etq-vivo')!
+      return { vb: s.getAttribute('viewBox'), w: s.getAttribute('width'), fs: t.getAttribute('font-size'), alto: t.getBoundingClientRect().height }
+    })
+  await page.evaluate(() => ((window as unknown as { __svgZoom: Element }).__svgZoom = document.querySelector('svg.hz-matriz')!))
+  const antes = await estado()
+  await page.keyboard.press('+')
+  await expect.poll(() => page.locator('.hz-zoom output').textContent()).toBe('150 %')
+  const cerca = await estado()
+  expect(cerca.vb).not.toBe(antes.vb)
+  expect(cerca.w).toBe(antes.w)
+  expect(cerca.fs).toBe(antes.fs)
+  expect(cerca.alto / antes.alto, 'el texto crece con el zoom (vectorial)').toBeGreaterThan(1.4)
+  // Arrastre: mueve la vista y no cuenta como clic.
+  const caja = (await svg.boundingBox())!
+  const [cx, cy] = [caja.x + caja.width / 2, caja.y + caja.height / 2]
+  await page.mouse.move(cx, cy)
+  await page.mouse.down()
+  await page.mouse.move(cx + 80, cy + 40, { steps: 5 })
+  await page.mouse.up()
+  expect((await estado()).vb).not.toBe(cerca.vb)
+  expect(await page.locator('.hz-lateral').count(), 'un arrastre no abre los datos').toBe(0)
+  // Rueda hacia arriba sobre la matriz: acerca más.
+  await page.mouse.wheel(0, -300)
+  await expect.poll(async () => Number((await page.locator('.hz-zoom output').textContent())!.replace(/\D/g, ''))).toBeGreaterThan(150)
+  await page.keyboard.press('0')
+  await expect.poll(estado).toEqual(antes)
+  expect(await page.evaluate(() => (window as unknown as { __svgZoom: Element }).__svgZoom === document.querySelector('svg.hz-matriz'))).toBe(true)
+  // Clic sin arrastre: los datos; otro clic: la matriz sola.
+  await page.mouse.click(cx, cy)
+  await page.waitForSelector('.hz-lateral')
+  await page.mouse.click(cx, cy)
+  await page.waitForSelector('.hz-lateral', { state: 'detached' })
+}
+
 /** Corre en el navegador: texto HTML visible con contraste menor a AA contra su fondo efectivo. */
 function contrasteAA(): string[] {
   const rgba = (s: string) => (s.match(/[\d.]+/g) ?? []).map(Number) as number[]
@@ -558,7 +636,8 @@ function contrasteAA(): string[] {
 /**
  * Corre en el navegador sobre la matriz en Comparación: cada burbuja viva lleva su etiqueta «R1»/«R2»;
  * R1 es un aro hueco y R2 sólida (se distinguen sin color); el color de cada ronda contrasta 3:1 con
- * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo blanco.
+ * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo. Colores
+ * calculados (los de los tokens del lienzo oscuro), no los atributos.
  */
 function rondasLegibles(): string[] {
   const rgb = (s: string) => (s.startsWith('#') ? [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16)) : (s.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number))
@@ -571,8 +650,9 @@ function rondasLegibles(): string[] {
     return (x + 0.05) / (y + 0.05)
   }
   const svg = document.querySelector('svg.hz-matriz')!
-  const fondos = [...svg.querySelectorAll('g[clip-path] > rect, g[clip-path] > path')].map((f) => rgb(f.getAttribute('fill')!))
   const fallas: string[] = []
+  const fondos = [...svg.querySelectorAll('g[clip-path] > rect, g[clip-path] > path')].map((f) => rgb(getComputedStyle(f).fill))
+  if (fondos.length < 3) fallas.push(`${fondos.length} fondos de horizonte`)
   const colorRonda: Record<number, string> = {}
   for (const n of [1, 2]) {
     const circulos = [...svg.querySelectorAll<SVGCircleElement>(`circle.hz-r${n}`)]
@@ -588,8 +668,9 @@ function rondasLegibles(): string[] {
       for (const f of fondos) if (contraste(color, f) < 3) fallas.push(`R${n} ${contraste(color, f).toFixed(2)}:1 sobre rgb(${f})`)
     }
     for (const t of etiquetas) {
-      const r = contraste(rgb(getComputedStyle(t).fill), [255, 255, 255])
-      if (r < 4.5) fallas.push(`texto «R${n}» ${r.toFixed(2)}:1 sobre su halo`)
+      const halo = rgb(getComputedStyle(t.parentElement!).stroke)
+      const r = contraste(rgb(getComputedStyle(t).fill), halo)
+      if (r < 4.5) fallas.push(`texto «R${n}» ${r.toFixed(2)}:1 sobre su halo rgb(${halo})`)
     }
   }
   if (colorRonda[1] === colorRonda[2]) fallas.push('R1 y R2 del mismo color')
