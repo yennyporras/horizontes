@@ -241,15 +241,13 @@ function CalificarProyecto(props: CalificarProps & { proyecto: ProyectoPortafoli
   const { guardando, error, enviar } = usarEnvio(props, proyecto)
   const titulo = useRef<HTMLHeadingElement>(null)
   const reloj = useRef<ReturnType<typeof setTimeout>>()
-  const primera = useRef(true)
+  const pasoAnterior = useRef(paso)
 
   useEffect(() => () => clearTimeout(reloj.current), [])
   // Al cambiar de pregunta el foco va a su encabezado (al entrar lo toma el título de la pantalla).
   useEffect(() => {
-    if (primera.current) {
-      primera.current = false
-      return
-    }
+    if (pasoAnterior.current === paso) return
+    pasoAnterior.current = paso
     titulo.current?.focus()
   }, [paso])
 
