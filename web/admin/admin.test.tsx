@@ -217,6 +217,41 @@ describe('panel admin contra el simulador', () => {
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Participantes'))
     expect(await screen.findByText('CO 181.50.12.10')).toBeTruthy()
   })
+
+  it('Sala en vivo muestra «Cómo votó la sala» con el conteo 1-3-5-7-9 y cambia a una mesa', async () => {
+    montar('/admin/login')
+    await entrar('paola')
+    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    expect(await screen.findByRole('heading', { name: 'Cómo votó la sala' })).toBeTruthy()
+    // Ronda 1 en curso: solo R1, 6 criterios por cada proyecto vivo, cada barra con su conteo accesible.
+    const barras = screen.getAllByRole('img', { name: /, ronda 1: / })
+    expect(barras).toHaveLength(12)
+    expect(screen.queryAllByRole('img', { name: /, ronda 2: / })).toHaveLength(0)
+    expect(barras[0].getAttribute('aria-label')).toMatch(/^INSUMEX, Alistamiento técnico, ronda 1: \d+ votos? en 1, .* en 9$/)
+    fireEvent.change(screen.getByLabelText('Alcance'), { target: { value: 'm1' } })
+    expect(await screen.findByRole('heading', { name: 'Cómo votó la mesa' })).toBeTruthy()
+  })
+
+  it('Hojas muestra las 6 hojas de cada proyecto vivo, de solo lectura', async () => {
+    montar('/admin/login')
+    await entrar('paola')
+    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Hojas'))
+    const insumex = await screen.findByRole('region', { name: 'INSUMEX' })
+    expect(within(insumex).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
+      'Conocimiento del cliente',
+      'Regulación',
+      'Financiero',
+      'Técnica y Operaciones',
+      'Estratégica',
+      'Producción',
+    ])
+    expect(within(screen.getByRole('region', { name: 'NUTRIWHAT' })).getAllByRole('article')).toHaveLength(6)
+    expect(screen.getByText(/solo la hoja de su perfil/)).toBeTruthy()
+    expect(document.querySelector('textarea, input:not([type=hidden])')).toBeNull()
+    expect(document.body.textContent).not.toContain('\u2014')
+  })
 })
 
 describe('rúbricas en la configuración de la sala', () => {

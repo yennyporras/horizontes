@@ -256,4 +256,30 @@ describe('panel admin contra la API real', () => {
     const inversion = (yo.json().criterios as { id: string; rubrica: { valor: number; texto: string }[] }[]).find((c) => c.id === 'inversion_requerida')!
     expect(inversion.rubrica[0]).toEqual({ valor: 9, texto: 'Inversión muy alta (> USD 2MM)' })
   })
+
+  it('«Cómo votó la sala» con los conteos reales (mínimo de 3 votos) y las 6 hojas de cada proyecto', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId, mesas } = await crearSalaDesdePanel('Dispersión real', 1)
+    await pasar('Abrir inscripción', 'Inscripción abierta')
+    const tokens: string[] = []
+    for (const correo of ['ana@x.co', 'beto@x.co', 'caro@x.co']) tokens.push((await inscribir(e, mesas[0].codigo, correo)).json().token)
+    await pasar('Abrir ronda 1', 'Ronda 1 abierta')
+    const resp = (v: number) => ({ alistamiento_tecnico: v, conocimiento_cliente: v, regulacion: v, capacidades_organizacionales: v, alineacion_core: v, inversion_requerida: v })
+    // Con 2 votos por proyecto la sala está bajo el mínimo: aviso, sin barras.
+    for (const [i, v] of [1, 9].entries()) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[i], p, 1, resp(v))).statusCode).toBe(200)
+    expect(await screen.findByText('Hace falta al menos 3 votos para mostrar estos resultados en la ronda 1.', {}, { timeout: 5000 })).toBeTruthy()
+    expect(screen.queryAllByRole('img', { name: /ronda 1:/ })).toHaveLength(0)
+    for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[2], p, 1, resp(9))).statusCode).toBe(200)
+    const barra = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })
+    expect(barra.getAttribute('aria-label')).toBe('NUTRIWHAT, Regulación, ronda 1: 1 voto en 1, 0 votos en 3, 0 votos en 5, 0 votos en 7, 2 votos en 9')
+    expect(screen.getAllByRole('img', { name: /ronda 1:/ })).toHaveLength(12)
+
+    fireEvent.click(nav().getByText('Hojas'))
+    const nutriwhat = await screen.findByRole('region', { name: 'NUTRIWHAT' })
+    expect(within(nutriwhat).getAllByRole('article')).toHaveLength(6)
+    const api = (await e.app.inject({ url: `/api/admin/salas/${salaId}/hojas`, headers: { cookie } })).json().hojas as { proyecto_id: string; perfil: string; texto: string }[]
+    const reg = api.find((h) => h.proyecto_id === 'nutriwhat' && h.perfil === 'Regulación')!
+    expect(within(nutriwhat).getByRole('article', { name: 'Regulación' }).textContent).toContain(reg.texto)
+  })
 })
