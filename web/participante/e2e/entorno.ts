@@ -15,8 +15,12 @@ const RAIZ = resolve(__dirname, '../../..')
 const USUARIO = 'e2e_t2'
 const CLAVE = 'clave-e2e-participante'
 
-/** Navegador de Playwright instalado (misma revisión que playwright-core). Para Chromium también vale PW_EXE. */
+/**
+ * Navegador de Playwright instalado (misma revisión que playwright-core). Para Chromium también vale PW_EXE.
+ * Con HZ_E2E=0 se omite, como el e2e del tablero: las pruebas en navegador se corren una sola vez con el candado.
+ */
 export function hayNavegador(motor: Motor): boolean {
+  if (process.env.HZ_E2E === '0') return false
   if (motor === 'chromium' && process.env.PW_EXE) return existsSync(process.env.PW_EXE)
   const base = process.env.PLAYWRIGHT_BROWSERS_PATH ?? (process.platform === 'win32' ? join(process.env.LOCALAPPDATA ?? join(homedir(), 'AppData/Local'), 'ms-playwright') : process.platform === 'darwin' ? join(homedir(), 'Library/Caches/ms-playwright') : join(homedir(), '.cache/ms-playwright'))
   try {

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, type ReactNode } from 'react'
-import { Aviso, BarraAccion, Boton, EncabezadoHorizonte } from '../shared/ui'
+import { Aviso, BarraAccion, Boton, EncabezadoHorizonte, Insignia } from '../shared/ui'
 import './participante.css'
 
 /** Cifra con coma decimal (es-CO) y siempre 2 decimales, igual que el tablero (triage #11). */
@@ -7,6 +7,20 @@ export function cifra(n: number | null | undefined, decimales = 2): string {
   if (n === null || n === undefined || Number.isNaN(n)) return 'sin dato'
   const f = 10 ** decimales
   return (Math.round(n * f) / f).toFixed(decimales).replace('.', ',')
+}
+
+/** Acta A7: la ronda 1 es individual y en silencio, con la hoja del perfil; la ronda 2, con discusión en la mesa. */
+const FASE_RONDA: Record<1 | 2, string> = { 1: 'Individual y en silencio', 2: 'Discusión en la mesa' }
+
+/** Insignia R1 (hueco, verde) o R2 (sólido, rojo) con su fase: se lee sin depender del color. */
+export function FaseRonda({ ronda }: { ronda: number }) {
+  if (ronda !== 1 && ronda !== 2) return null
+  return (
+    <p className="hzp-fase">
+      <Insignia tono={ronda === 1 ? 'r1' : 'r2'}>R{ronda}</Insignia>
+      <span>{FASE_RONDA[ronda]}</span>
+    </p>
+  )
 }
 
 export interface MarcoProps {

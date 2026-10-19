@@ -4,8 +4,11 @@
 export type EstadoSala = 'preparada' | 'inscripcion' | 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cerrada' | 'cerrada'
 export type Valor = 1 | 3 | 5 | 7 | 9
 
+/** País de la sala (R4_CONTRATO C4 y C6): define la ley que cita el aviso de datos. Sin dato, Colombia. */
+export type Pais = 'CO' | 'PE' | 'GT'
+
 export interface Mesa {
-  sala: { id: string; nombre: string; estado: EstadoSala }
+  sala: { id: string; nombre: string; estado: EstadoSala; pais?: Pais }
   mesa: { id: string; nombre: string }
   inscripcion_abierta: boolean
   consentimiento: { version: string; texto_autorizacion: string; politica_url: string }
@@ -74,6 +77,10 @@ export interface RondaVivo {
   t2m: number | null
   eje_x: number | null
   eje_y: number | null
+  /** eje X + eje Y, calculado en el servidor (R4_CONTRATO C1). null sin votos o bajo el mínimo. */
+  total?: number | null
+  /** Hay votos, pero menos que `minimo_votos`: el servidor no entrega promedios ni punto. */
+  bajo_minimo?: boolean
 }
 
 /** Misma forma que GET /api/tablero (recortada al alcance). Solo se muestra: el frontend nunca recalcula. */
@@ -87,6 +94,8 @@ export interface Resultados {
   proyectos_fijos?: { id: string; nombre: string; eje_x: number; eje_y: number; tam?: number }[]
   proyectos_vivos: { id: string; nombre: string; tam?: number; rondas: RondaVivo[] }[]
   preliminar?: boolean
+  /** Votos mínimos por proyecto, ronda y alcance para mostrar resultados (R4_CONTRATO C3: 3). */
+  minimo_votos?: number
 }
 
 export interface Yo {

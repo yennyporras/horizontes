@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Aviso, BarraProgreso, Boton, Hoja, Insignia, Rubrica } from '../../shared/ui'
 import { ErrorApi, guardarVoto, type RespuestaVoto, type Yo } from '../api'
 import type { VotoEnCola } from '../cola'
-import { Marco, Md, type MarcoBase } from '../Comun'
+import { FaseRonda, Marco, Md, type MarcoBase } from '../Comun'
 import { hojasDeProyecto, nombrePerfil } from './Lectura'
 import { guardarBorrador, leerBorrador } from '../sesion'
 
@@ -13,9 +13,16 @@ export const votoDe = (yo: Yo, proyectoId: string) => yo.mis_votos.find((v) => v
 export function ElegirProyecto({ yo, porEnviar = [], onCalificar }: { yo: Yo; porEnviar?: string[]; onCalificar: (proyectoId: string) => void }) {
   const vivos = proyectosVivos(yo)
   const hechos = vivos.filter((p) => votoDe(yo, p.id) || porEnviar.includes(p.id)).length
+  const ronda = yo.sala.ronda_actual
   return (
     <>
-      <h1 className="hz-titulo">Ronda {yo.sala.ronda_actual}: califica los {vivos.length} proyectos</h1>
+      <h1 className="hz-titulo">Ronda {ronda}: califica los {vivos.length} proyectos</h1>
+      <FaseRonda ronda={ronda} />
+      <p className="hz-texto-2">
+        {ronda === 1
+          ? `Califica por tu cuenta, sin comentar con tu mesa. Usa el caso y tu hoja como ${yo.participante.perfil.nombre}.`
+          : 'Compartan en la mesa lo que dice cada hoja y discutan cada proyecto. Después cada quien califica: cuenta tu calificación, no la de la mesa.'}
+      </p>
       <BarraProgreso actual={hechos} total={vivos.length} texto={`Llevas ${hechos} de ${vivos.length} proyectos`} />
       <ul className="hzp-elegir">
         {vivos.map((p) => {
@@ -140,6 +147,7 @@ export function Calificar({ yo, codigo, token, proyectoId, onGuardado, onVolver,
         Volver a los proyectos
       </Boton>
       <h1 className="hz-titulo">{proyecto.nombre}</h1>
+      <FaseRonda ronda={ronda} />
       {proyecto.descripcion && <p className="hz-texto-2">{proyecto.descripcion}</p>}
       {hojas.length > 0 && (
         <div className="hzp-hoja-plegable">

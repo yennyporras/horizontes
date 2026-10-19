@@ -62,3 +62,30 @@ export async function focoVisible(p: Page, pasos: number) {
     if (r) expect(r.ok, `sin foco visible: ${r.el}`).toBe(true)
   }
 }
+
+/**
+ * Tabla del resultado (acta A3, A4 y P3): los 6 criterios y la fila Total, sin ejes, T2M ni votos; cifras con
+ * 2 decimales; encabezados R1 hueco verde y R2 sólido rojo. Total es el campo `total` del servidor (R4_CONTRATO C1):
+ * cada celda coincide con lo que entrega la API, el celular no lo calcula.
+ */
+export async function revisarTabla(p: Page, codigo: string) {
+  const tabla = p.locator('.hzp-tabla').first()
+  await tabla.waitFor()
+  const filas = await tabla.locator('tbody th').allTextContents()
+  expect(filas).toHaveLength(7)
+  expect(filas.at(-1)).toBe('Total')
+  for (const t of await p.locator('.hzp-resultado__proyecto').allTextContents()) expect(t).not.toMatch(/Eje X|Eje Y|Time 2 Market|T2M|calificaciones en/i)
+  for (const td of await tabla.locator('td').allTextContents()) expect(td).toMatch(/^\d+,\d{2}$/)
+  // Total del primer proyecto mostrado = `total` de la API por ronda, con 2 decimales.
+  const totales = await p.evaluate(async (c) => {
+    const r = await fetch('/api/yo', { headers: { 'X-Participante-Token': localStorage.getItem(`hz_token:${c.toUpperCase()}`) ?? '' } })
+    const yo = (await r.json()) as { resultados?: { proyectos_vivos?: { rondas: { total?: number | null }[] }[] } }
+    const conTotal = (yo.resultados?.proyectos_vivos ?? []).map((v) => v.rondas.map((x) => x.total).filter((t): t is number => typeof t === 'number'))
+    return conTotal.find((t) => t.length > 0) ?? []
+  }, codigo)
+  const esperado = totales.map((t) => (Math.round(t * 100) / 100).toFixed(2).replace('.', ','))
+  expect(await tabla.locator('.hzp-tabla__total td').allTextContents()).toEqual(esperado)
+  const estilo = (sel: string) => p.locator(sel).first().evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor])
+  expect((await estilo('.hzp-tabla .hz-insignia--r1'))[0]).toBe('rgb(31, 122, 58)')
+  if (await p.locator('.hzp-tabla .hz-insignia--r2').count()) expect(await estilo('.hzp-tabla .hz-insignia--r2')).toEqual(['rgb(255, 255, 255)', 'rgb(198, 40, 40)'])
+}

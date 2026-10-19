@@ -382,8 +382,8 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
         <p className="hz-texto-3">Hola, {yo.participante.nombre.split(' ')[0]}</p>
         <h1 className="hz-titulo">Tu perfil es {yo.participante.perfil.nombre}</h1>
         <p className="hz-texto-2">
-          En tu mesa cada persona tiene información distinta sobre {nombres}. Tú aportas la mirada de {yo.participante.perfil.nombre}. Lee el caso, lee tu
-          hoja y compártela con tu mesa.
+          En tu mesa cada persona tiene información distinta sobre {nombres}. Tú aportas la mirada de {yo.participante.perfil.nombre}. Lee el caso y tu
+          hoja. En la ronda 1 calificas por tu cuenta y en silencio. En la ronda 2 compartes tu hoja y discuten en la mesa.
         </p>
       </Marco>
     )
@@ -455,10 +455,9 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
         <h1 className="hz-titulo">El caso y {yo.config.revelar_hojas ? 'las hojas' : 'tu hoja'}</h1>
         {esperando && (
           <Aviso tono="info">
-            {sinResultadoCerrada && estado === 'r1_cerrada'
-              ? 'La ronda 1 se cerró. '
-              : ''}
-            La ronda {siguiente} aún no está abierta. Mientras tanto, lee el caso y tu hoja.
+            {sinResultadoCerrada && estado === 'r1_cerrada' ? 'La ronda 1 se cerró. ' : ''}
+            La ronda {siguiente} aún no está abierta. Mientras tanto, lee el caso y tu hoja.{' '}
+            {siguiente === 1 ? 'En la ronda 1 calificas por tu cuenta y en silencio.' : 'En la ronda 2 comparten sus hojas y discuten en la mesa.'}
           </Aviso>
         )}
         {sinResultadoCerrada && estado === 'r2_cerrada' && <Aviso tono="info">La ronda 2 se cerró. El resultado aparece aquí en unos segundos.</Aviso>}
@@ -489,7 +488,9 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
             ? `Este es el resultado de ${donde}. Discútanlo en la mesa antes de la ronda 2.`
             : `Así se movieron ${vivos.map((p) => p.nombre).join(' y ')} de la ronda 1 a la ronda 2 en ${donde}.`}
         </p>
-        {ronda === 1 && <Aviso tono="info">La ronda 2 aún no está abierta. Mientras tanto, lee el caso y tu hoja.</Aviso>}
+        {ronda === 1 && (
+          <Aviso tono="info">La ronda 2 aún no está abierta. Cuando el facilitador la abra, compartan sus hojas y discutan en la mesa antes de calificar.</Aviso>
+        )}
         {yo.resultados && <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} preliminar={false} />}
         {botonLeer}
       </Marco>

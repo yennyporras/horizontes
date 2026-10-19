@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { useState } from 'react'
 import { Boton } from '../Boton'
 import { Campo } from '../Campo'
@@ -124,5 +126,36 @@ describe('MuestraUI', () => {
     expect(screen.getByRole('progressbar')).toBeTruthy()
     expect(screen.getByRole('checkbox')).toBeTruthy()
     expect(container.textContent).not.toContain('—')
+  })
+})
+
+describe('Colores de ronda', () => {
+  // Luminancia relativa WCAG 2.1.
+  const lum = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+      const c = parseInt(hex.slice(i, i + 2), 16) / 255
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const contraste = (a: string, b: string) => {
+    const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m)
+    return (x + 0.05) / (y + 0.05)
+  }
+
+  it('--hz-r1 y --hz-r2 cumplen AA (4,5:1) sobre blanco y sobre el horizonte claro', () => {
+    const css = readFileSync(join(__dirname, '..', 'tokens.css'), 'utf8')
+    const token = (n: string) => css.match(new RegExp(`--hz-${n}:\\s*(#[0-9A-Fa-f]{6})`))![1]
+    for (const r of ['r1', 'r2']) {
+      expect(contraste(token(r), '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
+      expect(contraste(token(r), token('h1'))).toBeGreaterThanOrEqual(4.5)
+    }
+    expect([token('r1'), token('r2')]).toEqual(['#1F7A3A', '#C62828'])
+  })
+
+  it('la insignia de ronda siempre lleva su texto y una forma distinta por ronda', () => {
+    render(<MuestraUI />)
+    expect(screen.getByText('R1').className).toContain('hz-insignia--r1')
+    expect(screen.getByText('R2').className).toContain('hz-insignia--r2')
   })
 })

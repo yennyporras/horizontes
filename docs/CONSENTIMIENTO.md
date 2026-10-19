@@ -66,3 +66,49 @@ Reglas:
 - Si el correo ya está inscrito en la sala (`409 CORREO_YA_INSCRITO`), se agrega un nuevo registro de consentimiento con la aceptación actual; no se borra el anterior.
 - El export de inscritos (admin) incluye `consentimiento` (versión y fecha). Ninguna respuesta fuera de `/api/admin/*` trae nombre ni correo.
 - Supresión: a solicitud del titular, el admin desactiva y T1 anonimiza nombre y correo (pendiente para v1.1 si no alcanza; el canal es info@estratek.com.co).
+
+## 5. Versión `hz-1.1` por país (R4, acta P4 y R4_CONTRATO C6)
+
+> **Pendiente de revisión de Paola.** Texto propuesto por T2 el 19-oct. No subir a producción sin su visto bueno. Si Paola cambia una coma, el servidor (T1) sirve el texto nuevo con la misma versión `hz-1.1` mientras no haya aceptaciones en producción; después, `hz-1.2`.
+
+Cómo se arma la pantalla de inscripción:
+- **Casilla obligatoria:** `texto_autorizacion` lo sirve el servidor según `sala.pais` (`GET /api/mesas/{codigo}` → `consentimiento.texto_autorizacion`, versión `hz-1.1`). Es texto plano de un párrafo; el celular le agrega al final el enlace «Lee la Política de Tratamiento de Datos Personales de Estratek» (`politica_url`). El hash que guarda T1 es el de este texto.
+- **Aviso corto encima de la casilla:** lo arma el celular (`web/participante/pantallas/Inscripcion.tsx`, `LEY_DATOS`) con `sala.pais`: quién trata los datos, qué datos, para qué, **qué norma aplica** y los derechos con el canal `info@estratek.com.co`. La autoridad ante la que se puede acudir cambia por país.
+- Sin `pais` en la respuesta, el celular asume Colombia.
+
+### 5.1 Texto de la casilla (`texto_autorizacion`)
+
+> Tras la integración con T1 (19-oct), el texto vigente es el de `server/dominio/consentimiento.ts` (`TEXTOS_AUTORIZACION`) y **manda ese**. El de abajo es la propuesta de T2 para la revisión de Paola; diferencias en `docs/DECISIONES.md` (19-oct, [T2] Texto legal `hz-1.1`).
+
+**Colombia (`CO`)**
+
+```text
+Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Ley 1581 de 2012 de Colombia y a su Política de Tratamiento de Datos Personales. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
+```
+
+**Perú (`PE`)**
+
+```text
+Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Ley 29733, Ley de Protección de Datos Personales del Perú, y a la Política de Tratamiento de Datos Personales de Estratek. Puedo ejercer mis derechos de acceso, rectificación, cancelación y oposición, y revocar esta autorización, escribiendo a info@estratek.com.co.
+```
+
+**Guatemala (`GT`)**
+
+```text
+Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Política de Tratamiento de Datos Personales de Estratek. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
+```
+
+### 5.2 Aviso corto (lo muestra el celular)
+
+| Dato | CO | PE | GT |
+|---|---|---|---|
+| Quién trata tus datos | Estratek S.A.S., Medellín, Colombia. | igual | igual |
+| Qué datos | Tu nombre y tu correo. Tus calificaciones solo se ven en promedios, sin nombres. | igual | igual |
+| Para qué | Fines informativos de este taller. | igual | igual |
+| Qué norma aplica | La Ley 1581 de 2012 de Colombia y la política de Estratek. | La Ley 29733 de Perú y la política de Estratek. | La Política de Tratamiento de Datos Personales de Estratek. |
+| Tus derechos | Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización. Escribe a info@estratek.com.co: respondemos en máximo 10 días hábiles. También puedes acudir a la Superintendencia de Industria y Comercio. | igual, pero «… a la Autoridad Nacional de Protección de Datos Personales.» | igual, sin autoridad (Guatemala no tiene ley general de datos personales). |
+
+### 5.3 Preguntas para Paola antes de producción
+1. **Perú, flujo transfronterizo:** la Ley 29733 y su reglamento piden informar si los datos salen del país. El VPS de Hostinger no está en Perú. ¿Agregamos «Mis datos se guardan en servidores fuera del Perú» a la casilla de `PE`? (Misma pregunta abierta para Colombia en `docs/BLOQUEOS.md` si el VPS está fuera de Colombia.)
+2. **Plazo de respuesta:** «máximo 10 días hábiles» sale de la política de Estratek. En Perú la ley da 20 días para acceso y 10 para rectificación o cancelación. ¿Dejamos 10 para los tres países?
+3. **IP:** desde R4 el servidor guarda la IP de cada inscripción y de cada voto (C7). ¿La nombramos en «Qué datos» («y la dirección IP de tu conexión, para seguridad»)? Hoy el aviso solo nombra nombre y correo.
