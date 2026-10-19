@@ -12,7 +12,9 @@
       "vista_participante": "registrado",
       "revelar_hojas": false,
       "cierre_programado_ronda_at": null,
-      "cierre_programado_sala_at": "2026-10-20T18:00:00-05:00"
+      "cierre_programado_sala_at": "2026-10-20T18:00:00-05:00",
+      "pais": "CO",
+      "zona_horaria": "America/Bogota"
     }
   },
   "mesas": [
@@ -44,7 +46,9 @@
       "perfil_id": "cliente",
       "activo": true,
       "completo_ronda": false,
-      "consentimiento_at": "2026-10-20T14:55:00-05:00"
+      "consentimiento_at": "2026-10-20T14:55:00-05:00",
+      "ip": "203.0.113.24",
+      "pais": "CO"
     }
   ],
   "eventos": [

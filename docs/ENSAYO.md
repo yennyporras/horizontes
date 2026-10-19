@@ -30,7 +30,79 @@ Las corridas se hicieron con el endurecimiento de R3 ya puesto (cabeceras, valid
 
 ## Resultado
 
-### Corrida oficial · Corrida 2026-10-16T11:07Z · realista · 40 personas · 4 mesas · local
+Con el código de R4 (acta del 16-oct): mínimo de 3 votos por alcance, `total` verificado contra el cálculo independiente en la sala y en cada mesa, visibilidad por defecto y país por sala. El ensayo fija a propósito alcance mesa y vista registrado al empezar para medir los cambios en vivo.
+
+### Corrida oficial R4 · Corrida 2026-10-19T12:22Z · realista · 40 personas · 4 mesas · local
+
+Resultado: **OK** · sala HZ6DU · 11.2 min · 11382 peticiones · errores HTTP 0 · 5xx 0 · p95 cliente 7.8 ms · p95 servidor 2.8 ms
+
+| Verificación | | Detalle |
+|---|---|---|
+| inscripción con consentimiento | OK | 39/39 antes de abrir R1 |
+| R1 abierta en todos los celulares | OK | último a los 2.3 s |
+| R1: precierre solo en las mesas que terminaron (Mesa 1) | OK | Mesa 1:sí Mesa 2:no Mesa 3:no Mesa 4:no |
+| R1: Mesa 1 ve su resultado preliminar sin cerrar la ronda | OK | último a los 2.2 s |
+| R1: las mesas que no han terminado no ven resultados (tras Mesa 1) | OK |  |
+| R1: aviso al admin "Todos votaron en Mesa 1" | OK |  |
+| R1: llegada tarde a Mesa 1 deshace su precierre | OK |  |
+| R1: al votar quien llegó tarde, Mesa 1 vuelve a precierre | OK |  |
+| R1: precierre solo en las mesas que terminaron (Mesa 2) | OK | Mesa 1:sí Mesa 2:sí Mesa 3:no Mesa 4:no |
+| R1: Mesa 2 ve su resultado preliminar sin cerrar la ronda | OK | último a los 2.5 s |
+| R1: las mesas que no han terminado no ven resultados (tras Mesa 2) | OK |  |
+| R1: aviso al admin "Todos votaron en Mesa 2" | OK |  |
+| R1: precierre solo en las mesas que terminaron (Mesa 3) | OK | Mesa 1:sí Mesa 2:sí Mesa 3:sí Mesa 4:no |
+| R1: Mesa 3 ve su resultado preliminar sin cerrar la ronda | OK | último a los 2.4 s |
+| R1: las mesas que no han terminado no ven resultados (tras Mesa 3) | OK |  |
+| R1: aviso al admin "Todos votaron en Mesa 3" | OK |  |
+| R1: precierre solo en las mesas que terminaron (Mesa 4) | OK | Mesa 1:sí Mesa 2:sí Mesa 3:sí Mesa 4:sí |
+| R1: Mesa 4 ve su resultado preliminar sin cerrar la ronda | OK | último a los 2.5 s |
+| R1: las mesas que no han terminado no ven resultados (tras Mesa 4) | OK |  |
+| R1: aviso al admin "Todos votaron en Mesa 4" | OK |  |
+| R1: precierre de sala con todos los votos, ronda todavía abierta | OK | 40/40 |
+| alcance mesa → sala: visible en los 40 celulares en < 5 s | OK | último a los 2.5 s, mediana 1.1 s |
+| config de alcance → 200 | OK |  |
+| R1: al cerrar, todos ven el resultado definitivo | OK | último a los 2.5 s |
+| vista registrado → en vivo: visible en los 40 celulares en < 5 s | OK | último a los 2.5 s, mediana 1.1 s |
+| cierres programados aceptados | OK | R2 a las 2026-10-19T12:21:56.000Z, sala 20 s después |
+| R2 en vivo: quien completó ve el tablero con R1 y R2 | OK | último a los 1.8 s |
+| R2: las 12 hojas reveladas en todos los celulares | OK |  |
+| R2: precierre de sala y la ronda sigue abierta hasta la hora programada | OK |  |
+| cierre programado de R2: aplicado por: "programado" a la hora (± 15 s) | OK | desfase 0.0 s |
+| cierre programado de R2: todos los celulares lo ven en < 20 s | OK | último a los 1.9 s de la hora |
+| cierre programado de la sala: aplicado por: "programado" a la hora (± 15 s) | OK | desfase 0.0 s |
+| cierre programado de la sala: todos los celulares lo ven en < 20 s | OK | último a los 2.0 s de la hora |
+| puntos de la sala = cálculo independiente | OK | INSUMEX R1 (4.82, 4.89) · INSUMEX R2 (4.59, 4.76) · NUTRIWHAT R1 (5.75, 5.47) · NUTRIWHAT R2 (5.84, 5.72) |
+| puntos de Mesa 1 | OK | INSUMEX R1 (5.31, 4.82) · INSUMEX R2 (4.62, 4.93) · NUTRIWHAT R1 (5.52, 5.51) · NUTRIWHAT R2 (6.01, 5.95) |
+| puntos de Mesa 2 | OK | INSUMEX R1 (4.61, 5.54) · INSUMEX R2 (4.62, 5.24) · NUTRIWHAT R1 (4.76, 5.60) · NUTRIWHAT R2 (5.33, 5.94) |
+| puntos de Mesa 3 | OK | INSUMEX R1 (4.63, 3.74) · INSUMEX R2 (4.62, 4.24) · NUTRIWHAT R1 (6.09, 7.04) · NUTRIWHAT R2 (5.61, 6.00) |
+| puntos de Mesa 4 | OK | INSUMEX R1 (4.66, 5.53) · INSUMEX R2 (4.48, 4.62) · NUTRIWHAT R1 (6.76, 3.53) · NUTRIWHAT R2 (6.45, 4.89) |
+| export de votos completo | OK | 160 filas |
+
+| Cambio en vivo | Mediana | Último celular |
+|---|---|---|
+| alcance mesa → sala | 1126 ms | 2537 ms |
+| vista registrado → en vivo | 1055 ms | 2456 ms |
+
+| Cierre programado | Programado | Aplicado | Desfase | Último celular |
+|---|---|---|---|---|
+| cierre programado de R2 | 2026-10-19T12:21:56.000Z | 2026-10-19T12:21:56.000Z | 0 ms | 1942 ms |
+| cierre programado de la sala | 2026-10-19T12:22:16.000Z | 2026-10-19T12:22:16.000Z | 0 ms | 2007 ms |
+
+| Ruta | n | p50 | p95 | máx. |
+|---|---|---|---|---|
+| GET /api/admin/salas/:id | 272 | 3.9 | 7.7 | 33.7 |
+| GET /api/admin/salas/:id/export/votos.csv | 1 | 10.1 | 10.1 | 10.1 |
+| GET /api/mesas/:codigo | 40 | 1.9 | 3.2 | 4.7 |
+| GET /api/tablero/:id | 279 | 4.9 | 11.4 | 26.6 |
+| GET /api/yo | 10580 | 1.9 | 7.7 | 124.8 |
+| PATCH /api/admin/salas/:id/config | 4 | 2.9 | 3.7 | 3.7 |
+| POST /api/admin/login | 1 | 80.6 | 80.6 | 80.6 |
+| POST /api/admin/salas | 1 | 12.3 | 12.3 | 12.3 |
+| POST /api/admin/salas/:id/acciones | 4 | 3.6 | 20.5 | 20.5 |
+| POST /api/inscripcion | 40 | 2.8 | 5.3 | 9.2 |
+| PUT /api/votos | 160 | 4.2 | 7.1 | 27.8 |
+
+### Corrida R3 · Corrida 2026-10-16T11:07Z · realista · 40 personas · 4 mesas · local
 
 Resultado: **OK** · sala HZ9TP · 11.2 min · 11227 peticiones · errores HTTP 0 · 5xx 0 · p95 cliente 180.2 ms · p95 servidor 8.6 ms
 

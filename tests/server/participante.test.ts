@@ -1,7 +1,7 @@
 // Integración del flujo del participante y del tablero contra la API real.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { VERSION_CONSENTIMIENTO } from '../../server/dominio/consentimiento'
-import { type Entorno, RESPUESTAS_5, accion, crearEntorno, crearSala, inscribir, votar } from './ayuda'
+import { type Entorno, RESPUESTAS_5, VISTA_MESA_REGISTRADO, accion, crearEntorno, crearSala, inscribir, votar } from './ayuda'
 
 let e: Entorno
 beforeEach(async () => {
@@ -23,7 +23,7 @@ const editarParticipante = (id: string, cuerpo: object) =>
   e.app.inject({ method: 'PATCH', url: `/api/admin/participantes/${id}`, headers: { cookie: e.cookie }, payload: cuerpo })
 
 async function salaAbierta(mesas = 2, estado: 'inscripcion' | 'r1_abierta' = 'inscripcion'): Promise<Sala> {
-  const s = await crearSala(e, mesas)
+  const s = await crearSala(e, mesas, 'Sala de prueba', VISTA_MESA_REGISTRADO)
   expect((await accion(e, s.id, 'abrir_inscripcion')).statusCode).toBe(200)
   if (estado === 'r1_abierta') expect((await accion(e, s.id, 'abrir_ronda_1')).statusCode).toBe(200)
   return s
