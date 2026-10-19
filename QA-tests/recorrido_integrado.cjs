@@ -130,13 +130,15 @@ async function votarUI(p, ancho, ronda, valores) {
       await p.getByRole('heading', { level: 1, name: 'Ronda 1: califica los 2 proyectos' }).waitFor({ timeout: T })
       await revisar(p, ancho, 'part-r1-elegir')
       await votarUI(p, ancho, 1, [['INSUMEX', 7], ['NUTRIWHAT', 3]])
-      await p.getByRole('heading', { level: 1, name: 'Voto registrado' }).waitFor({ timeout: T })
-      await revisar(p, ancho, 'part-r1-registrado')
+      // Acta A2: por defecto se ven los resultados de la sala en vivo apenas se vota.
+      await p.getByRole('heading', { level: 1, name: /^(Voto registrado|Resultados en vivo de )/ }).waitFor({ timeout: T })
+      await revisar(p, ancho, 'part-r1-tras-votar')
     })
     await votarOtros(1, [otros[0], otros[2]])
     await paso('tablero R1 en curso', async () => { await t.waitForTimeout(3500); await revisar(t, ancho, 'tablero-r1-parcial') })
     await votarOtros(1, [otros[1]])
     await paso('precierre admin', async () => { await a.getByText(/Todos votaron en la sala|Todos votaron en Mesa 1/).first().waitFor({ timeout: T }); await revisar(a, ancho, 'admin-vivo-precierre') })
+    await paso('resultado preliminar admin R1', async () => { await a.getByRole('button', { name: 'Ver resultado de Mesa 1' }).click(); await a.getByRole('table', { name: 'INSUMEX' }).waitFor({ timeout: T }); await revisar(a, ancho, 'admin-vivo-resultado-r1') })
     await paso('precierre participante', async () => { await p.getByText('Preliminar', { exact: true }).first().waitFor({ timeout: T }); await p.locator('svg.hz-matriz').first().waitFor({ timeout: T }); await revisar(p, ancho, 'part-r1-preliminar') })
     await paso('tablero precierre', async () => { await t.waitForTimeout(3000); await revisar(t, ancho, 'tablero-r1-precierre') })
     await pulsar('Cerrar ronda 1', 'Ronda 1 cerrada')
@@ -154,10 +156,11 @@ async function votarUI(p, ancho, ronda, valores) {
     })
     await paso('R2 votar UI', async () => {
       await votarUI(p, ancho, 2, [['INSUMEX', 9], ['NUTRIWHAT', 5]])
-      await p.getByRole('heading', { level: 1, name: 'Voto registrado' }).waitFor({ timeout: T })
+      await p.getByRole('heading', { level: 1, name: /^(Voto registrado|Resultados en vivo de )/ }).waitFor({ timeout: T })
     })
     await votarOtros(2, otros, { regulacion: 9, alineacion_core: 9 })
     await paso('R2 precierre sala', async () => { await a.getByText('4 de 4', { exact: true }).first().waitFor({ timeout: T }); await a.locator('.etiqueta', { hasText: 'Precierre' }).nth(1).waitFor({ timeout: T }); await revisar(a, ancho, 'admin-vivo-precierre-r2') })
+    await paso('resultado preliminar admin R2', async () => { await a.getByRole('button', { name: 'Ver resultado preliminar de la sala' }).click(); await a.getByRole('columnheader', { name: 'R2' }).first().waitFor({ timeout: T }); await revisar(a, ancho, 'admin-vivo-resultado-r2') })
     await pulsar('Cerrar ronda 2', 'Ronda 2 cerrada')
     await paso('R2 comparación participante', async () => { await p.getByRole('heading', { level: 1, name: 'Ronda 2 cerrada' }).waitFor({ timeout: T }); await p.locator('svg.hz-matriz .hz-r1').first().waitFor({ timeout: T }); await revisar(p, ancho, 'part-r2-comparacion') })
     await paso('tablero comparación', async () => { await t.waitForTimeout(4000); await revisar(t, ancho, 'tablero-comparacion') })
@@ -166,6 +169,10 @@ async function votarUI(p, ancho, ronda, valores) {
 
     // --- Resto del panel ---
     for (const s of ['mesas', 'participantes', 'configuracion', 'export']) await paso(`admin ${s}`, async () => { await a.goto(`${BASE}/admin/salas/${salaId}/${s}`); await a.waitForLoadState('networkidle'); await revisar(a, ancho, `admin-${s}`) })
+    await paso('país de la sala', async () => {
+      await a.goto(`${BASE}/admin/salas/${salaId}/configuracion`); await a.getByLabel('País de la sala').selectOption('PE')
+      await a.getByText('La sala quedó en Perú', { exact: false }).waitFor({ timeout: T }); await revisar(a, ancho, 'admin-configuracion-peru')
+    })
     if (ancho > 800) await paso('hoja QR A4', async () => {
       await a.goto(`${BASE}/admin/salas/${salaId}/mesas`); await a.waitForLoadState('networkidle')
       await a.emulateMedia({ media: 'print' }); await a.screenshot({ path: `${OUT}/qr-impresion.png`, fullPage: true })

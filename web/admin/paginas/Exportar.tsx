@@ -8,12 +8,12 @@ const ARCHIVOS = [
   {
     archivo: 'inscritos.csv',
     titulo: 'Inscritos',
-    texto: 'Nombre, correo, mesa, perfil y datos del consentimiento (versión y fecha). Contiene datos personales: guárdalo solo donde lo permita la política de datos de Estratek.',
+    texto: 'Nombre, correo, mesa, perfil, consentimiento (versión y fecha), y al final país e IP de la inscripción.',
   },
   {
     archivo: 'votos.csv',
-    titulo: 'Votos anonimizados',
-    texto: 'Un identificador anónimo por persona, mesa, perfil, ronda, proyecto y los 6 valores. Sin nombres ni correos.',
+    titulo: 'Votos',
+    texto: 'Un identificador por persona, mesa, perfil, ronda, proyecto, los 6 valores y si la persona sigue activa, y al final país e IP del voto. Sin nombres ni correos.',
   },
 ]
 
@@ -44,6 +44,10 @@ export function Exportar() {
       {(d) => (
         <>
           <p className="pista">Archivos CSV en UTF-8 que abren bien en Excel. Se generan con los datos del momento.</p>
+          <p className="alerta alerta--info">
+            <strong>Registro interno, solo para gestión.</strong> Estos archivos dicen quién se inscribió y cuándo, y desde qué país e IP se inscribió y votó. El tablero, los celulares
+            y el proyector siguen anónimos. Guárdalos solo donde lo permita la política de datos de Estratek.
+          </p>
           {errorDescarga && (
             <p className="alerta alerta--error" role="alert">
               {errorDescarga}

@@ -81,6 +81,7 @@ export function Participantes() {
                         <th scope="col">Mesa</th>
                         <th scope="col">Perfil</th>
                         <th scope="col">{ronda ? `Ronda ${ronda}` : 'Ronda'}</th>
+                        <th scope="col">País · IP</th>
                         <th scope="col">Acción</th>
                       </tr>
                     </thead>
@@ -128,6 +129,7 @@ export function Participantes() {
                               <span className="etiqueta etiqueta--aviso">Pendiente</span>
                             )}
                           </td>
+                          <td data-label="País · IP">{p.ip ? `${p.pais ?? ''} ${p.ip}`.trim() : 'Sin registro'}</td>
                           <td data-label="Acción">
                             <button
                               className={p.activo ? 'btn btn--peligro btn--chico' : 'btn btn--chico'}
@@ -149,7 +151,7 @@ export function Participantes() {
                   </table>
                 </div>
               )}
-              <p className="pista">Las respuestas de cada persona no se muestran aquí ni en ningún tablero.</p>
+              <p className="pista">Las respuestas de cada persona no se muestran aquí ni en ningún tablero. País e IP son registro interno: solo salen en este panel y en el export.</p>
             </section>
           </>
         )

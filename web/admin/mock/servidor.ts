@@ -57,6 +57,8 @@ function inicial(): Estado {
       activo: true,
       completo_ronda: i % 3 === 0,
       consentimiento_at: base.sala.creada_at,
+      ip: `181.50.12.${i + 10}`,
+      pais: 'CO',
     }),
   )
   derivar(base)
@@ -137,7 +139,16 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
     estado: 'preparada',
     ronda_actual: 0,
     creada_at: new Date().toISOString(),
-    config: { alcance_resultados: 'mesa', vista_participante: 'registrado', revelar_hojas: false, cierre_programado_ronda_at: null, cierre_programado_sala_at: null },
+    // R4_CONTRATO C5: toda sala nueva o duplicada muestra los resultados de la sala tras votar.
+    config: {
+      alcance_resultados: 'sala',
+      vista_participante: 'en_vivo',
+      revelar_hojas: false,
+      cierre_programado_ronda_at: null,
+      cierre_programado_sala_at: null,
+      pais: 'CO',
+      zona_horaria: 'America/Bogota',
+    },
   }
   nueva.mesas = Array.from({ length: n }, (_, i) => mesa(codigo, i + 1))
   nueva.participantes = []
@@ -202,10 +213,10 @@ function csv(s: SalaDetalle, archivo: string): string {
   const filas: unknown[][] =
     archivo === 'inscritos.csv'
       ? [
-          ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at'],
-          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.0', p.consentimiento_at]),
+          ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'ip', 'pais'],
+          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.1', p.consentimiento_at, p.ip, p.pais]),
         ]
-      : [['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', 'alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida']]
+      : [['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', 'alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida', 'activo', 'ip', 'pais']]
   return '﻿' + filas.map((f) => f.map(celda).join(',')).join('\n') + '\n'
 }
 
@@ -272,11 +283,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a) }, etag: s.version }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
-      const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
-      const copia = estado.salas[estado.salas.length - 1]
-      copia.sala.config.alcance_resultados = s.sala.config.alcance_resultados
-      copia.sala.config.vista_participante = s.sala.config.vista_participante
-      return r
+      return crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
     }
     if (metodo === 'GET' && resto.startsWith('/export/')) return ok(csv(s, resto.slice('/export/'.length)))
     if (metodo === 'PATCH' && resto === '/config') {
