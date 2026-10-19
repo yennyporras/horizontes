@@ -2,6 +2,8 @@
 
 Estado: cerrado para construir (decisiones de Paola del 16-oct-2026 + supuestos aceptados).
 
+Fuente principal de requisitos: `docs/REQUISITOS_ORIGEN.md` (reunión Sebastian y Paola). Donde choquen, manda `docs/ACTA_2026-10-16.md`.
+
 ## 1. Conceptos
 - **Sala**: un taller en vivo (evento). Tiene mesas, rondas, configuración y un código corto (ej. `HZ7K2`).
 - **Mesa**: subgrupo de la sala que funciona como "una empresa". Cada mesa tiene su QR/código (`HZ7K2-1`).
