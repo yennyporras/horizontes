@@ -210,7 +210,9 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
     progreso: { inscritos: prog.inscritos, completos: prog.completos, precierre: prog.precierre, por_mesa: prog.por_mesa },
     ejes: c.ejes,
     grafico: c.grafico,
-    criterios: c.criterios.map((k) => ({ id: k.id, nombre: k.nombre })),
+    // Pregunta y rúbrica solo en modo guiado (el tablero muestra la pregunta en grande): en automático el payload
+    // que se consulta cada 2,5 s no crece. Cambiar de modo sube la versión, así la caché y la ETag se renuevan.
+    criterios: c.criterios.map((k) => (sala.modo_preguntas === 'guiado' ? { id: k.id, nombre: k.nombre, pregunta: k.pregunta, rubrica: k.rubrica } : { id: k.id, nombre: k.nombre })),
     proyectos_fijos: prs
       .filter((p) => p.modo === 'fijo')
       .map((p) => {
