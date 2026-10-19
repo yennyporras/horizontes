@@ -1,0 +1,297 @@
+// T5: landing pública de la raíz `/`. Qué es Horizontes, cómo se entra a una mesa, cómo funciona y dónde está el panel.
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Rubrica } from '../shared/ui'
+import { CORREO_ESTRATEK, EJES, RUBRICA_EJEMPLO, URL_POLITICA } from './contenido'
+import { EntradaMesa } from './EntradaMesa'
+import { MatrizIlustrada } from './MatrizIlustrada'
+import './inicio.css'
+
+const TITULO = 'Horizontes · Taller de priorización de portafolio · Estratek'
+
+const PASOS: { titulo: string; texto: string; ronda?: 'r1' | 'r2' | 'r1r2' }[] = [
+  { titulo: 'Escanea el QR o escribe el código', texto: 'Cada mesa tiene su QR. Lo escaneas con la cámara del celular o escribes el código en esta página.' },
+  { titulo: 'Inscríbete', texto: 'Tu nombre, tu correo y tu autorización de datos. La app te asigna un perfil distinto al de los demás en tu mesa.' },
+  { titulo: 'Lee el caso y tu hoja', texto: 'El caso Foodsume es igual para todos. Tu hoja trae lo que solo sabe tu perfil sobre INSUMEX y NUTRIWHAT.' },
+  { titulo: 'Ronda 1, en silencio', texto: 'Calificas solo, con lo que sabes, los dos proyectos en seis criterios. Sin hablar con la mesa.', ronda: 'r1' },
+  { titulo: 'Ronda 2, con la mesa', texto: 'Ahora sí: discuten, se abren las seis hojas para todos y cada quien vuelve a calificar.', ronda: 'r2' },
+  {
+    titulo: 'La matriz muestra el movimiento',
+    texto: 'El tablero ubica los dos proyectos entre ocho fijos, muestra cuánto se movieron de una ronda a otra y el consolidado de la sala.',
+    ronda: 'r1r2',
+  },
+]
+
+/** Título de la raíz mientras la página está montada. La description y Open Graph van en web/index.html. */
+function useTitulo() {
+  useEffect(() => {
+    const anterior = document.title
+    document.title = TITULO
+    return () => {
+      document.title = anterior
+    }
+  }, [])
+}
+
+/** Los tres horizontes como cuartos de círculo desde una esquina: el único motivo de la página. */
+function Arcos({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+      <circle cx="0" cy="100" r="100" fill="var(--hz-h1)" />
+      <circle cx="0" cy="100" r="66" fill="var(--hz-h2)" />
+      <circle cx="0" cy="100" r="33" fill="var(--hz-h3)" />
+    </svg>
+  )
+}
+
+function LaminaPaso({ indice, ronda }: { indice: number; ronda?: 'r1' | 'r2' | 'r1r2' }) {
+  const r = 34 + indice * 12
+  const punto = r * Math.SQRT1_2
+  return (
+    <svg className="in-paso__lamina" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+      <path d={`M0 100 L0 ${100 - r} A${r} ${r} 0 0 1 ${r} 100 Z`} fill="var(--hz-h2)" />
+      {ronda === 'r1' && <circle className="in-r1-forma" cx={punto} cy={100 - punto} r="7" />}
+      {ronda === 'r2' && <circle className="in-r2-forma" cx={punto} cy={100 - punto} r="7" />}
+      {ronda === 'r1r2' && (
+        <>
+          <circle className="in-r1-forma" cx="72" cy="24" r="7" />
+          <path className="in-paso__flecha" d="M66 31 L48 50" />
+          <circle className="in-r2-forma" cx="40" cy="58" r="7" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+function PruebaEscala() {
+  const [valor, setValor] = useState<number | null>(null)
+  return (
+    <div className="in-prueba" data-ui>
+      <Rubrica
+        criterioId={`ejemplo-${RUBRICA_EJEMPLO.id}`}
+        nombre={`Ejemplo: ${RUBRICA_EJEMPLO.nombre}`}
+        pregunta={RUBRICA_EJEMPLO.pregunta}
+        opciones={RUBRICA_EJEMPLO.opciones}
+        valor={valor}
+        onCambio={setValor}
+      />
+      <p className="in-prueba__nota" role="status">
+        {valor === null
+          ? 'Toca una opción para ver cómo se marca en el celular. Aquí no se guarda nada.'
+          : `Marcaste ${valor}. En el taller, «Guardar calificación» la envía cuando completas los seis criterios.`}
+      </p>
+    </div>
+  )
+}
+
+export default function PaginaInicio() {
+  useTitulo()
+  return (
+    <div className="hz hz-inicio">
+      <a className="in-saltar" href="#contenido">
+        Saltar al contenido
+      </a>
+      <header className="in-nav">
+        <a className="in-nav__marca" href="#inicio">
+          <Arcos className="in-nav__arcos" />
+          Horizontes
+        </a>
+        <nav className="in-nav__secciones" aria-label="Secciones">
+          <ul>
+            <li><a href="#entrar">Entrar a tu mesa</a></li>
+            <li><a href="#como-funciona">Cómo funciona</a></li>
+            <li><a href="#que-se-evalua">Qué se evalúa</a></li>
+            <li><a href="#facilitadores">Facilitadores</a></li>
+            <li><a href="#privacidad">Tus datos</a></li>
+          </ul>
+        </nav>
+        <Link className="hz-boton hz-boton--primario in-nav__panel" to="/admin">
+          Ingresar al panel
+        </Link>
+      </header>
+
+      <main id="contenido">
+        <section id="inicio" className="in-hero" aria-labelledby="in-titulo">
+          <div className="in-hero__texto">
+            <h1 id="in-titulo" className="in-display">
+              La mesa mueve el portafolio
+            </h1>
+            <p className="in-lead">
+              Horizontes es el taller de priorización de portafolio por horizontes de Estratek. Cada mesa califica dos proyectos con la
+              información repartida entre sus perfiles, los discute y ve en la matriz cuánto se movieron de una ronda a otra.
+            </p>
+            <div className="in-acciones">
+              <a className="hz-boton hz-boton--primario" href="#entrar">
+                Entrar a mi mesa
+              </a>
+              <a className="hz-boton hz-boton--secundario" href="#como-funciona">
+                Ver cómo funciona
+              </a>
+            </div>
+            <p className="in-hero__dato">Desde el celular, sin crear cuenta ni instalar nada.</p>
+          </div>
+          <MatrizIlustrada />
+        </section>
+
+        <section id="entrar" className="in-sec in-sec--entrar" aria-labelledby="in-entrar-titulo">
+          <div className="in-ancho in-dos">
+            <div className="in-texto">
+              <h2 id="in-entrar-titulo" className="in-h2">
+                Entra a tu mesa
+              </h2>
+              <p>Lo más rápido es escanear el QR de tu mesa con la cámara del celular. Si no puedes, escribe aquí el código.</p>
+              <p>
+                Te inscribes con tu nombre y tu correo, y das tu autorización de tratamiento de datos. No creas cuenta ni contraseña: el
+                celular recuerda tu sesión y, si la pierdes, la recuperas con el mismo correo.
+              </p>
+            </div>
+            <EntradaMesa />
+          </div>
+        </section>
+
+        <section id="como-funciona" className="in-sec" aria-labelledby="in-como-titulo">
+          <div className="in-ancho">
+            <h2 id="in-como-titulo" className="in-h2">
+              Cómo funciona
+            </h2>
+            <p className="in-bajada">Dos rondas y la misma matriz. Lo que cambia entre una y otra es la conversación de la mesa.</p>
+            <ol className="in-pasos">
+              {PASOS.map((p, i) => (
+                <li key={p.titulo} className="in-paso">
+                  <LaminaPaso indice={i} ronda={p.ronda} />
+                  <h3 className="in-h3">
+                    {p.titulo}
+                    {p.ronda === 'r1' && <span className="in-r1"> R1</span>}
+                    {p.ronda === 'r2' && <span className="in-r2"> R2</span>}
+                  </h3>
+                  <p>{p.texto}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section id="que-se-evalua" className="in-sec in-sec--suave" aria-labelledby="in-evalua-titulo">
+          <div className="in-ancho in-dos in-dos--evalua">
+            <div className="in-texto">
+              <h2 id="in-evalua-titulo" className="in-h2">
+                Qué se evalúa
+              </h2>
+              <p>
+                Cada persona califica INSUMEX y NUTRIWHAT, los dos proyectos vivos del caso Foodsume, en seis criterios. Los promedios ubican
+                cada proyecto en dos ejes.
+              </p>
+              {EJES.map((eje) => (
+                <div key={eje.id} className="in-eje">
+                  <h3 className="in-h3">{eje.nombre}</h3>
+                  <p>{eje.lectura}</p>
+                  <ul className="in-lista">
+                    {eje.criterios.map((c) => (
+                      <li key={c.id}>
+                        <strong>{c.nombre}.</strong> {c.pregunta}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <div className="in-texto">
+              <h3 className="in-h3">La escala: 1, 3, 5, 7 y 9</h3>
+              <p>Cada número tiene su descripción en la rúbrica. En todos los criterios, 1 es lo más cercano y listo; 9, lo más lejano e incierto.</p>
+              <p>
+                Solo hay números impares: no existe un 4 o un 6 para quedarse a medias. Cada salto es una descripción distinta y hay que elegir
+                la que más se parece al proyecto.
+              </p>
+              <PruebaEscala />
+            </div>
+          </div>
+        </section>
+
+        <section id="facilitadores" className="in-sec in-sec--azul" aria-labelledby="in-facilitadores-titulo">
+          <div className="in-ancho in-dos">
+            <h2 id="in-facilitadores-titulo" className="in-h2">
+              Para facilitadores
+            </h2>
+            <div className="in-texto">
+              <p>
+                El panel es para quien dirige el taller: crea la sala con el caso Foodsume, imprime los QR de las mesas, abre y cierra las
+                rondas y exporta los resultados.
+              </p>
+              <p>
+                Las cuentas del panel las crea un superadmin de Estratek. No hay registro abierto: si vas a facilitar y no tienes usuario,
+                pídeselo a quien coordina el taller en Estratek.
+              </p>
+              <p>El tablero para el proyector se abre desde el panel con su propio enlace. Lo comparte el facilitador; no se busca desde esta página.</p>
+              <Link className="hz-boton in-boton-claro" to="/admin">
+                Ingresar al panel
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section id="privacidad" className="in-sec" aria-labelledby="in-privacidad-titulo">
+          <div className="in-ancho in-dos">
+            <h2 id="in-privacidad-titulo" className="in-h2">
+              Tus datos
+            </h2>
+            <div className="in-texto">
+              <ul className="in-lista in-lista--datos">
+                <li>
+                  <strong>Resultados anónimos.</strong> La matriz y las tablas muestran promedios de la mesa o de la sala. Nadie ve tu nombre ni
+                  tus calificaciones.
+                </li>
+                <li>
+                  <strong>Mínimo de 3 votos.</strong> Si una mesa o la sala tiene menos de 3 votos, su resultado no se muestra.
+                </li>
+                <li>
+                  <strong>Solo tu nombre y tu correo,</strong> con fines informativos del taller y con tu autorización. Los tratamos según la
+                  ley del país donde se hace el taller: en Colombia, la Ley 1581 de 2012; en Perú, la Ley 29733; en los demás países, la
+                  política de Estratek.
+                </li>
+              </ul>
+              <p>
+                <a className="in-enlace" href={URL_POLITICA} target="_blank" rel="noreferrer">
+                  Política de Tratamiento de Datos Personales de Estratek<span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
+                </a>
+              </p>
+              <p>
+                Para conocer, actualizar o suprimir tus datos, escribe a <a href={`mailto:${CORREO_ESTRATEK}`}>{CORREO_ESTRATEK}</a>.
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="in-pie">
+        <div className="in-ancho in-pie__interior">
+          <p className="in-pie__nombre">
+            <Arcos className="in-pie__arcos" />
+            Horizontes
+          </p>
+          <div className="in-pie__datos">
+            <p>Un taller de Estratek S.A.S., Medellín, Colombia.</p>
+            <p>
+              <a href={`mailto:${CORREO_ESTRATEK}`}>{CORREO_ESTRATEK}</a>
+            </p>
+            <nav aria-label="Pie de página">
+              <ul>
+                <li><a href="#inicio">Inicio</a></li>
+                <li><Link to="/admin">Ingresar al panel</Link></li>
+                <li>
+                  <a href={URL_POLITICA} target="_blank" rel="noreferrer">
+                    Política de datos<span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="https://estratek.com.co" target="_blank" rel="noreferrer">
+                    estratek.com.co<span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
