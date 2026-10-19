@@ -66,6 +66,10 @@ Mismos nombres de tokens; solo cambian los valores.
 
 Todos los pares tinta/fondo y estado/fondo pasan AA. Contrastes medidos con WCAG 2.2 el 19-oct.
 
+**Texto en color de acción:** solo sobre fondo, superficie-1 o el fondo de información. Sobre superficie-3 en claro (4,47:1) y sobre superficie-2 en carbón (4,37:1) no llega a AA. Sobre un relleno de acción, el texto va en «sobre acción».
+
+**Gráficos junto a R1/R2:** el acento verde agua no se usa en elementos de la matriz de Horizontes (bordes de horizonte, rejilla), porque en proyector se confunde con el verde de R1. Esos elementos van en el borde de control neutro.
+
 ## 4. Tipografía
 - **Fuente:** Montserrat, autoalojada (sin Google Fonts en producción), con respaldo `"Segoe UI", system-ui, sans-serif`.
 - **Pesos:** tipo oración, sin mayúsculas sostenidas. Cuerpo en 400 y 500; etiquetas en 700; títulos en 800; display y cifras en 900, como los titulares del sitio.
