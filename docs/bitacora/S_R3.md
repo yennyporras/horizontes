@@ -5,3 +5,4 @@
 - t2-participante: integrada
 - t4-admin: integrada
 - Pruebas: EN ROJO (ver logs\.sync_test_R3.log)
+- main publicada en origin
