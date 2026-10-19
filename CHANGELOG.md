@@ -14,7 +14,7 @@ Cambios pedidos por Paola tras la prueba en staging y acordados en la preentrega
 - Panel: aviso si `BASE_URL` no coincide con el dominio desde el que se abre (QR con el dominio equivocado), ayuda de una mesa por cada 6 personas y nota para imprimir el QR de cada mesa.
 
 ### Cambiado
-- Sistema visual de Estratek, igual al del IRMI: lienzo oscuro, teal y degradado de marca, Montserrat de 500 a 900, con contraste AA en todas las vistas.
+- Línea gráfica de la familia Estratek (`docs/marca/FAMILIA_ESTRATEK.md`) con la paleta exacta de estratek.com.co: carbón #141414, hielo #DCECFF, azul #3487FF, verde agua #00CDA1, violeta #442AAF y el degradado de marca. Landing y proyector en carbón; celular y panel en claro con barra carbón. Encabezado «Horizontes por Estratek »», logo oficial y contraste AA medido en los dos temas.
 - Se quita la fila «Total» de todas las vistas (Sebastian, preentrega). La API conserva el campo por compatibilidad.
 
 ### Corregido
