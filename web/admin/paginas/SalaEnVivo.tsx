@@ -44,6 +44,7 @@ export function SalaEnVivo() {
   const [errorAccion, setErrorAccion] = useState<string | null>(null)
   const [enCurso, setEnCurso] = useState<Accion | null>(null)
   const [dialogo, confirmar] = useConfirmar()
+  const siguiente = datos && siguientePaso(datos.sala.estado)
 
   const ejecutar = async (accion: Accion) => {
     const c = CONFIRMACIONES[accion]
@@ -65,8 +66,8 @@ export function SalaEnVivo() {
       {(d) => (
         <>
           {dialogo}
+          <Cifras d={d} />
           <Precierre d={d} />
-          <Estado d={d} />
           <section className="panel" aria-labelledby="t-control">
             <h2 id="t-control">Control de la sala</h2>
             <p className="pista" id="pista-acciones">
@@ -75,10 +76,12 @@ export function SalaEnVivo() {
             <div className="acciones">
               {ORDEN_ACCIONES.map((a) => {
                 const valida = ACCIONES_POR_ESTADO[d.sala.estado].includes(a)
+                // Una sola acción principal: el siguiente paso del taller. Las que borran o cierran van en rojo.
+                const variante = CONFIRMACIONES[a] ? 'destructivo' : a === siguiente ? 'primario' : 'secundario'
                 return (
                   <button
                     key={a}
-                    className={CONFIRMACIONES[a] ? 'btn btn--peligro' : 'btn btn--primario'}
+                    className={`hz-boton hz-boton--${variante}`}
                     disabled={!valida || enCurso !== null}
                     aria-describedby="pista-acciones"
                     aria-busy={enCurso === a}
@@ -94,6 +97,7 @@ export function SalaEnVivo() {
                 {errorAccion}
               </p>
             )}
+            <Programado d={d} />
           </section>
           {d.sala.config.modo_preguntas === 'guiado' && <PreguntaEnPantalla d={d} refrescar={refrescar} />}
           {d.sala.ronda_actual ? <ComoVotoSala d={d} /> : null}
@@ -105,35 +109,45 @@ export function SalaEnVivo() {
   )
 }
 
-function Estado({ d }: { d: SalaDetalle }) {
-  const ahora = useAhora()
+/** El paso que sigue en el taller: la primera acción posible que no pide confirmación. */
+function siguientePaso(estado: SalaDetalle['sala']['estado']) {
+  return ORDEN_ACCIONES.find((a) => ACCIONES_POR_ESTADO[estado].includes(a) && !CONFIRMACIONES[a])
+}
+
+/** Cifras de la sala arriba de la vista: ronda, inscritos, avance de la ronda y mesas. */
+function Cifras({ d }: { d: SalaDetalle }) {
   const ronda = rondaAbierta(d.sala.estado)
   const inscritos = d.mesas.reduce((s, m) => s + m.inscritos, 0)
   const completos = d.mesas.reduce((s, m) => s + m.completos, 0)
+  const cifras = [
+    { rotulo: ronda || !d.sala.ronda_actual ? 'Ronda en curso' : 'Última ronda', valor: ronda ?? (d.sala.ronda_actual || 'Ninguna') },
+    { rotulo: 'Inscritos', valor: inscritos },
+    { rotulo: ronda ? `Completaron la ronda ${ronda}` : 'Completaron la ronda', valor: `${completos} de ${inscritos}` },
+    { rotulo: 'Mesas', valor: d.mesas.length },
+  ]
+  return (
+    <ul className="kpis" aria-label="Estado de la sala">
+      {cifras.map((c) => (
+        <li key={c.rotulo} className="kpi">
+          <span className="kpi__rotulo">{c.rotulo}</span>
+          <span className="cifra">{c.valor}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** Aperturas y cierres programados con cuenta regresiva, y los atajos a la proyección y la configuración. */
+function Programado({ d }: { d: SalaDetalle }) {
+  const ahora = useAhora()
   const programados = programaciones(d.sala.config)
   const tablero = urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero)
   const zona = zonaSala(d.sala.config)
 
   return (
-    <section className="panel" aria-labelledby="t-estado">
-      <h2 id="t-estado">Estado</h2>
-      <div className="estado-grande">
-        <div>
-          <span className="pista">{ronda || !d.sala.ronda_actual ? 'Ronda en curso' : 'Última ronda'}</span>
-          <div className="cifra">{ronda ?? (d.sala.ronda_actual || 'Ninguna')}</div>
-        </div>
-        <div>
-          <span className="pista">Inscritos</span>
-          <div className="cifra">{inscritos}</div>
-        </div>
-        <div>
-          <span className="pista">{ronda ? `Completaron la ronda ${ronda}` : 'Completaron la ronda'}</span>
-          <div className="cifra">
-            {completos} de {inscritos}
-          </div>
-        </div>
-      </div>
-      <ul className="pista" aria-label="Programado">
+    <>
+      <h3>Programado</h3>
+      <ul className="pista programado" aria-label="Programado">
         {programados.length === 0 ? (
           <li>Sin aperturas ni cierres programados.</li>
         ) : (
@@ -152,18 +166,18 @@ function Estado({ d }: { d: SalaDetalle }) {
       </ul>
       <div className="acciones">
         {tablero && (
-          <a className="btn" href={tablero} target="_blank" rel="noreferrer">
+          <a className="hz-boton hz-boton--secundario" href={tablero} target="_blank" rel="noreferrer">
             Abrir tablero de la sala
           </a>
         )}
-        <Link className="btn" to={`/admin/salas/${d.sala.id}/configuracion`}>
+        <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${d.sala.id}/configuracion`}>
           Cambiar configuración
         </Link>
-        <Link className="btn" to={`/admin/salas/${d.sala.id}/mesas`}>
+        <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${d.sala.id}/mesas`}>
           Mesas y QR
         </Link>
       </div>
-    </section>
+    </>
   )
 }
 
@@ -221,11 +235,11 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
             )}
           </div>
           <div className="acciones">
-            <button className="btn" type="button" disabled={enviando || indice <= 0} onClick={() => void mostrar(ORDEN_PREGUNTAS[indice - 1])}>
+            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || indice <= 0} onClick={() => void mostrar(ORDEN_PREGUNTAS[indice - 1])}>
               Anterior
             </button>
             <button
-              className="btn btn--primario"
+              className="hz-boton hz-boton--secundario"
               type="button"
               disabled={enviando || indice === ORDEN_PREGUNTAS.length - 1}
               onClick={() => void mostrar(ORDEN_PREGUNTAS[indice + 1])}
@@ -254,7 +268,7 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
                 ))}
               </select>
             </label>
-            <button className="btn" type="button" disabled={enviando || (actual !== null && mismaPregunta(elegida, actual))} onClick={() => void mostrar(elegida)}>
+            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || (actual !== null && mismaPregunta(elegida, actual))} onClick={() => void mostrar(elegida)}>
               Mostrar esta pregunta
             </button>
           </div>
@@ -290,12 +304,12 @@ function Precierre({ d }: { d: SalaDetalle }) {
         <p>La ronda sigue abierta: los votos se pueden editar hasta que la cierres. El resultado se muestra como preliminar.</p>
         <div className="acciones">
           {salaCompleta && (
-            <button className="btn btn--chico" aria-expanded={ver === 'sala'} onClick={() => setVer(ver === 'sala' ? null : 'sala')}>
+            <button className="hz-boton hz-boton--secundario hz-boton--chico" aria-expanded={ver === 'sala'} onClick={() => setVer(ver === 'sala' ? null : 'sala')}>
               Ver resultado preliminar de la sala
             </button>
           )}
           {enPrecierre.map((m) => (
-            <button key={m.id} className="btn btn--chico" aria-expanded={ver === m.id} onClick={() => setVer(ver === m.id ? null : m.id)}>
+            <button key={m.id} className="hz-boton hz-boton--secundario hz-boton--chico" aria-expanded={ver === m.id} onClick={() => setVer(ver === m.id ? null : m.id)}>
               Ver resultado de {m.nombre}
             </button>
           ))}

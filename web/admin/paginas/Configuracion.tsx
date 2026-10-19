@@ -412,10 +412,10 @@ function CampoHora({
           onChange={(e) => setLocal(e.target.value)}
         />
       </label>
-      <button className="btn btn--primario" type="button" onClick={programar} disabled={bloqueo !== null || guardando} aria-describedby={`${id}-etiqueta`}>
+      <button className="hz-boton hz-boton--secundario" type="button" onClick={programar} disabled={bloqueo !== null || guardando} aria-describedby={`${id}-etiqueta`}>
         Programar
       </button>
-      <button className="btn" type="button" disabled={!valor || guardando} onClick={() => void enviar(null)} aria-describedby={`${id}-etiqueta`}>
+      <button className="hz-boton hz-boton--secundario" type="button" disabled={!valor || guardando} onClick={() => void enviar(null)} aria-describedby={`${id}-etiqueta`}>
         Quitar
       </button>
       <p id={`${id}-descripcion`} className="pista campo-hora__nota">

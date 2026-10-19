@@ -59,11 +59,11 @@ export function Exportar() {
                 <h2 id={`t-${f.archivo}`}>{f.titulo}</h2>
                 <p>{f.texto}</p>
                 {usaMocks() ? (
-                  <button className="btn btn--primario" onClick={() => descargarSimulado(f.archivo, d.sala.codigo)}>
+                  <button className="hz-boton hz-boton--secundario" onClick={() => descargarSimulado(f.archivo, d.sala.codigo)}>
                     Descargar {f.archivo}
                   </button>
                 ) : (
-                  <a className="btn btn--primario" href={`/api/admin/salas/${encodeURIComponent(d.sala.id)}/export/${f.archivo}`} download={`${d.sala.codigo}-${f.archivo}`}>
+                  <a className="hz-boton hz-boton--secundario" href={`/api/admin/salas/${encodeURIComponent(d.sala.id)}/export/${f.archivo}`} download={`${d.sala.codigo}-${f.archivo}`}>
                     Descargar {f.archivo}
                   </a>
                 )}

@@ -36,11 +36,35 @@ export function Salud() {
   const ultimo = salud.ultimoError
   const version = estado && (estado.version ?? estado.commit ?? estado.source_commit)
 
+  const ms = (n: number | null | undefined) => (n == null ? 'Sin datos' : `${n} ms`)
+
   return (
     <>
       <h1>Salud del sistema</h1>
       <p className="pista">Se revisa cada 5 segundos. La latencia es la que ve este navegador en sus últimas {mediciones.length} peticiones.</p>
       {usaMocks() && <p className="alerta alerta--aviso">Estás en modo simulado: estos datos no son del servidor real.</p>}
+      <ul className="kpis" aria-label="Resumen de salud">
+        <li className="kpi">
+          <span className="kpi__rotulo">Servidor</span>
+          <span>
+            {error ? (
+              <span className="etiqueta etiqueta--aviso">No responde</span>
+            ) : !estado ? (
+              <span className="etiqueta">Revisando…</span>
+            ) : (
+              <span className={estado.ok ? 'etiqueta etiqueta--exito' : 'etiqueta etiqueta--aviso'}>{estado.ok ? 'En línea' : 'Con problemas'}</span>
+            )}
+          </span>
+        </li>
+        <li className="kpi">
+          <span className="kpi__rotulo">p95</span>
+          <span className="cifra">{ms(p95(tiempos))}</span>
+        </li>
+        <li className="kpi">
+          <span className="kpi__rotulo">Última</span>
+          <span className="cifra">{ms(tiempos[0])}</span>
+        </li>
+      </ul>
       <div className="rejilla">
         <section className="panel" aria-labelledby="t-servidor">
           <h2 id="t-servidor">Servidor</h2>
@@ -52,31 +76,11 @@ export function Salud() {
             <p role="status">Revisando…</p>
           ) : (
             <>
-              <p>
-                <span className="etiqueta etiqueta--exito">{estado.ok ? 'En línea' : 'Con problemas'}</span>
-              </p>
               <p>Modo: {String(estado.modo ?? 'sin dato')}</p>
               <p>Versión desplegada: {version ? String(version) : 'sin dato'}</p>
+              <p className="pista">Meta del taller: menos de 500 ms en p95.</p>
             </>
           )}
-        </section>
-        <section className="panel" aria-labelledby="t-latencia">
-          <h2 id="t-latencia">Latencia</h2>
-          {tiempos.length === 0 ? (
-            <p className="vacio">Aún no hay mediciones.</p>
-          ) : (
-            <div className="estado-grande">
-              <div>
-                <span className="pista">p95</span>
-                <div className="cifra">{p95(tiempos)} ms</div>
-              </div>
-              <div>
-                <span className="pista">Última</span>
-                <div className="cifra">{tiempos[0]} ms</div>
-              </div>
-            </div>
-          )}
-          <p className="pista">Meta del taller: menos de 500 ms en p95.</p>
         </section>
         <section className="panel" aria-labelledby="t-error">
           <h2 id="t-error">Último error</h2>

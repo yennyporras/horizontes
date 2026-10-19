@@ -80,7 +80,7 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
         errorCarga ? (
           <p className="alerta alerta--error" role="alert">
             No pudimos cargar las rúbricas. {errorCarga}{' '}
-            <button className="btn btn--chico" type="button" onClick={() => void cargar()}>
+            <button className="hz-boton hz-boton--secundario hz-boton--chico" type="button" onClick={() => void cargar()}>
               Reintentar
             </button>
           </p>
@@ -160,10 +160,10 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
               </p>
             )}
             <div className="acciones">
-              <button className="btn btn--primario" type="button" disabled={!editable || !cambiado || guardando} onClick={() => void guardar()}>
+              <button className="hz-boton hz-boton--primario" type="button" disabled={!editable || !cambiado || guardando} onClick={() => void guardar()}>
                 {guardando ? 'Guardando…' : 'Guardar'}
               </button>
-              <button className="btn" type="button" disabled={!borrador || guardando} onClick={descartar}>
+              <button className="hz-boton hz-boton--secundario" type="button" disabled={!borrador || guardando} onClick={descartar}>
                 Descartar cambios
               </button>
             </div>
