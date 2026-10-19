@@ -1,45 +1,42 @@
-import { COLORES } from './matriz/matriz.js'
-import { MiniDistribucion } from './PanelProyecto'
 import type { CriterioId, DatosTablero, RondaVivo, Vista } from './tipos'
-import { hayVotosEnRonda, nombreCorto, numero, rondaDe, rondaEnFoco } from './logica'
+import { cifraRonda, mostrarR2, nombreCorto, rondaDe } from './logica'
+
+/** Encabezado de columna de una ronda: «R1» verde con aro hueco, «R2» rojo con punto sólido (se lee sin color). */
+export function ColRonda({ n }: { n: 1 | 2 }) {
+  return (
+    <th scope="col" className={`hz-col-r${n}`}>
+      <i className={`hz-marca-r${n}`} aria-hidden="true" />
+      R{n}
+    </th>
+  )
+}
 
 /**
  * Proyector: los proyectos vivos lado a lado en una sola tabla para que todo quepa en 1080 px de alto.
- * Por proyecto: promedio R1, promedio R2 y distribución 1-3-5-7-9 de la ronda en foco.
+ * Por proyecto: promedio R1 y R2 de cada criterio y la fila «Total» (eje X + eje Y, del servidor).
  */
 export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: Vista }) {
-  const enFoco = rondaEnFoco(datos, vista)
-  // Antes de la ronda 2 la columna R2 solo diría "Sin votos" en cada fila: no se muestra.
-  const conR2 = hayVotosEnRonda(datos, 2) || (datos.sala?.ronda_actual ?? 0) >= 2
-  const cols = conR2 ? 3 : 2
-  const vivos = datos.proyectos_vivos.map((p, i) => ({
-    p,
-    r1: rondaDe(p, 1),
-    r2: rondaDe(p, 2),
-    color: COLORES.vivos[i % COLORES.vivos.length],
-    colorTexto: COLORES.vivosTexto[i % COLORES.vivosTexto.length],
-  }))
-  const prom = (r: RondaVivo | null, c: CriterioId) => r?.promedios?.[c] ?? null
-  const claseR = (n: 1 | 2) => (vista === n || vista === 'comparacion' ? 'hz-foco' : undefined)
-
-  const filaResumen = (etiqueta: string, titulo: string | undefined, campo: 't2m' | 'eje_x' | 'eje_y') => (
-    <tr key={campo}>
+  const conR2 = mostrarR2(datos)
+  const vivos = datos.proyectos_vivos.map((p) => ({ p, r1: rondaDe(p, 1), r2: rondaDe(p, 2) }))
+  const foco = (n: 1 | 2) => vista === n || vista === 'comparacion'
+  const fila = (clave: string, etiqueta: string, titulo: string | undefined, valor: (r: RondaVivo | null) => number | null | undefined) => (
+    <tr key={clave}>
       <th scope="row" title={titulo}>
         {etiqueta}
       </th>
       {vivos.map(({ p, r1, r2 }) => [
-        <td key={`${p.id}1`} className={claseR(1)}>
-          {numero(r1?.[campo])}
+        <td key={`${p.id}1`} className={foco(1) ? 'hz-ini hz-foco' : 'hz-ini'}>
+          {cifraRonda(r1, valor(r1))}
         </td>,
         conR2 && (
-          <td key={`${p.id}2`} className={claseR(2)}>
-            {numero(r2?.[campo])}
+          <td key={`${p.id}2`} className={foco(2) ? 'hz-foco' : undefined}>
+            {cifraRonda(r2, valor(r2))}
           </td>
         ),
-        <td key={`${p.id}d`} />,
       ])}
     </tr>
   )
+  const prom = (c: CriterioId) => (r: RondaVivo | null) => r?.promedios?.[c]
 
   return (
     <section className="hz-comparada" aria-labelledby="hz-comparada-t">
@@ -47,75 +44,24 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
         Promedios por criterio
       </h2>
       <table className="hz-tabla">
-        <caption className="hz-oculto">
-          Promedio {conR2 ? 'de la ronda 1 y la ronda 2' : 'de la ronda 1'} por criterio y proyecto, con la distribución de votos de la ronda {enFoco}
-        </caption>
+        <caption className="hz-oculto">Promedio {conR2 ? 'de la ronda 1 y la ronda 2' : 'de la ronda 1'} por criterio y proyecto, y total</caption>
         <thead>
           <tr>
             <td />
-            {vivos.map(({ p, color, colorTexto }) => (
-              <th key={p.id} scope="colgroup" colSpan={cols} className="hz-col-proy">
-                <span className="hz-punto" style={{ background: color }} aria-hidden="true" />
-                <span style={{ color: colorTexto }}>{p.nombre}</span>
+            {vivos.map(({ p }) => (
+              <th key={p.id} scope="colgroup" colSpan={conR2 ? 2 : 1} className="hz-col-proy">
+                {p.nombre}
                 <span className="hz-panel-meta"> TAM {p.tam}</span>
               </th>
             ))}
           </tr>
           <tr>
             <th scope="col">Criterio</th>
-            {vivos.map(({ p }) => [
-              <th key={`${p.id}1`} scope="col">
-                R1
-              </th>,
-              conR2 && (
-                <th key={`${p.id}2`} scope="col">
-                  R2
-                </th>
-              ),
-              <th key={`${p.id}d`} scope="col" className="hz-th-dist">
-                Votos R{enFoco}
-              </th>,
-            ])}
+            {vivos.map(({ p }) => [<ColRonda key={`${p.id}1`} n={1} />, conR2 && <ColRonda key={`${p.id}2`} n={2} />])}
           </tr>
         </thead>
-        <tbody>
-          {datos.criterios.map((c) => (
-            <tr key={c.id}>
-              <th scope="row" title={c.nombre}>
-                {nombreCorto(c.id, c.nombre)}
-              </th>
-              {vivos.map(({ p, r1, r2 }) => {
-                const rf = enFoco === 1 ? r1 : r2
-                return [
-                  <td key={`${p.id}1`} className={claseR(1)}>
-                    {numero(prom(r1, c.id))}
-                  </td>,
-                  conR2 && (
-                    <td key={`${p.id}2`} className={claseR(2)}>
-                      {numero(prom(r2, c.id))}
-                    </td>
-                  ),
-                  <td key={`${p.id}d`} className="hz-celda-dist">
-                    <MiniDistribucion dist={rf?.distribucion?.[c.id]} criterio={`${p.nombre}, ${c.nombre}`} ronda={enFoco} />
-                  </td>,
-                ]
-              })}
-            </tr>
-          ))}
-        </tbody>
-        <tbody className="hz-resumen">
-          {filaResumen('T2M', 'Time to market', 't2m')}
-          {filaResumen('Eje X', datos.ejes?.x?.titulo, 'eje_x')}
-          {filaResumen('Eje Y', datos.ejes?.y?.titulo, 'eje_y')}
-          <tr className="hz-votos">
-            <th scope="row">Votos</th>
-            {vivos.map(({ p, r1, r2 }) => [
-              <td key={`${p.id}1`}>{r1?.n_votos ?? 0}</td>,
-              conR2 && <td key={`${p.id}2`}>{r2?.n_votos ?? 0}</td>,
-              <td key={`${p.id}d`} />,
-            ])}
-          </tr>
-        </tbody>
+        <tbody>{datos.criterios.map((c) => fila(c.id, nombreCorto(c.id, c.nombre), c.nombre, prom(c.id)))}</tbody>
+        <tbody className="hz-resumen">{fila('total', 'Total', 'Eje X más eje Y', (r) => r?.total)}</tbody>
       </table>
     </section>
   )

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DatosTablero } from './tipos'
-import { INTERVALO_POLLING_MS, pedirTablero } from './logica'
+import { INTERVALO_POLLING_MS, esSinPermiso, pedirTablero } from './logica'
 
 export interface EstadoPolling {
   datos: DatosTablero | null
@@ -10,7 +10,8 @@ export interface EstadoPolling {
 
 /**
  * Pide la URL cada 2,5 s con If-None-Match. Con 304 no toca el estado (sin parpadeo).
- * Ante un error conserva los últimos datos y muestra el aviso; reintenta solo.
+ * Ante un error conserva los últimos datos y muestra el aviso; reintenta solo, salvo ante 401 o 403
+ * (enlace sin permiso: reintentar no lo arregla).
  */
 export function usePollingTablero(url: string | null, intervalo = INTERVALO_POLLING_MS): EstadoPolling {
   const [estado, setEstado] = useState<EstadoPolling>({ datos: null, error: null, cargando: !!url })
@@ -37,6 +38,7 @@ export function usePollingTablero(url: string | null, intervalo = INTERVALO_POLL
           setEstado((e) => (e.error || e.cargando ? { ...e, error: null, cargando: false } : e))
         } else {
           setEstado((e) => ({ ...e, error: { status: r.status, codigo: r.codigo, mensaje: r.mensaje }, cargando: false }))
+          if (esSinPermiso(r.status)) return
         }
       } catch {
         if (!vivo) return
