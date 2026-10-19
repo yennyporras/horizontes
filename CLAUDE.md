@@ -61,8 +61,11 @@ Detalle, comandos y variables en `docs/STACK.md`.
 - **xlsx**: solo si hay que releer las plantillas Excel del plan B.
 
 ## Identidad visual
-- Azul Estratek `#1C4587`, azul medio `#3F7CC8`, cielo de rúbricas `#00A3FF`; ronda 1 verde `--hz-r1 #1F7A3A` (hueco) y ronda 2 rojo `--hz-r2 #C62828` (sólido), siempre con el texto «R1»/«R2».
-- Tipografía: Montserrat. Móvil primero (360 px) y proyector (1920 px). Accesible (AA) y con foco visible.
+- Ley de diseño: `docs/marca/FAMILIA_ESTRATEK.md` (familia Estratek, aprobada por Paola). Detalle de tokens y contrastes en `docs/DISENO.md`; valores en `web/shared/ui/tokens.css` (fuera de ahí no hay colores en duro).
+- Paleta exacta de estratek.com.co: carbón `#141414`, hielo `#DCECFF`, azul Estratek `#3487FF` (acción sobre carbón, texto carbón encima) y azul profundo `#1A66D6` (acción sobre claro, texto blanco encima), degradado violeta → azul → verde agua solo en líneas, bordes y progreso. El azul es el único color de acción. Acento de Horizontes: verde agua `#00CDA1` (glifo, línea y gráficos propios; nunca acción ni estado).
+- Temas por contexto: **claro** por defecto (celular y panel) y **carbón** con `data-tema="carbon"` en el elemento raíz de la vista (landing y tablero). Mismos tokens `--hz-*`, distinto valor.
+- Rondas por tema, siempre con el texto «R1»/«R2»: R1 verde hueco (`#1B7F3A` claro, `#3FB25A` carbón) y R2 rojo sólido (`#C62828` con texto blanco en claro, `#F36363` con texto carbón en carbón).
+- Tipografía: Montserrat autoalojada, titulares en 900. Móvil primero (360 px) y proyector (1920 px). Accesible (AA) y con foco visible.
 
 ## Datos personales
 Nombre y correo con fines informativos del taller, con consentimiento según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek). Textos en `server/dominio/consentimiento.ts` y `docs/CONSENTIMIENTO.md` §5.1 (deben coincidir; una prueba lo verifica). Se guarda versión del aviso, fecha, IP y user agent. La IP y la identidad solo las ve el admin; ningún resultado público muestra respuestas individuales ni nombres.
