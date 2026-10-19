@@ -243,6 +243,9 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       // Contraste AA del texto HTML visible (4,5:1; 3:1 para letra grande).
       const fallasAA = await page.evaluate(contrasteAA)
       expect(fallasAA, fallasAA.join('\n')).toEqual([])
+      // R1 verde y R2 rojo: con su etiqueta y forma propia, y contraste suficiente sobre los fondos.
+      const fallasRondas = await page.evaluate(rondasLegibles)
+      expect(fallasRondas, fallasRondas.join('\n')).toEqual([])
 
       if (capturas) await page.screenshot({ path: join(capturas, `tablero-${w}.png`), fullPage: w < 1100 })
 
@@ -305,16 +308,33 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     p.on('response', (res) => res.url().includes('/api/tablero/') && estados.push(res.status()))
     expect(await p.locator('.hz-vacio').textContent()).toContain('Aún no hay votos en la ronda 1')
     expect(await p.locator('.hz-insignia-vivo').textContent()).toBe('En vivo')
+    expect(await p.locator('.hz-franja').textContent()).toBe('Ronda 1 · individual y en silencio')
     // Sin cambios: el servidor responde 304 y el <svg> sigue siendo el mismo nodo (sin parpadeo).
     await p.evaluate(() => ((window as unknown as { __svg: Element }).__svg = document.querySelector('svg.hz-matriz')!))
     await p.waitForTimeout(3000)
     expect(estados).toContain(304)
     expect(await p.evaluate(() => (window as unknown as { __svg: Element }).__svg === document.querySelector('svg.hz-matriz'))).toBe(true)
 
-    // Voto de las 3 personas en los 2 proyectos: aparece el punto y la sala entra en precierre.
+    // Un solo voto por proyecto: bajo el mínimo (anonimato) no hay punto y el aviso dice cuántos faltan.
     const resp = Object.fromEntries(CRITERIOS.map((c) => [c, 7]))
+    const [primero, ...resto] = vivo.tokens
+    for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, primero, pr, 1, resp)).statusCode).toBe(200)
+    await expect
+      .poll(() => p.locator('.hz-vacio').textContent(), { timeout: 10_000, interval: 100 })
+      .toBe('Hace falta al menos 3 votos para mostrar estos resultados')
+    expect(await p.locator('svg.hz-matriz circle.hz-r1').count()).toBe(0)
+    expect(await p.locator('.hz-comparada').textContent()).toContain('Faltan votos')
+    const mesa = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}&mesa=${s2.mesas[0].id}`, '.hz-vacio')
+    expect(await mesa.locator('.hz-vacio').textContent()).toBe('Hace falta al menos 3 votos para mostrar esta mesa')
+    await mesa.context().close()
+    // En el celular (360 px), con «Faltan votos» en las celdas, nada se desborda (triage #5).
+    const cel = await abrir(360, 740, `/tablero/${vivo.id}?t=${vivo.token}`, '.hz-panel')
+    expect(await cel.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'desborde a 360 px').toBeLessThanOrEqual(0)
+    await cel.context().close()
+
+    // Voto de las otras 2 personas: aparece el punto y la sala entra en precierre.
     const t0 = Date.now()
-    for (const tk of vivo.tokens) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 1, resp)).statusCode).toBe(200)
+    for (const tk of resto) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 1, resp)).statusCode).toBe(200)
     await p.waitForSelector('svg.hz-matriz circle.hz-r1', { timeout: 10_000 })
     await p.waitForSelector('.hz-insignia-alerta', { timeout: 10_000 })
     const tVoto = Date.now() - t0
@@ -335,6 +355,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     const vistaActiva = () => p.locator('.hz-segmento [aria-pressed="true"]').textContent()
     await accion(e, vivo.id, 'abrir_ronda_2')
     await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Ronda 2')
+    expect(await p.locator('.hz-franja').textContent()).toBe('Ronda 2 · discusión en la mesa')
     const resp2 = Object.fromEntries(CRITERIOS.map((c) => [c, 3]))
     for (const tk of vivo.tokens) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 2, resp2)).statusCode).toBe(200)
     await p.waitForSelector('svg.hz-matriz circle.hz-r2')
@@ -392,8 +413,24 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     const tp = await inscribirTodos(sp, ids)
     await accion(e, sp.id, 'abrir_ronda_1')
     await votarGolden(tp, 1)
+    // Sala con la ronda 2 abierta y todos ya votaron (franja roja).
+    const s2 = await crearSala(e, 2, 'Taller Foodsume')
+    await accion(e, s2.id, 'abrir_inscripcion')
+    const t2 = await inscribirTodos(s2, ids)
+    await accion(e, s2.id, 'abrir_ronda_1')
+    await votarGolden(t2, 1)
+    await accion(e, s2.id, 'cerrar_ronda_1')
+    await accion(e, s2.id, 'abrir_ronda_2')
+    await votarGolden(t2, 2)
+    // Sala con la ronda 1 abierta y un solo voto por proyecto: bajo el mínimo de votos.
+    const sm = await crearSala(e, 1, 'Taller Foodsume')
+    await accion(e, sm.id, 'abrir_inscripcion')
+    const tm = await inscribirTodos(sm, ['a', 'b', 'c'])
+    await accion(e, sm.id, 'abrir_ronda_1')
+    const resp = Object.fromEntries(CRITERIOS.map((c) => [c, 7]))
+    for (const pr of ['insumex', 'nutriwhat']) await votar(e, tm.get('a')!, pr, 1, resp)
 
-    const url = (id: string, token: string, extra = '') => `/tablero/${id}?t=${token}${extra}`
+    const url =(id: string, token: string, extra = '') => `/tablero/${id}?t=${token}${extra}`
     const cerrada = url(sc.id, sc.token_tablero)
     const tomar = async (nombre: string, w: number, h: number, ruta: string, preparar?: (p: Page) => Promise<void>) => {
       const p = await abrir(w, h, ruta, 'svg.hz-matriz circle')
@@ -424,6 +461,13 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     await tomar('07-proyector-1280x720.png', 1280, 720, cerrada)
     await tomar('08-mesa-1.png', 1920, 1080, url(sc.id, sc.token_tablero, `&mesa=${sc.mesas[0].id}`))
     await tomar('09-celular-360.png', 360, 740, cerrada)
+    await tomar('10-ronda-2-abierta.png', 1920, 1080, url(s2.id, s2.token_tablero), async (p) => {
+      await p.waitForSelector('.hz-franja-r2')
+    })
+    await tomar('11-minimo-de-votos.png', 1920, 1080, url(sm.id, sm.token_tablero, `&mesa=${sm.mesas[0].id}`), async (p) => {
+      await expect.poll(() => p.locator('.hz-vacio').textContent()).toContain('Hace falta al menos')
+    })
+    await tomar('12-celular-360-ronda-2.png', 360, 740, url(s2.id, s2.token_tablero))
   }, 240_000)
 })
 
@@ -459,6 +503,47 @@ function contrasteAA(): string[] {
     const grande = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700)
     if (ratio < (grande ? 3 : 4.5)) fallas.push(`${ratio.toFixed(2)}:1 "${n.textContent.trim().slice(0, 40)}" (${cs.color} sobre rgb(${bg.slice(0, 3)}))`)
   }
+  return fallas
+}
+
+/**
+ * Corre en el navegador sobre la matriz en Comparación: cada burbuja viva lleva su etiqueta «R1»/«R2»;
+ * R1 es un aro hueco y R2 sólida (se distinguen sin color); el color de cada ronda contrasta 3:1 con
+ * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo blanco.
+ */
+function rondasLegibles(): string[] {
+  const rgb = (s: string) => (s.startsWith('#') ? [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16)) : (s.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number))
+  const lum = ([r, g, b]: number[]) => {
+    const f = (c: number) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+  }
+  const contraste = (a: number[], b: number[]) => {
+    const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m)
+    return (x + 0.05) / (y + 0.05)
+  }
+  const svg = document.querySelector('svg.hz-matriz')!
+  const fondos = [...svg.querySelectorAll('g[clip-path] > rect, g[clip-path] > path')].map((f) => rgb(f.getAttribute('fill')!))
+  const fallas: string[] = []
+  const colorRonda: Record<number, string> = {}
+  for (const n of [1, 2]) {
+    const circulos = [...svg.querySelectorAll<SVGCircleElement>(`circle.hz-r${n}`)]
+    const etiquetas = [...svg.querySelectorAll<SVGTSpanElement>('tspan.hz-etq-ronda')].filter((t) => t.textContent === `R${n}`)
+    if (!circulos.length) fallas.push(`sin burbujas R${n}`)
+    if (etiquetas.length !== circulos.length) fallas.push(`${circulos.length} burbujas R${n} y ${etiquetas.length} etiquetas «R${n}»`)
+    for (const c of circulos) {
+      const cs = getComputedStyle(c)
+      const color = rgb(n === 1 ? cs.stroke : cs.fill)
+      colorRonda[n] = color.join()
+      const opacidad = Number(cs.fillOpacity)
+      if (n === 1 ? opacidad > 0.3 : opacidad < 1) fallas.push(`R${n} de ${c.dataset.proyecto}: relleno ${opacidad} (R1 hueco, R2 sólido)`)
+      for (const f of fondos) if (contraste(color, f) < 3) fallas.push(`R${n} ${contraste(color, f).toFixed(2)}:1 sobre rgb(${f})`)
+    }
+    for (const t of etiquetas) {
+      const r = contraste(rgb(getComputedStyle(t).fill), [255, 255, 255])
+      if (r < 4.5) fallas.push(`texto «R${n}» ${r.toFixed(2)}:1 sobre su halo`)
+    }
+  }
+  if (colorRonda[1] === colorRonda[2]) fallas.push('R1 y R2 del mismo color')
   return fallas
 }
 
