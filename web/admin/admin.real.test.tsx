@@ -95,7 +95,9 @@ describe('panel admin contra la API real', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    expect(screen.getByRole('rowheader', { name: 'INSUMEX' })).toBeTruthy()
+    const tabla = screen.getByRole('table', { name: 'INSUMEX' })
+    expect(within(tabla).getByRole('rowheader', { name: 'Total' })).toBeTruthy()
+    expect(within(tabla).getAllByRole('rowheader')).toHaveLength(7)
 
     await pasar('Cerrar ronda 1', 'Ronda 1 cerrada')
     await pasar('Abrir ronda 2', 'Ronda 2 abierta')
@@ -112,12 +114,17 @@ describe('panel admin contra la API real', () => {
     const { salaId, mesas } = await crearSalaDesdePanel('Config real', 2)
     // Configuración
     fireEvent.click(nav().getByText('Configuración'))
-    fireEvent.click(await screen.findByLabelText(/Todos ven la sala completa/))
-    await screen.findByText('Ahora todos ven el resultado de toda la sala.')
-    fireEvent.click(screen.getByLabelText(/Tablero en vivo/))
-    await screen.findByText('Tras votar, el participante ve el tablero en vivo.')
+    // Se elige lo contrario de lo que trae la sala nueva (el valor por defecto cambia con el acta A2) para que el clic sea un cambio.
+    const sala = (await screen.findByLabelText(/Todos ven la sala completa/)) as HTMLInputElement
+    const enVivo = screen.getByLabelText(/Tablero en vivo/) as HTMLInputElement
+    const [eraSala, eraEnVivo] = [sala.checked, enVivo.checked]
+    const esperado = { alcance_resultados: eraSala ? 'mesa' : 'sala', vista_participante: eraEnVivo ? 'registrado' : 'en_vivo' }
+    fireEvent.click(eraSala ? screen.getByLabelText(/Cada mesa ve su resultado/) : sala)
+    await screen.findByText(eraSala ? 'Ahora cada mesa ve solo su resultado.' : 'Ahora todos ven el resultado de toda la sala.')
+    fireEvent.click(eraEnVivo ? screen.getByLabelText(/Voto registrado/) : enVivo)
+    await screen.findByText(/^Tras votar, el participante ve/)
     const r = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
-    expect(r.json().sala.config).toMatchObject({ alcance_resultados: 'sala', vista_participante: 'en_vivo' })
+    expect(r.json().sala.config).toMatchObject(esperado)
 
     // Cierre programado de la ronda en hora Bogotá: el servidor lo aplica al llegar la hora.
     fireEvent.change(screen.getByLabelText('Cerrar la ronda abierta el'), { target: { value: '2026-10-20T14:30' } })

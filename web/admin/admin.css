@@ -103,7 +103,7 @@
   margin-bottom: 20px;
   background: #fff;
 }
-.hz-admin .rejilla { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.hz-admin .rejilla { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
 .hz-admin .encabezado-sala { margin-bottom: 16px; }
 .hz-admin .vacio { color: var(--a-tinta-3); font-style: italic; }
 .hz-admin .pista { color: var(--a-tinta-3); font-size: 14px; }
@@ -326,3 +326,15 @@
   .hz-admin .qr-tarjeta img { width: 85mm; height: 85mm; }
   @page { size: A4; margin: 6mm; }
 }
+
+/* Resultados por ronda (acta P3): R1 hueco en verde, R2 sólido en rojo, siempre con su texto */
+.hz-admin .ronda { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
+.hz-admin .ronda::before { content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.hz-admin .ronda--1 { color: var(--hz-r1, #1f7a3a); }
+.hz-admin .ronda--1::before { border: 2px solid currentColor; }
+.hz-admin .ronda--2 { color: var(--hz-r2, #c62828); }
+.hz-admin .ronda--2::before { background: currentColor; }
+.hz-admin .tabla-resultado caption { text-align: left; font-weight: 700; font-size: 16px; color: var(--a-azul); padding-bottom: 4px; }
+.hz-admin .tabla-resultado tbody th { font-weight: 500; }
+.hz-admin .tabla-resultado .fila-total th,
+.hz-admin .tabla-resultado .fila-total td { font-weight: 800; color: var(--a-azul); border-top: 2px solid var(--a-azul); border-bottom: 0; }

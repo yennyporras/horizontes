@@ -24,12 +24,18 @@ export type EstadoSala =
   | 'r2_cerrada'
   | 'cerrada'
 
+export type Pais = 'CO' | 'PE' | 'GT'
+export type ZonaHoraria = 'America/Bogota' | 'America/Lima' | 'America/Guatemala'
+
 export interface ConfigSala {
   alcance_resultados: 'mesa' | 'sala'
   vista_participante: 'registrado' | 'en_vivo'
   revelar_hojas: boolean
   cierre_programado_ronda_at: string | null
   cierre_programado_sala_at: string | null
+  /** R4_CONTRATO C4: si faltan, el servidor usa CO y la zona del país. */
+  pais?: Pais
+  zona_horaria?: ZonaHoraria
 }
 
 export interface SalaResumen {
@@ -63,6 +69,9 @@ export interface Participante {
   activo: boolean
   completo_ronda: boolean
   consentimiento_at: string
+  /** R4_CONTRATO C8: solo en el panel, nunca en vistas públicas. */
+  ip?: string | null
+  pais?: string
 }
 
 export interface Evento {
@@ -97,14 +106,17 @@ export type Accion =
 export interface RondaVivo {
   ronda: number
   n_votos: number
-  t2m: number | null
-  eje_x: number | null
-  eje_y: number | null
+  promedios: Record<string, number> | null
+  /** R4_CONTRATO C1: eje X + eje Y, calculado en el servidor; null sin votos o bajo el mínimo. */
+  total?: number | null
+  bajo_minimo?: boolean
 }
 
 export interface TableroResumen {
   version: string
   preliminar?: boolean
-  alcance: { tipo: 'sala' | 'mesa'; mesa_id?: string; mesa_nombre?: string }
+  alcance: { tipo: 'sala' | 'mesa'; mesa_id?: string | null; mesa_nombre?: string | null }
+  criterios: { id: string; nombre: string }[]
   proyectos_vivos: { id: string; nombre: string; rondas: RondaVivo[] }[]
+  minimo_votos?: number
 }

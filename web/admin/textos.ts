@@ -1,23 +1,37 @@
 import seed from '../../data/seed_foodsume.json'
-import type { Accion, EstadoSala } from './tipos'
+import type { Accion, EstadoSala, Pais, ZonaHoraria } from './tipos'
 
 export const PERFILES: { id: string; nombre: string }[] = seed.perfiles
 
-// Bogotá es UTC-5 todo el año (sin horario de verano).
-const BOGOTA_MS = 5 * 3600 * 1000
+/** País de la sala (R4_CONTRATO C4) con su zona horaria por defecto. */
+export const PAISES: Record<Pais, { nombre: string; zona: ZonaHoraria }> = {
+  CO: { nombre: 'Colombia', zona: 'America/Bogota' },
+  PE: { nombre: 'Perú', zona: 'America/Lima' },
+  GT: { nombre: 'Guatemala', zona: 'America/Guatemala' },
+}
 
-/** ISO con zona → valor de <input type="datetime-local"> en hora Bogotá ("2026-10-20T18:00"). */
-export function isoABogotaLocal(iso: string | null): string {
+// Ninguna de las tres zonas tiene horario de verano: el desfase es fijo.
+export const ZONAS: Record<ZonaHoraria, { nombre: string; horas: number }> = {
+  'America/Bogota': { nombre: 'Bogotá (UTC-5)', horas: -5 },
+  'America/Lima': { nombre: 'Lima (UTC-5)', horas: -5 },
+  'America/Guatemala': { nombre: 'Guatemala (UTC-6)', horas: -6 },
+}
+
+/** Zona de la sala: la configurada o la del país (Colombia si no hay ninguna). */
+export const zonaSala = (c: { pais?: Pais; zona_horaria?: ZonaHoraria }): ZonaHoraria => c.zona_horaria ?? PAISES[c.pais ?? 'CO'].zona
+
+/** ISO con zona → valor de <input type="datetime-local"> en la hora de la zona ("2026-10-20T18:00"). */
+export function isoAHoraLocal(iso: string | null, zona: ZonaHoraria = 'America/Bogota'): string {
   if (!iso) return ''
   const t = new Date(iso).getTime()
   if (Number.isNaN(t)) return ''
-  return new Date(t - BOGOTA_MS).toISOString().slice(0, 16)
+  return new Date(t + ZONAS[zona].horas * 3600 * 1000).toISOString().slice(0, 16)
 }
 
-/** Valor de <input type="datetime-local"> leído como hora Bogotá → ISO con zona -05:00. */
-export function bogotaLocalAIso(valor: string): string | null {
+/** Valor de <input type="datetime-local"> leído en la hora de la zona → ISO con su desfase ("-05:00"). */
+export function horaLocalAIso(valor: string, zona: ZonaHoraria = 'America/Bogota'): string | null {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(valor)) return null
-  return `${valor}:00-05:00`
+  return `${valor}:00-${String(-ZONAS[zona].horas).padStart(2, '0')}:00`
 }
 
 export const nombrePerfil = (id: string) => PERFILES.find((p) => p.id === id)?.nombre ?? id
@@ -135,8 +149,8 @@ export function rutaApiTablero(salaId: string, urlTablero: string, mesaId?: stri
 export const decimal = (n: number | null | undefined, d = 2) =>
   n === null || n === undefined ? 'Sin votos' : n.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d })
 
-export const fechaHora = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'medium', timeStyle: 'short' }) : 'Sin definir'
+export const fechaHora = (iso: string | null, zona: ZonaHoraria = 'America/Bogota') =>
+  iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, dateStyle: 'medium', timeStyle: 'short' }) : 'Sin definir'
 
 const TEXTO_EVENTO: Record<string, string> = {
   sala_creada: 'Sala creada',
