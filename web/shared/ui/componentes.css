@@ -242,6 +242,8 @@ body { margin: 0; }
 .hz-insignia--neutra { background: var(--hz-h2); color: var(--hz-azul); }
 .hz-insignia--ok { background: var(--hz-ok-fondo); color: var(--hz-ok); }
 .hz-insignia--alerta { background: var(--hz-alerta-fondo); color: var(--hz-alerta); }
+.hz-insignia--r1 { background: var(--hz-fondo); color: var(--hz-r1); outline: 1.5px solid var(--hz-r1); outline-offset: -1.5px; }
+.hz-insignia--r2 { background: var(--hz-r2); color: var(--hz-fondo); }
 
 /* ── Hoja (tarjeta con elevación, solo la activa) ───── */
 .hz-hoja {
