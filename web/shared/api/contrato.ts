@@ -171,7 +171,8 @@ export interface Tablero {
   progreso: { inscritos: number; completos: number; precierre: boolean; por_mesa: (ProgresoMesa & { mesa_id: string; nombre: string })[] }
   ejes: Record<'x' | 'y', { titulo: string; subtitulo: string; min: number; max: number }>
   grafico: { titulo: string; horizontes: { id: string; radio: number | null }[]; etiquetas_horizonte?: Record<string, [number, number]>; nota_horizontes?: string; tam_a_radio?: string }
-  criterios: { id: CriterioId; nombre: string }[]
+  /** `pregunta` y `rubrica` (mismo formato que en `/api/yo`) solo llegan con `config.modo_preguntas = 'guiado'`. */
+  criterios: { id: CriterioId; nombre: string; pregunta?: string; rubrica?: Rubrica[] }[]
   proyectos_fijos: (ProyectoTablero & { t2m: number; eje_x: number; eje_y: number; total?: number })[]
   proyectos_vivos: (ProyectoTablero & { rondas: RondaVivo[] })[]
   preliminar: boolean
