@@ -50,7 +50,7 @@ Coolify construye desde GitHub con la GitHub App `coolify-estratek`.
 - Revoca los tokens personales de GitHub que se hayan usado para empujar a `yennyporras/horizontes` y crea uno nuevo (o usa la sesión de GitHub Desktop / `gh auth login`) con la cuenta que tenga acceso a `<org>`.
 
 ## 6. Proteger `main`
-Hazlo cuando ya no corran rondas de agentes: hoy `tools/sync.ps1` integra y publica directo a `main`.
+Desde la versión 1.0.0 todo cambio entra a `main` por pull request con la CI en verde (ver `README.md`, «Flujo de trabajo»).
 1. Repo → **Settings** → **Rules** → **Rulesets** → **New branch ruleset**: nombre `main`, **Enforcement: Active**, *Target branches* → **Include default branch**.
 2. Marca **Restrict deletions**, **Block force pushes** y **Require a pull request before merging** (1 aprobación).
 3. **Bypass list**: agrega a Paola (Owner) solo si necesita publicar sin PR en una emergencia.

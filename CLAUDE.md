@@ -1,71 +1,71 @@
 # Horizontes · Herramienta de priorización de portafolio (Estratek)
 
 Lee este archivo completo antes de tocar código. Es la fuente de verdad operativa del proyecto.
-Orden de lectura obligatorio en cada sesión nueva: `CLAUDE.md` → `docs/SPEC.md` → `docs/CONTRATO_API.md` → `docs/MODELO_DATOS.md` → `docs/DECISIONES.md` → tu prompt en `prompts/`.
+Orden de lectura en cada sesión nueva: `CLAUDE.md` → `README.md` → `docs/SPEC.md` → `docs/CONTRATO_API.md` → `docs/MODELO_DATOS.md` → `docs/DECISIONES.md`. Las decisiones del 16-oct que mandan sobre la SPEC están en `docs/ACTA_2026-10-16.md`.
 
-## Qué estamos construyendo
-App web para el taller "Portafolio por Horizontes" de Estratek. Los participantes leen el caso Foodsume en su celular, reciben una hoja de información según su perfil, y califican 2 proyectos vivos (INSUMEX y NUTRIWHAT) en 6 criterios con escala 1-3-5-7-9. El motor promedia por criterio, calcula eje X y eje Y, y la matriz de burbujas muestra los 2 vivos moviéndose entre la ronda 1 y la ronda 2 sobre 8 proyectos fijos.
-
-Fecha límite: 2 días. Se trabaja en rondas autónomas de ~4 horas con 4 terminales en paralelo.
+## Qué es
+App web para el taller «Portafolio por Horizontes» de Estratek. Los participantes entran desde la landing (`/`) o el QR de su mesa, leen el caso Foodsume en el celular, reciben una hoja según su perfil y califican 2 proyectos vivos (INSUMEX y NUTRIWHAT) en 6 criterios con escala 1-3-5-7-9, en dos rondas: R1 individual y en silencio, R2 con discusión en la mesa. El motor promedia por criterio, calcula eje X, eje Y y su total, y la matriz de burbujas muestra los 2 vivos moviéndose de R1 a R2 sobre 8 proyectos fijos.
 
 ## Stack
-> Fijado por R0-T1 (16-oct). Detalle, comandos y variables en `docs/STACK.md`.
-
-- Repo plantilla: IRMI en `../irmi` (mismo stack, mismo despliegue con Docker + Coolify en el servidor cloud de Hostinger, mismo componente de página de consentimiento; el texto legal es el de Estratek).
+Detalle, comandos y variables en `docs/STACK.md`.
 - Backend: Node 24 + Fastify 5 + TypeScript (con `tsx`) · Base de datos: SQLite (`node:sqlite`, archivo en volumen) · Frontend: React 18 + Vite 6 + react-router 7 + TypeScript, una sola SPA.
-- Instalar `npm install` · desarrollo con mocks `npm run dev` · API real `npm run dev:api` · pruebas `tools/test.sh` · build `npm run build`.
+- `npm install` · desarrollo con mocks `npm run dev` · API real `npm run dev:api` · pruebas `bash tools/test.sh` · build `npm run build`.
 - Tiempo real = polling cada 2,5 s con `version` (ETag / If-None-Match → 304). Sin websockets.
-- Dominio: `horizontes.estratek.com.co` (staging: `staging-horizontes.estratek.com.co`).
+- Despliegue: Docker + Coolify en el VPS de Hostinger (`docs/DESPLIEGUE.md`, `tools/deploy.sh`). Dominios: `horizontes.estratek.com.co` y `staging-horizontes.estratek.com.co`; `horizontes.com.co` pendiente (`HZ_DOMINIO_PROD`).
 
-## Reglas de autonomía (sesiones de 4 horas)
-1. No preguntes. Decide con `docs/SPEC.md`. Si algo no está cubierto, toma la opción más simple que respete el contrato y regístrala en `docs/DECISIONES.md` (fecha, terminal, decisión, por qué).
-2. Solo escala (escribe en `docs/BLOQUEOS.md` y sigue con otra tarea) si necesitas: credenciales, acceso al repo del IRMI, panel de Hostinger/DNS, o un cambio al contrato de API que rompa a otra terminal.
-3. El contrato de API (`docs/CONTRATO_API.md`) es ley. Si necesitas cambiarlo: agrega, no rompas (campos nuevos opcionales). Anótalo en `docs/DECISIONES.md` con prefijo `CONTRATO:`.
-4. Commits pequeños y frecuentes en tu rama (`t1-backend`, `t2-participante`, `t3-tablero`, `t4-admin`). Cada uno con pruebas en verde. Al final de la ronda: pruebas en verde y bitácora completa; la integración a `main` es automática.
-5. Bitácora `docs/bitacora/R{n}_T{m}.md`: hecho, en curso, pendiente, bloqueos, decisiones, comandos para probar. Al empezar cada ronda lee las bitácoras de la ronda anterior de las 4 terminales y `docs/bitacora/S_R{n-1}.md` en main.
-6. Usa subagentes para trabajo paralelizable dentro de tu área (pruebas, revisión, refactor). No abras áreas de otra terminal.
+## Estructura del código
+| Carpeta | Contenido |
+|---|---|
+| `server/` | API Fastify, máquina de estados de la sala, precierre, cierres programados, auth admin (superadmin y admin), migraciones, semilla |
+| `shared/motor/` | Motor de cálculo (solo lo usa el servidor) |
+| `web/inicio/` | Landing pública (`/`) |
+| `web/participante/` | Inscripción, consentimiento, caso, hoja, votación y resultados del celular (`/m/:codigo`) |
+| `web/tablero/` | Matriz, R1→R2, tablas y modo proyector (`/tablero/:sala`) |
+| `web/admin/` | Panel del facilitador (`/admin`) |
+| `web/shared/ui/` | Sistema de diseño (tokens y componentes) |
+| `web/shared/api/` | Tipos del contrato de API |
+| `tests/` | Pruebas del servidor, golden del motor, e2e del taller |
+| `tools/` | Pruebas (`test.sh`), desarrollo (`dev.sh`), despliegue (`deploy.sh`) y simulador de carga |
+| `deploy/` | Dockerfile, guía de Coolify y plan B |
+| `data/` | Semilla del caso (solo lectura: textos y pesos aprobados por Sebastian) |
 
-## Entorno
-- Máquina de desarrollo: Windows (PowerShell 5.1). Las rondas las orquestan los scripts `tools/*.ps1`. Tus comandos corren en Git Bash: usa sintaxis bash y rutas con `/`. Producción es Linux en Hostinger: finales de línea LF (ver `.gitattributes`), nada específico de Windows en el código.
+## Flujo de trabajo (desde v1.0.0)
+1. Rama desde `main` con prefijo: `feat/…`, `fix/…`, `docs/…`, `chore/…`, `test/…`. Nunca se trabaja ni se empuja directo a `main`.
+2. Commits pequeños en Conventional Commits, en español: `feat(panel): …`, `fix(servidor): …`.
+3. Antes de abrir el PR: `bash tools/test.sh` en verde. Toda funcionalidad nueva llega con pruebas; nunca se debilita una prueba para esconder un error real.
+4. Pull request a `main`. La CI (`.github/workflows/ci.yml`) debe quedar en verde. Merge commit.
+5. Las versiones siguen SemVer, con tag `vX.Y.Z` y entrada en `CHANGELOG.md`.
+6. Producción se despliega a mano desde Coolify (Auto Deploy apagado). Staging puede seguir a `main`.
+7. Decisiones de producto o de contrato: `docs/DECISIONES.md` (fecha, decisión y por qué; prefijo `CONTRATO:` si cambia la API).
 
-## Modo autónomo (rondas sin supervisión)
-- Cada ronda la ejecuta `tools/ronda.ps1` (o `tools/ronda.sh` en Mac/Linux) en modo headless: te reanuda con "Continúa" hasta la hora límite. Nadie lee tus preguntas.
-- Tu bitácora `docs/bitacora/R{n}_T{m}.md` es tu memoria entre reanudaciones: actualízala tras cada entregable. Al cumplir todo, escribe la línea exacta `RONDA COMPLETA`.
-- Nunca hagas checkout de `main`. Para traer lo integrado: `git rebase main` (o `git merge main` si hay conflictos). La integración entre ramas la hace `tools/sync.ps1` al final de cada ronda. No modifiques los scripts de orquestación (`tools/ronda.*`, `lanzar.*`, `sync.*`, `preparar.*`, `estado.*`, `parar.*`).
-- Detén servidores de desarrollo y procesos en segundo plano antes de terminar cada respuesta (si quedan vivos, la sesión no termina).
-- Pruebas: `tools/test.sh` debe existir y salir con 0 en verde; `tools/sync.ps1` lo corre con Git Bash como compuerta.
-
-## Propiedad por terminal (no edites lo que no es tuyo)
-| Terminal | Área | Rutas reales (layout fijado en R0, ver docs/STACK.md) |
-|---|---|---|
-| T1 Backend | Modelo de datos, motor, API, máquina de estados, precierre, cierres programados, auth admin con roles (superadmin y admin), semilla, simulador de carga | `server/`, `shared/motor/`, `tools/`, `tests/`, `web/shared/api/`, archivos raíz (`package.json`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.json`, `web/App.tsx`, `web/main.tsx`, `web/index.html`) |
-| T2 Participante | Inscripción + consentimiento, lectura del caso y hoja, votación, voto registrado / en vivo. Dueña del sistema de diseño | `web/participante/` (entrada `PaginaMesa.tsx`), `web/shared/ui/` |
-| T3 Tablero | Matriz de burbujas, R1→R2, promedios y dispersión por criterio, progreso, alcance mesa/sala, vista proyector | `web/tablero/` (entrada `PaginaTablero.tsx`) |
-| T4 Admin + Infra | Panel admin, QR por mesa, config de visibilidad, rondas, cierres programados, export, despliegue, QA plugin | `web/admin/` (entrada `PaginaAdmin.tsx`), `deploy/`, `QA-tests/` |
-
-Compartido de solo lectura para todos: `data/`, `docs/`, `mocks/`, `web/shared/api/` (cliente generado del contrato, dueño T1). Pruebas de UI: junto al código de cada área (`web/<area>/**/*.test.tsx`). Dependencias npm nuevas: commit aparte que solo toque `package.json` y `package-lock.json`, anotado en `docs/DECISIONES.md`.
+## Reglas
+- El contrato de API (`docs/CONTRATO_API.md`) es ley: agrega, no rompas (campos nuevos opcionales).
+- Nada de secretos en el repo. No leas `.env`, `.env.*` ni `deploy/.env.deploy`.
+- Nada contra producción sin pedido explícito de Paola.
+- Producción es Linux: finales de línea LF (`.gitattributes`), nada específico de Windows en el código.
+- Dependencias npm nuevas: commit aparte que solo toque `package.json` y `package-lock.json`, anotado en `docs/DECISIONES.md`.
+- Detén servidores de desarrollo y procesos en segundo plano al terminar.
 
 ## Motor (no se reinterpreta)
 - `t2m = alistamiento_tecnico·0,30 + conocimiento_cliente·0,35 + regulacion·0,35`
 - `eje_x = t2m·0,6 + capacidades_organizacionales·0,4`
 - `eje_y = alineacion_core·0,7 + inversion_requerida·0,3`
-- Entradas = promedio simple por criterio de las respuestas del alcance (mesa o sala) en esa ronda. Los valores no se invierten.
-- Pesos y textos viven en `data/seed_foodsume.json`. El motor vive solo en el servidor; el frontend nunca recalcula.
-- `tests/golden/motor_golden.json` debe pasar al 100 % antes de cualquier merge que toque el motor: fijos y caso Nicolai con tolerancia 1e-9; prueba sintética con tolerancia 0,001 (sus esperados vienen redondeados a 3 decimales; ahí `proyecto` viene en mayúsculas: INSUMEX = `insumex`).
+- `total = eje_x + eje_y` (fila «Total» de las tablas, acta del 16-oct).
+- Entradas = promedio simple por criterio de las respuestas del alcance (mesa o sala) en esa ronda. Los valores no se invierten. Con menos de 3 votos el alcance no muestra resultados (`MINIMO_VOTOS`).
+- Pesos y textos viven en `data/seed_foodsume.json`; cada sala guarda su copia en `contenido_sala`. El motor vive solo en el servidor; el frontend nunca recalcula.
+- `tests/golden/motor_golden.json` debe pasar al 100 % antes de cualquier merge que toque el motor.
 
-## Skills y plugins instalados (úsalos, no los reinventes)
-- **voz-y-tono-estratek**: todo texto visible al usuario (botones, pantallas, aviso de privacidad, correos, guía del facilitador). Regla dura: cero rayas (—) en textos de la app.
-- **frontend-design**: T2 lo lee antes de crear el sistema de diseño; T3 y T4 antes de su primera pantalla.
-- **qa-my-app** (plugin): `/qa-my-app:init` sobre staging (R2-T4), `/qa-my-app:verify` después de cada cambio de pantalla (todas), `/qa-my-app:run-all` en R3, `/qa-my-app:status` al abrir cada ronda.
-- **xlsx**: solo si hay que releer las plantillas Excel.
+## Skills útiles
+- **voz-y-tono-estratek**: todo texto visible al usuario. Regla dura: cero rayas (—) en textos de la app.
+- **frontend-design** / **design-taste-frontend**: antes de crear o rediseñar pantallas.
+- **xlsx**: solo si hay que releer las plantillas Excel del plan B.
 
-## Identidad visual (punto de partida, T2 la cierra con frontend-design)
-- Azul Estratek `#1C4587`, azul medio `#3F7CC8`, cielo de rúbricas `#00A3FF`, fondos de horizontes en azules claros como el deck.
-- Tipografía de marca: Montserrat.
-- Lo memorable es la matriz y el movimiento R1→R2. Todo lo demás, sobrio. Móvil primero (360 px). Accesible y con foco visible.
+## Identidad visual
+- Azul Estratek `#1C4587`, azul medio `#3F7CC8`, cielo de rúbricas `#00A3FF`; ronda 1 verde `--hz-r1 #1F7A3A` (hueco) y ronda 2 rojo `--hz-r2 #C62828` (sólido), siempre con el texto «R1»/«R2».
+- Tipografía: Montserrat. Móvil primero (360 px) y proyector (1920 px). Accesible (AA) y con foco visible.
 
-## Datos personales (Ley 1581)
-Se pide nombre y correo solo para fines informativos (decisión de Paola, 16-oct). Se reutiliza el componente de consentimiento del IRMI con la Política de Tratamiento de Datos Personales de Estratek (enlace en `POLITICA_PRIVACIDAD_URL`). Sin consentimiento aceptado no hay inscripción. Se guarda versión del aviso, fecha, IP y user agent. Ningún resultado muestra respuestas individuales ni nombres.
+## Datos personales
+Nombre y correo con fines informativos del taller, con consentimiento según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek). Textos en `server/dominio/consentimiento.ts` y `docs/CONSENTIMIENTO.md` §5.1 (deben coincidir; una prueba lo verifica). Se guarda versión del aviso, fecha, IP y user agent. La IP y la identidad solo las ve el admin; ningún resultado público muestra respuestas individuales ni nombres.
 
 ## Definición de terminado (por pantalla)
-Funciona contra la API real · móvil 360 px y proyector 1920 px · estados vacíos y de error con texto útil · `/qa-my-app:verify` en verde · bitácora escrita.
+Funciona contra la API real · 360 px y 1920 px sin desborde · estados vacíos y de error con texto útil · pruebas en verde · decisiones anotadas.
