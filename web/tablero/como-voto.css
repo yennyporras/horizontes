@@ -1,18 +1,10 @@
 /*
  * «Cómo votó la sala»: lo usan el tablero y el panel. Tamaños en em: crece con la letra de quien lo aloja
  * (≈ 20 px en el proyector de 1920, 16 px en el panel). R1 barra hueca verde, R2 barra sólida roja,
- * siempre con «R1»/«R2» y el conteo en texto.
+ * siempre con «R1»/«R2» y el conteo en texto. Solo tokens semánticos: toma el tema de quien lo aloja
+ * (carbón en el tablero, claro en el panel).
  */
 .hz-cv {
-  --cv-r1: var(--hz-r1, #3fb25a);
-  --cv-r2: var(--hz-r2, #f36363);
-  --cv-tinta: var(--hz-tinta, #edf2ee);
-  --cv-tinta-2: var(--hz-tinta-2, #c8d4ce);
-  --cv-tinta-3: var(--hz-tinta-3, #8a9e96);
-  --cv-azul: var(--hz-azul, #47ebc2);
-  --cv-h1: var(--hz-h1, #1a1a1a);
-  --cv-h3: var(--hz-h3, #2a2a2a);
-  --cv-fondo: var(--hz-fondo, #0e0e0e);
   min-width: 0;
   font-variant-numeric: tabular-nums;
 }
@@ -32,9 +24,9 @@
   margin: 0 0 0.5em;
   padding: 0.5em 0.8em;
   font-weight: 700;
-  color: var(--cv-azul);
-  background: var(--cv-h1);
-  border-left: 4px solid var(--hz-azul-medio, #3f7cc8);
+  color: var(--hz-tinta);
+  background: var(--hz-superficie-1);
+  border-left: 4px solid var(--hz-accion);
   border-radius: 6px;
 }
 .hz-cv-proyectos {
@@ -49,8 +41,8 @@
   margin: 0 0 0.2em;
   font-size: 1.1em;
   font-weight: 800;
-  color: var(--cv-azul);
-  border-bottom: 2px solid var(--cv-h3);
+  color: var(--hz-tinta);
+  border-bottom: 2px solid var(--hz-borde);
 }
 .hz-cv-rejilla {
   display: grid;
@@ -66,14 +58,14 @@
   white-space: nowrap;
 }
 .hz-cv-r1 {
-  color: var(--cv-r1);
+  color: var(--hz-r1);
 }
 .hz-cv-r2 {
-  color: var(--cv-r2);
+  color: var(--hz-r2);
 }
 .hz-cv-n {
   font-weight: 600;
-  color: var(--cv-tinta-2);
+  color: var(--hz-tinta-2);
 }
 .hz-cv-marca {
   display: inline-block;
@@ -84,10 +76,10 @@
   border-radius: 50%;
 }
 .hz-cv-marca-r1 {
-  border: 0.16em solid var(--cv-r1);
+  border: 0.16em solid var(--hz-r1);
 }
 .hz-cv-marca-r2 {
-  background: var(--cv-r2);
+  background: var(--hz-r2);
 }
 /* La escala y las barras comparten las 5 columnas: cada número queda sobre su barra. */
 .hz-cv .hz-cv-escala,
@@ -100,15 +92,15 @@
   font-size: 0.75em;
   font-weight: 700;
   text-align: center;
-  color: var(--cv-tinta-2);
-  border-bottom: 1px solid var(--cv-h3);
+  color: var(--hz-tinta-2);
+  border-bottom: 1px solid var(--hz-borde);
 }
 .hz-cv .hz-cv-crit {
   margin: 0.35em 0 0;
   font-size: 0.8em;
   font-weight: 600;
   line-height: 1.2;
-  color: var(--cv-tinta);
+  color: var(--hz-tinta);
 }
 .hz-cv-col {
   display: flex;
@@ -121,17 +113,17 @@
   font-size: 0.8em;
   font-weight: 800;
   line-height: 1.15;
-  color: var(--cv-tinta);
+  color: var(--hz-tinta);
 }
 .hz-cv-cero {
   font-weight: 600;
-  color: var(--cv-tinta-3);
+  color: var(--hz-tinta-3);
 }
 .hz-cv-pista {
   display: flex;
   align-items: flex-end;
   height: 1.5em;
-  border-bottom: 1px solid var(--cv-tinta-3);
+  border-bottom: 1px solid var(--hz-tinta-3);
 }
 .hz-cv-barra {
   display: block;
@@ -140,18 +132,18 @@
 }
 .hz-cv-barras-r1 .hz-cv-barra {
   min-height: 0.25em;
-  background: var(--cv-fondo);
-  border: 0.14em solid var(--cv-r1);
+  background: var(--hz-fondo);
+  border: 0.14em solid var(--hz-r1);
   border-bottom: 0;
 }
 .hz-cv-barras-r2 .hz-cv-barra {
   min-height: 0.2em;
-  background: var(--cv-r2);
+  background: var(--hz-r2);
 }
 .hz-cv .hz-cv-falta {
   margin: 0;
   padding: 0.3em 0;
   font-size: 0.8em;
   font-weight: 600;
-  color: var(--cv-tinta-2);
+  color: var(--hz-tinta-2);
 }

@@ -4,23 +4,27 @@
 
 const ETIQUETAS_HORIZONTE_DEFECTO = { H1: [1.3, 1.9], H2: [4.3, 4.0], H3: [8.0, 7.6] };
 
-// Paleta sobre el lienzo oscuro del IRMI (tokens de web/shared/ui/tokens.css, con su valor de respaldo).
-// Horizontes de afuera hacia adentro: grafito (H3), azul de marca al 14 % (H2) y al 26 % (H1) sobre el
-// lienzo. R1 y R2 dan al menos 3:1 sobre los tres; el texto claro, más de 4,5:1 sobre su halo oscuro.
+// Paleta de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md): solo tokens semánticos de
+// web/shared/ui/tokens.css, sin valores en duro. El mismo SVG sirve en el tema carbón (tablero) y en el
+// claro (celular y panel): cada var() toma el valor del tema de quien lo aloja.
+// Horizontes de afuera hacia adentro en superficies escalonadas: H3 superficie 1, H2 superficie 2 y
+// H1 superficie 3; su borde, el acento de Horizontes (gráfico propio, §1). R1, R2 y los fijos dan al
+// menos 3:1 sobre las tres; el texto, más de 4,5:1 sobre su halo.
 export const COLORES = {
-  fondoH3: 'var(--hz-superficie-1, #131313)',
-  fondoH2: 'var(--hz-info-fondo, #13262F)',
-  fondoH1: '#183A4E',
-  curva: 'var(--hz-cielo, #1699DB)',
-  rejilla: 'var(--hz-tinta, #EDF2EE)',
-  texto: 'var(--hz-tinta, #EDF2EE)',
-  textoSuave: 'var(--hz-tinta-2, #C8D4CE)',
-  fijo: '#7D8FA9',
-  halo: 'var(--hz-fondo, #0E0E0E)',
+  fondoH3: 'var(--hz-superficie-1)',
+  fondoH2: 'var(--hz-superficie-2)',
+  fondoH1: 'var(--hz-superficie-3)',
+  curva: 'var(--hz-acento-producto-texto)',
+  rejilla: 'var(--hz-tinta)',
+  texto: 'var(--hz-tinta)',
+  textoSuave: 'var(--hz-tinta-2)',
+  // Gris azulado neutro: ni verde ni rojo (rondas) ni azul de acción.
+  fijo: 'var(--hz-tinta-3)',
+  halo: 'var(--hz-fondo)',
   // Colores por ronda. Los proyectos vivos se distinguen por su nombre, no por color;
   // la ronda, por color, forma (R1 hueco, R2 sólido) y la etiqueta «R1»/«R2».
-  r1: 'var(--hz-r1, #3FB25A)',
-  r2: 'var(--hz-r2, #F36363)',
+  r1: 'var(--hz-r1)',
+  r2: 'var(--hz-r2)',
 };
 
 // Los colores van en reglas CSS (los atributos de presentación no aceptan var()), limitadas a cada SVG por su id.
@@ -376,7 +380,7 @@ export function matrizSVG(datos, opciones = {}) {
   partes.push(`<g class="hz-fijos">`);
   for (const f of L.fijos) {
     partes.push(
-      `<circle class="hz-fijo" data-proyecto="${esc(f.id)}" cx="${r2(f.cx)}" cy="${r2(f.cy)}" r="${r2(f.r)}" fill-opacity="0.85" stroke-width="1.5"><title>${esc(f.nombre)} · X ${f.valor.x} · Y ${f.valor.y} · TAM ${esc(f.tam)}</title></circle>`,
+      `<circle class="hz-fijo" data-proyecto="${esc(f.id)}" cx="${r2(f.cx)}" cy="${r2(f.cy)}" r="${r2(f.r)}" stroke-width="1.5"><title>${esc(f.nombre)} · X ${f.valor.x} · Y ${f.valor.y} · TAM ${esc(f.tam)}</title></circle>`,
     );
   }
   partes.push(`</g>`);

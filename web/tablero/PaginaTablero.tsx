@@ -13,6 +13,7 @@ import { usePollingTablero } from './usePollingTablero'
 import { usePantallaCompleta } from './usePantallaCompleta'
 import { insigniaResultado, mensajeVacio, mostrarR2, nombreEstado, preguntaGuiadaActual, urlApiTablero, vistaPorDefecto } from './logica'
 import { useZoomMatriz } from './zoom'
+import { useTemaDocumento } from '../shared/ui'
 import type { DatosTablero, EstadoSala, Vista } from './tipos'
 import './tablero.css'
 
@@ -41,6 +42,8 @@ export default function PaginaTablero() {
   const verMesas = !!token && params.get('vista') === 'mesas'
   const url = sala ? urlApiTablero(sala, { mesa: verMesas ? null : mesa, t: token }) : null
   const { datos, error, cargando } = usePollingTablero(url)
+  // Tema carbón también en <html>: el rebote del desplazamiento y el theme-color del navegador van en carbón.
+  useTemaDocumento('carbon')
 
   // La vista elegida a mano dura hasta que cambie el estado de la sala; entonces vuelve la de defecto.
   // Se guarda con el estado en que se eligió (sin efecto que la borre: un atajo pulsado justo al
@@ -91,7 +94,7 @@ export default function PaginaTablero() {
 
   if (!datos) {
     return (
-      <main className="hz-tablero hz-tablero-solo" data-ruta="tablero">
+      <main className="hz-tablero hz-tablero-solo" data-ruta="tablero" data-tema="carbon">
         {cargando && !error ? (
           <p className="hz-cargando" role="status">
             Cargando el tablero…
@@ -110,6 +113,7 @@ export default function PaginaTablero() {
     <main
       className={['hz-tablero', pantalla.activa && 'hz-pantalla-completa', soloMatriz && !verMesas && 'hz-matriz-sola'].filter(Boolean).join(' ')}
       data-ruta="tablero"
+      data-tema="carbon"
     >
       <Encabezado
         datos={datos}
@@ -223,7 +227,12 @@ function Encabezado({
   return (
     <header className="hz-cab">
       <div className="hz-cab-titulo">
-        <h1>{datos.sala?.nombre ?? 'Tablero'}</h1>
+        <div className="hz-cab-nombre">
+          <h1>{datos.sala?.nombre ?? 'Tablero'}</h1>
+          <p className="hz-firma">
+            Horizontes por Estratek <span className="hz-firma-flecha" aria-hidden="true">»</span>
+          </p>
+        </div>
         <p className="hz-cab-meta">
           <span>{nombreEstado(datos.sala?.estado)}</span>
           <span aria-hidden="true">·</span>
