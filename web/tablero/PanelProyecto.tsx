@@ -2,7 +2,7 @@ import type { DatosTablero, ProyectoVivo, RondaVivo, Vista } from './tipos'
 import { ColRonda } from './TablaComparada'
 import { cifraRonda, delta, mostrarR2, nombreCorto, rondaDe } from './logica'
 
-/** Móvil y tableta: un panel por proyecto con R1, R2 y el cambio, por criterio y en la fila «Total». */
+/** Móvil y tableta: un panel por proyecto con R1, R2 y el cambio por criterio (sin fila «Total», preentrega del 19-oct). */
 export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVivo; datos: DatosTablero; vista: Vista }) {
   const r1 = rondaDe(proyecto, 1)
   const r2 = rondaDe(proyecto, 2)
@@ -33,7 +33,7 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
       </header>
       <table className="hz-tabla">
         <caption className="hz-oculto">
-          Promedios por criterio de {proyecto.nombre} {conR2 ? 'en la ronda 1 y la ronda 2' : 'en la ronda 1'}, y total
+          Promedios por criterio de {proyecto.nombre} {conR2 ? 'en la ronda 1 y la ronda 2' : 'en la ronda 1'}
         </caption>
         <thead>
           <tr>
@@ -51,7 +51,6 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
           </tr>
         </thead>
         <tbody>{datos.criterios.map((c) => fila(c.id, nombreCorto(c.id, c.nombre), c.nombre, (r) => r?.promedios?.[c.id]))}</tbody>
-        <tbody className="hz-resumen">{fila('total', 'Total', 'Eje X más eje Y', (r) => r?.total)}</tbody>
       </table>
     </section>
   )

@@ -12,28 +12,20 @@ const encabezados = (c: HTMLElement) => within(c).getAllByRole('columnheader').m
 
 const filas = (c: HTMLElement) => within(c).getAllByRole('rowheader').map((th) => th.textContent)
 
-test('6 criterios y «Total» del servidor con 2 decimales; sin T2M, ejes ni votos (acta A3 y A4)', () => {
+test('solo los 6 criterios con 2 decimales; sin «Total» (preentrega 19-oct), T2M, ejes ni votos (acta A3 y A4)', () => {
   const datos: DatosTablero = structuredClone(mock)
   datos.proyectos_vivos[0].rondas[0].total = 11.256
-  datos.proyectos_vivos[0].rondas[1].total = 9.5
+  datos.proyectos_vivos[0].rondas[0].promedios!.regulacion = 5.256
   const { container } = render(<TablaComparada datos={datos} vista="comparacion" />)
-  expect(filas(container)).toEqual([...datos.criterios.map((c) => expect.any(String)), 'Total'])
-  expect(filas(container)).toHaveLength(7)
-  expect(container.textContent).not.toMatch(/T2M|Eje X|Eje Y|Votos/)
-  const total = within(container).getByRole('rowheader', { name: 'Total' }).parentElement!
-  expect([...total.querySelectorAll('td')].map((td) => td.textContent).slice(0, 2)).toEqual(['11,26', '9,50'])
+  expect(filas(container)).toEqual(datos.criterios.map((c) => expect.any(String)))
+  expect(filas(container)).toHaveLength(6)
+  expect(container.textContent).not.toMatch(/Total|11,26|T2M|Eje X|Eje Y|Votos/)
+  const regulacion = within(container).getByRole('rowheader', { name: 'Regulación' }).parentElement!
+  expect(regulacion.querySelector('td')!.textContent).toBe('5,26')
   // R1 y R2 se leen sin color: texto y marca de forma distinta.
   expect(encabezados(container).filter((t) => t === 'R2')).toHaveLength(mock.proyectos_vivos.length)
   expect(container.querySelectorAll('.hz-col-r1 .hz-marca-r1')).toHaveLength(mock.proyectos_vivos.length)
   expect(container.querySelectorAll('.hz-col-r2 .hz-marca-r2')).toHaveLength(mock.proyectos_vivos.length)
-})
-
-test('sin «total» del servidor no lo calcula', () => {
-  const datos: DatosTablero = structuredClone(mock)
-  datos.proyectos_vivos.forEach((p) => p.rondas.forEach((r) => delete r.total))
-  const { container } = render(<TablaComparada datos={datos} vista="comparacion" />)
-  const total = within(container).getByRole('rowheader', { name: 'Total' }).parentElement!
-  expect([...total.querySelectorAll('td')].every((td) => td.textContent === 'Sin votos')).toBe(true)
 })
 
 test('antes de la ronda 2 no muestra la columna R2 (solo diría "Sin votos")', () => {
