@@ -140,4 +140,16 @@ ALTER TABLE participantes ADD COLUMN ip VARCHAR(45) NULL;
 ALTER TABLE votos ADD COLUMN ip VARCHAR(45) NULL;
 ALTER TABLE consentimientos ADD COLUMN pais VARCHAR(2) NOT NULL DEFAULT 'CO';
 `,
+  // Rúbricas editables (19-oct): las que el admin marca «Usar también en las salas nuevas». Al crear una sala se
+  // aplican sobre las de la semilla; las salas existentes no cambian (cada una tiene su copia en contenido_sala).
+  `
+CREATE TABLE rubricas_plantilla (
+  plantilla       VARCHAR(40) NOT NULL,
+  criterio_id     VARCHAR(40) NOT NULL,
+  rubrica_json    TEXT        NOT NULL,
+  actualizado_at  DATETIME    NOT NULL,
+  por             VARCHAR(60) NOT NULL,
+  PRIMARY KEY (plantilla, criterio_id)
+);
+`,
 ]

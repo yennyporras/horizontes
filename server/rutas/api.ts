@@ -21,6 +21,7 @@ import { aplicarAccion, cambiarConfig } from '../dominio/estados.js'
 import { detalleSala, editarParticipante, eventosPaginados, exportInscritos, exportVotos, listarSalas, mesasAdmin, salaResumen, urls } from '../dominio/gestion.js'
 import { autenticarParticipante, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
+import { type CambioRubrica, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
 import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
 import { isoEnZona, sha256 } from '../dominio/util.js'
@@ -225,6 +226,12 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     agregarMesas(db, sala.id, Number(req.body?.cantidad))
     return { mesas: mesasAdmin(db, cargarSala(db, sala.id), op.baseUrl) }
   })
+
+  app.get<{ Params: { id: string } }>('/api/admin/salas/:id/rubricas', async (req) => rubricasSala(db, req.params.id))
+
+  app.put<{ Params: { id: string; criterio: string }; Body: CambioRubrica }>('/api/admin/salas/:id/rubricas/:criterio', async (req) =>
+    editarRubrica(db, req.params.id, req.params.criterio, req.body ?? {}, ahora(), por(req)),
+  )
 
   app.get<{ Params: { mesaId: string } }>('/api/admin/mesas/:mesaId/qr.svg', async (req, reply) => {
     const m = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ? OR codigo = ?', req.params.mesaId, req.params.mesaId.toUpperCase())

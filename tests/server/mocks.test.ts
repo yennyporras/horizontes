@@ -36,6 +36,15 @@ describe('servidor de mocks', () => {
     expect(r.json().error.codigo).toBe('CONSENTIMIENTO_REQUERIDO')
   })
 
+  it('rúbricas: la sala del mock tiene votos, se leen pero el PUT responde 409 RUBRICA_CON_VOTOS', async () => {
+    const r = await app.inject('/api/admin/salas/s_demo/rubricas')
+    expect(r.json()).toMatchObject({ editable: false, motivo_no_editable: expect.any(String) })
+    expect(r.json().criterios).toHaveLength(6)
+    const p = await app.inject({ method: 'PUT', url: '/api/admin/salas/s_demo/rubricas/inversion_requerida', payload: { rubrica: [] } })
+    expect(p.statusCode).toBe(409)
+    expect(p.json().error.codigo).toBe('RUBRICA_CON_VOTOS')
+  })
+
   it('mesa inexistente responde 404 MESA_NO_EXISTE', async () => {
     const r = await app.inject('/api/mesas/NOEXISTE')
     expect(r.statusCode).toBe(404)

@@ -114,6 +114,15 @@ CREATE TABLE votos (
 );
 CREATE INDEX ix_votos_sala_ronda ON votos (sala_id, ronda, proyecto_id);
 
+CREATE TABLE rubricas_plantilla (           -- rúbricas que el admin marcó «Usar también en las salas nuevas» (migración 3)
+  plantilla       VARCHAR(40) NOT NULL,      -- foodsume_2026
+  criterio_id     VARCHAR(40) NOT NULL,
+  rubrica_json    TEXT        NOT NULL,      -- [{valor, texto}] en el orden de la semilla
+  actualizado_at  DATETIME    NOT NULL,
+  por             VARCHAR(60) NOT NULL,      -- admin:usuario
+  PRIMARY KEY (plantilla, criterio_id)
+);
+
 CREATE TABLE eventos (                      -- auditoría y bitácora visible al admin
   id        INTEGER PRIMARY KEY,
   sala_id   VARCHAR(16) NOT NULL,
@@ -128,3 +137,4 @@ CREATE TABLE eventos (                      -- auditoría y bitácora visible al
 - Agregados se calculan al leer (datos pequeños). Si el tablero supera 50 ms, cachear por `(sala_id, version, alcance, mesa)`.
 - `version` de la sala sube en la misma transacción de cualquier escritura.
 - Votos de participantes con `activo = false` no cuentan para promedios ni para precierre.
+- `contenido_sala.criterios_json` es la copia de los criterios de cada sala: al crearla sale de la semilla con las rúbricas de `rubricas_plantilla` encima; al duplicarla, de la sala original. El admin cambia sus textos de rúbrica mientras la sala no tenga votos. Reiniciar una ronda o la sala no la toca.
