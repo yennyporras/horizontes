@@ -8,8 +8,6 @@ import { MatrizIlustrada } from './MatrizIlustrada'
 import './inicio.css'
 
 const TITULO = 'Horizontes · Taller de priorización de portafolio · Estratek'
-const DESCRIPCION =
-  'Horizontes es el taller de priorización de portafolio por horizontes de Estratek. Cada mesa califica dos proyectos, los discute y ve en la matriz cómo se movieron de la ronda 1 a la ronda 2.'
 
 const PASOS: { titulo: string; texto: string; ronda?: 'r1' | 'r2' | 'r1r2' }[] = [
   { titulo: 'Escanea el QR o escribe el código', texto: 'Cada mesa tiene su QR. Lo escaneas con la cámara del celular o escribes el código en esta página.' },
@@ -24,17 +22,13 @@ const PASOS: { titulo: string; texto: string; ronda?: 'r1' | 'r2' | 'r1r2' }[] =
   },
 ]
 
-/** title y description de la raíz mientras la página está montada (Open Graph va en web/index.html). */
-function useMetadatos() {
+/** Título de la raíz mientras la página está montada. La description y Open Graph van en web/index.html. */
+function useTitulo() {
   useEffect(() => {
-    const titulo = document.title
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]')
-    const descripcion = meta?.content
+    const anterior = document.title
     document.title = TITULO
-    if (meta) meta.content = DESCRIPCION
     return () => {
-      document.title = titulo
-      if (meta && descripcion !== undefined) meta.content = descripcion
+      document.title = anterior
     }
   }, [])
 }
@@ -91,7 +85,7 @@ function PruebaEscala() {
 }
 
 export default function PaginaInicio() {
-  useMetadatos()
+  useTitulo()
   return (
     <div className="hz hz-inicio">
       <a className="in-saltar" href="#contenido">
@@ -256,7 +250,7 @@ export default function PaginaInicio() {
                 </li>
               </ul>
               <p>
-                <a href={URL_POLITICA} target="_blank" rel="noreferrer">
+                <a className="in-enlace" href={URL_POLITICA} target="_blank" rel="noreferrer">
                   Política de Tratamiento de Datos Personales de Estratek<span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
                 </a>
               </p>
