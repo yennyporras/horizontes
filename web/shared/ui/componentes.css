@@ -123,6 +123,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-campo { display: grid; gap: var(--hz-sp-1); }
 .hz-campo__etiqueta { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 .hz-campo__entrada {
+  width: 100%;
   min-height: var(--hz-tactil);
   padding: 0 var(--hz-sp-4);
   font-size: var(--hz-fs-16);

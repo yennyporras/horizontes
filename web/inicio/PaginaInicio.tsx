@@ -1,7 +1,8 @@
 // T5: landing pública de la raíz `/`. Qué es Horizontes, cómo se entra a una mesa, cómo funciona y dónde está el panel.
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Rubrica } from '../shared/ui'
+import { EncabezadoProducto, Rubrica, useTemaDocumento } from '../shared/ui'
+import logoEstratek from '../shared/ui/marca/estratek-logo-blanco.png'
 import { CORREO_ESTRATEK, EJES, RUBRICA_EJEMPLO, URL_POLITICA } from './contenido'
 import { EntradaMesa } from './EntradaMesa'
 import { MatrizIlustrada } from './MatrizIlustrada'
@@ -33,14 +34,12 @@ function useTitulo() {
   }, [])
 }
 
-/** Los tres horizontes como cuartos de círculo desde una esquina: el único motivo de la página. */
-function Arcos({ className }: { className?: string }) {
+/** La flecha doble del logo de Estratek, en azul: firma de los enlaces de avance. Decorativa. */
+function Firma() {
   return (
-    <svg className={className} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-      <circle cx="0" cy="100" r="100" fill="var(--hz-azul-medio)" />
-      <circle cx="0" cy="100" r="66" fill="var(--hz-cielo)" />
-      <circle cx="0" cy="100" r="33" fill="var(--hz-acento)" />
-    </svg>
+    <span className="in-firma" aria-hidden="true">
+      »
+    </span>
   )
 }
 
@@ -86,16 +85,13 @@ function PruebaEscala() {
 
 export default function PaginaInicio() {
   useTitulo()
+  useTemaDocumento('carbon')
   return (
-    <div className="hz hz-inicio">
+    <div className="hz hz-inicio" data-tema="carbon">
       <a className="in-saltar" href="#contenido">
         Saltar al contenido
       </a>
-      <header className="in-nav">
-        <a className="in-nav__marca" href="#inicio">
-          <Arcos className="in-nav__arcos" />
-          Horizontes
-        </a>
+      <EncabezadoProducto href="#inicio" className="in-nav">
         <nav className="in-nav__secciones" aria-label="Secciones">
           <ul>
             <li><a href="#entrar">Entrar a tu mesa</a></li>
@@ -108,13 +104,13 @@ export default function PaginaInicio() {
         <Link className="hz-boton hz-boton--secundario in-nav__panel" to="/admin">
           Ingresar al panel
         </Link>
-      </header>
+      </EncabezadoProducto>
 
       <main id="contenido">
         <section id="inicio" className="in-hero" aria-labelledby="in-titulo">
           <div className="in-hero__texto">
             <h1 id="in-titulo" className="in-display">
-              La mesa mueve el portafolio
+              La mesa mueve el <span className="in-clave">portafolio</span>
             </h1>
             <p className="in-lead">
               Horizontes es el taller de priorización de portafolio por horizontes de Estratek. Cada mesa califica dos proyectos con la
@@ -124,8 +120,9 @@ export default function PaginaInicio() {
               <a className="hz-boton hz-boton--primario" href="#entrar">
                 Entrar a mi mesa
               </a>
-              <a className="hz-boton hz-boton--secundario" href="#como-funciona">
+              <a className="in-avance" href="#como-funciona">
                 Ver cómo funciona
+                <Firma />
               </a>
             </div>
             <p className="in-hero__dato">Desde el celular, sin crear cuenta ni instalar nada.</p>
@@ -137,7 +134,7 @@ export default function PaginaInicio() {
           <div className="in-ancho in-dos">
             <div className="in-texto">
               <h2 id="in-entrar-titulo" className="in-h2">
-                Entra a tu mesa
+                Entra a tu <span className="in-clave">mesa</span>
               </h2>
               <p>Lo más rápido es escanear el QR de tu mesa con la cámara del celular. Si no puedes, escribe aquí el código.</p>
               <p>
@@ -152,7 +149,7 @@ export default function PaginaInicio() {
         <section id="como-funciona" className="in-sec" aria-labelledby="in-como-titulo">
           <div className="in-ancho">
             <h2 id="in-como-titulo" className="in-h2">
-              Cómo funciona
+              Cómo <span className="in-clave">funciona</span>
             </h2>
             <p className="in-bajada">Dos rondas y la misma matriz. Lo que cambia entre una y otra es la conversación de la mesa.</p>
             <ol className="in-pasos">
@@ -175,7 +172,7 @@ export default function PaginaInicio() {
           <div className="in-ancho in-dos in-dos--evalua">
             <div className="in-texto">
               <h2 id="in-evalua-titulo" className="in-h2">
-                Qué se evalúa
+                Qué se <span className="in-clave">evalúa</span>
               </h2>
               <p>
                 Cada persona califica INSUMEX y NUTRIWHAT, los dos proyectos vivos del caso Foodsume, en seis criterios. Los promedios ubican
@@ -207,10 +204,10 @@ export default function PaginaInicio() {
           </div>
         </section>
 
-        <section id="facilitadores" className="in-sec in-sec--azul" aria-labelledby="in-facilitadores-titulo">
+        <section id="facilitadores" className="in-sec" aria-labelledby="in-facilitadores-titulo">
           <div className="in-ancho in-dos">
             <h2 id="in-facilitadores-titulo" className="in-h2">
-              Para facilitadores
+              Para <span className="in-clave">facilitadores</span>
             </h2>
             <div className="in-texto">
               <p>
@@ -229,10 +226,10 @@ export default function PaginaInicio() {
           </div>
         </section>
 
-        <section id="privacidad" className="in-sec" aria-labelledby="in-privacidad-titulo">
+        <section id="privacidad" className="in-sec in-sec--suave" aria-labelledby="in-privacidad-titulo">
           <div className="in-ancho in-dos">
             <h2 id="in-privacidad-titulo" className="in-h2">
-              Tus datos
+              Tus <span className="in-clave">datos</span>
             </h2>
             <div className="in-texto">
               <ul className="in-lista in-lista--datos">
@@ -265,10 +262,13 @@ export default function PaginaInicio() {
       <footer className="in-pie">
         <div className="in-ancho in-pie__interior">
           <p className="in-pie__nombre">
-            <Arcos className="in-pie__arcos" />
             Horizontes
+            <span className="in-firma" aria-hidden="true">
+              »
+            </span>
           </p>
           <div className="in-pie__datos">
+            <img className="in-pie__logo" src={logoEstratek} alt="Estratek" width={296} height={85} loading="lazy" />
             <p>Un taller de Estratek S.A.S., Medellín, Colombia.</p>
             <p>
               <a href={`mailto:${CORREO_ESTRATEK}`}>{CORREO_ESTRATEK}</a>
@@ -284,7 +284,9 @@ export default function PaginaInicio() {
                 </li>
                 <li>
                   <a href="https://estratek.com.co" target="_blank" rel="noreferrer">
-                    estratek.com.co<span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
+                    estratek.com.co
+                    <Firma />
+                    <span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
                   </a>
                 </li>
               </ul>
