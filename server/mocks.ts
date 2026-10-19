@@ -4,6 +4,8 @@ import type { FastifyInstance } from 'fastify'
 import { RAIZ } from './config.js'
 import { cuerpoError, responderConVersion } from './http.js'
 import { consentimientoVigente } from './dominio/consentimiento.js'
+import { MOTIVO_CON_VOTOS } from './dominio/rubricas.js'
+import { semilla } from './dominio/semilla.js'
 
 // Servidor de mocks (USE_MOCKS=1 o --mocks): sirve mocks/*.json en las rutas del contrato.
 // Se relee el archivo en cada petición: editar un mock se ve sin reiniciar.
@@ -86,6 +88,13 @@ export async function rutasMocks(app: FastifyInstance) {
   app.get('/api/admin/salas/:id', async (req, reply) => responderConVersion(req, reply, admin()))
   app.patch('/api/admin/salas/:id/config', async (req) => ({ ...admin().sala.config, ...(req.body as object) }))
   app.post('/api/admin/salas/:id/acciones', async () => ({ sala: admin().sala }))
+  // La sala del mock está en ronda 1 con votos: las rúbricas se ven pero no se editan.
+  app.get('/api/admin/salas/:id/rubricas', async () => ({
+    criterios: semilla().motor.criterios.map((c) => ({ id: c.id, nombre: c.nombre, pregunta: c.pregunta, rubrica: c.rubrica })),
+    editable: false,
+    motivo_no_editable: MOTIVO_CON_VOTOS,
+  }))
+  app.put('/api/admin/salas/:id/rubricas/:criterio', async (_req, reply) => reply.code(409).send(cuerpoError('RUBRICA_CON_VOTOS', MOTIVO_CON_VOTOS)))
   app.post('/api/admin/salas/:id/mesas', async () => ({ mesas: admin().mesas }))
   app.patch('/api/admin/participantes/:id', async (req) => ({ ...admin().participantes[0], ...(req.body as object) }))
   app.get('/api/admin/admins', async () => ({ admins: [admin().admin_actual] }))
