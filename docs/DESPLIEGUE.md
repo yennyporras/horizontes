@@ -54,20 +54,23 @@ T1 fijó **SQLite** (`node:sqlite`) en `docs/STACK.md`. Se usa la segunda opció
 
 ### 2.5 Variables de entorno (todas solo Runtime; secretos con Literal + candado)
 
+El dominio de producción que usa `tools/deploy.sh` (y con él `BASE_URL`) sale de `HZ_DOMINIO_PROD` en `deploy/.env.deploy`; sin ella, `horizontes.estratek.com.co`. Ver §6.
+
+
 | Variable | Staging | Producción | Notas |
 |---|---|---|---|
 | `APP_ENV` | `staging` | `production` | |
 | `NODE_ENV` | `production` | `production` | |
 | `PORT` | `3000` | `3000` | |
 | `BASE_URL` | `https://staging-horizontes.estratek.com.co` | `https://horizontes.estratek.com.co` | Sin `/` final. Se usa en las URL y QR de las mesas. |
-| `TZ` | `America/Bogota` | `America/Bogota` | Fechas y cierres programados en hora de Bogotá. |
+| `TZ` | `America/Bogota` | `America/Bogota` | Hora del proceso y de los logs. Cada sala usa además la zona de su país (Colombia, Perú o Guatemala), que el admin elige en Configuración. |
 | `DB_PATH` | `/data/horizontes.sqlite` (ya en la imagen) | igual, en el volumen de prod | Nunca compartir la base ni el volumen entre ambientes. |
 | `SESSION_SECRET` | `openssl rand -hex 32` | otro distinto | Solo si T1 firma la cookie `hz_admin` con secreto (ver `docs/STACK.md`). Si cambia, los admins vuelven a iniciar sesión. |
 | `SUPERADMIN_USUARIO` | `paola` | `paola` | Se crea la primera vez que arranca sobre una base vacía. |
 | `SUPERADMIN_CLAVE` | ≥ 12 caracteres | otra distinta | Solo cuenta la primera vez. Después, se cambia desde el panel o con el script de restablecer de T1. |
 | `POLITICA_PRIVACIDAD_URL` | `https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/` | igual | Ver `docs/CONSENTIMIENTO.md`. |
-| `CONSENTIMIENTO_VERSION` | `hz-1.0` | `hz-1.0` | Versión vigente del aviso. |
-| `TRUST_PROXY_HOPS` | `1` | `1` | IP real detrás del proxy de Coolify para la evidencia del consentimiento. |
+| `CONSENTIMIENTO_VERSION` | no aplica | no aplica | El servidor no la lee: la versión vive en el código (`hz-1.1`, el texto cita la ley del país de la sala). `tools/deploy.sh` todavía la escribe como `hz-1.0`, sin efecto. Paola revisa el texto legal antes de producción. |
+| `TRUST_PROXY_HOPS` | `1` | `1` | IP real detrás del proxy de Coolify: evidencia del consentimiento y registro interno de cada inscripción y voto (acta A1 y P4). |
 | `CIERRES_INTERVALO_MS` | no aplica | no aplica | El servidor usa 15 s fijos (no lee esta variable). |
 
 El `.env` local de la raíz es solo para desarrollo y no se sube (`.gitignore`).
@@ -117,3 +120,27 @@ Por eso la app corre con **1 réplica** y `TZ=America/Bogota`.
 - Certificado no sale: el DNS aún no apunta al VPS; esperar y redeploy.
 - `EACCES` en `/data`: el volumen se creó como root; `docker exec -u 0 <contenedor> chown -R node:node /data` desde la terminal del VPS.
 - Los cierres programados no se aplican a la hora: revisar `TZ`, que haya 1 sola réplica y el log del intervalo.
+
+## 6. Cambio a horizontes.com.co
+
+Acta A10: el dominio oficial pasa a `horizontes.com.co`. El código no tiene el dominio fijo: QR y enlaces salen de `BASE_URL`, y `tools/deploy.sh` toma el dominio de producción de `HZ_DOMINIO_PROD` (si no está, sigue `horizontes.estratek.com.co`). Lo hace Paola, en este orden. Hasta el paso 5 nada cambia para quien use el dominio actual.
+
+1. **Comprar el dominio.** Hostinger → **Dominios** → **Obtener nuevo dominio** → busca `horizontes.com.co` → **Comprar**. Titular: Estratek S.A.S. Activa la renovación automática.
+2. **DNS.** Hostinger → **Dominios** → `horizontes.com.co` → **DNS / Nameservers** → **Registros DNS**:
+   - Borra el registro `A @` que Hostinger crea apuntando a la página de estacionamiento (y el `CNAME www` si existe).
+   - Agrega `A` · Nombre `@` · Valor: la IP del VPS (Hostinger → **VPS** → **Resumen** → Dirección IP) · TTL `3600`.
+   - Agrega `CNAME` · Nombre `www` · Valor `horizontes.com.co` · TTL `3600`.
+   - Verifica desde tu equipo: `nslookup horizontes.com.co` debe devolver la IP del VPS. Puede tardar de minutos a unas horas.
+3. **Dominio en Coolify.** Coolify → **Projects** → **Horizontes** → **production** → `horizontes-prod` → **Configuration** → **General** → **Domains**: `https://horizontes.com.co,https://horizontes.estratek.com.co` (los dos, separados por coma, para que los QR ya impresos sigan funcionando) → **Save**.
+4. **BASE_URL.** En la misma app → **Environment Variables** → `BASE_URL` = `https://horizontes.com.co` (sin `/` final) → **Save**. Este valor manda en los QR y en los enlaces del panel.
+5. **Deploy.** Botón **Deploy** (o **Redeploy**). Coolify pide el certificado Let's Encrypt del dominio nuevo cuando el DNS ya responde. Comprueba:
+   ```sh
+   curl -fsS https://horizontes.com.co/api/health
+   curl -sI https://horizontes.com.co/admin | head -1   # 200 y candado válido en el navegador
+   ```
+6. **`deploy/.env.deploy` en tu equipo.** Agrega `HZ_DOMINIO_PROD=horizontes.com.co`. Sin esta línea, el siguiente `tools/deploy.sh produccion` vuelve a fijar el dominio y `BASE_URL` viejos. Con ella, los pasos 3 a 5 también se pueden hacer con un solo `tools/deploy.sh produccion` (deja solo el dominio nuevo; si necesitas los dos, agrega el viejo a mano en el paso 3 después de correrlo).
+7. **Reimprimir los QR.** Panel → sala → **Mesas y QR**: el enlace bajo cada QR debe decir `horizontes.com.co/m/...`. Imprime con **Imprimir hoja de QR** o genera el PDF con `QA-tests/hoja_qr_pdf.cjs` (ver `docs/ENTREGA.md`).
+8. **Sesiones del panel.** La cookie del admin es por dominio: cada admin vuelve a iniciar sesión una vez en el dominio nuevo.
+9. **Retirar el dominio viejo** (cuando no quede ningún QR viejo impreso): quítalo de **Domains** en Coolify, **Save** y **Redeploy**. El registro DNS `horizontes` de `estratek.com.co` se puede borrar después. No toques los demás registros de `estratek.com.co` (el correo depende de ellos).
+
+Staging puede quedarse en `staging-horizontes.estratek.com.co`; no necesita el dominio nuevo.

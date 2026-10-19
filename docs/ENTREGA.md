@@ -1,46 +1,111 @@
-# Entrega · Horizontes (borrador R3, se cierra en R4)
+# Entrega · Horizontes
 
-Qué recibe Estratek, dónde está y cómo se usa. Estado al 16-oct, R3 adelantada.
+Qué recibe Estratek, dónde está, qué falta y qué hace Paola para ponerlo en producción. Estado al 19-oct, R4 (cambios del acta del 16-oct).
 
 ## 1. Qué es
-App web del taller "Portafolio por Horizontes" (caso Foodsume). Los participantes se inscriben con el QR de su mesa, leen el caso y su hoja de perfil, califican INSUMEX y NUTRIWHAT en 6 criterios (1, 3, 5, 7, 9) en 2 rondas, y la matriz de burbujas muestra cómo se mueven sobre 8 proyectos fijos.
+App web del taller "Portafolio por Horizontes" (caso Foodsume). Los participantes se inscriben con el QR de su mesa, leen el caso y su hoja de perfil, califican INSUMEX y NUTRIWHAT en 6 criterios (1, 3, 5, 7, 9) en 2 rondas (R1 individual y en silencio, R2 con discusión), y la matriz de burbujas muestra cómo se mueven sobre 8 proyectos fijos: R1 en verde y R2 en rojo.
 
 ## 2. Dónde vive
 | Qué | Dónde | Estado |
 |---|---|---|
-| Código | `github.com/yennyporras/horizontes` (rama `main`) | Arriba |
-| Producción | `https://horizontes.estratek.com.co` (`/admin`, `/m/{mesa}`, `/tablero/{sala}`) | Pendiente: Coolify y DNS (`docs/BLOQUEOS.md`) |
-| Staging | `https://staging-horizontes.estratek.com.co` | Pendiente: lo mismo |
-| Servidor | Coolify en el VPS de Hostinger, 1 contenedor, SQLite en el volumen `/data` | Imagen probada en local |
+| Código | `github.com/yennyporras/horizontes` (rama `main`) | Arriba. Pasa a la cuenta de Estratek: `docs/MIGRACION_GITHUB.md` |
+| Producción | `https://horizontes.estratek.com.co` → luego `https://horizontes.com.co` | **Falta**: se crea clonando staging cuando esté sano (sección 5.1, paso 4) |
+| Staging | `https://staging-horizontes.estratek.com.co` | App creada en Coolify y DNS al VPS, pero **no sirve** (503 por HTTPS con certificado no válido, 404 por HTTP; 19-oct 14:35): sección 5.1, paso 2 |
+| Servidor | Coolify en el VPS de Hostinger, 1 contenedor, SQLite en el volumen `/data` | Imagen probada en local (`tools/deploy.sh local`) |
 
-## 3. Cómo se despliega
-`tools/deploy.sh diagnostico` → `tools/deploy.sh staging` → `tools/deploy.sh produccion`. Detalle en `deploy/README.md` y `docs/DESPLIEGUE.md`. Respaldos: automático al cerrar cada sala (últimos 30) y tarea diaria en Coolify.
+Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}` (celular, lo abre el QR), `/tablero/{sala}?t=...` (proyector, el enlace sale del panel).
 
-## 4. Cómo se usa
-- Facilitador: `docs/GUIA_FACILITADOR.md` (1 página).
-- Si la app falla: `docs/PLAN_B.md` (papeleta A4 y plantilla Excel con el mismo cálculo).
-- Accesos: superadmin Paola (clave en `deploy/.env.deploy`, nunca en git). Ella crea los demás administradores desde el panel; cada uno cambia su clave en el primer ingreso.
+## 3. Accesos (sin claves en este archivo)
+- **Superadmin:** usuario `paola`. La clave inicial la elige Paola y va solo en Coolify (variable `SUPERADMIN_CLAVE` de cada app) o en `deploy/.env.deploy` (`SUPERADMIN_CLAVE_STAGING` y `SUPERADMIN_CLAVE_PROD`), nunca en git. Cuenta solo la primera vez que arranca una base vacía; después se cambia desde el panel.
+- **Administradores:** Paola los crea en el panel (**Administradores** → *Nuevo administrador*, con clave temporal). Cada uno cambia su clave en el primer ingreso. Un admin normal no ve la gestión de administradores.
+- **Coolify y Hostinger:** cuenta de Paola.
+- **Tablero:** cada sala tiene su enlace con token; se abre desde **Sala en vivo** → *Abrir tablero de la sala*.
 
-## 5. Qué garantiza (SPEC §11) y con qué evidencia
+## 4. Qué está listo
+- Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.1`. Sin autorización no hay inscripción.
+- Votación 1-3-5-7-9 en 6 criterios, 2 rondas, precierre cuando todos votan, cierres programados en la hora del país de la sala.
+- Resultados anónimos: tablas con los 6 criterios y la fila «Total» (eje X + eje Y, del servidor); mínimo de 3 votos para mostrar un alcance; por defecto toda la sala ve el consolidado apenas vota.
+- Registro interno solo para el admin: país e IP de cada inscripción y voto en el panel y en `inscritos.csv` / `votos.csv`.
+- Panel: salas, duplicar para ensayo, mesas y QR (hoja A4 imprimible), participantes, configuración (visibilidad, país, zona horaria, cierres), exportar, administradores, salud.
+- Plan B en papel y Excel (`docs/PLAN_B.md`), guía del facilitador de una página (`docs/GUIA_FACILITADOR.md`).
+
+## 5. Lo que hace Paola, en orden
+
+### 5.1 Antes de producción (hoy)
+Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado desde aquí el 19-oct a las 14:35: el DNS de `staging-horizontes.estratek.com.co` ya apunta al VPS, pero `https://staging-horizontes.estratek.com.co/api/health` responde **503 con un certificado no válido** y por HTTP **404**. Eso es el proxy de Coolify diciendo que no tiene una app sana detrás de ese dominio. Por eso el orden es: primero staging en verde, después producción clonándolo.
+
+1. **Texto legal.** Lee los tres textos de autorización (CO, PE, GT) en `docs/CONSENTIMIENTO.md` y confirma o corrige. Confirma también en qué país está el VPS (Hostinger → **VPS** → **Resumen** → ubicación): si no es Colombia, avisa para agregar el párrafo de transferencia internacional.
+2. **Revisar staging en Coolify** (Projects → `Horizontes` → `staging` → `horizontes-staging`):
+   - **Configuration** → **General** → **Domains** = `https://staging-horizontes.estratek.com.co` (con `https://`, sin `/` final). *Build Pack* `Dockerfile`, *Dockerfile Location* `/deploy/Dockerfile`, *Base Directory* `/`, *Ports Exposes* `3000`. **Save**.
+   - **Configuration** → **Healthcheck**: activo, *Path* `/api/health`, *Port* `3000`, intervalo 30 s, timeout 10 s, 3 reintentos, *Start Period* 60 s. Ojo: si la app se creó copiando la del IRMI, ahí dice `/api/v1/health` y el contenedor nunca queda sano (eso da justo el 503). **Save**.
+   - **Persistent Storage**: un *Volume Mount* `horizontes-datos-staging` en `/data`. Si no está: **+ Add** → *Volume Mount* con ese nombre y *Destination Path* `/data`.
+   - **Environment Variables**: al menos `BASE_URL` = `https://staging-horizontes.estratek.com.co`, `SUPERADMIN_USUARIO` = `paola`, `SUPERADMIN_CLAVE` (la que elijas, 12 caracteres o más), `TRUST_PROXY_HOPS` = `1`, `POLITICA_PRIVACIDAD_URL` = `https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/`. Tabla completa en `docs/DESPLIEGUE.md` §2.5.
+   - **Deploy** y luego **Deployments**: el último debe terminar en *Finished* y el estado de la app en **Running (healthy)**. Si queda *unhealthy* o reinicia, abre **Logs**: la primera línea con `ERROR` dice la causa (`EACCES` en `/data`: ver `docs/DESPLIEGUE.md` §5).
+   - Comprueba desde tu equipo: `curl -fsS https://staging-horizontes.estratek.com.co/api/health` responde `{"ok":true,...}` y el navegador muestra el candado válido en `/admin` (el certificado sale solo cuando la app queda sana; si no, **Redeploy**).
+3. **Prueba en staging (10 min).** Entra a `https://staging-horizontes.estratek.com.co/admin` con `paola`, cambia la clave, crea una sala de 2 mesas, elige el país, escanea un QR con el celular, inscríbete, vota, mira el tablero y cierra la sala.
+4. **Producción clonando staging.** En `horizontes-staging` → **Resource Operations** → *Clone* al ambiente `production` (créalo antes en el proyecto si no existe). En la copia, que se llamará `horizontes-prod`:
+   - **Domains** = `https://horizontes.estratek.com.co`.
+   - **Environment Variables**: `APP_ENV` = `production`, `BASE_URL` = `https://horizontes.estratek.com.co`, `SUPERADMIN_CLAVE` distinta a la de staging, `SESSION_SECRET` distinto si existe.
+   - **Persistent Storage**: cambia el volumen a `horizontes-datos-prod` en `/data`. Nunca compartas el volumen con staging.
+   - **Advanced**: apaga *Auto Deploy*.
+   - **Save** y **Deploy**. Igual que en staging: *Running (healthy)* y `curl -fsS https://horizontes.estratek.com.co/api/health`.
+5. **DNS de producción.** Si `nslookup horizontes.estratek.com.co` no da la IP del VPS: Hostinger → **Dominios** → `estratek.com.co` → **DNS / Nameservers** → **Registros DNS** → `A`, nombre `horizontes`, valor la IP del VPS (la misma que ya responde para `staging-horizontes`), TTL `3600`. No toques los demás registros (el correo depende de ellos).
+6. **Respaldo diario.** Coolify → `horizontes-prod` → **Scheduled Tasks** → **+ Add**: frecuencia `0 8 * * *` y el comando de `deploy/README.md` (sección "Respaldo de SQLite").
+7. **Cuentas.** En `https://horizontes.estratek.com.co/admin`: cambia la clave del superadmin y crea los administradores (por ejemplo Nicolai) en **Administradores**.
+8. **Opcional, para desplegar con un comando en adelante.** Coolify → **Keys & Tokens** → **API tokens** → *Create New Token* (`read`, `write`, `deploy`). Copia `deploy/env.deploy.ejemplo` a `deploy/.env.deploy` y llena `COOLIFY_URL`, `COOLIFY_TOKEN`, `COOLIFY_APP_STAGING` y `COOLIFY_APP_PROD` (el UUID es el último tramo de la URL de cada app en Coolify). Desde ahí: `tools/deploy.sh diagnostico staging` dice qué falta, y `tools/deploy.sh staging` / `tools/deploy.sh produccion` publican. Este archivo no se sube a git.
+
+### 5.2 Para el taller
+9. **Sala real.** Panel → **Salas** → nombre del taller y número de mesas → **Crear sala** → **Configuración** → país.
+10. **Hoja de QR A4 en PDF.** Panel → sala → **Mesas y QR** → *Imprimir hoja de QR* → destino "Guardar como PDF", tamaño A4, márgenes predeterminados. Sin abrir el navegador, desde el repo (cuando el dominio ya responda):
+    ```sh
+    HZ_ADMIN_CLAVE='<tu clave>' node QA-tests/hoja_qr_pdf.cjs https://horizontes.estratek.com.co paola <CÓDIGO DE SALA> hoja-qr.pdf
+    ```
+    Cuatro mesas por hoja. El script avisa si los QR apuntan a otro dominio distinto del que le pasaste (señal de un `BASE_URL` mal puesto en Coolify).
+11. **Plan B impreso:** papeletas (`deploy/plan_b/papeleta.html`, 2 por persona) y la plantilla Excel en el portátil (`docs/PLAN_B.md`). Opcional: el formulario en línea de respaldo (lo crea Paola en la cuenta de Estratek).
+
+### 5.3 Después (cuando se pueda)
+12. **Dominio `horizontes.com.co`:** `docs/DESPLIEGUE.md` §6 (compra, DNS, dominio en Coolify, `BASE_URL`, `HZ_DOMINIO_PROD` y reimpresión de QR).
+13. **GitHub corporativo:** `docs/MIGRACION_GITHUB.md` (transferir o espejar, `git remote set-url`, GitHub App de Coolify, accesos y protección de `main`).
+14. **Preguntas abiertas para Sebastian** (`docs/BLOQUEOS.md`): solapes de los rangos de inversión del deck (P5) y confirmar que el diseño usa 6 perfiles (P1).
+
+## 6. Lista de verificación del día del taller
+**La víspera**
+- [ ] `https://<dominio>/api/health` responde y el candado del navegador es válido.
+- [ ] Sala creada, país correcto, visibilidad revisada (por defecto: toda la sala, tablero en vivo).
+- [ ] Hoja de QR impresa; un QR probado con un celular que no sea el tuyo.
+- [ ] Ensayo con *Duplicar para ensayo* (no en la sala real).
+- [ ] Plan B impreso y la plantilla Excel en el portátil.
+- [ ] Respaldo: la app guarda uno sola al abrir la inscripción y otro al cerrar la sala. Si quieres uno extra: Coolify → `horizontes-prod` → **Terminal** → el comando de `deploy/README.md` ("Respaldo de SQLite").
+
+**En el salón, antes de empezar**
+- [ ] Wi-Fi del salón abre el QR desde 2 celulares distintos.
+- [ ] Tablero en el proyector con **F** (pantalla completa).
+- [ ] Panel abierto en **Sala en vivo** en el portátil del facilitador.
+
+**Durante**
+- [ ] *Abrir inscripción* → lectura → *Abrir ronda 1* (individual y en silencio) → *Cerrar ronda 1* → *Abrir ronda 2* (con discusión) → *Cerrar ronda 2* → tablero en **Comparación** → *Cerrar sala*.
+- [ ] Si la app no carga para nadie en 3 minutos: plan B.
+
+**Al cerrar**
+- [ ] **Exportar** `inscritos.csv` y `votos.csv` y guardarlos donde lo permita la política de datos.
+- [ ] Confirmar en **Salud** que no hubo errores.
+
+## 7. Qué garantiza (SPEC §11) y con qué evidencia
 | Criterio | Evidencia | Estado |
 |---|---|---|
-| 40 celulares, 4 mesas, 2 rondas, p95 < 500 ms, sin errores | Simulador de T1 contra la imagen de producción: 0 errores en 3 corridas, p95 entre 231 y 457 ms (con el recorrido en navegador en paralelo) | En local. Falta repetirlo en staging y producción |
-| Puntos = cálculo independiente (golden) | `tests/golden/motor_golden.json` al 100 % en `tools/test.sh`; simulador verifica los puntos de la sala | Verde |
+| 40 celulares, 4 mesas, 2 rondas, p95 < 500 ms, sin errores | Simulador de T1 contra la imagen de producción (R3: 0 errores, p95 entre 231 y 457 ms) | En local. Falta repetirlo en staging |
+| Puntos = cálculo independiente (golden) | `tests/golden/motor_golden.json` al 100 % en `tools/test.sh` | Verde |
 | Precierre solo con todos los activos, preliminar, sin cerrar | e2e de T1, T2 y T4; recorrido en navegador | Verde |
 | Cierre programado a la hora (± 15 s) | e2e de T1 con reloj real | Verde |
-| Cambios de visibilidad en el celular en < 5 s | e2e de T1 y T3 (medido ~2 s) | Verde |
+| Cambios de visibilidad en el celular en < 5 s | e2e de T1 y T3 | Verde |
 | Sin consentimiento no hay inscripción; versión y política guardadas | Pruebas de T1 y T2; `docs/CONSENTIMIENTO.md` | Verde |
 | Admin normal no ve gestión de admins (403) | Pruebas de T1 y del panel contra la API real | Verde |
+| Resultados anónimos, mínimo 3 votos, «Total» (acta) | Pruebas de T1, T2, T3 y del panel; `docs/TRIAGE.md` | Ver la pasada R4 en TRIAGE |
 
-## 6. Datos personales (Ley 1581)
-Nombre y correo solo con fines informativos, con autorización según la Política de Tratamiento de Datos Personales de Estratek. Se guarda versión del aviso, fecha, IP y user agent. Ningún resultado muestra nombres ni respuestas individuales; los datos salen solo en el export CSV del panel. Pendiente: confirmar el país del VPS (si está fuera de Colombia, aviso `hz-1.1` con transferencia internacional; ver `docs/BLOQUEOS.md`).
-
-## 7. Calidad
-- `tools/test.sh`: typecheck + Vitest (motor, API, e2e en navegador de participante, tablero y panel). Integrado en R3 (pasada 3): 409 pruebas en verde.
-- QA integrada y hallazgos: `docs/TRIAGE.md`.
+Pruebas integradas al 19-oct 14:15 (`tools/test.sh` sobre las 4 ramas): 436 de 441 en verde; las 4 rojas son pruebas e2e del celular que aún esperan «Voto registrado» en vez de la vista en vivo por defecto (TRIAGE #31, T2). Recorrido en navegador a 360 y 1920 px en verde.
 
 ## 8. Pendientes conocidos
-- Staging y producción (credenciales de Coolify y DNS).
-- Hallazgos abiertos de `docs/TRIAGE.md` (se cierran en R4).
-- Formulario de respaldo en línea del plan B (lo crea Paola en la cuenta de Estratek).
-- Fuera de alcance v1 (SPEC §10): multiempresa, portafolios propios, TAM normalizado, análisis por perfil, PDF, correos.
+- Staging sano y producción: sección 5.1 (solo Paola, en Coolify y Hostinger).
+- Hallazgos abiertos de `docs/TRIAGE.md`.
+- Formulario de respaldo en línea del plan B (Paola, cuenta de Estratek).
+- Fuera de alcance v1 (SPEC §10): multiempresa, portafolios propios, TAM normalizado, análisis por perfil, PDF, correos. Idea a futuro: panel unificado de herramientas (`docs/BACKLOG_EXTRA.md`).

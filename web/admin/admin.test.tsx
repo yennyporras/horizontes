@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
-import { ACCIONES_POR_ESTADO, bogotaLocalAIso, estadoMesa, faltan, isoABogotaLocal, rutaApiTablero, textoEvento, urlTableroSala } from './textos'
+import { ACCIONES_POR_ESTADO, estadoMesa, faltan, horaLocalAIso, isoAHoraLocal, rutaApiTablero, textoEvento, urlTableroSala, zonaSala } from './textos'
 
 function montar(ruta: string) {
   return render(
@@ -31,11 +31,19 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('textos del panel', () => {
-  it('convierte hora Bogotá ida y vuelta', () => {
-    expect(bogotaLocalAIso('2026-10-20T18:00')).toBe('2026-10-20T18:00:00-05:00')
-    expect(isoABogotaLocal('2026-10-20T18:00:00-05:00')).toBe('2026-10-20T18:00')
-    expect(isoABogotaLocal('2026-10-20T23:00:00Z')).toBe('2026-10-20T18:00')
-    expect(bogotaLocalAIso('2026-10-20')).toBeNull()
+  it('convierte la hora de la zona de la sala ida y vuelta', () => {
+    expect(horaLocalAIso('2026-10-20T18:00')).toBe('2026-10-20T18:00:00-05:00')
+    expect(isoAHoraLocal('2026-10-20T18:00:00-05:00')).toBe('2026-10-20T18:00')
+    expect(isoAHoraLocal('2026-10-20T23:00:00Z')).toBe('2026-10-20T18:00')
+    expect(horaLocalAIso('2026-10-20')).toBeNull()
+    expect(horaLocalAIso('2026-10-20T18:00', 'America/Guatemala')).toBe('2026-10-20T18:00:00-06:00')
+    expect(isoAHoraLocal('2026-10-20T23:00:00Z', 'America/Guatemala')).toBe('2026-10-20T17:00')
+  })
+
+  it('la zona de la sala sale de la configuración o del país', () => {
+    expect(zonaSala({})).toBe('America/Bogota')
+    expect(zonaSala({ pais: 'GT' })).toBe('America/Guatemala')
+    expect(zonaSala({ pais: 'PE', zona_horaria: 'America/Bogota' })).toBe('America/Bogota')
   })
 
   it('cuenta regresiva legible', () => {
@@ -164,6 +172,49 @@ describe('panel admin contra el simulador', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ver resultado de Mesa 1' }))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    expect(screen.getByRole('rowheader', { name: 'INSUMEX' })).toBeTruthy()
+    // Acta A3, A4 y P2: los 6 criterios y la fila Total del servidor; sin T2M, ejes ni votos.
+    const tabla = screen.getByRole('table', { name: 'INSUMEX' })
+    expect(within(tabla).getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
+      'Nivel de Alistamiento Técnico',
+      'Nivel de Conocimiento del Cliente/Mercado',
+      'Regulación',
+      'Capacidades Organizacionales',
+      'Alineación y Cercanía Estratégica con el Core',
+      'Inversión Requerida para Probar',
+      'Total',
+    ])
+    expect(within(tabla).getByRole('columnheader', { name: 'R1' }).querySelector('.ronda--1')).toBeTruthy()
+    expect(within(tabla).queryByText(/eje|votos|time to market/i)).toBeNull()
+    const total = within(tabla).getByRole('rowheader', { name: 'Total' }).parentElement
+    expect(total?.textContent).toBe('Total9,65') // `total` 9,653 del mock del servidor, con 2 decimales
+  })
+
+  it('una sala nueva muestra la sala completa tras votar y el país cambia la zona de los cierres', async () => {
+    montar('/admin/login')
+    await entrar('paola')
+    fireEvent.change(screen.getByLabelText('Nombre del taller'), { target: { value: 'Lima' } })
+    fireEvent.change(screen.getByLabelText('Mesas'), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Crear sala' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Configuración'))
+    expect(((await screen.findByLabelText(/Todos ven la sala completa/)) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText(/Tablero en vivo/) as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByText(/^Hora de Bogotá \(UTC-5\)/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('País de la sala'), { target: { value: 'GT' } })
+    expect(await screen.findByText('La sala quedó en Guatemala, con hora de Guatemala (UTC-6).')).toBeTruthy()
+    expect((screen.getByLabelText('Zona horaria') as HTMLSelectElement).value).toBe('America/Guatemala')
+    expect(screen.getByText(/^Hora de Guatemala \(UTC-6\)/)).toBeTruthy()
+  })
+
+  it('explica que el export es registro interno y que las vistas públicas siguen anónimas', async () => {
+    montar('/admin/login')
+    await entrar('paola')
+    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Exportar'))
+    const ayuda = await screen.findByText('Registro interno, solo para gestión.')
+    expect(ayuda.parentElement?.textContent).toMatch(/país e IP.*siguen anónimos/)
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Participantes'))
+    expect(await screen.findByText('CO 181.50.12.10')).toBeTruthy()
   })
 })

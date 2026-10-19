@@ -15,14 +15,17 @@ En el portátil del facilitador, sin depender de internet: `deploy/plan_b/Planti
 Se genera desde `data/seed_foodsume.json` con `python deploy/plan_b/generar_plantilla.py` (si cambian pesos, textos o fijos, se vuelve a generar).
 - **Votos**: una fila por papeleta y proyecto: mesa, ronda, proyecto y los 6 valores (la celda solo acepta 1, 3, 5, 7 o 9).
 - **Resultados**: en `C2` escribe `Sala` o el número de la mesa. Calcula el promedio simple por criterio y aplica el motor con los pesos de la semilla: T2M 30/35/35, eje X 60/40, eje Y 70/30. Los 8 fijos vienen precargados. Si prefieres contar a mano, digita los promedios en las filas "Promedio digitado" y deja vacía la hoja Votos.
-- **Matriz**: gráfico de burbujas con los 8 fijos y los 2 vivos en R1 y R2, ejes de 0 a 9,5. Proyéctalo.
-- Verificado: con votos de prueba, la plantilla da los mismos T2M, eje X y eje Y que el motor de la app.
+- **Total** (acta A4 y P2): última columna de Resultados, eje X + eje Y, igual que la fila «Total» de la app. Para conversar con la sala muestra los 6 criterios y el Total; T2M, Eje X y Eje Y solo ubican la burbuja.
+- **Matriz**: gráfico de burbujas con los 8 fijos en gris y los 2 vivos en **R1 verde y hueco** y **R2 rojo y sólido** (acta P3), ejes de 0 a 9,5. Proyéctalo.
+- Verificado (R3): con votos de prueba, la plantilla da los mismos T2M, eje X y eje Y que el motor de la app. Total es la suma de esas dos celdas.
+
+**Confirmado el 19-oct (R4):** la papeleta y la plantilla siguen con los 6 criterios de la semilla y solo aceptan 1, 3, 5, 7 o 9 (la celda de la hoja Votos rechaza otros valores). La papeleta no lleva fila «Total»: el participante no calcula, solo califica; el Total sale en la plantilla.
 
 ## Cómo se corre el taller en plan B
 1. Reparte caso, hoja por perfil (cada persona recibe uno; la mesa reparte los 6) y una papeleta.
-2. **Ronda 1**: cada persona califica los 2 proyectos y entrega la papeleta. Un apoyo digita mientras la mesa discute (≈ 20 s por papeleta).
+2. **Ronda 1, individual y en silencio**: cada persona califica los 2 proyectos solo con su hoja y entrega la papeleta. Un apoyo digita (≈ 20 s por papeleta).
 3. Proyecta la Matriz y Resultados con `C2 = Sala` y luego por mesa.
-4. **Ronda 2**: la mesa intercambia todas las hojas, nueva papeleta. Se digita con `Ronda = 2`.
+4. **Ronda 2, con discusión**: la mesa intercambia todas las hojas, conversa y llena una papeleta nueva. Se digita con `Ronda = 2`.
 5. La Matriz muestra R1 y R2 de cada vivo. Esa es la conversación.
 
 ## Formulario de respaldo

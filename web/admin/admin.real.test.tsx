@@ -95,7 +95,9 @@ describe('panel admin contra la API real', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    expect(screen.getByRole('rowheader', { name: 'INSUMEX' })).toBeTruthy()
+    const tabla = screen.getByRole('table', { name: 'INSUMEX' })
+    expect(within(tabla).getByRole('rowheader', { name: 'Total' })).toBeTruthy()
+    expect(within(tabla).getAllByRole('rowheader')).toHaveLength(7)
 
     await pasar('Cerrar ronda 1', 'Ronda 1 cerrada')
     await pasar('Abrir ronda 2', 'Ronda 2 abierta')
@@ -112,12 +114,21 @@ describe('panel admin contra la API real', () => {
     const { salaId, mesas } = await crearSalaDesdePanel('Config real', 2)
     // Configuración
     fireEvent.click(nav().getByText('Configuración'))
-    fireEvent.click(await screen.findByLabelText(/Todos ven la sala completa/))
+    // Acta A2 (C5): la sala nace mostrando toda la sala, en vivo tras votar. Se cambia a mesa y registrado, y se vuelve a sala.
+    const sala = (await screen.findByLabelText(/Todos ven la sala completa/)) as HTMLInputElement
+    expect(sala.checked).toBe(true)
+    expect((screen.getByLabelText(/Tablero en vivo/) as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(screen.getByLabelText(/Cada mesa ve su resultado/))
+    await screen.findByText('Ahora cada mesa ve solo su resultado.')
+    fireEvent.click(screen.getByLabelText(/Voto registrado/))
+    await screen.findByText('Tras votar, el participante ve "Voto registrado".')
+    const r0 = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
+    expect(r0.json().sala.config).toMatchObject({ alcance_resultados: 'mesa', vista_participante: 'registrado' })
+    await waitFor(() => expect(sala.checked).toBe(false))
+    fireEvent.click(sala)
     await screen.findByText('Ahora todos ven el resultado de toda la sala.')
-    fireEvent.click(screen.getByLabelText(/Tablero en vivo/))
-    await screen.findByText('Tras votar, el participante ve el tablero en vivo.')
     const r = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
-    expect(r.json().sala.config).toMatchObject({ alcance_resultados: 'sala', vista_participante: 'en_vivo' })
+    expect(r.json().sala.config).toMatchObject({ alcance_resultados: 'sala', vista_participante: 'registrado' })
 
     // Cierre programado de la ronda en hora Bogotá: el servidor lo aplica al llegar la hora.
     fireEvent.change(screen.getByLabelText('Cerrar la ronda abierta el'), { target: { value: '2026-10-20T14:30' } })
@@ -152,6 +163,26 @@ describe('panel admin contra la API real', () => {
     await screen.findByText(/Carla Ruiz quedó inactivo/)
     const p = e.db.prepare('SELECT mesa_id, perfil_id, activo FROM participantes WHERE correo = ?').get('carla@x.co') as Record<string, unknown>
     expect(p).toMatchObject({ mesa_id: mesas[1].id, perfil_id: 'regulacion', activo: 0 })
+  }, 20_000)
+
+  it('una sala de Guatemala programa el cierre en hora de Guatemala (UTC-6)', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId } = await crearSalaDesdePanel('Sala GT', 1)
+    fireEvent.click(nav().getByText('Configuración'))
+    fireEvent.change(await screen.findByLabelText('País de la sala'), { target: { value: 'GT' } })
+    await screen.findByText('La sala quedó en Guatemala, con hora de Guatemala (UTC-6).')
+    const r = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
+    expect(r.json().sala.config).toMatchObject({ pais: 'GT', zona_horaria: 'America/Guatemala' })
+
+    // 16:00 en Guatemala son las 17:00 en Bogotá: el servidor guarda ese instante y el panel lo muestra como 16:00 (4:00 p. m.).
+    await screen.findByText(/^Hora de Guatemala \(UTC-6\)/)
+    fireEvent.change(screen.getByLabelText('Cerrar la ronda abierta el'), { target: { value: '2026-10-20T16:00' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Programar' })[0])
+    await screen.findByText(/La ronda se cerrará el .*4:00/)
+    const r2 = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
+    expect(Date.parse(r2.json().sala.config.cierre_programado_ronda_at)).toBe(Date.parse('2026-10-20T16:00:00-06:00'))
+    await waitFor(() => expect((screen.getByLabelText('Cerrar la ronda abierta el') as HTMLInputElement).value).toBe('2026-10-20T16:00'))
   }, 20_000)
 
   it('el superadmin crea un admin y ese admin cambia la clave en su primer ingreso', async () => {
