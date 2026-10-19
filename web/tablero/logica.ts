@@ -22,22 +22,40 @@ export function hayVotosEnRonda(datos: DatosTablero | null | undefined, n: numbe
   return (datos?.proyectos_vivos ?? []).some((v) => tieneVotos(rondaDe(v, n)))
 }
 
+/** Votos mínimos por proyecto, ronda y alcance si el servidor no manda `minimo_votos` (R4_CONTRATO C3). */
+export const MINIMO_VOTOS = 3
+
+/** La ronda tiene votos, pero menos que el mínimo: el servidor no entrega sus promedios (anonimato). */
+export function bajoMinimoEnRonda(datos: DatosTablero | null | undefined, n: number): boolean {
+  return (datos?.proyectos_vivos ?? []).some((v) => !!rondaDe(v, n)?.bajo_minimo)
+}
+
+/** «Hace falta al menos 3 votos para mostrar esta mesa» (alcance mesa) o «… estos resultados» (sala). */
+export function mensajeMinimo(datos: DatosTablero | null | undefined): string {
+  const que = datos?.alcance?.tipo === 'mesa' ? 'esta mesa' : 'estos resultados'
+  return `Hace falta al menos ${datos?.minimo_votos ?? MINIMO_VOTOS} votos para mostrar ${que}`
+}
+
 /** Texto del estado vacío para la vista elegida, o null si hay algo que dibujar. */
 export function mensajeVacio(datos: DatosTablero | null | undefined, vista: Vista): string | null {
   const r1 = hayVotosEnRonda(datos, 1)
   const r2 = hayVotosEnRonda(datos, 2)
-  if (vista === 1) return r1 ? null : 'Aún no hay votos en la ronda 1'
-  if (vista === 2) return r2 ? null : 'Aún no hay votos en la ronda 2'
-  if (!r1 && !r2) return 'Aún no hay votos en la ronda 1'
-  if (!r2) return 'Aún no hay votos en la ronda 2. La comparación muestra solo la ronda 1.'
+  const sinRonda = (n: 1 | 2) => (bajoMinimoEnRonda(datos, n) ? mensajeMinimo(datos) : `Aún no hay votos en la ronda ${n}`)
+  if (vista === 1) return r1 ? null : sinRonda(1)
+  if (vista === 2) return r2 ? null : sinRonda(2)
+  if (!r1 && !r2) return sinRonda(1)
+  if (!r2) return `${sinRonda(2)}. La comparación muestra solo la ronda 1.`
   return null
 }
 
-/** Ronda cuya distribución se muestra en el panel según la vista. */
-export function rondaEnFoco(datos: DatosTablero | null | undefined, vista: Vista): 1 | 2 {
-  if (vista === 1) return 1
-  if (vista === 2) return 2
-  return hayVotosEnRonda(datos, 2) ? 2 : 1
+/** La columna R2 de las tablas: solo desde la ronda 2 (antes solo diría «Sin votos» en cada fila). */
+export function mostrarR2(datos: DatosTablero): boolean {
+  return hayVotosEnRonda(datos, 2) || (datos.sala?.ronda_actual ?? 0) >= 2
+}
+
+/** Celda de una tabla de resultados: la cifra del servidor, «Faltan votos» bajo el mínimo o «Sin votos». */
+export function cifraRonda(r: RondaVivo | null, valor: number | null | undefined): string {
+  return r?.bajo_minimo ? 'Faltan votos' : numero(valor)
 }
 
 const fmt = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -142,10 +160,16 @@ export type ResultadoPeticion =
   | { tipo: 'igual' }
   | { tipo: 'error'; status: number; codigo: string; mensaje: string }
 
+const SIN_PERMISO = 'Este enlace del tablero no tiene permiso. Pide al facilitador el enlace completo del tablero.'
 const MENSAJES_STATUS: Record<number, string> = {
-  401: 'Este enlace del tablero no tiene permiso. Pide al facilitador el enlace completo con su token.',
-  403: 'Este enlace del tablero no tiene permiso. Pide al facilitador el enlace completo con su token.',
+  401: SIN_PERMISO,
+  403: SIN_PERMISO,
   404: 'No encontramos esta sala. Revisa el enlace del tablero.',
+}
+
+/** 401 o 403: el enlace no tiene permiso y reintentar no lo arregla, así que se deja de consultar. */
+export function esSinPermiso(status: number): boolean {
+  return status === 401 || status === 403
 }
 
 /** Una petición del polling con ETag. 304 = sin cambios. */
