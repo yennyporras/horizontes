@@ -230,6 +230,14 @@ function csv(s: SalaDetalle, archivo: string): string {
   return '﻿' + filas.map((f) => f.map(celda).join(',')).join('\n') + '\n'
 }
 
+/** Las 12 hojas de la semilla, en el orden del catálogo de perfiles (como GET /api/admin/salas/{id}/hojas). Sin rayas, como el servidor. */
+function hojasSemilla() {
+  const proyecto = (id: string) => seed.plantilla.proyectos.find((p) => p.id === id)?.nombre ?? id
+  return seed.perfiles.flatMap((pf) =>
+    seed.plantilla.hojas.filter((h) => h.perfil_id === pf.id).map((h) => ({ ...h, texto: h.texto.replace(/\s*\u2014\s*/g, ', '), proyecto: proyecto(h.proyecto_id), perfil: pf.nombre })),
+  )
+}
+
 function rubricasIniciales(): CriterioRubrica[] {
   return seed.motor.criterios.map((c) => ({ id: c.id, nombre: c.nombre, pregunta: c.pregunta, rubrica: estado.rubricasNuevas[c.id] ?? c.rubrica }))
 }
@@ -324,6 +332,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       if (r.status === 201) estado.rubricas[estado.salas[estado.salas.length - 1].sala.id] = structuredClone(estado.rubricas[s.sala.id] ?? rubricasIniciales())
       return r
     }
+    if (metodo === 'GET' && resto === '/hojas') return ok({ hojas: hojasSemilla() })
     const r = /^\/rubricas(?:\/([^/]+))?$/.exec(resto)
     if (r) return rubricas(metodo, s, r[1], b, por)
     if (metodo === 'GET' && resto.startsWith('/export/')) return ok(csv(s, resto.slice('/export/'.length)))

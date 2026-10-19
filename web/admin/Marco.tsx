@@ -35,6 +35,7 @@ export function Marco() {
     { a: enSala('vivo'), texto: 'Sala en vivo' },
     { a: enSala('mesas'), texto: 'Mesas y QR' },
     { a: enSala('participantes'), texto: 'Participantes' },
+    { a: enSala('hojas'), texto: 'Hojas' },
     { a: enSala('configuracion'), texto: 'Configuración' },
     { a: enSala('export'), texto: 'Exportar' },
   ]
