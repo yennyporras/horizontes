@@ -156,7 +156,7 @@ export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ah
     if (cambios.zona_horaria === undefined) poner('zona_horaria', (zona = ZONA_POR_PAIS[cambios.pais as keyof typeof ZONA_POR_PAIS]))
   }
   if (cambios.zona_horaria !== undefined) {
-    if (!Object.hasOwn(DESFASES, cambios.zona_horaria as string)) {
+    if (typeof cambios.zona_horaria !== 'string' || !Object.hasOwn(DESFASES, cambios.zona_horaria)) {
       throw new ErrorApi(422, 'CONFIG_INVALIDA', `zona_horaria debe ser una de: ${Object.keys(DESFASES).join(', ')}.`)
     }
     poner('zona_horaria', (zona = cambios.zona_horaria as ZonaHoraria))

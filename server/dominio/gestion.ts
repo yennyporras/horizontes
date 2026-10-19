@@ -69,12 +69,16 @@ export function detalleSala(db: Db, idOCodigo: string, baseUrl: string) {
   const sala = cargarSala(db, idOCodigo)
   const ronda = rondaReferencia(sala)
   const nVivos = vivos(db, sala.id).length
-  const participantes = todos<ParticipanteFila & { votos: number; consentimiento_at: string | null }>(
+  // IP y país del primer aviso aceptado: los inscritos antes de R4 no tienen participantes.ip, su consentimiento sí.
+  const participantes = todos<ParticipanteFila & { votos: number; consentimiento_at: string | null; ip_aviso: string | null; pais: string }>(
     db,
     `SELECT p.*,
             (SELECT COUNT(*) FROM votos v WHERE v.participante_id = p.id AND v.ronda = ?) AS votos,
-            (SELECT MAX(c.aceptado_at) FROM consentimientos c WHERE c.participante_id = p.id) AS consentimiento_at
-       FROM participantes p WHERE p.sala_id = ? ORDER BY p.creado_at`,
+            (SELECT MAX(c.aceptado_at) FROM consentimientos c WHERE c.participante_id = p.id) AS consentimiento_at,
+            c1.ip AS ip_aviso, c1.pais
+       FROM participantes p
+       LEFT JOIN consentimientos c1 ON c1.id = (SELECT MIN(id) FROM consentimientos WHERE participante_id = p.id)
+      WHERE p.sala_id = ? ORDER BY p.creado_at`,
     ronda,
     sala.id,
   )
@@ -98,8 +102,8 @@ export function detalleSala(db: Db, idOCodigo: string, baseUrl: string) {
       activo: Boolean(p.activo),
       completo_ronda: Number(p.votos) >= nVivos,
       consentimiento_at: isoEnZona(p.consentimiento_at, sala.zona_horaria),
-      ip: p.ip,
-      pais: sala.pais,
+      ip: p.ip ?? p.ip_aviso,
+      pais: p.pais,
     })),
     perfiles: perfiles(),
     eventos: eventos.map((e) => ({ at: isoEnZona(e.at, sala.zona_horaria), tipo: e.tipo, detalle: e.detalle_json ? JSON.parse(e.detalle_json) : null, por: e.por })),
@@ -156,16 +160,16 @@ const csv = (filas: unknown[][]) => '﻿' +filas.map((f) => f.map(celda).join(';
 
 export function exportInscritos(db: Db, salaId: string) {
   const sala = cargarSala(db, salaId)
-  const filas = todos<ParticipanteFila & { mesa: string; version_aviso: string | null; aceptado_at: string | null; politica_url: string | null }>(
+  const filas = todos<ParticipanteFila & { mesa: string; version_aviso: string | null; aceptado_at: string | null; politica_url: string | null; ip_aviso: string | null; pais: string | null }>(
     db,
-    `SELECT p.*, m.nombre AS mesa, c.version_aviso, c.aceptado_at, c.politica_url
+    `SELECT p.*, m.nombre AS mesa, c.version_aviso, c.aceptado_at, c.politica_url, c.ip AS ip_aviso, c.pais
        FROM participantes p JOIN mesas m ON m.id = p.mesa_id
        LEFT JOIN consentimientos c ON c.id = (SELECT MIN(id) FROM consentimientos WHERE participante_id = p.id)
       WHERE p.sala_id = ? ORDER BY m.numero, p.creado_at`,
     sala.id,
   )
   return csv([
-    // `ip` y `pais` al final (R4): quien ya lee el archivo por posición no se rompe.
+    // `ip` y `pais` (del aviso aceptado) al final (R4): quien ya lee el archivo por posición no se rompe.
     ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'politica_url', 'ip', 'pais'],
     ...filas.map((p) => [
       p.nombre,
@@ -176,8 +180,8 @@ export function exportInscritos(db: Db, salaId: string) {
       p.version_aviso,
       isoEnZona(p.aceptado_at, sala.zona_horaria),
       p.politica_url,
-      p.ip,
-      sala.pais,
+      p.ip ?? p.ip_aviso,
+      p.pais,
     ]),
   ])
 }
@@ -186,14 +190,15 @@ export function exportVotos(db: Db, salaId: string) {
   const sala = cargarSala(db, salaId)
   const filas = todos<Record<string, string | number>>(
     db,
-    `SELECT v.participante_id, m.nombre AS mesa, p.perfil_id, p.activo, v.ronda, v.proyecto_id, ${CRITERIOS.map((c) => `v.${c}`).join(', ')}, v.ip
+    `SELECT v.participante_id, m.nombre AS mesa, p.perfil_id, p.activo, v.ronda, v.proyecto_id, ${CRITERIOS.map((c) => `v.${c}`).join(', ')}, v.ip,
+            (SELECT c.pais FROM consentimientos c WHERE c.participante_id = p.id ORDER BY c.id LIMIT 1) AS pais
        FROM votos v JOIN participantes p ON p.id = v.participante_id JOIN mesas m ON m.id = p.mesa_id
       WHERE v.sala_id = ? ORDER BY m.numero, v.participante_id, v.ronda, v.proyecto_id`,
     sala.id,
   )
   return csv([
     // `activo`: los votos de desactivados no cuentan en la matriz; con esta columna Excel cuadra con el tablero.
-    // `ip` (del último guardado del voto) y `pais` al final (R4).
+    // `ip` (del último guardado del voto) y `pais` (del aviso aceptado) al final (R4).
     ['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', ...CRITERIOS, 'activo', 'ip', 'pais'],
     ...filas.map((f) => [
       sha256(`${sala.id}:${f.participante_id}`).slice(0, 12),
@@ -204,7 +209,7 @@ export function exportVotos(db: Db, salaId: string) {
       ...CRITERIOS.map((c) => f[c]),
       f.activo ? 'si' : 'no',
       f.ip,
-      sala.pais,
+      f.pais,
     ]),
   ])
 }

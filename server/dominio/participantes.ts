@@ -143,7 +143,7 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
     const c = consentimientoVigente(sala.pais)
     ejecutar(
       db,
-      'INSERT INTO consentimientos (participante_id, version_aviso, politica_url, texto_hash, aceptado_at, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO consentimientos (participante_id, version_aviso, politica_url, texto_hash, aceptado_at, ip, user_agent, pais) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       p.id,
       c.version,
       c.politica_url,
@@ -151,6 +151,7 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
       isoUtc(ahora),
       ipGuardable(ctx),
       ctx.userAgent?.slice(0, 255) ?? null,
+      sala.pais,
     )
     tocar(db, sala.id)
     const mesaP = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ?', p.mesa_id)!

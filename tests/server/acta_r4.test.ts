@@ -66,6 +66,7 @@ describe('migración aditiva sobre una BD de R3', () => {
     const columnas = (t: string) => (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name)
     expect(columnas('participantes')).toContain('ip')
     expect(columnas('votos')).toContain('ip')
+    expect(columnas('consentimientos')).toContain('pais')
     db.close()
   })
 })
@@ -97,7 +98,7 @@ describe('país y zona horaria por sala (acta P4)', () => {
     expect(y.config).toMatchObject({ pais: 'CO', zona_horaria: 'America/Lima' })
   })
 
-  it.each([[{ pais: 'MX' }], [{ pais: 'co' }], [{ zona_horaria: 'America/Mexico_City' }], [{ zona_horaria: 'toString' }]])('PATCH config %j → 422 CONFIG_INVALIDA', async (cuerpo) => {
+  it.each([[{ pais: 'MX' }], [{ pais: 'co' }], [{ zona_horaria: 'America/Mexico_City' }], [{ zona_horaria: 'toString' }], [{ zona_horaria: ['America/Bogota'] }]])('PATCH config %j → 422 CONFIG_INVALIDA', async (cuerpo) => {
     const s = await crearSala(e, 1)
     const r = await config(s.id, cuerpo)
     expect(r.statusCode).toBe(422)
@@ -170,6 +171,8 @@ describe('IP real de inscripción y voto (C7, C8)', () => {
 
       const p = (await detalle(s.id)).participantes[0]
       expect(p).toMatchObject({ ip: IP_CLIENTE, pais: 'PE' })
+      // El país del export es el del aviso que la persona aceptó, aunque después cambie el de la sala.
+      await config(s.id, { pais: 'GT' })
       const inscritos = (await e.app.inject({ url: `/api/admin/salas/${s.id}/export/inscritos.csv`, headers: { cookie: e.cookie } })).body
       expect(inscritos.trim().split('\r\n')[1].endsWith(`;${IP_CLIENTE};PE`)).toBe(true)
       const votos = (await e.app.inject({ url: `/api/admin/salas/${s.id}/export/votos.csv`, headers: { cookie: e.cookie } })).body
