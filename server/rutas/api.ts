@@ -17,8 +17,19 @@ import {
   DURACION_SESION_MS,
 } from '../dominio/admins.js'
 import { LimitadorPeticiones } from '../dominio/mantenimiento.js'
-import { aplicarAccion, cambiarConfig } from '../dominio/estados.js'
-import { detalleSala, editarParticipante, eventosPaginados, exportInscritos, exportVotos, listarSalas, mesasAdmin, salaResumen, urls } from '../dominio/gestion.js'
+import { aplicarAccion, cambiarConfig, fijarPreguntaGuiada } from '../dominio/estados.js'
+import {
+  detalleSala,
+  editarParticipante,
+  eventosPaginados,
+  exportInscritos,
+  exportVotos,
+  listarSalas,
+  mesasAdmin,
+  respuestasPorPersona,
+  salaResumen,
+  urls,
+} from '../dominio/gestion.js'
 import { autenticarParticipante, hojasDeSala, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
 import { type CambioRubrica, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
@@ -200,8 +211,14 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     const d = detalleSala(db, req.params.id, op.baseUrl)
     const zona = d.sala.config.zona_horaria
     const a = req.admin!
-    // servidor_at: hora del servidor, para que el panel programe cierres aunque el reloj del computador esté corrido.
-    return responderConVersion(req, reply, { ...d, admin_actual: { id: a.id, usuario: a.usuario, nombre: a.nombre, rol: a.rol }, servidor_at: isoEnZona(ahora(), zona) })
+    // servidor_at: hora del servidor, para que el panel programe aperturas y cierres aunque el reloj del computador esté corrido.
+    // base_url: la de los QR y enlaces; el panel avisa si no coincide con el dominio desde el que se abre (C19-1).
+    return responderConVersion(req, reply, {
+      ...d,
+      admin_actual: { id: a.id, usuario: a.usuario, nombre: a.nombre, rol: a.rol },
+      servidor_at: isoEnZona(ahora(), zona),
+      base_url: op.baseUrl.replace(/\/+$/, ''),
+    })
   })
 
   app.patch<{ Params: { id: string } }>('/api/admin/salas/:id/config', async (req) => {
@@ -235,6 +252,14 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   // Solo lectura: el facilitador lee las 6 hojas de cada proyecto vivo, aunque la sala aún no las revele.
   app.get<{ Params: { id: string } }>('/api/admin/salas/:id/hojas', async (req) => ({ hojas: hojasDeSala(db, cargarSala(db, req.params.id).id) }))
+
+  // Respuestas por persona, con nombre y correo: solo admin (el preHandler exige sesión) y nunca se proyecta.
+  app.get<{ Params: { id: string } }>('/api/admin/salas/:id/respuestas', async (req) => respuestasPorPersona(db, req.params.id))
+
+  // Modo guiado: `{proyecto_id, criterio_id}` o `null`. Solo con una ronda abierta (409 RONDA_CERRADA).
+  app.put<{ Params: { id: string } }>('/api/admin/salas/:id/pregunta-guiada', async (req) =>
+    fijarPreguntaGuiada(db, cargarSala(db, req.params.id).id, req.body ?? null, ahora(), por(req)),
+  )
 
   app.get<{ Params: { mesaId: string } }>('/api/admin/mesas/:mesaId/qr.svg', async (req, reply) => {
     const m = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ? OR codigo = ?', req.params.mesaId, req.params.mesaId.toUpperCase())

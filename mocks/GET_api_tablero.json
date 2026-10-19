@@ -4,7 +4,8 @@
     "id": "s_demo",
     "nombre": "Taller Horizontes demo",
     "estado": "r2_abierta",
-    "ronda_actual": 2
+    "ronda_actual": 2,
+    "pregunta_guiada": null
   },
   "alcance": {
     "tipo": "mesa",
@@ -17,8 +18,14 @@
     "revelar_hojas": false,
     "cierre_programado_ronda_at": "2026-10-20T16:30:00-05:00",
     "cierre_programado_sala_at": null,
+    "apertura_programada_sala_at": null,
+    "apertura_programada_r1_at": null,
+    "cierre_programado_r1_at": null,
+    "apertura_programada_r2_at": null,
+    "cierre_programado_r2_at": "2026-10-20T16:30:00-05:00",
     "pais": "CO",
-    "zona_horaria": "America/Bogota"
+    "zona_horaria": "America/Bogota",
+    "modo_preguntas": "automatico"
   },
   "progreso": {
     "inscritos": 20,

@@ -11,10 +11,20 @@
       "alcance_resultados": "mesa",
       "vista_participante": "registrado",
       "revelar_hojas": false,
-      "cierre_programado_ronda_at": null,
+      "cierre_programado_ronda_at": "2026-10-20T15:30:00-05:00",
       "cierre_programado_sala_at": "2026-10-20T18:00:00-05:00",
+      "apertura_programada_sala_at": null,
+      "apertura_programada_r1_at": null,
+      "cierre_programado_r1_at": "2026-10-20T15:30:00-05:00",
+      "apertura_programada_r2_at": "2026-10-20T15:45:00-05:00",
+      "cierre_programado_r2_at": "2026-10-20T16:30:00-05:00",
       "pais": "CO",
-      "zona_horaria": "America/Bogota"
+      "zona_horaria": "America/Bogota",
+      "modo_preguntas": "guiado"
+    },
+    "pregunta_guiada": {
+      "proyecto_id": "insumex",
+      "criterio_id": "regulacion"
     }
   },
   "mesas": [
@@ -53,12 +63,30 @@
   ],
   "eventos": [
     {
+      "at": "2026-10-20T15:06:00-05:00",
+      "tipo": "pregunta_guiada",
+      "detalle": {
+        "proyecto_id": "insumex",
+        "criterio_id": "regulacion"
+      },
+      "por": "admin:paola"
+    },
+    {
       "at": "2026-10-20T15:00:00-05:00",
       "tipo": "ronda_abierta",
       "detalle": {
         "ronda": 1
       },
       "por": "admin:paola"
+    },
+    {
+      "at": "2026-10-20T14:30:00-05:00",
+      "tipo": "apertura_programada",
+      "detalle": {
+        "accion": "abrir_inscripcion",
+        "programado_at": "2026-10-20T19:30:00.000Z"
+      },
+      "por": "programado"
     }
   ],
   "admin_actual": {
@@ -66,5 +94,7 @@
     "usuario": "paola",
     "nombre": "Paola Porras",
     "rol": "superadmin"
-  }
+  },
+  "servidor_at": "2026-10-20T15:07:00-05:00",
+  "base_url": "https://horizontes.estratek.com.co"
 }

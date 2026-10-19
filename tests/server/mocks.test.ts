@@ -52,6 +52,22 @@ describe('servidor de mocks', () => {
     expect(new Set(hojas.map((h) => h.perfil)).size).toBe(6)
   })
 
+  it('cambios del 19-oct: respuestas por persona, pregunta guiada, base_url y campos nuevos de config', async () => {
+    const r = (await app.inject('/api/admin/salas/s_demo/respuestas')).json().respuestas
+    expect(r[0]).toMatchObject({ participante_id: 'p_8f2a', nombre: 'Ana Pérez', mesa: 'Mesa 1', ronda: 1, proyecto_id: 'insumex' })
+    const p = await app.inject({ method: 'PUT', url: '/api/admin/salas/s_demo/pregunta-guiada', payload: { proyecto_id: 'insumex', criterio_id: 'regulacion' } })
+    expect(p.json().pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'regulacion' })
+    const d = (await app.inject('/api/admin/salas/s_demo')).json()
+    expect(d.base_url).toMatch(/^https:\/\//)
+    expect(d.sala.config).toHaveProperty('apertura_programada_r2_at')
+    expect((await app.inject('/api/yo')).json().config.modo_preguntas).toBe('automatico')
+    // El tablero de `npm run dev` queda en automático (muestra la matriz); el ejemplo guiado vive en el mock del admin.
+    const tb = (await app.inject('/api/tablero/s_demo?t=x')).json()
+    expect(tb.sala.pregunta_guiada).toBeNull()
+    expect(tb.config.modo_preguntas).toBe('automatico')
+    expect(d.sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'regulacion' })
+  })
+
   it('mesa inexistente responde 404 MESA_NO_EXISTE', async () => {
     const r = await app.inject('/api/mesas/NOEXISTE')
     expect(r.statusCode).toBe(404)
