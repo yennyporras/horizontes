@@ -1,18 +1,17 @@
 import { config } from '../config.js'
 import { type Pais, sha256 } from './util.js'
 
-// Aviso de autorización de Estratek según el país de la sala. Si cambia un texto, sube la versión.
+// Aviso de autorización de Estratek según el país de la sala (docs/CONSENTIMIENTO.md §5.1). Si cambia un texto, sube la versión.
 export const VERSION_CONSENTIMIENTO = 'hz-1.1'
 
-const AUTORIZO =
-  'Autorizo a Estratek S.A.S. a recolectar y tratar mi nombre y mi correo electrónico con fines informativos ' +
-  'relacionados con este taller, de acuerdo con su Política de Tratamiento de Datos Personales'
-const DERECHOS = 'Puedo conocer, actualizar, rectificar o suprimir mis datos en cualquier momento escribiendo a Estratek.'
+const AUTORIZO = 'Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a'
+const POLITICA = 'la Política de Tratamiento de Datos Personales de Estratek'
+const CONTACTO = 'escribiendo a info@estratek.com.co.'
 
 export const TEXTOS_AUTORIZACION: Record<Pais, string> = {
-  CO: `${AUTORIZO} y con la Ley 1581 de 2012 de Colombia. ${DERECHOS}`,
-  PE: `${AUTORIZO} y con la Ley 29733, Ley de Protección de Datos Personales del Perú. ${DERECHOS}`,
-  GT: `${AUTORIZO}, que se aplica a los participantes en Guatemala. ${DERECHOS}`,
+  CO: `${AUTORIZO} la Ley 1581 de 2012 de Colombia y a ${POLITICA}. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización ${CONTACTO}`,
+  PE: `${AUTORIZO} la Ley 29733, Ley de Protección de Datos Personales del Perú, y a ${POLITICA}. Puedo ejercer mis derechos de acceso, rectificación, cancelación y oposición, y revocar esta autorización, ${CONTACTO}`,
+  GT: `${AUTORIZO} ${POLITICA}, que se aplica a los participantes en Guatemala. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización ${CONTACTO}`,
 }
 
 export function consentimientoVigente(pais: Pais) {
