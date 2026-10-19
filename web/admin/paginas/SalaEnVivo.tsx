@@ -5,6 +5,7 @@ import { useSala } from '../useSala'
 import { useConfirmar } from '../componentes/Confirmar'
 import { ConSala } from './EncabezadoSala'
 import { ComoVoto } from '../../tablero'
+import type { CriterioId } from '../../shared/api/contrato'
 import type { Accion, PreguntaGuiada, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
 import {
   ACCIONES,
@@ -138,8 +139,8 @@ function Estado({ d }: { d: SalaDetalle }) {
         ) : (
           programados.map((p) => (
             <li key={p.texto}>
-              {p.texto}: {p.at ? fechaHora(p.at, zona) : 'sin programar'}
-              {p.at && new Date(p.at).getTime() > ahora && (
+              {p.texto}: {fechaHora(p.at, zona)}
+              {new Date(p.at).getTime() > ahora && (
                 <>
                   {' '}
                   · <span className="cuenta">faltan {faltan(new Date(p.at).getTime() - ahora)}</span>
@@ -245,7 +246,7 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
             </label>
             <label className="campo">
               <span>Pregunta</span>
-              <select value={elegida.criterio_id} onChange={(e) => setElegida({ ...elegida, criterio_id: e.target.value })}>
+              <select value={elegida.criterio_id} onChange={(e) => setElegida({ ...elegida, criterio_id: e.target.value as CriterioId })}>
                 {CRITERIOS.map((c, i) => (
                   <option key={c.id} value={c.id}>
                     {i + 1}. {c.nombre}
@@ -354,7 +355,7 @@ function MarcaRonda({ ronda }: { ronda: number }) {
   return <span className={`ronda ronda--${ronda}`}>R{ronda}</span>
 }
 
-/** Promedios por criterio y la fila «Total» (eje X + eje Y, del servidor). Sin T2M, ejes ni votos (acta A3 y A4). */
+/** Promedios por criterio. Sin T2M, ejes ni votos (acta A3 y A4) ni fila «Total» (preentrega 19-oct: no dice nada). */
 function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResumen['proyectos_vivos'][number]; criterios: TableroResumen['criterios']; rondas: number[] }) {
   const porRonda = rondas.map((n) => proyecto.rondas.find((r) => r.ronda === n))
   const valor = (r: RondaVivo | undefined, v: number | null | undefined) => (r?.bajo_minimo ? 'Faltan votos' : decimal(v))
@@ -383,14 +384,6 @@ function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResu
               ))}
             </tr>
           ))}
-          <tr className="fila-total">
-            <th scope="row">Total</th>
-            {porRonda.map((r, i) => (
-              <td key={rondas[i]} className="num">
-                {valor(r, r?.total)}
-              </td>
-            ))}
-          </tr>
         </tbody>
       </table>
     </div>

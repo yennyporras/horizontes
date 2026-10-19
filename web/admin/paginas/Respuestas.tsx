@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { api, lista } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
+import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import type { RespuestaPersona } from '../tipos'
 import { CRITERIOS, fechaHora, nombrePerfil, nombreProyecto, zonaSala } from '../textos'
 
@@ -46,10 +47,7 @@ export function Respuestas() {
           .sort((a, b) => a.mesa.localeCompare(b.mesa, 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es') || a.ronda - b.ronda || a.proyecto_id.localeCompare(b.proyecto_id))
         return (
           <>
-            <p className="alerta alerta--aviso" role="note">
-              <strong>Solo administradores. No se proyecta.</strong>
-              Aquí se ve qué calificó cada persona. Los tableros y los celulares solo muestran promedios anónimos.
-            </p>
+            <AvisoPrivado>Aquí se ve qué calificó cada persona. Los tableros y los celulares solo muestran promedios anónimos.</AvisoPrivado>
             <section className="panel" aria-labelledby="t-respuestas">
               <h2 id="t-respuestas">Calificaciones</h2>
               <div className="fila-form">
@@ -107,7 +105,14 @@ export function Respuestas() {
                     <tbody>
                       {visibles.map((f) => (
                         <tr key={`${f.participante_id}-${f.ronda}-${f.proyecto_id}`}>
-                          <th scope="row">{f.nombre}</th>
+                          <th scope="row">
+                            {f.nombre}
+                            {f.activo === false && (
+                              <span className="etiqueta etiqueta--apagado" title="Sus votos no cuentan en la matriz">
+                                Inactivo
+                              </span>
+                            )}
+                          </th>
                           <td data-label="Mesa">{f.mesa}</td>
                           <td data-label="Perfil">{nombrePerfil(f.perfil_id)}</td>
                           <td data-label="Ronda">
