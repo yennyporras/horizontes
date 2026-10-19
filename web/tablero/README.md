@@ -4,14 +4,17 @@ Ruta: `/tablero/:sala?mesa=&t=`. Con `t` (token de tablero) aparece el selector 
 
 | Archivo | Qué hace |
 |---|---|
-| `PaginaTablero.tsx` | Página del proyector: encabezado, matriz, progreso y detalle por criterio |
+| `PaginaTablero.tsx` | Página del proyector: encabezado y matriz sola por defecto; con datos (clic, M), progreso y detalle por criterio |
+| `zoom.ts` · `ControlesZoom.tsx` | Zoom vectorial de la matriz (viewBox): botones, teclas, rueda, pellizco y arrastre |
+| `ExplicacionMatriz.tsx` | Qué significa cada eje y cada punto, bajo la matriz (sin pesos) |
+| `PreguntaGuiada.tsx` | Modo guiado: la pregunta del facilitador en grande, en lugar de la matriz |
 | `MatrizHorizontes.tsx` | Matriz embebible (solo props, sin fetch) |
 | `matriz/matriz.js` | Dibujo SVG puro, sin dependencias (`matrizSVG`, `calcularLayout`) |
-| `TablaComparada.tsx` · `PanelProyecto.tsx` | Promedios R1 y R2 por criterio y fila «Total», sin fila de votos (proyector · móvil) |
+| `TablaComparada.tsx` · `PanelProyecto.tsx` | Promedios R1 y R2 por criterio, sin fila «Total» ni de votos (proyector · móvil) |
 | `ComoVoto.tsx` | «Cómo votó la sala»: conteo 1-3-5-7-9 por criterio, R1 y R2, con la `distribucion` del servidor. Lo usa también el panel (Sala en vivo) |
 | `Progreso.tsx` | Inscritos, completos, mesas y avisos de precierre |
 | `usePollingTablero.ts` · `logica.ts` | Polling 2,5 s con ETag y reglas de presentación |
-| `usePantallaCompleta.ts` | Tecla F (pantalla completa sin controles), 1, 2 y C (vistas), D (Promedios o Cómo votó) |
+| `usePantallaCompleta.ts` | Teclas: F (pantalla completa sin controles), 1, 2 y C (vistas), M y Esc (matriz sola o datos), D (Promedios o Cómo votó), +, −, 0 y flechas (zoom) |
 
 ## `MatrizHorizontes` para otras pantallas
 
@@ -48,6 +51,7 @@ Ayudas exportadas (`web/tablero/index.ts`):
 | `llenar` | `boolean` | `false` | Usa el alto que le dé el CSS del contenedor (el contenedor debe tener alto definido) |
 | `escalaTexto` | `number` | `1` | Multiplica la letra de la matriz (proyector: 1,3) |
 | `animarComparacion` | `boolean` | `true` | Al pasar a `'comparacion'`, R2 sale desde R1 (respeta `prefers-reduced-motion`) |
+| `encuadre` | `{ k, cx, cy }` | | Zoom: aumento y centro en fracción del lienzo. Solo cambia el `viewBox` del SVG |
 | `className` | `string` | | Clase extra del contenedor |
 
 Reglas:

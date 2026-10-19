@@ -1,28 +1,36 @@
 /*
- * Tablero (T3). Usa los tokens --hz-* de docs/DISENO.md; los valores de respaldo son los mismos
- * de web/shared/ui/tokens.css para que la vista funcione aunque ese archivo no esté cargado.
+ * Tablero (T3). Usa los tokens --hz-* de docs/DISENO.md (lienzo oscuro del IRMI); los valores de respaldo son
+ * los mismos de web/shared/ui/tokens.css para que la vista funcione aunque ese archivo no esté cargado.
  * Escala tipográfica fluida: ~15 px en 360, ~17 px en 1366 y ~20 px en 1920 (lectura a 6 m).
  */
 .hz-tablero {
-  --t-azul: var(--hz-azul, #1c4587);
-  --t-azul-medio: var(--hz-azul-medio, #3f7cc8);
-  --t-cielo: var(--hz-cielo, #00a3ff);
-  --t-tinta: var(--hz-tinta, #0f2340);
-  --t-tinta-2: var(--hz-tinta-2, #3a4d6b);
-  --t-tinta-3: var(--hz-tinta-3, #5b6b84);
-  --t-h1: var(--hz-h1, #eef4fb);
-  --t-h2: var(--hz-h2, #dce8f6);
-  --t-h3: var(--hz-h3, #c5d8ef);
-  --t-ok: var(--hz-ok, #1d6b4f);
-  --t-ok-fondo: var(--hz-ok-fondo, #e6f4ee);
-  --t-alerta: var(--hz-alerta, #7a4b00);
-  --t-alerta-fondo: var(--hz-alerta-fondo, #fff4dc);
-  --t-error: var(--hz-error, #a3261b);
-  --t-error-fondo: var(--hz-error-fondo, #fdecea);
-  --t-foco: var(--hz-foco, 0 0 0 2px #fff, 0 0 0 5px #1c4587, 0 0 0 7px #00a3ff);
-  /* Rondas (R4_CONTRATO): R1 verde, R2 rojo; siempre con su texto y forma (R1 hueco, R2 sólido). */
-  --t-r1: var(--hz-r1, #1f7a3a);
-  --t-r2: var(--hz-r2, #c62828);
+  --t-azul: var(--hz-azul, #47ebc2);
+  --t-azul-medio: var(--hz-azul-medio, #1a73b8);
+  --t-cielo: var(--hz-cielo, #1699db);
+  --t-tinta: var(--hz-tinta, #edf2ee);
+  --t-tinta-2: var(--hz-tinta-2, #c8d4ce);
+  --t-tinta-3: var(--hz-tinta-3, #8a9e96);
+  --t-fondo: var(--hz-fondo, #0e0e0e);
+  --t-sup-1: var(--hz-superficie-1, #131313);
+  --t-sup-2: var(--hz-superficie-2, #1a1a1a);
+  --t-sup-4: var(--hz-superficie-4, #2a2a2a);
+  --t-h1: var(--hz-h1, #1a1a1a);
+  --t-h2: var(--hz-h2, #242424);
+  --t-h3: var(--hz-h3, #2a2a2a);
+  --t-ok: var(--hz-ok, #47ebc2);
+  --t-ok-fondo: var(--hz-ok-fondo, #192d28);
+  --t-alerta: var(--hz-alerta, #ffbb44);
+  --t-alerta-fondo: var(--hz-alerta-fondo, #2b2418);
+  --t-error: var(--hz-error, #ff8585);
+  --t-error-fondo: var(--hz-error-fondo, #331818);
+  --t-foco: var(--hz-foco, 0 0 0 2px #0e0e0e, 0 0 0 4px #47ebc2);
+  /* Rondas: R1 verde, R2 rojo; siempre con su texto y forma (R1 hueco, R2 sólido). Texto sobre el color: --hz-sobre-r*. */
+  --t-r1: var(--hz-r1, #3fb25a);
+  --t-r2: var(--hz-r2, #f36363);
+  --t-sobre-r1: var(--hz-sobre-r1, #0e0e0e);
+  --t-sobre-r2: var(--hz-sobre-r2, #0e0e0e);
+  /* Gris azulado de los proyectos fijos (el mismo de la matriz). */
+  --t-fijo: #7d8fa9;
 
   box-sizing: border-box;
   min-height: 100vh;
@@ -33,7 +41,7 @@
   font-size: clamp(15px, 0.55rem + 0.6vw, 22px);
   line-height: 1.4;
   color: var(--t-tinta);
-  background: #fff;
+  background: var(--t-fondo);
   font-variant-numeric: tabular-nums;
 }
 body:has(> #root > .hz-tablero) {
@@ -121,8 +129,8 @@ body:has(> #root > .hz-tablero) {
   font: inherit;
   font-weight: 600;
   color: var(--t-azul);
-  background: #fff;
-  border: 1px solid var(--t-azul-medio);
+  background: var(--t-sup-2);
+  border: 1px solid var(--hz-borde-control, #6e7f78);
   border-radius: 10px;
 }
 .hz-segmento,
@@ -148,8 +156,7 @@ body:has(> #root > .hz-tablero) {
 .hz-detalle button[aria-pressed='true'] {
   color: var(--t-azul);
   font-weight: 800;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 35, 64, 0.12);
+  background: var(--t-sup-4);
 }
 
 /* Cuerpo */
@@ -171,6 +178,140 @@ body:has(> #root > .hz-tablero) {
 }
 .hz-lienzo svg {
   display: block;
+}
+/* Zoom (T1): sin zoom, el dedo sigue desplazando la página en vertical; con zoom, arrastra la matriz. */
+.hz-lienzo {
+  touch-action: pan-y;
+}
+.hz-lienzo.hz-con-zoom {
+  touch-action: none;
+  cursor: grab;
+}
+.hz-lienzo.hz-arrastrando {
+  cursor: grabbing;
+}
+.hz-pie-matriz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3em 1em;
+  margin-top: 0.4em;
+}
+.hz-pie-matriz .hz-leyenda {
+  margin: 0;
+}
+.hz-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1em;
+  padding: 0.1em;
+  font-size: 0.8em;
+  background: var(--t-h1);
+  border-radius: 999px;
+}
+.hz-zoom button {
+  min-width: 2em;
+  min-height: 2em;
+  padding: 0 0.6em;
+  font: inherit;
+  font-weight: 800;
+  color: var(--t-tinta);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.hz-zoom button:hover:not(:disabled) {
+  background: var(--t-sup-4);
+}
+.hz-zoom button:disabled {
+  color: var(--t-tinta-3);
+  cursor: default;
+}
+.hz-zoom output {
+  min-width: 3.2em;
+  text-align: center;
+  font-weight: 700;
+  color: var(--t-tinta-2);
+}
+
+/* Qué significa cada eje y cada punto (T2): dos o tres líneas bajo la matriz, sin pesos ni fórmulas. */
+.hz-explica {
+  margin: 0.35em 0 0;
+  font-size: 0.8em;
+  line-height: 1.35;
+  color: var(--t-tinta-2);
+}
+.hz-explica b {
+  color: var(--t-tinta);
+}
+.hz-pie-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em;
+}
+
+/* Pregunta guiada (T3): la pregunta del facilitador, en grande, en lugar de la matriz. */
+.hz-guiada {
+  min-width: 0;
+  padding: 1em 1.2em;
+  background: var(--t-sup-1);
+  border: 1px solid var(--t-h3);
+  border-radius: 12px;
+}
+.hz-guiada-meta {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--t-azul);
+}
+.hz-guiada h2 {
+  margin: 0.2em 0 0.3em;
+  font-size: 2em;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--t-tinta);
+}
+.hz-guiada-pregunta {
+  margin: 0 0 0.8em;
+  font-size: 1.45em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.hz-rubrica {
+  display: grid;
+  gap: 0.45em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hz-rubrica li {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.35em 0.6em;
+  font-size: 1.15em;
+  line-height: 1.3;
+  background: var(--t-h1);
+  border-radius: 8px;
+}
+.hz-rubrica-valor {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.9em;
+  height: 1.9em;
+  font-weight: 900;
+  color: var(--t-azul);
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.hz-guiada-pie {
+  margin: 0.8em 0 0;
+  font-weight: 700;
+  color: var(--t-tinta-2);
 }
 .hz-vacio {
   margin: 0 0 0.5em;
@@ -201,7 +342,7 @@ body:has(> #root > .hz-tablero) {
   border-radius: 50%;
 }
 .hz-ley-fijo {
-  background: #7d8fa9;
+  background: var(--t-fijo);
 }
 
 /* Marcas de ronda (leyenda, tablas y franja): R1 aro hueco verde, R2 punto sólido rojo. */
@@ -235,7 +376,7 @@ body:has(> #root > .hz-tablero) {
   white-space: nowrap;
 }
 
-/* Franja de fase: qué se hace en la ronda abierta (blanco sobre el color de la ronda, AA). */
+/* Franja de fase: qué se hace en la ronda abierta (texto --hz-sobre-r* sobre el color de la ronda, AA). */
 .hz-franja {
   display: flex;
   align-items: center;
@@ -245,20 +386,21 @@ body:has(> #root > .hz-tablero) {
   font-size: 1.3em;
   font-weight: 800;
   line-height: 1.25;
-  color: #fff;
   border-radius: 10px;
 }
 .hz-franja-r1 {
+  color: var(--t-sobre-r1);
   background: var(--t-r1);
 }
 .hz-franja-r2 {
+  color: var(--t-sobre-r2);
   background: var(--t-r2);
 }
 .hz-franja .hz-marca-r1 {
-  border-color: #fff;
+  border-color: currentColor;
 }
 .hz-franja .hz-marca-r2 {
-  background: #fff;
+  background: currentColor;
 }
 .hz-lateral {
   display: flex;
@@ -416,18 +558,6 @@ body:has(> #root > .hz-tablero) {
   font-size: 0.85em;
   color: var(--t-tinta-2) !important;
 }
-.hz-resumen th[scope='row'] {
-  font-weight: 800;
-  color: var(--t-azul);
-}
-.hz-resumen tr:first-child > * {
-  border-top: 2px solid var(--t-h3);
-  border-bottom: 0;
-}
-.hz-resumen td {
-  font-weight: 800;
-  color: var(--t-tinta);
-}
 
 /* Tabla comparada (proyector) */
 .hz-comparada {
@@ -501,12 +631,58 @@ body:has(> #root > .hz-tablero) {
     min-height: 0;
   }
   .hz-zona-matriz {
-    /* La matriz es casi cuadrada: su ancho sigue al alto disponible y el resto va al panel. */
+    /* La matriz es casi cuadrada: su ancho sigue al alto disponible (sin encabezado, leyenda y
+       explicación, --hz-pie) y el resto va al panel. */
+    --hz-pie: 5.5em;
+    --hz-ancho-max: 56vw;
     flex: 0 1 auto;
-    width: min(calc(100dvh - 7.5em), 56vw);
+    width: min(calc(100dvh - 7.5em - var(--hz-pie)), var(--hz-ancho-max));
   }
   .hz-tablero:has(.hz-franja) .hz-zona-matriz {
-    width: min(calc(100dvh - 10.5em), 56vw);
+    width: min(calc(100dvh - 10.5em - var(--hz-pie)), var(--hz-ancho-max));
+  }
+  /* Matriz sola (por defecto): sin panel lateral. La matriz toma todo el alto y la leyenda, el zoom y la
+     explicación van en una columna a su derecha, abajo, junto al eje X. */
+  .hz-matriz-sola .hz-zona-matriz {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, calc(100dvh - 7.5em)) minmax(12em, 22em);
+    grid-template-rows: 1fr auto auto auto;
+    justify-content: center;
+    column-gap: 1.5em;
+    width: auto;
+  }
+  .hz-tablero.hz-matriz-sola:has(.hz-franja) .hz-zona-matriz {
+    grid-template-columns: minmax(0, calc(100dvh - 10.5em)) minmax(12em, 22em);
+  }
+  .hz-matriz-sola .hz-lienzo {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+  .hz-matriz-sola .hz-vacio,
+  .hz-matriz-sola .hz-pie-matriz,
+  .hz-matriz-sola .hz-explica {
+    grid-column: 2;
+  }
+  .hz-matriz-sola .hz-vacio {
+    grid-row: 2;
+  }
+  .hz-matriz-sola .hz-pie-matriz {
+    grid-row: 3;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .hz-matriz-sola .hz-leyenda {
+    flex-direction: column;
+  }
+  .hz-matriz-sola .hz-explica {
+    grid-row: 4;
+    margin-top: 0.8em;
+    font-size: 0.9em;
+  }
+  .hz-guiada {
+    flex: 1.3 1 0;
+    overflow-y: auto;
   }
   .hz-lienzo {
     flex: 1 1 auto;
@@ -533,6 +709,13 @@ body:has(> #root > .hz-tablero) {
   }
   .hz-lateral .hz-cv-pista {
     height: 2em;
+  }
+}
+
+/* Pregunta guiada con la matriz sola en 1920×1080: sobra sitio, más grande para leerla a 6 m. */
+@media (min-width: 1600px) and (min-height: 821px) {
+  .hz-matriz-sola .hz-guiada {
+    font-size: 1.3em;
   }
 }
 
@@ -568,6 +751,9 @@ body:has(> #root > .hz-tablero) {
   }
   .hz-lateral .hz-cv .hz-cv-crit {
     margin-top: 0.15em;
+  }
+  .hz-tablero:not(.hz-matriz-sola) .hz-guiada {
+    font-size: 0.85em;
   }
 }
 
@@ -609,18 +795,25 @@ body:has(> #root > .hz-tablero) {
 }
 
 /* Pantalla completa (tecla F): sin controles; la vista se cambia con 1, 2 y C. */
-.hz-boton-pantalla {
+.hz-boton-pantalla,
+.hz-boton-datos {
   min-height: 2.4em;
   padding: 0.3em 0.9em;
   font: inherit;
   font-weight: 600;
   color: var(--t-azul);
-  background: #fff;
-  border: 1px solid var(--t-azul-medio);
+  background: var(--t-sup-2);
+  border: 1px solid var(--hz-borde-fuerte, rgba(255, 255, 255, 0.16));
   border-radius: 10px;
   cursor: pointer;
 }
-.hz-boton-pantalla kbd {
+.hz-boton-datos {
+  min-height: 2em;
+  padding: 0.15em 0.7em;
+  font-size: 0.8em;
+}
+.hz-boton-pantalla kbd,
+.hz-boton-datos kbd {
   margin-left: 0.3em;
   padding: 0 0.35em;
   font: inherit;
