@@ -10,7 +10,7 @@ export function cifra(n: number | null | undefined, decimales = 2): string {
 }
 
 /** Acta A7: la ronda 1 es individual y en silencio, con la hoja del perfil; la ronda 2, con discusión en la mesa. */
-export const FASE_RONDA: Record<1 | 2, string> = { 1: 'Individual y en silencio', 2: 'Discusión en la mesa' }
+const FASE_RONDA: Record<1 | 2, string> = { 1: 'Individual y en silencio', 2: 'Discusión en la mesa' }
 
 /** Insignia R1 (hueco, verde) o R2 (sólido, rojo) con su fase: se lee sin depender del color. */
 export function FaseRonda({ ronda }: { ronda: number }) {
