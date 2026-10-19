@@ -1,5 +1,5 @@
-/* Panel admin. Tokens con los mismos valores de docs/DISENO.md (T2); se definen aquí con
-   alcance .hz-admin para no depender del orden de carga de web/shared/ui/tokens.css. */
+/* Panel admin. Alias locales de los tokens de web/shared/ui/tokens.css (sistema oscuro del IRMI, D1), con
+   respaldo por si la hoja de tokens carga después. Ningún color en duro fuera de este bloque (salvo impresión). */
 .hz-admin {
   --a-azul: var(--hz-azul, #1c4587);
   --a-azul-medio: var(--hz-azul-medio, #3f7cc8);
@@ -10,19 +10,30 @@
   --a-h1: var(--hz-h1, #eef4fb);
   --a-h2: var(--hz-h2, #dce8f6);
   --a-h3: var(--hz-h3, #c5d8ef);
-  --a-ok: #1d6b4f;
-  --a-ok-fondo: #e6f4ee;
-  --a-alerta: #7a4b00;
-  --a-alerta-fondo: #fff4dc;
-  --a-error: #a3261b;
-  --a-error-fondo: #fdecea;
+  --a-ok: var(--hz-ok, #1d6b4f);
+  --a-ok-fondo: var(--hz-ok-fondo, #e6f4ee);
+  --a-alerta: var(--hz-alerta, #7a4b00);
+  --a-alerta-fondo: var(--hz-alerta-fondo, #fff4dc);
+  --a-error: var(--hz-error, #a3261b);
+  --a-error-fondo: var(--hz-error-fondo, #fdecea);
+  --a-info-fondo: var(--hz-info-fondo, #eef4fb);
+  --a-fondo: var(--hz-fondo, #fff);
+  --a-sup-1: var(--hz-superficie-1, #fff);
+  --a-sup-2: var(--hz-superficie-2, #fff);
+  --a-borde-control: var(--hz-borde-control, #5b6b84);
+  --a-sobre-acento: var(--hz-sobre-acento, #fff);
+  --a-grad: var(--hz-grad-marca, #1c4587);
+  --a-azul-presionado: var(--hz-azul-presionado, #163869);
+  --a-deshab-fondo: var(--hz-deshabilitado-fondo, #f4f6f9);
+  --a-deshab-texto: var(--hz-deshabilitado-texto, #5b6b84);
   --a-r-s: 6px;
   --a-r-m: 10px;
   --a-r-l: 16px;
 
-  font-family: 'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--hz-fuente, 'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif);
+  font-weight: var(--hz-fw-texto, 500);
   color: var(--a-tinta);
-  background: #fff;
+  background: var(--a-fondo);
   min-height: 100vh;
   font-size: 16px;
   line-height: 1.5;
@@ -39,7 +50,7 @@
 .hz-admin h3 {
   line-height: 1.2;
   margin: 0 0 12px;
-  color: var(--a-azul);
+  color: var(--a-tinta);
 }
 .hz-admin h1 { font-size: 25px; font-weight: 800; }
 .hz-admin h2 { font-size: 20px; font-weight: 700; }
@@ -48,9 +59,8 @@
 .hz-admin a { color: var(--a-azul); }
 
 .hz-admin :focus-visible {
-  outline: 3px solid var(--a-azul);
+  outline: 2px solid var(--a-azul);
   outline-offset: 2px;
-  box-shadow: 0 0 0 7px var(--a-cielo);
 }
 
 .hz-admin .saltar {
@@ -60,7 +70,7 @@
 .hz-admin .saltar:focus {
   left: 16px;
   top: 8px;
-  background: #fff;
+  background: var(--a-sup-1);
   padding: 8px 12px;
   z-index: 10;
 }
@@ -90,7 +100,7 @@
   align-items: center;
 }
 .hz-admin .nav__item:hover { background: var(--a-h2); }
-.hz-admin .nav__item--activo { background: #fff; color: var(--a-azul); font-weight: 700; box-shadow: inset 0 0 0 1px var(--a-h3); }
+.hz-admin .nav__item--activo { background: var(--a-fondo); color: var(--a-azul); font-weight: 700; box-shadow: inset 0 0 0 1px var(--a-h3); }
 .hz-admin .usuario { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 
 .hz-admin .contenido { padding: 24px 16px 48px; max-width: 1200px; margin: 0 auto; }
@@ -101,7 +111,7 @@
   border-radius: var(--a-r-l);
   padding: 20px;
   margin-bottom: 20px;
-  background: #fff;
+  background: var(--a-sup-1);
 }
 .hz-admin .hoja-perfil { padding: 16px; background: var(--a-h1); border-radius: var(--a-r-m); }
 .hz-admin .hoja-perfil h3 { margin-bottom: 8px; }
@@ -127,11 +137,12 @@
   font-size: 15px;
   cursor: pointer;
   text-decoration: none;
-  background: #fff;
+  background: transparent;
   color: var(--a-azul);
 }
-.hz-admin .btn--primario { background: var(--a-azul); color: #fff; }
-.hz-admin .btn--primario:hover:not(:disabled) { background: #163869; }
+/* Acción principal: degradado de marca con texto oscuro (el blanco sobre teal no llega a AA) */
+.hz-admin .btn--primario { background: var(--a-grad); border-color: transparent; color: var(--a-sobre-acento); }
+.hz-admin .btn--primario:hover:not(:disabled) { background: var(--a-azul-presionado); }
 .hz-admin .btn--fantasma { border-color: transparent; background: transparent; text-decoration: underline; }
 .hz-admin .btn--peligro { border-color: var(--a-error); color: var(--a-error); }
 .hz-admin .btn--peligro:hover:not(:disabled) { background: var(--a-error-fondo); }
@@ -140,8 +151,8 @@
 .hz-admin .btn:disabled,
 .hz-admin .btn[aria-disabled='true'] {
   background: transparent;
-  border: 2px dashed var(--a-h3);
-  color: var(--a-tinta-3);
+  border: 2px dashed var(--a-tinta-3);
+  color: var(--a-deshab-texto);
   font-weight: 600;
   cursor: not-allowed;
 }
@@ -159,19 +170,19 @@
   font-size: 16px;
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid var(--a-tinta-3);
+  border: 1px solid var(--a-borde-control);
   border-radius: var(--a-r-s);
   color: var(--a-tinta);
-  background: #fff;
+  background: var(--a-sup-2);
 }
 .hz-admin .campo-linea { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--a-tinta-2); }
 .hz-admin select.chico { min-height: 36px; font-size: 14px; padding: 4px 8px; }
 .hz-admin .fila-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .hz-admin .fila-form .btn { margin-bottom: 12px; }
 .hz-admin fieldset { border: 1px solid var(--a-h3); border-radius: var(--a-r-m); padding: 12px 16px; margin: 0 0 16px; }
-.hz-admin legend { font-weight: 700; color: var(--a-azul); padding: 0 4px; }
+.hz-admin legend { font-weight: 700; color: var(--a-tinta); padding: 0 4px; }
 .hz-admin .opcion { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
-.hz-admin .opcion input { min-height: auto; width: 20px; height: 20px; margin-top: 2px; }
+.hz-admin .opcion input { accent-color: var(--a-azul); min-height: auto; width: 20px; height: 20px; margin-top: 2px; }
 .hz-admin .opcion small { display: block; color: var(--a-tinta-3); font-size: 14px; }
 
 /* Avisos y etiquetas */
@@ -179,7 +190,7 @@
 .hz-admin .alerta--error { background: var(--a-error-fondo); color: var(--a-error); }
 .hz-admin .alerta--aviso { background: var(--a-alerta-fondo); color: var(--a-alerta); }
 .hz-admin .alerta--exito { background: var(--a-ok-fondo); color: var(--a-ok); }
-.hz-admin .alerta--info { background: var(--a-h1); color: var(--a-azul); }
+.hz-admin .alerta--info { background: var(--a-info-fondo); color: var(--a-azul); }
 .hz-admin .alerta strong { display: block; }
 .hz-admin .aviso-mock { margin: 0; padding: 6px 16px; background: var(--a-alerta-fondo); color: var(--a-alerta); font-size: 14px; }
 
@@ -194,7 +205,7 @@
 }
 .hz-admin .etiqueta--exito { background: var(--a-ok-fondo); color: var(--a-ok); }
 .hz-admin .etiqueta--aviso { background: var(--a-alerta-fondo); color: var(--a-alerta); }
-.hz-admin .etiqueta--apagado { background: #eceff3; color: var(--a-tinta-3); }
+.hz-admin .etiqueta--apagado { background: var(--a-h2); color: var(--a-tinta-3); }
 
 .hz-admin .estado {
   display: inline-block;
@@ -208,7 +219,7 @@
 .hz-admin .estado--r1_abierta,
 .hz-admin .estado--r2_abierta,
 .hz-admin .estado--inscripcion { background: var(--a-ok-fondo); color: var(--a-ok); }
-.hz-admin .estado--cerrada { background: #eceff3; color: var(--a-tinta-2); }
+.hz-admin .estado--cerrada { background: var(--a-h2); color: var(--a-tinta-2); }
 
 /* Tablas */
 .hz-admin .tabla-envoltura { overflow-x: auto; }
@@ -232,7 +243,7 @@
 
 /* Sala en vivo */
 .hz-admin .estado-grande { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: baseline; margin-bottom: 12px; }
-.hz-admin .cifra { font-size: 32px; font-weight: 800; color: var(--a-azul); font-variant-numeric: tabular-nums; }
+.hz-admin .cifra { font-size: 32px; font-weight: 800; color: var(--a-tinta); font-variant-numeric: tabular-nums; }
 .hz-admin .cuenta { font-variant-numeric: tabular-nums; font-weight: 700; }
 .hz-admin .eventos { padding-left: 20px; margin: 0; font-size: 14px; color: var(--a-tinta-2); }
 .hz-admin .barra { height: 8px; background: var(--a-h2); border-radius: 999px; overflow: hidden; min-width: 80px; }
@@ -247,7 +258,7 @@
 .hz-admin .proyectar {
   position: fixed;
   inset: 0;
-  background: #fff;
+  background: var(--a-fondo);
   z-index: 100;
   display: flex;
   flex-direction: column;
@@ -270,8 +281,9 @@
   max-width: 440px;
   width: calc(100% - 32px);
   color: var(--a-tinta);
+  background: var(--a-sup-1);
 }
-.hz-admin dialog::backdrop { background: rgba(15, 35, 64, 0.45); }
+.hz-admin dialog::backdrop { background: rgb(0 0 0 / 0.6); }
 
 /* Login */
 .hz-admin .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--a-h1); }
@@ -291,7 +303,7 @@
 
 .hz-admin input:disabled,
 .hz-admin textarea:disabled,
-.hz-admin select:disabled { background: #f4f6f9; color: var(--a-tinta-3); cursor: not-allowed; }
+.hz-admin select:disabled { background: var(--a-deshab-fondo); color: var(--a-deshab-texto); cursor: not-allowed; }
 
 /* Celular: las tablas largas se leen como tarjetas (una por fila, cada dato con su rótulo) y el menú va en una sola fila deslizable */
 @media (max-width: 640px) {
@@ -329,7 +341,8 @@
 
 /* Hoja imprimible de QR: cuatro mesas por hoja A4 */
 @media print {
-  .hz-admin { min-height: 0; }
+  /* Papel: fondo blanco y tinta negra, sin importar el tema de la pantalla */
+  .hz-admin { min-height: 0; --a-tinta: #000; --a-tinta-2: #000; --a-tinta-3: #333; --a-azul: #000; --a-fondo: #fff; --a-sup-1: #fff; }
   .hz-admin .encabezado-sala,
   .hz-admin .cabecera,
   .hz-admin .aviso-mock,
@@ -353,11 +366,11 @@
 /* Resultados por ronda (acta P3): R1 hueco en verde, R2 sólido en rojo, siempre con su texto */
 .hz-admin .ronda { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
 .hz-admin .ronda::before { content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
-.hz-admin .ronda--1 { color: var(--hz-r1, #1f7a3a); }
+.hz-admin .ronda--1 { color: var(--hz-r1); }
 .hz-admin .ronda--1::before { border: 2px solid currentColor; }
-.hz-admin .ronda--2 { color: var(--hz-r2, #c62828); }
+.hz-admin .ronda--2 { color: var(--hz-r2); }
 .hz-admin .ronda--2::before { background: currentColor; }
-.hz-admin .tabla-resultado caption { text-align: left; font-weight: 700; font-size: 16px; color: var(--a-azul); padding-bottom: 4px; }
+.hz-admin .tabla-resultado caption { text-align: left; font-weight: 700; font-size: 16px; color: var(--a-tinta); padding-bottom: 4px; }
 .hz-admin .tabla-resultado tbody th { font-weight: 500; hyphens: auto; }
 .hz-admin .tabla-resultado th,
 .hz-admin .tabla-resultado td { padding: 8px 6px; }
