@@ -38,7 +38,7 @@ function useTitulo() {
 function Firma() {
   return (
     <span className="in-firma" aria-hidden="true">
-      {' »'}
+      »
     </span>
   )
 }

@@ -18,7 +18,7 @@
 /* La palabra clave del titular, en azul, como en estratek.com.co. */
 .in-clave { color: var(--hz-accion); }
 /* La » del logo como firma. */
-.in-firma { color: var(--hz-accion); font-weight: var(--hz-fw-display); }
+.in-firma { display: inline-block; margin-left: 0.3em; color: var(--hz-accion); font-weight: var(--hz-fw-display); }
 .in-r1, .in-r2 { font-weight: var(--hz-fw-titulo); white-space: nowrap; }
 .in-r1 { color: var(--hz-r1); }
 .in-r2 { color: var(--hz-r2); }
@@ -34,6 +34,7 @@
 .in-saltar:focus { top: var(--hz-sp-2); }
 
 /* ── Encabezado de producto con la navegación ─────── */
+.hz-inicio a.hz-producto__marca { color: var(--hz-tinta); }
 .in-nav .hz-producto__fila { max-width: var(--in-ancho); margin-inline: auto; padding-inline: var(--in-margen); }
 .in-nav__secciones { display: none; }
 .in-nav__secciones ul { display: flex; gap: var(--hz-sp-1); }
@@ -52,8 +53,8 @@
 .in-hero__texto { display: grid; gap: var(--hz-sp-6); align-content: center; padding-inline: var(--in-margen); }
 .in-lead { font-size: clamp(1.0625rem, 1.4vw, 1.25rem); line-height: 1.55; max-width: 34rem; color: var(--hz-tinta-2); }
 .in-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-3) var(--hz-sp-6); }
-.hz-inicio .in-avance { display: inline-flex; align-items: center; min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
-.hz-inicio .in-avance:hover { text-decoration: underline; }
+.hz-inicio a.in-avance { display: inline-flex; align-items: center; min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
+.hz-inicio a.in-avance:hover { text-decoration: underline; }
 .in-hero__dato { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 
 .in-matriz { margin: 0; display: grid; gap: var(--hz-sp-3); }
@@ -90,7 +91,7 @@
 .in-sec--entrar, .in-sec--suave { background: var(--hz-superficie-1); border-block: 1px solid var(--hz-borde); }
 .in-sec .in-bajada { margin-top: var(--hz-sp-4); max-width: 40rem; color: var(--hz-tinta-2); }
 .in-boton-claro { justify-self: start; }
-.in-dos { display: grid; gap: var(--hz-sp-8); }
+.in-dos { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--hz-sp-8); }
 @media (min-width: 56rem) {
   .in-dos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(3rem, 6vw, 6rem); align-items: start; }
 }
