@@ -20,92 +20,47 @@
 }
 
 /*
- * Tokens del sistema visual de Horizontes. Fuente: docs/DISENO.md (§2 a §6).
- * Desde el 19-oct es el sistema del IRMI (C:\REVISA\2026\IRMI\apps\irmi\web\src\styles\tokens.css): lienzo oscuro,
- * cuatro superficies grafito, tinta clara, un solo acento teal y el degradado de marca solo en la acción principal
- * y el progreso. Los nombres anteriores se conservan (celular, tablero y panel los usan); cambian sus valores.
- * Contraste AA de cada par en docs/DISENO.md §2. Cambiar la marca = cambiar este archivo.
+ * Tokens de Horizontes con la línea gráfica de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md, ley de diseño).
+ * Colores exactos de estratek.com.co en los primitivos --et-*; los --hz-* son semánticos y cambian con el tema:
+ *   - claro (por defecto, :root): celular del participante y panel;
+ *   - carbón (data-tema="carbon" en el elemento raíz de la vista): landing y tablero.
+ * Ningún nombre --hz-* anterior se borró: celular, tablero y panel los siguen usando con su nuevo rol.
+ * Contraste AA de cada par: docs/DISENO.md §2 y web/shared/ui/__tests__/contraste.test.ts.
+ * Cambiar la marca = cambiar este archivo. Fuera de aquí no hay colores en duro.
  */
+
+/* ── Primitivos de marca y tokens que no cambian con el tema ── */
 :root {
-  color-scheme: dark;
+  /* Paleta núcleo (FAMILIA_ESTRATEK §2) */
+  --et-carbon: #141414;
+  --et-hielo: #DCECFF;
+  --et-hielo-2: #BEDAFF;
+  --et-azul: #3487FF;
+  --et-azul-profundo: #1A66D6;
+  --et-verde-agua: #00CDA1;
+  --et-violeta: #442AAF;
+  --et-rojo: #BF0029;
+  --et-blanco: #FFFFFF;
+  --et-grad: linear-gradient(90deg, #442AAF 0%, #3487FF 30%, #00CDA1 100%);
 
-  /* Marca Estratek (valores fuente) */
-  --hz-marca-teal: #47EBC2;
-  --hz-marca-azul: #1699DB;
-  --hz-marca-azul-texto: #1A73B8;
+  /* Acento de Horizontes (§1): glifo, línea del encabezado y gráficos propios. Nunca acción ni estado. */
+  --hz-acento-producto: var(--et-verde-agua);
 
-  /* Lienzo y superficies grafito (de menos a más elevación) */
-  --hz-lienzo: #0E0E0E;
-  --hz-superficie-1: #131313;   /* tarjetas */
-  --hz-superficie-2: #1A1A1A;   /* campos, opciones, grupo dentro de tarjeta */
-  --hz-superficie-3: #242424;   /* hover, pista de barras, deshabilitado */
-  --hz-superficie-4: #2A2A2A;   /* elevación máxima, separadores */
+  /* Nombres de marca anteriores, con los valores de Estratek */
+  --hz-marca-teal: var(--et-verde-agua);
+  --hz-marca-azul: var(--et-azul);
+  --hz-marca-azul-texto: var(--et-azul-profundo);
+  --hz-grad-marca: var(--et-grad);   /* solo líneas, bordes, progreso y gráficos grandes; nunca detrás de texto */
 
-  /* Bordes sobre el lienzo */
-  --hz-borde-suave: rgba(255, 255, 255, 0.05);
-  --hz-borde: rgba(255, 255, 255, 0.09);
-  --hz-borde-fuerte: rgba(255, 255, 255, 0.16);
-  /* Borde de campos y casillas: 3:1 sobre el lienzo y las superficies (componente de interfaz, WCAG 1.4.11) */
-  --hz-borde-control: #6E7F78;
-
-  /* Acento único y degradado de marca (solo botón primario y progreso) */
-  --hz-acento: var(--hz-marca-teal);
-  --hz-acento-2: var(--hz-marca-azul);
-  --hz-sobre-acento: #0E0E0E;                    /* texto sobre el acento y el degradado: 12,8 / 6,1 */
-  --hz-acento-suave: rgba(71, 235, 194, 0.08);
-  --hz-acento-tinte: rgba(71, 235, 194, 0.12);   /* fondo de la opción elegida */
-  --hz-acento-borde: rgba(71, 235, 194, 0.28);
-  --hz-grad-marca: linear-gradient(120deg, #47EBC2, #1699DB);
-
-  /* Deshabilitado plano, sin opacidad: #8A9E96 sobre #242424 = 5,5 */
-  --hz-deshabilitado-fondo: var(--hz-superficie-3);
-  --hz-deshabilitado-texto: #8A9E96;
-  --hz-deshabilitado-borde: var(--hz-borde);
-
-  /* Nombres anteriores, con valores del sistema oscuro.
-     --hz-azul es el color de acción, selección, enlaces y foco: hoy el acento teal (12,8 sobre el lienzo).
-     Como fondo lleva texto --hz-sobre-acento, nunca blanco. */
-  --hz-azul: var(--hz-acento);
-  --hz-azul-presionado: #2FCFA8;
-  --hz-azul-medio: var(--hz-marca-azul-texto);   /* bordes, barras y arcos; 3,9 sobre el lienzo, no para texto */
-  --hz-cielo: var(--hz-marca-azul);              /* fin del degradado, arco elegido; 6,1 sobre el lienzo */
-
-  /* Texto: 17,0 / 12,7 / 6,8 sobre el lienzo; tinta 3 da 5,5 sobre --hz-superficie-3 */
-  --hz-tinta: #EDF2EE;
-  --hz-tinta-2: #C8D4CE;
-  --hz-tinta-3: #8A9E96;
-
-  /* Superficies con nombre de horizonte: fondo de página y tres escalones grafito */
-  --hz-fondo: var(--hz-lienzo);
-  --hz-h1: var(--hz-superficie-2);   /* superficie suave: bloques, pestañas inactivas */
-  --hz-h2: var(--hz-superficie-3);   /* pista de barras, insignia neutra, deshabilitado */
-  --hz-h3: var(--hz-superficie-4);   /* bordes y separadores */
-
-  /* Estados: texto del estado sobre su fondo opaco (tinte al 10-16 % sobre --hz-superficie-1) */
-  --hz-ok: #47EBC2;            /* 9,6 sobre su fondo */
-  --hz-ok-fondo: #192D28;
-  --hz-alerta: #FFBB44;        /* 9,1 sobre su fondo */
-  --hz-alerta-fondo: #2B2418;
-  --hz-error: #FF8585;         /* 7,0 sobre su fondo */
-  --hz-error-fondo: #331818;
-  --hz-info-fondo: #13262F;    /* azul de marca al 14 %: el acento da 10,4 */
-
-  /* Rondas (acta A7, P3): R1 verde, individual; R2 rojo, con discusión. Siempre con el texto «R1»/«R2» y forma
-     distinta: R1 hueco, R2 sólido. Ajustados al lienzo oscuro, lejos del teal de acento:
-     R1 #3FB25A da 7,1 sobre el lienzo y 5,7 sobre --hz-superficie-3; R2 #F36363 da 6,2 y 5,0 (4,6 sobre --hz-superficie-4).
-     Sobre su relleno sólido el texto va en --hz-sobre-r1 / --hz-sobre-r2 (7,1 / 6,2); el blanco ya no llega a AA. */
-  --hz-r1: #3FB25A;
-  --hz-r2: #F36363;
-  --hz-sobre-r1: #0E0E0E;
-  --hz-sobre-r2: #0E0E0E;
-  --hz-r1-tinte: rgba(63, 178, 90, 0.14);
-
-  /* Tipografía: Montserrat de 500 a 900. Nunca menos de 500: la Montserrat delgada se desvanece sobre negro. */
-  --hz-fuente: 'Montserrat Variable', 'Montserrat', 'Montserrat Respaldo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Tipografía (§4): Montserrat autoalojada. Cuerpo 400/500, etiquetas 700, títulos 800, display y cifras 900. */
+  --hz-fuente: 'Montserrat Variable', 'Montserrat', 'Montserrat Respaldo', 'Segoe UI', system-ui, sans-serif;
+  --hz-fw-regular: 400;
   --hz-fw-texto: 500;
   --hz-fw-etiqueta: 700;
   --hz-fw-titulo: 800;
   --hz-fw-cifra: 900;
+  --hz-fw-display: 900;
+  /* Escala 12 · 14 · 16 · 20 · 24 · 32 · 40 · 56; proyección 72 y 96. 18, 25, 30 y 36 se conservan (los usan otras áreas). */
   --hz-fs-12: 0.75rem;
   --hz-fs-14: 0.875rem;
   --hz-fs-16: 1rem;
@@ -116,10 +71,14 @@
   --hz-fs-30: 1.875rem;
   --hz-fs-32: 2rem;
   --hz-fs-36: 2.25rem;
-  --hz-fs-h1: clamp(1.5rem, 1.3533rem + 0.6522vw, 1.875rem);      /* título de página: 24 → 30 px */
-  --hz-fs-h2: clamp(1.25rem, 1.1522rem + 0.4348vw, 1.5rem);       /* título de sección: 20 → 24 px */
-  --hz-fs-display: clamp(2.25rem, 1.55rem + 3vw, 4rem);           /* landing: 36 → 64 px */
-  --hz-fs-display-2: clamp(1.75rem, 1.45rem + 1.3vw, 2.5rem);     /* landing, secciones: 28 → 40 px */
+  --hz-fs-40: 2.5rem;
+  --hz-fs-56: 3.5rem;
+  --hz-fs-72: 4.5rem;
+  --hz-fs-96: 6rem;
+  --hz-fs-h1: clamp(1.5rem, 1.2391rem + 1.1594vw, 2rem);          /* título de página: 24 → 32 px */
+  --hz-fs-h2: clamp(1.25rem, 1.1196rem + 0.5797vw, 1.5rem);       /* título de sección: 20 → 24 px */
+  --hz-fs-display: clamp(2.5rem, 1.8rem + 3vw, 3.5rem);           /* landing: 40 → 56 px */
+  --hz-fs-display-2: clamp(2rem, 1.7rem + 1.3vw, 2.5rem);         /* landing, secciones: 32 → 40 px */
   /* Proyección (tablero a 6 m en 1920 px) */
   --hz-fs-proj-titulo: clamp(1.25rem, 2.2vw, 2.5rem);
   --hz-fs-proj-etiqueta: clamp(1rem, 1.4vw, 1.75rem);
@@ -128,11 +87,11 @@
   --hz-lh: 1.5;
   --hz-lh-titulo: 1.2;
   --hz-lh-display: 1.05;
-  --hz-ls-titulo: -0.02em;
-  --hz-ls-display: -0.03em;
+  --hz-ls-titulo: -0.01em;
+  --hz-ls-display: -0.02em;
   --hz-medida: 34rem;
 
-  /* Espaciado (4 px) */
+  /* Espaciado (§5): retícula de 8 con medio paso de 4. 20 y 96 se conservan. */
   --hz-sp-1: 0.25rem;
   --hz-sp-2: 0.5rem;
   --hz-sp-3: 0.75rem;
@@ -143,24 +102,119 @@
   --hz-sp-10: 2.5rem;
   --hz-sp-12: 3rem;
   --hz-sp-16: 4rem;
+  --hz-sp-20: 5rem;
   --hz-sp-24: 6rem;
-  --hz-sp-seccion: clamp(4rem, 4rem + 4vw, 8rem);
+  --hz-sp-seccion: clamp(4rem, 3rem + 4vw, 5rem);
   --hz-tactil: 3rem;
 
-  /* Radios del IRMI: 8 px en controles, 12 px en tarjetas */
-  --hz-r-s: 8px;
-  --hz-r-m: 8px;
-  --hz-r-l: 12px;
+  /* Radios (§5): botones e insignias en píldora, campos 12, tarjetas 16 */
   --hz-r-pill: 999px;
+  --hz-r-boton: var(--hz-r-pill);
+  --hz-r-campo: 12px;
+  --hz-r-tarjeta: 16px;
+  --hz-r-s: var(--hz-r-campo);     /* campos */
+  --hz-r-m: var(--hz-r-campo);     /* opciones de rúbrica, avisos */
+  --hz-r-l: var(--hz-r-tarjeta);   /* tarjetas */
 
-  /* Elevación tonal; la sombra solo para lo que flota (barra inferior, diálogo) */
-  --hz-sombra: 0 -1px 0 var(--hz-borde), 0 8px 24px rgba(0, 0, 0, 0.4);
-
-  /* Foco: anillo teal de 2 px separado 2 px del elemento (se ve sobre el lienzo, las superficies y el blanco) */
-  --hz-foco: 0 0 0 2px var(--hz-fondo), 0 0 0 4px var(--hz-acento);
-
-  /* Movimiento */
+  /* Movimiento (§5) */
   --hz-t-rapido: 150ms;
   --hz-t-medio: 250ms;
   --hz-curva: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ── Tema claro (por defecto): celular y panel ─────────── */
+:root, [data-tema="claro"] {
+  color-scheme: light;
+  --hz-fondo: var(--et-blanco);
+  --hz-superficie-1: #F3F8FF;
+  --hz-superficie-2: #E8F1FF;
+  --hz-superficie-3: var(--et-hielo);
+  --hz-borde: #C9D9F2;
+  --hz-borde-control: #5A6680;     /* ≥ 3:1, WCAG 1.4.11 */
+  --hz-tinta: var(--et-carbon);
+  --hz-tinta-2: #44506A;
+  --hz-tinta-3: #5A6680;
+  --hz-accion: var(--et-azul-profundo);
+  --hz-sobre-accion: var(--et-blanco);
+  --hz-foco-color: var(--et-azul-profundo);
+  --hz-acento-producto-texto: #007A60;
+  --hz-ok: #007A60;
+  --hz-ok-fondo: #DDF6EF;
+  --hz-alerta: #8A5A00;
+  --hz-alerta-fondo: #FFF3D6;
+  --hz-error: var(--et-rojo);
+  --hz-error-fondo: #FDE7EB;
+  --hz-info-fondo: #E8F1FF;
+  /* Rondas (§7, acta del 16-oct): R1 verde hueco, R2 rojo sólido, siempre con «R1»/«R2» */
+  --hz-r1: #1B7F3A;
+  --hz-r2: #C62828;
+  --hz-sobre-r1: var(--et-blanco);
+  --hz-sobre-r2: var(--et-blanco);
+  --hz-sombra: 0 8px 24px rgba(20, 20, 20, 0.12);
+}
+
+/* ── Tema carbón: landing y tablero (proyección) ───────── */
+[data-tema="carbon"] {
+  color-scheme: dark;
+  --hz-fondo: var(--et-carbon);
+  --hz-superficie-1: #1B1D22;
+  --hz-superficie-2: #23262D;
+  --hz-superficie-3: #2C3038;
+  --hz-borde: #343944;
+  --hz-borde-control: #8A9BB8;
+  --hz-tinta: var(--et-hielo);
+  --hz-tinta-2: #A8B6CF;
+  --hz-tinta-3: #8A9BB8;
+  --hz-accion: var(--et-azul);
+  --hz-sobre-accion: var(--et-carbon);   /* el blanco sobre el azul Estratek no llega a AA (3,47:1) */
+  --hz-foco-color: var(--et-azul);
+  --hz-acento-producto-texto: var(--et-verde-agua);
+  --hz-ok: var(--et-verde-agua);
+  --hz-ok-fondo: #10332B;
+  --hz-alerta: #FFBB44;
+  --hz-alerta-fondo: #2B2418;
+  --hz-error: #FF6B7F;
+  --hz-error-fondo: #3A1620;
+  --hz-info-fondo: #16233A;
+  --hz-r1: #3FB25A;
+  --hz-r2: #F36363;
+  --hz-sobre-r1: var(--et-carbon);
+  --hz-sobre-r2: var(--et-carbon);
+  --hz-sombra: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Derivados y nombres anteriores ──────────────────────
+   Se declaran en cada elemento con tema: una variable que usa var() se resuelve donde se declara,
+   así que estos alias deben recalcularse dentro de data-tema para tomar los valores de ese tema. */
+:root, [data-tema] {
+  --hz-lienzo: var(--hz-fondo);
+  --hz-superficie-4: var(--hz-borde);         /* separadores */
+  --hz-borde-suave: var(--hz-borde);
+  --hz-borde-fuerte: var(--hz-borde-control);
+
+  /* Acción: el azul Estratek es el único color de acción (enlaces, selección, foco, primario) */
+  --hz-acento: var(--hz-accion);
+  --hz-acento-2: var(--hz-accion);
+  --hz-sobre-acento: var(--hz-sobre-accion);
+  --hz-azul: var(--hz-accion);
+  --hz-azul-presionado: color-mix(in srgb, var(--hz-accion) 82%, var(--hz-tinta));
+  --hz-azul-medio: var(--et-azul);            /* bordes, barras y arcos; no para texto sobre claro */
+  --hz-cielo: var(--hz-accion);
+  --hz-acento-suave: color-mix(in srgb, var(--hz-accion) 6%, transparent);
+  --hz-acento-tinte: color-mix(in srgb, var(--hz-accion) 10%, transparent);   /* opción elegida */
+  --hz-acento-borde: color-mix(in srgb, var(--hz-accion) 40%, transparent);
+  --hz-r1-tinte: color-mix(in srgb, var(--hz-r1) 14%, transparent);
+
+  /* Superficies con nombre de horizonte */
+  --hz-h1: var(--hz-superficie-2);
+  --hz-h2: var(--hz-superficie-3);
+  --hz-h3: var(--hz-superficie-4);
+
+  /* Deshabilitado plano, nunca por opacidad */
+  --hz-deshabilitado-fondo: var(--hz-superficie-3);
+  --hz-deshabilitado-texto: var(--hz-tinta-3);
+  --hz-deshabilitado-borde: var(--hz-borde);
+
+  /* Foco (§5): contorno de 2 px separado 2 px. Este anillo en sombra es para quien lo necesite como box-shadow. */
+  --hz-foco: 0 0 0 2px var(--hz-fondo), 0 0 0 4px var(--hz-foco-color);
 }
