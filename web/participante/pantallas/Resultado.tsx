@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Insignia } from '../../shared/ui'
 import { MatrizHorizontes, type DatosTablero, type Vista } from '../../tablero'
-import type { Criterio, Resultados, RondaVivo } from '../api'
+import type { Criterio, Resultados, RondaVivo, Voto } from '../api'
 import { cifra } from '../Comun'
 
 export const textoAlcance = (r: Resultados | null, alcance: 'mesa' | 'sala') => ((r?.alcance?.tipo ?? alcance) === 'sala' ? 'la sala' : 'tu mesa')
@@ -53,17 +53,21 @@ function usarEscalaTexto(): number {
 /**
  * Resultado del alcance (mesa o sala): matriz de T3 (solo props) y promedio por criterio.
  * Solo muestra lo que calcula el servidor; el celular nunca recalcula.
+ * C19-3 (P3): con `misVotos` (los de `/api/yo`, solo de esta persona) cada promedio lleva debajo «Tu calificación».
  */
 export function ResultadoAlcance({
   resultados,
   criterios,
   alcance,
   preliminar,
+  misVotos = [],
 }: {
   resultados: Resultados
   criterios: Criterio[]
   alcance: 'mesa' | 'sala'
   preliminar?: boolean
+  /** Votos propios (`mis_votos`). Nunca los de otra persona. */
+  misVotos?: Voto[]
 }) {
   const escalaTexto = usarEscalaTexto()
   const donde = textoAlcance(resultados, alcance)
@@ -106,9 +110,12 @@ export function ResultadoAlcance({
             </article>
           )
         }
+        const mia = (ronda: number, criterio: string) => misVotos.find((v) => v.proyecto_id === p.id && v.ronda === ronda)?.respuestas[criterio]
+        const conMias = visibles.some((r) => criterios.some((c) => mia(r.ronda, c.id) !== undefined))
         return (
           <article key={p.id} className="hzp-resultado__proyecto">
             <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
+            {conMias && <p className="hzp-resultado__pie">Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.</p>}
             {/* Acta A3 y A4: solo los 6 criterios y el Total (eje X + eje Y) que entrega el servidor. */}
             <table className="hzp-tabla">
               <caption className="hz-visual-oculto">Promedio por criterio y total de {p.nombre}</caption>
@@ -126,11 +133,21 @@ export function ResultadoAlcance({
                 {criterios.map((c) => (
                   <tr key={c.id}>
                     <th scope="row">{c.nombre}</th>
-                    {visibles.map((r) => (
-                      <td key={r.ronda} className="hz-cifra">
-                        {cifra(r.promedios?.[c.id])}
-                      </td>
-                    ))}
+                    {visibles.map((r) => {
+                      const tuya = mia(r.ronda, c.id)
+                      return (
+                        <td key={r.ronda} className="hz-cifra">
+                          <span className="hzp-tabla__promedio">{cifra(r.promedios?.[c.id])}</span>
+                          {tuya !== undefined && (
+                            <span className="hzp-tabla__mia">
+                              <span className="hz-visual-oculto">Tu calificación: </span>
+                              <span aria-hidden="true">Tú </span>
+                              {tuya}
+                            </span>
+                          )}
+                        </td>
+                      )
+                    })}
                   </tr>
                 ))}
               </tbody>
