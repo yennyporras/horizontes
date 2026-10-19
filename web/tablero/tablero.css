@@ -424,18 +424,6 @@ body:has(> #root > .hz-tablero) {
   font-size: 0.85em;
   color: var(--t-tinta-2) !important;
 }
-.hz-resumen th[scope='row'] {
-  font-weight: 800;
-  color: var(--t-azul);
-}
-.hz-resumen tr:first-child > * {
-  border-top: 2px solid var(--t-h3);
-  border-bottom: 0;
-}
-.hz-resumen td {
-  font-weight: 800;
-  color: var(--t-tinta);
-}
 
 /* Tabla comparada (proyector) */
 .hz-comparada {
