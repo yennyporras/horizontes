@@ -3,7 +3,10 @@
 # En Coolify: Build Pack Dockerfile, ubicación /deploy/Dockerfile, base /.
 
 # ─── Etapa 1: dependencias completas y build de la web ───────────────────────
-FROM public.ecr.aws/docker/library/node:24-alpine AS build
+# Imagen base: ECR público en Coolify; la CI pasa la de Docker Hub (ECR limita la descarga anónima desde GitHub).
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine
+
+FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -12,13 +15,13 @@ COPY . .
 RUN npx tsc --noEmit && npx vite build && mkdir -p shared
 
 # ─── Etapa 2: solo dependencias de producción ────────────────────────────────
-FROM public.ecr.aws/docker/library/node:24-alpine AS deps
+FROM ${NODE_IMAGE} AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
 # ─── Etapa 3: imagen de producción ───────────────────────────────────────────
-FROM public.ecr.aws/docker/library/node:24-alpine AS production
+FROM ${NODE_IMAGE} AS production
 WORKDIR /app
 
 # El servidor corre TypeScript con tsx (sin paso de compilación, ver docs/STACK.md).
