@@ -519,6 +519,13 @@ body:has(> #root > .hz-tablero) {
     display: none;
   }
 }
+/* Proyector de 1920×1080: la tabla tiene sitio de sobra; más grande para leerla a 6 m. */
+@media (min-width: 1600px) and (min-height: 821px) {
+  .hz-comparada .hz-tabla {
+    font-size: 1.08em;
+  }
+}
+
 /* Proyector de 1280×720 o 1366×768: poco alto. El panel se compacta para que nada quede oculto. */
 @media (min-width: 1100px) and (max-height: 820px) {
   .hz-cuerpo {
