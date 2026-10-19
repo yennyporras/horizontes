@@ -57,11 +57,35 @@ describe('PaginaTablero', () => {
     expect(screen.queryByRole('combobox')).toBeNull()
   })
 
-  test('error sin datos muestra texto útil', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { codigo: 'X', mensaje: 'x' } }), { status: 403 })))
-    montar('/tablero/s_demo')
-    expect(await screen.findByText(/No pudimos abrir el tablero/)).toBeTruthy()
-    expect(screen.getByText(/token/)).toBeTruthy()
+  test('sin permiso (401 o 403): texto útil y deja de consultar', async () => {
+    for (const status of [401, 403]) {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const f = vi.fn(async () => new Response(JSON.stringify({ error: { codigo: 'X', mensaje: 'x' } }), { status }))
+      vi.stubGlobal('fetch', f)
+      montar('/tablero/s_demo')
+      expect(await screen.findByText(/No pudimos abrir el tablero/)).toBeTruthy()
+      expect(screen.getByText('Este enlace del tablero no tiene permiso. Pide al facilitador el enlace completo del tablero.')).toBeTruthy()
+      await act(async () => vi.advanceTimersByTime(10_000))
+      expect(f).toHaveBeenCalledTimes(1)
+      cleanup()
+      vi.useRealTimers()
+    }
+  })
+
+  test('franja de fase de la ronda abierta', async () => {
+    montar('/tablero/s_demo?t=tok')
+    expect(await screen.findByText('Ronda 2 · discusión en la mesa')).toBeTruthy()
+    cleanup()
+    const r1 = structuredClone(mock)
+    r1.sala.estado = 'r1_abierta'
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(r1), { status: 200 })))
+    montar('/tablero/s_demo?t=tok')
+    expect(await screen.findByText('Ronda 1 · individual y en silencio')).toBeTruthy()
+    cleanup()
+    r1.sala.estado = 'r2_cerrada'
+    montar('/tablero/s_demo?t=tok')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    expect(document.querySelector('.hz-franja')).toBeNull()
   })
 
   test('atajos: C, 1 y 2 cambian la vista; F oculta los controles', async () => {

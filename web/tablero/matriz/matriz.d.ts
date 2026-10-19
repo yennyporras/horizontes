@@ -10,6 +10,8 @@ export interface OpcionesMatriz {
   escalaTexto?: number
   /** Anima R2 saliendo desde R1 (al pasar a Comparación). Respeta prefers-reduced-motion. */
   animar?: boolean
+  /** Milisegundos ya transcurridos de esa animación: un redibujo a mitad de camino la continúa sin reiniciarla. */
+  animarDesdeMs?: number
   colores?: Record<string, unknown>
 }
 
@@ -26,11 +28,13 @@ export interface Burbuja {
   r: number
   valor: { x: number; y: number }
   n_votos?: number
-  solido?: boolean
 }
 
 export interface Etiqueta {
   texto: string
+  /** Etiquetas de vivos: nombre y ronda por separado (la ronda va en su color). */
+  nombre?: string
+  ronda?: 1 | 2
   fs: number
   color: string
   peso: number
@@ -44,8 +48,6 @@ export interface VivoLayout {
   id: string
   nombre: string
   tam: number
-  color: string
-  colorTexto: string
   r1: Burbuja | null
   r2: Burbuja | null
   flecha: { x1: number; y1: number; x2: number; y2: number; encima: boolean } | null
@@ -75,7 +77,7 @@ export interface Layout {
 
 type DatosParciales = Partial<DatosTablero> | null | undefined
 
-export const COLORES: { vivos: string[]; vivosTexto: string[]; [k: string]: unknown }
+export const COLORES: { r1: string; r2: string; [k: string]: unknown }
 export function radioPorTam(tam: number | null | undefined, rmin: number, rmax: number): number
 export function calcularLayout(datos: DatosParciales, opciones?: OpcionesMatriz): Layout
 export function matrizSVG(datos: DatosParciales, opciones?: OpcionesMatriz): string
