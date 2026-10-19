@@ -2,6 +2,8 @@
 
 Ruta: `/tablero/:sala?mesa=&t=`. Con `t` (token de tablero) aparece el selector de alcance; sin `mesa`, el alcance es la sala.
 
+Tema **carbón** de la familia Estratek (`docs/marca/FAMILIA_ESTRATEK.md` §3): `data-tema="carbon"` en el `<main>` del tablero y solo tokens semánticos `--hz-*` de `web/shared/ui/tokens.css`, sin colores en duro. Encabezado: nombre de la sala, firma «Horizontes por Estratek »» (la » en el azul de acción) y la línea del degradado de marca de borde a borde.
+
 | Archivo | Qué hace |
 |---|---|
 | `PaginaTablero.tsx` | Página del proyector: encabezado y matriz sola por defecto; con datos (clic, M), progreso y detalle por criterio |
@@ -56,6 +58,7 @@ Ayudas exportadas (`web/tablero/index.ts`):
 
 Reglas:
 - El componente no pide datos ni recalcula el motor: dibuja `eje_x`, `eje_y` y `tam` del servidor.
+- Colores solo con tokens: toma el tema de quien lo aloja (carbón en el tablero, claro en el celular y el panel). H3, H2 y H1 en las superficies 1, 2 y 3; borde de los horizontes en el acento de Horizontes; fijos en `--hz-tinta-3` (gris azulado neutro).
 - Se redibuja al cambiar el tamaño del contenedor; si los datos no cambian, no toca el DOM (sin parpadeo con el polling).
 - Las rondas sin votos (`eje_x` null) no se dibujan. Para el texto del estado vacío usa `mensajeVacio(datos, vista)` de `logica.ts`.
 
