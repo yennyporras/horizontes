@@ -41,7 +41,8 @@ texto = [
     ('1. Cada persona llena una papeleta por ronda (papeleta.html, impresa) con los 2 proyectos y los 6 criterios.', NORMAL),
     ('2. Digita cada papeleta en la hoja Votos: mesa, ronda, proyecto y los 6 valores (solo 1, 3, 5, 7 o 9). Una fila por proyecto.', NORMAL),
     ('3. En Resultados escribe en C2 "Sala" o el número de la mesa. Los promedios y los ejes se calculan solos.', NORMAL),
-    ('4. La hoja Matriz muestra los 8 fijos y los 2 vivos en R1 y R2. Proyéctala.', NORMAL),
+    ('4. La hoja Matriz muestra los 8 fijos y los 2 vivos en R1 (verde, hueco) y R2 (rojo, sólido). Proyéctala.', NORMAL),
+    ('5. Para conversar con la sala usa los 6 criterios y la columna Total (eje X + eje Y). T2M, Eje X y Eje Y solo ubican la burbuja en la matriz.', NORMAL),
     ('', NORMAL),
     ('Si ya tienes los promedios por criterio (por ejemplo, contados a mano), escríbelos en Resultados, filas "Promedio digitado", y deja vacía la hoja Votos.', NORMAL),
     ('Nunca escribas nombres en la hoja Votos: la papeleta es anónima.', NORMAL),
@@ -93,7 +94,7 @@ P = {k: f'$C${5 + i}' for i, k in enumerate(['at', 'cc', 'rg', 'x_t2m', 'x_cap',
 
 # Tabla de vivos: una fila por (ronda, proyecto). Columnas: Ronda, Proyecto, n, 6 criterios, T2M, Eje X, Eje Y, TAM
 F0 = 14
-cab = ['Ronda', 'Proyecto', 'N.º votos'] + [nombres[c] for c in criterios] + ['T2M', 'Eje X', 'Eje Y', 'TAM']
+cab = ['Ronda', 'Proyecto', 'N.º votos'] + [nombres[c] for c in criterios] + ['T2M', 'Eje X', 'Eje Y', 'TAM', 'Total']
 re_.cell(F0 - 1, 1, 'Proyectos vivos (calculado desde la hoja Votos; si no hay votos, se usa el promedio digitado)').font = NEGRITA
 for j, t in enumerate(cab, 1):
     c = re_.cell(F0, j, t)
@@ -126,7 +127,9 @@ for ronda in (1, 2):
         re_[f'K{fila}'] = f'=IF(OR(ISNA(J{fila}),{cap}=""),NA(),J{fila}*{P["x_t2m"]}+{cap}*{P["x_cap"]})'
         re_[f'L{fila}'] = f'=IF(OR({core}="",{inv}=""),NA(),{core}*{P["y_core"]}+{inv}*{P["y_inv"]})'
         re_[f'M{fila}'] = p['tam']
-        for col in 'JKL':
+        re_[f'N{fila}'] = f'=IF(OR(ISNA(K{fila}),ISNA(L{fila})),NA(),K{fila}+L{fila})'
+        re_[f'N{fila}'].font = NEGRITA
+        for col in 'JKLN':
             re_[f'{col}{fila}'].number_format = '0.00'
         filas_vivos[(ronda, p['id'])] = fila
         fila += 1
@@ -134,7 +137,7 @@ for ronda in (1, 2):
 # Tabla de fijos (inputs de la semilla)
 FF = DIG0 + 6
 re_.cell(FF - 1, 1, 'Proyectos fijos (calificación precargada de la semilla, no se votan)').font = NEGRITA
-cab = ['', 'Proyecto', ''] + [nombres[c] for c in criterios] + ['T2M', 'Eje X', 'Eje Y', 'TAM']
+cab = ['', 'Proyecto', ''] + [nombres[c] for c in criterios] + ['T2M', 'Eje X', 'Eje Y', 'TAM', 'Total']
 for j, t in enumerate(cab, 1):
     c = re_.cell(FF, j, t)
     c.fill, c.font, c.alignment = CAB, BLANCO, Alignment(wrap_text=True, vertical='center')
@@ -150,11 +153,12 @@ for i, p in enumerate(fijos):
     re_[f'K{f}'] = f'=J{f}*{P["x_t2m"]}+{cap}*{P["x_cap"]}'
     re_[f'L{f}'] = f'={core}*{P["y_core"]}+{inv}*{P["y_inv"]}'
     re_[f'M{f}'] = p['tam']
-    for col in 'JKL':
+    re_[f'N{f}'] = f'=K{f}+L{f}'
+    for col in 'JKLN':
         re_[f'{col}{f}'].number_format = '0.00'
 re_.column_dimensions['A'].width = 9
 re_.column_dimensions['B'].width = 16
-for col in 'CDEFGHIJKLM':
+for col in 'CDEFGHIJKLMN':
     re_.column_dimensions[col].width = 15
 
 # --- Matriz --------------------------------------------------------------------------
@@ -171,19 +175,29 @@ for eje in (ch.x_axis, ch.y_axis):
     eje.delete = False
 ch.bubbleScale = 40
 
-def serie(nombre, filas):
+# Colores por ronda del acta (P3): R1 verde y hueco, R2 rojo y sólido; los fijos en gris. El proyecto se lee en la etiqueta.
+COLOR_RONDA = {1: '1F7A3A', 2: 'C62828'}
+
+
+def serie(nombre, filas, color, hueco=False):
     s = Series(values=Reference(re_, min_col=12, min_row=filas[0], max_row=filas[-1]),
                xvalues=Reference(re_, min_col=11, min_row=filas[0], max_row=filas[-1]),
                zvalues=Reference(re_, min_col=13, min_row=filas[0], max_row=filas[-1]), title=nombre)
+    if hueco:
+        s.graphicalProperties.noFill = True
+    else:
+        s.graphicalProperties.solidFill = color
+    s.graphicalProperties.line.solidFill = color
+    s.graphicalProperties.line.width = 28575  # 2,25 pt
     return s
 
-ch.series.append(serie('Fijos', [FF + 1, FF + len(fijos)]))
+ch.series.append(serie('Fijos', [FF + 1, FF + len(fijos)], '9AA5B4'))
 for p in vivos:
     for ronda in (1, 2):
         f = filas_vivos[(ronda, p['id'])]
-        ch.series.append(serie(f'{p["nombre"]} R{ronda}', [f, f]))
+        ch.series.append(serie(f'{p["nombre"]} R{ronda}', [f, f], COLOR_RONDA[ronda], hueco=ronda == 1))
 ma.add_chart(ch, 'A3')
-ma['A36'] = 'Fijos en gris; cada vivo aparece en R1 y R2. Tamaño de la burbuja: TAM. Horizontes: H1 hasta radio 4,5; H2 hasta 9; H3 afuera.'
+ma['A36'] = 'Fijos en gris; cada vivo aparece en R1 (verde, hueco) y R2 (rojo, sólido). Tamaño de la burbuja: TAM. Horizontes: H1 hasta radio 4,5; H2 hasta 9; H3 afuera.'
 ma['A36'].font = NORMAL
 
 wb.save(SALIDA)
