@@ -42,7 +42,7 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
   return (
     <section className="hz-cv" aria-labelledby="hz-cv-t">
       <div className="hz-cv-cab">
-        <h2 id="hz-cv-t" className="hz-cv-titulo">
+        <h2 id="hz-cv-t" className="hz-sub hz-cv-titulo">
           Cómo votó {quien}
         </h2>
         {controles}
