@@ -113,7 +113,9 @@ export function Respuestas() {
                               </span>
                             )}
                           </th>
-                          <td data-label="Mesa">{f.mesa}</td>
+                          <td data-label="Mesa" className="td-corto">
+                            {f.mesa}
+                          </td>
                           <td data-label="Perfil">{nombrePerfil(f.perfil_id)}</td>
                           <td data-label="Ronda">
                             <span className={`ronda ronda--${f.ronda}`}>R{f.ronda}</span>
@@ -124,7 +126,9 @@ export function Respuestas() {
                               {f.respuestas[c.id] ?? 'Sin dato'}
                             </td>
                           ))}
-                          <td data-label="Fecha">{fechaHora(f.actualizado_at, zona)}</td>
+                          <td data-label="Fecha" className="td-corto">
+                            {fechaHora(f.actualizado_at, zona)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
