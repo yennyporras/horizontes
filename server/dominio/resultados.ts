@@ -73,6 +73,9 @@ export const vivos = (db: Db, salaId: string) => proyectos(db, salaId).filter((p
 
 export const rondaAbierta = (s: Pick<SalaFila, 'estado'>): 1 | 2 | null => (s.estado === 'r1_abierta' ? 1 : s.estado === 'r2_abierta' ? 2 : null)
 
+/** Ronda a la que apunta el alias `cierre_programado_ronda_at`: la abierta o, si no hay, la siguiente. */
+export const rondaDelAlias = (s: Pick<SalaFila, 'estado' | 'ronda_actual'>): 1 | 2 => (s.estado === 'r1_abierta' || s.ronda_actual === 0 ? 1 : 2)
+
 export function rondaCerrada(s: Pick<SalaFila, 'estado' | 'ronda_actual'>, r: number): boolean {
   if (r === 1) return ['r1_cerrada', 'r2_abierta', 'r2_cerrada'].includes(s.estado) || (s.estado === 'cerrada' && s.ronda_actual >= 1)
   if (r === 2) return s.estado === 'r2_cerrada' || (s.estado === 'cerrada' && s.ronda_actual >= 2)
@@ -198,7 +201,7 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
 
   return {
     version: `v-${sala.version}${op.sufijoVersion ?? ''}`,
-    sala: { id: sala.id, nombre: sala.nombre, estado: sala.estado, ronda_actual: sala.ronda_actual },
+    sala: { id: sala.id, nombre: sala.nombre, estado: sala.estado, ronda_actual: sala.ronda_actual, pregunta_guiada: preguntaGuiada(sala) },
     alcance:
       op.alcance.tipo === 'mesa'
         ? { tipo: 'mesa', mesa_id: op.alcance.mesa.id, mesa_nombre: op.alcance.mesa.nombre }
@@ -238,13 +241,25 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
 }
 
 export function configPublica(s: SalaFila) {
+  const z = s.zona_horaria
   return {
     alcance_resultados: s.alcance_resultados,
     vista_participante: s.vista_participante,
     revelar_hojas: Boolean(s.revelar_hojas),
-    cierre_programado_ronda_at: isoEnZona(s.cierre_programado_ronda_at, s.zona_horaria),
-    cierre_programado_sala_at: isoEnZona(s.cierre_programado_sala_at, s.zona_horaria),
+    // Alias para clientes anteriores al 19-oct: el cierre de la ronda abierta (o de la siguiente).
+    cierre_programado_ronda_at: isoEnZona(rondaDelAlias(s) === 1 ? s.cierre_programado_r1_at : s.cierre_programado_r2_at, z),
+    cierre_programado_sala_at: isoEnZona(s.cierre_programado_sala_at, z),
     pais: s.pais,
-    zona_horaria: s.zona_horaria,
+    zona_horaria: z,
+    apertura_programada_sala_at: isoEnZona(s.apertura_programada_sala_at, z),
+    apertura_programada_r1_at: isoEnZona(s.apertura_programada_r1_at, z),
+    cierre_programado_r1_at: isoEnZona(s.cierre_programado_r1_at, z),
+    apertura_programada_r2_at: isoEnZona(s.apertura_programada_r2_at, z),
+    cierre_programado_r2_at: isoEnZona(s.cierre_programado_r2_at, z),
+    modo_preguntas: s.modo_preguntas,
   }
 }
+
+/** Pregunta que el admin fijó en modo guiado, o null. */
+export const preguntaGuiada = (s: SalaFila) =>
+  s.pregunta_guiada_proyecto_id && s.pregunta_guiada_criterio_id ? { proyecto_id: s.pregunta_guiada_proyecto_id, criterio_id: s.pregunta_guiada_criterio_id } : null

@@ -152,4 +152,22 @@ CREATE TABLE rubricas_plantilla (
   PRIMARY KEY (plantilla, criterio_id)
 );
 `,
+  // Cambios del 19-oct (docs/CAMBIOS_19OCT_CONTRATO.md S2 y S4): apertura y cierre programados por sala y por ronda,
+  // modo de preguntas y pregunta guiada. `cierre_programado_ronda_at` queda como columna sin uso: la API lo sirve como
+  // alias del cierre de la ronda abierta (o de la siguiente). Lo que tenía programado pasa a la ronda que habría cerrado.
+  `
+ALTER TABLE salas ADD COLUMN apertura_programada_sala_at DATETIME NULL;
+ALTER TABLE salas ADD COLUMN apertura_programada_r1_at DATETIME NULL;
+ALTER TABLE salas ADD COLUMN cierre_programado_r1_at DATETIME NULL;
+ALTER TABLE salas ADD COLUMN apertura_programada_r2_at DATETIME NULL;
+ALTER TABLE salas ADD COLUMN cierre_programado_r2_at DATETIME NULL;
+ALTER TABLE salas ADD COLUMN modo_preguntas VARCHAR(10) NOT NULL DEFAULT 'automatico' CHECK (modo_preguntas IN ('automatico','guiado'));
+ALTER TABLE salas ADD COLUMN pregunta_guiada_proyecto_id VARCHAR(40) NULL;
+ALTER TABLE salas ADD COLUMN pregunta_guiada_criterio_id VARCHAR(40) NULL;
+UPDATE salas SET cierre_programado_r1_at = cierre_programado_ronda_at
+ WHERE cierre_programado_ronda_at IS NOT NULL AND (estado = 'r1_abierta' OR ronda_actual = 0);
+UPDATE salas SET cierre_programado_r2_at = cierre_programado_ronda_at
+ WHERE cierre_programado_ronda_at IS NOT NULL AND NOT (estado = 'r1_abierta' OR ronda_actual = 0);
+UPDATE salas SET cierre_programado_ronda_at = NULL;
+`,
 ]
