@@ -9,14 +9,14 @@ App web del taller "Portafolio por Horizontes" (caso Foodsume). Los participante
 | Qué | Dónde | Estado |
 |---|---|---|
 | Código | `github.com/yennyporras/horizontes` (rama `main`) | Arriba. Pasa a la cuenta de Estratek: `docs/MIGRACION_GITHUB.md` |
-| Producción | `https://horizontes.estratek.com.co` → luego `https://horizontes.com.co` | **Falta**: Coolify, `deploy/.env.deploy` y DNS (sección 5) |
-| Staging | `https://staging-horizontes.estratek.com.co` | **Falta**: lo mismo |
+| Producción | `https://horizontes.estratek.com.co` → luego `https://horizontes.com.co` | **Falta**: se crea clonando staging cuando esté sano (sección 5.1, paso 4) |
+| Staging | `https://staging-horizontes.estratek.com.co` | App creada en Coolify y DNS al VPS, pero **no sirve** (503 por HTTPS con certificado no válido, 404 por HTTP; 19-oct 14:35): sección 5.1, paso 2 |
 | Servidor | Coolify en el VPS de Hostinger, 1 contenedor, SQLite en el volumen `/data` | Imagen probada en local (`tools/deploy.sh local`) |
 
 Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}` (celular, lo abre el QR), `/tablero/{sala}?t=...` (proyector, el enlace sale del panel).
 
 ## 3. Accesos (sin claves en este archivo)
-- **Superadmin:** usuario `paola`. La clave inicial la elige Paola y va solo en `deploy/.env.deploy` (`SUPERADMIN_CLAVE_STAGING` y `SUPERADMIN_CLAVE_PROD`), nunca en git. Cuenta solo la primera vez que arranca una base vacía; después se cambia desde el panel.
+- **Superadmin:** usuario `paola`. La clave inicial la elige Paola y va solo en Coolify (variable `SUPERADMIN_CLAVE` de cada app) o en `deploy/.env.deploy` (`SUPERADMIN_CLAVE_STAGING` y `SUPERADMIN_CLAVE_PROD`), nunca en git. Cuenta solo la primera vez que arranca una base vacía; después se cambia desde el panel.
 - **Administradores:** Paola los crea en el panel (**Administradores** → *Nuevo administrador*, con clave temporal). Cada uno cambia su clave en el primer ingreso. Un admin normal no ve la gestión de administradores.
 - **Coolify y Hostinger:** cuenta de Paola.
 - **Tablero:** cada sala tiene su enlace con token; se abre desde **Sala en vivo** → *Abrir tablero de la sala*.
@@ -32,33 +32,41 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 ## 5. Lo que hace Paola, en orden
 
 ### 5.1 Antes de producción (hoy)
+Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado desde aquí el 19-oct a las 14:35: el DNS de `staging-horizontes.estratek.com.co` ya apunta al VPS, pero `https://staging-horizontes.estratek.com.co/api/health` responde **503 con un certificado no válido** y por HTTP **404**. Eso es el proxy de Coolify diciendo que no tiene una app sana detrás de ese dominio. Por eso el orden es: primero staging en verde, después producción clonándolo.
+
 1. **Texto legal.** Lee los tres textos de autorización (CO, PE, GT) en `docs/CONSENTIMIENTO.md` y confirma o corrige. Confirma también en qué país está el VPS (Hostinger → **VPS** → **Resumen** → ubicación): si no es Colombia, avisa para agregar el párrafo de transferencia internacional.
-2. **Coolify: proyecto y apps.** Coolify → **Projects** → **+ Add** → `Horizontes`, con los ambientes `staging` y `production`. En cada ambiente: **+ New** → **Application** → **Private Repository (with GitHub App)** → App `coolify-estratek` → repo `yennyporras/horizontes` (si no aparece: **Sources** → `coolify-estratek` → *Install Repositories on GitHub* → agrégalo) → rama `main` → **Build Pack** `Dockerfile` → *Dockerfile Location* `/deploy/Dockerfile`, *Base Directory* `/` → *Ports Exposes* `3000` → **Save**. Nombres: `horizontes-staging` y `horizontes-prod`. En `horizontes-prod`, **Advanced** → apaga *Auto Deploy*.
-3. **Volumen.** En cada app → **Persistent Storage** → **+ Add** → *Volume Mount*: nombre `horizontes-datos-staging` (o `horizontes-datos-prod`), *Destination Path* `/data` → **Save**.
-4. **UUID de las apps.** Abre cada app: el UUID es el último tramo de la URL del navegador (`.../application/<uuid>`). Anótalos.
-5. **Token de API.** Coolify → **Keys & Tokens** → **API tokens** → *Create New Token* con permisos `read`, `write` y `deploy` → copia el token (se ve una sola vez).
-6. **DNS.** Hostinger → **Dominios** → `estratek.com.co` → **DNS / Nameservers** → **Registros DNS** → agrega dos `A`: nombre `staging-horizontes` y nombre `horizontes`, valor la IP del VPS (Hostinger → **VPS** → **Resumen**), TTL `3600`. No toques los demás registros (el correo depende de ellos).
-7. **`deploy/.env.deploy` en tu equipo.** En la carpeta del repo: `cp deploy/env.deploy.ejemplo deploy/.env.deploy` y llena `COOLIFY_URL` (la dirección del panel de Coolify, sin `/` final), `COOLIFY_TOKEN` (paso 5), `COOLIFY_APP_STAGING` y `COOLIFY_APP_PROD` (paso 4), `SUPERADMIN_CLAVE_STAGING` y `SUPERADMIN_CLAVE_PROD` (12 caracteres o más, distintas). Este archivo no se sube a git.
-8. **Diagnóstico.** En Git Bash: `tools/deploy.sh diagnostico staging`. Repite hasta que todo diga `[ok]` (te dice qué falta y dónde).
-9. **Staging.** `tools/deploy.sh staging`: corre las pruebas, publica `main`, fija dominio, certificado, healthcheck y variables, despliega y comprueba HTTPS.
-10. **Prueba en staging (10 min).** Entra a `https://staging-horizontes.estratek.com.co/admin` con `paola`, cambia la clave, crea una sala de 2 mesas, elige el país, escanea un QR con el celular, inscríbete, vota, mira el tablero y cierra la sala.
-11. **Producción.** `tools/deploy.sh diagnostico produccion` y luego `tools/deploy.sh produccion` (exige que staging corra el mismo commit de `main`).
-12. **Respaldo diario.** Coolify → `horizontes-prod` → **Scheduled Tasks** → **+ Add**: frecuencia `0 8 * * *` y el comando de `deploy/README.md` (sección "Respaldo de SQLite"). Repite en staging si quieres.
-13. **Cuentas.** En `https://horizontes.estratek.com.co/admin`: cambia la clave del superadmin y crea los administradores (por ejemplo Nicolai) en **Administradores**.
+2. **Revisar staging en Coolify** (Projects → `Horizontes` → `staging` → `horizontes-staging`):
+   - **Configuration** → **General** → **Domains** = `https://staging-horizontes.estratek.com.co` (con `https://`, sin `/` final). *Build Pack* `Dockerfile`, *Dockerfile Location* `/deploy/Dockerfile`, *Base Directory* `/`, *Ports Exposes* `3000`. **Save**.
+   - **Configuration** → **Healthcheck**: activo, *Path* `/api/health`, *Port* `3000`, intervalo 30 s, timeout 10 s, 3 reintentos, *Start Period* 60 s. Ojo: si la app se creó copiando la del IRMI, ahí dice `/api/v1/health` y el contenedor nunca queda sano (eso da justo el 503). **Save**.
+   - **Persistent Storage**: un *Volume Mount* `horizontes-datos-staging` en `/data`. Si no está: **+ Add** → *Volume Mount* con ese nombre y *Destination Path* `/data`.
+   - **Environment Variables**: al menos `BASE_URL` = `https://staging-horizontes.estratek.com.co`, `SUPERADMIN_USUARIO` = `paola`, `SUPERADMIN_CLAVE` (la que elijas, 12 caracteres o más), `TRUST_PROXY_HOPS` = `1`, `POLITICA_PRIVACIDAD_URL` = `https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/`. Tabla completa en `docs/DESPLIEGUE.md` §2.5.
+   - **Deploy** y luego **Deployments**: el último debe terminar en *Finished* y el estado de la app en **Running (healthy)**. Si queda *unhealthy* o reinicia, abre **Logs**: la primera línea con `ERROR` dice la causa (`EACCES` en `/data`: ver `docs/DESPLIEGUE.md` §5).
+   - Comprueba desde tu equipo: `curl -fsS https://staging-horizontes.estratek.com.co/api/health` responde `{"ok":true,...}` y el navegador muestra el candado válido en `/admin` (el certificado sale solo cuando la app queda sana; si no, **Redeploy**).
+3. **Prueba en staging (10 min).** Entra a `https://staging-horizontes.estratek.com.co/admin` con `paola`, cambia la clave, crea una sala de 2 mesas, elige el país, escanea un QR con el celular, inscríbete, vota, mira el tablero y cierra la sala.
+4. **Producción clonando staging.** En `horizontes-staging` → **Resource Operations** → *Clone* al ambiente `production` (créalo antes en el proyecto si no existe). En la copia, que se llamará `horizontes-prod`:
+   - **Domains** = `https://horizontes.estratek.com.co`.
+   - **Environment Variables**: `APP_ENV` = `production`, `BASE_URL` = `https://horizontes.estratek.com.co`, `SUPERADMIN_CLAVE` distinta a la de staging, `SESSION_SECRET` distinto si existe.
+   - **Persistent Storage**: cambia el volumen a `horizontes-datos-prod` en `/data`. Nunca compartas el volumen con staging.
+   - **Advanced**: apaga *Auto Deploy*.
+   - **Save** y **Deploy**. Igual que en staging: *Running (healthy)* y `curl -fsS https://horizontes.estratek.com.co/api/health`.
+5. **DNS de producción.** Si `nslookup horizontes.estratek.com.co` no da la IP del VPS: Hostinger → **Dominios** → `estratek.com.co` → **DNS / Nameservers** → **Registros DNS** → `A`, nombre `horizontes`, valor la IP del VPS (la misma que ya responde para `staging-horizontes`), TTL `3600`. No toques los demás registros (el correo depende de ellos).
+6. **Respaldo diario.** Coolify → `horizontes-prod` → **Scheduled Tasks** → **+ Add**: frecuencia `0 8 * * *` y el comando de `deploy/README.md` (sección "Respaldo de SQLite").
+7. **Cuentas.** En `https://horizontes.estratek.com.co/admin`: cambia la clave del superadmin y crea los administradores (por ejemplo Nicolai) en **Administradores**.
+8. **Opcional, para desplegar con un comando en adelante.** Coolify → **Keys & Tokens** → **API tokens** → *Create New Token* (`read`, `write`, `deploy`). Copia `deploy/env.deploy.ejemplo` a `deploy/.env.deploy` y llena `COOLIFY_URL`, `COOLIFY_TOKEN`, `COOLIFY_APP_STAGING` y `COOLIFY_APP_PROD` (el UUID es el último tramo de la URL de cada app en Coolify). Desde ahí: `tools/deploy.sh diagnostico staging` dice qué falta, y `tools/deploy.sh staging` / `tools/deploy.sh produccion` publican. Este archivo no se sube a git.
 
 ### 5.2 Para el taller
-14. **Sala real.** Panel → **Salas** → nombre del taller y número de mesas → **Crear sala** → **Configuración** → país.
-15. **Hoja de QR A4 en PDF.** Panel → sala → **Mesas y QR** → *Imprimir hoja de QR* → destino "Guardar como PDF", tamaño A4, márgenes predeterminados. Sin abrir el navegador, desde el repo (cuando el dominio ya responda):
+9. **Sala real.** Panel → **Salas** → nombre del taller y número de mesas → **Crear sala** → **Configuración** → país.
+10. **Hoja de QR A4 en PDF.** Panel → sala → **Mesas y QR** → *Imprimir hoja de QR* → destino "Guardar como PDF", tamaño A4, márgenes predeterminados. Sin abrir el navegador, desde el repo (cuando el dominio ya responda):
     ```sh
     HZ_ADMIN_CLAVE='<tu clave>' node QA-tests/hoja_qr_pdf.cjs https://horizontes.estratek.com.co paola <CÓDIGO DE SALA> hoja-qr.pdf
     ```
     Cuatro mesas por hoja. El script avisa si los QR apuntan a otro dominio distinto del que le pasaste (señal de un `BASE_URL` mal puesto en Coolify).
-16. **Plan B impreso:** papeletas (`deploy/plan_b/papeleta.html`, 2 por persona) y la plantilla Excel en el portátil (`docs/PLAN_B.md`). Opcional: el formulario en línea de respaldo (lo crea Paola en la cuenta de Estratek).
+11. **Plan B impreso:** papeletas (`deploy/plan_b/papeleta.html`, 2 por persona) y la plantilla Excel en el portátil (`docs/PLAN_B.md`). Opcional: el formulario en línea de respaldo (lo crea Paola en la cuenta de Estratek).
 
 ### 5.3 Después (cuando se pueda)
-17. **Dominio `horizontes.com.co`:** `docs/DESPLIEGUE.md` §6 (compra, DNS, dominio en Coolify, `BASE_URL`, `HZ_DOMINIO_PROD` y reimpresión de QR).
-18. **GitHub corporativo:** `docs/MIGRACION_GITHUB.md` (transferir o espejar, `git remote set-url`, GitHub App de Coolify, accesos y protección de `main`).
-19. **Preguntas abiertas para Sebastian** (`docs/BLOQUEOS.md`): solapes de los rangos de inversión del deck (P5) y confirmar que el diseño usa 6 perfiles (P1).
+12. **Dominio `horizontes.com.co`:** `docs/DESPLIEGUE.md` §6 (compra, DNS, dominio en Coolify, `BASE_URL`, `HZ_DOMINIO_PROD` y reimpresión de QR).
+13. **GitHub corporativo:** `docs/MIGRACION_GITHUB.md` (transferir o espejar, `git remote set-url`, GitHub App de Coolify, accesos y protección de `main`).
+14. **Preguntas abiertas para Sebastian** (`docs/BLOQUEOS.md`): solapes de los rangos de inversión del deck (P5) y confirmar que el diseño usa 6 perfiles (P1).
 
 ## 6. Lista de verificación del día del taller
 **La víspera**
@@ -97,7 +105,7 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 Pruebas integradas al 19-oct 14:15 (`tools/test.sh` sobre las 4 ramas): 436 de 441 en verde; las 4 rojas son pruebas e2e del celular que aún esperan «Voto registrado» en vez de la vista en vivo por defecto (TRIAGE #31, T2). Recorrido en navegador a 360 y 1920 px en verde.
 
 ## 8. Pendientes conocidos
-- Staging y producción: sección 5.1 (credenciales de Coolify y DNS, solo Paola).
+- Staging sano y producción: sección 5.1 (solo Paola, en Coolify y Hostinger).
 - Hallazgos abiertos de `docs/TRIAGE.md`.
 - Formulario de respaldo en línea del plan B (Paola, cuenta de Estratek).
 - Fuera de alcance v1 (SPEC §10): multiempresa, portafolios propios, TAM normalizado, análisis por perfil, PDF, correos. Idea a futuro: panel unificado de herramientas (`docs/BACKLOG_EXTRA.md`).
