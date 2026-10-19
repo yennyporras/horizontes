@@ -116,7 +116,6 @@ variables() {
     "BASE_URL=https://$dominio"
     "SUPERADMIN_USUARIO=${SUPERADMIN_USUARIO:-paola}"
     "POLITICA_PRIVACIDAD_URL=https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/"
-    "CONSENTIMIENTO_VERSION=hz-1.0"
   )
   [ -n "$clave" ] && pares+=("SUPERADMIN_CLAVE=$clave")
   local datos="" p
