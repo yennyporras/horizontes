@@ -43,6 +43,20 @@ describe('PaginaTablero', () => {
     vi.unstubAllGlobals()
   })
 
+  test('tema carbón y encabezado de marca: nombre de la sala y firma «Horizontes por Estratek »»', async () => {
+    montar('/tablero/s_demo?t=tok')
+    // Mientras carga, también en carbón (sin destello claro en el proyector).
+    expect(document.querySelector('main')!.dataset.tema).toBe('carbon')
+    const titulo = await screen.findByRole('heading', { level: 1, name: mock.sala.nombre })
+    expect(document.querySelector('main')!.dataset.tema).toBe('carbon')
+    const firma = titulo.closest('.hz-cab')!.querySelector('.hz-firma')!
+    expect(firma.textContent!.replace(/\s+/g, ' ').trim()).toBe('Horizontes por Estratek »')
+    // También en <html> (fondo del rebote y theme-color).
+    expect(document.documentElement.dataset.tema).toBe('carbon')
+    // La » es la marca gráfica: decorativa para el lector de pantalla.
+    expect(firma.querySelector('.hz-firma-flecha')!.getAttribute('aria-hidden')).toBe('true')
+  })
+
   test('por defecto solo la matriz; clic en ella, el botón, M o Esc alternan con los datos', async () => {
     montar('/tablero/s_demo?t=tok')
     await screen.findByRole('heading', { name: mock.sala.nombre })
