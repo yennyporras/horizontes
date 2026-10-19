@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Aviso, Boton, Campo, Casilla } from '../../shared/ui'
-import { ErrorApi, inscribirse, type Mesa } from '../api'
+import { ErrorApi, inscribirse, type Mesa, type Pais } from '../api'
 import { Marco } from '../Comun'
 import { guardarDatos, leerDatos } from '../sesion'
 
@@ -114,7 +114,7 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: Ins
           <h2 id="hzp-consentimiento-titulo" className="hzp-consentimiento__titulo">
             Autorización de tratamiento de datos
           </h2>
-          <AvisoDatos />
+          <AvisoDatos pais={mesa.sala.pais ?? 'CO'} />
           <Casilla marcada={acepta} onCambio={setAcepta} nombre="consentimiento">
             {mesa.consentimiento.texto_autorizacion}{' '}
             <a href={mesa.consentimiento.politica_url || POLITICA_ESTRATEK} target="_blank" rel="noopener noreferrer">
@@ -134,13 +134,24 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: Ins
 export const POLITICA_ESTRATEK = 'https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/'
 export const CORREO_DATOS = 'info@estratek.com.co'
 
-/** Aviso de privacidad corto (Ley 1581), resumido de la política de Estratek. */
-function AvisoDatos() {
+/**
+ * Norma y autoridad por país de la sala (acta P4, R4_CONTRATO C6). Guatemala no tiene ley general de datos:
+ * aplica la política de Estratek. El texto de la casilla lo sirve el servidor; ver docs/CONSENTIMIENTO.md §5.
+ */
+export const LEY_DATOS: Record<Pais, { norma: string; autoridad?: string }> = {
+  CO: { norma: 'La Ley 1581 de 2012 de Colombia y la política de Estratek.', autoridad: 'la Superintendencia de Industria y Comercio' },
+  PE: { norma: 'La Ley 29733 de Perú y la política de Estratek.', autoridad: 'la Autoridad Nacional de Protección de Datos Personales' },
+  GT: { norma: 'La Política de Tratamiento de Datos Personales de Estratek.' },
+}
+
+/** Aviso de privacidad corto, resumido de la política de Estratek, con la norma del país de la sala. */
+function AvisoDatos({ pais }: { pais: Pais }) {
+  const { norma, autoridad } = LEY_DATOS[pais] ?? LEY_DATOS.CO
   return (
     <dl className="hzp-aviso-datos">
       <div>
         <dt>Quién trata tus datos</dt>
-        <dd>Estratek S.A.S., Medellín.</dd>
+        <dd>Estratek S.A.S., Medellín, Colombia.</dd>
       </div>
       <div>
         <dt>Qué datos</dt>
@@ -151,10 +162,14 @@ function AvisoDatos() {
         <dd>Fines informativos de este taller.</dd>
       </div>
       <div>
+        <dt>Qué norma aplica</dt>
+        <dd>{norma}</dd>
+      </div>
+      <div>
         <dt>Tus derechos</dt>
         <dd>
           Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización. Escribe a <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>: respondemos en
-          máximo 10 días hábiles. También puedes acudir a la Superintendencia de Industria y Comercio.
+          máximo 10 días hábiles.{autoridad && ` También puedes acudir a ${autoridad}.`}
         </dd>
       </div>
     </dl>
