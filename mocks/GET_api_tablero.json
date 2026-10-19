@@ -5,10 +5,7 @@
     "nombre": "Taller Horizontes demo",
     "estado": "r2_abierta",
     "ronda_actual": 2,
-    "pregunta_guiada": {
-      "proyecto_id": "nutriwhat",
-      "criterio_id": "alineacion_core"
-    }
+    "pregunta_guiada": null
   },
   "alcance": {
     "tipo": "mesa",
@@ -28,7 +25,7 @@
     "cierre_programado_r2_at": "2026-10-20T16:30:00-05:00",
     "pais": "CO",
     "zona_horaria": "America/Bogota",
-    "modo_preguntas": "guiado"
+    "modo_preguntas": "automatico"
   },
   "progreso": {
     "inscritos": 20,
