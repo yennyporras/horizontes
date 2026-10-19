@@ -91,6 +91,13 @@ export interface SalaDetalle {
   admin_actual: AdminYo
 }
 
+/** GET /api/admin/salas/{id}/rubricas y respuesta del PUT de un criterio. */
+export interface RubricasSala {
+  criterios: { id: string; nombre: string; pregunta: string; rubrica: { valor: number; texto: string }[] }[]
+  editable: boolean
+  motivo_no_editable?: string
+}
+
 export type Accion =
   | 'abrir_inscripcion'
   | 'abrir_ronda_1'

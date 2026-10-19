@@ -1,7 +1,9 @@
 # Genera deploy/plan_b/Plantilla_Horizontes_Shot_Nutresa.xlsx desde data/seed_foodsume.json (plan B sin la app).
 # Uso: python deploy/plan_b/generar_plantilla.py   (requiere openpyxl)
+#      python deploy/plan_b/generar_plantilla.py --rubricas rubricas.json   (rúbricas editadas en el panel; ver docs/PLAN_B.md)
 # Hojas: Instrucciones · Votos (una fila por papeleta) · Resultados (promedios por criterio y motor con los pesos de la semilla) · Matriz.
 import json
+import sys
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -11,6 +13,12 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 RAIZ = Path(__file__).resolve().parents[2]
 SEMILLA = json.loads((RAIZ / 'data/seed_foodsume.json').read_text(encoding='utf8'))
+# Rúbricas editadas en el panel: el archivo es la respuesta de GET /api/admin/salas/{id}/rubricas.
+if '--rubricas' in sys.argv:
+    editadas = json.loads(Path(sys.argv[sys.argv.index('--rubricas') + 1]).read_text(encoding='utf8'))
+    rubricas = {c['id']: c['rubrica'] for c in editadas['criterios']}
+    for c in SEMILLA['motor']['criterios']:
+        c['rubrica'] = rubricas.get(c['id'], c['rubrica'])
 SALIDA = Path(__file__).with_name('Plantilla_Horizontes_Shot_Nutresa.xlsx')
 
 AZUL = '1C4587'

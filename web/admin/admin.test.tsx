@@ -218,3 +218,65 @@ describe('panel admin contra el simulador', () => {
     expect(await screen.findByText('CO 181.50.12.10')).toBeTruthy()
   })
 })
+
+describe('rúbricas en la configuración de la sala', () => {
+  const seccion = () => within(screen.getByRole('region', { name: 'Rúbricas' }))
+  const nivel = (v: number) => seccion().getByLabelText(`Nivel ${v}`) as HTMLTextAreaElement
+  const botonR = (n: string) => seccion().getByRole('button', { name: n }) as HTMLButtonElement
+
+  async function configuracionDeSalaNueva() {
+    montar('/admin/login')
+    await entrar('paola')
+    fireEvent.change(screen.getByLabelText('Nombre del taller'), { target: { value: 'Rúbricas' } })
+    fireEvent.change(screen.getByLabelText('Mesas'), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Crear sala' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Configuración'))
+    await screen.findByLabelText('Nivel 9')
+  }
+
+  it('abre en Inversión Requerida para Probar, guarda los textos y descarta cambios', async () => {
+    await configuracionDeSalaNueva()
+    expect((seccion().getByLabelText('Criterio') as HTMLSelectElement).value).toBe('inversion_requerida')
+    expect(nivel(9).value).toMatch(/^Inversión muy alta/)
+    expect(botonR('Guardar').disabled).toBe(true)
+
+    fireEvent.change(nivel(1), { target: { value: 'Algo que se descarta' } })
+    expect((seccion().getByLabelText('Criterio') as HTMLSelectElement).disabled).toBe(true)
+    fireEvent.click(botonR('Descartar cambios'))
+    expect(nivel(1).value).toMatch(/^Inversión baja/)
+
+    fireEvent.change(nivel(1), { target: { value: 'Inversión baja (< USD 20k)' } })
+    fireEvent.click(seccion().getByLabelText(/Usar también en las salas nuevas/))
+    fireEvent.click(botonR('Guardar'))
+    expect(await seccion().findByText(/Guardamos la rúbrica de Inversión Requerida para Probar.*las salas nuevas también la usarán/)).toBeTruthy()
+    expect(nivel(1).value).toBe('Inversión baja (< USD 20k)')
+    expect(botonR('Guardar').disabled).toBe(true)
+  })
+
+  it('muestra tal cual el 409 del servidor', async () => {
+    usarTransporte(async (metodo, ruta, cuerpo, etag) =>
+      metodo === 'PUT' && ruta.includes('/rubricas/')
+        ? { status: 409, body: { error: { codigo: 'RUBRICA_CON_VOTOS', mensaje: 'La sala ya tiene votos. Mensaje del servidor.' } } }
+        : responderMock(metodo, ruta, cuerpo, etag),
+    )
+    await configuracionDeSalaNueva()
+    fireEvent.change(nivel(5), { target: { value: 'Inversión moderada' } })
+    fireEvent.click(botonR('Guardar'))
+    expect((await seccion().findByRole('alert')).textContent).toBe('La sala ya tiene votos. Mensaje del servidor.')
+  })
+
+  it('con votos deja todo deshabilitado y explica por qué', async () => {
+    montar('/admin/login')
+    await entrar('paola')
+    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Configuración'))
+    await screen.findByLabelText('Nivel 9')
+    expect(seccion().getByText(/La sala ya tiene votos/)).toBeTruthy()
+    // Deshabilitados por el fieldset: la propiedad disabled de cada campo no cambia, :disabled sí.
+    for (const v of [1, 3, 5, 7, 9]) expect(nivel(v).matches(':disabled')).toBe(true)
+    expect(seccion().getByLabelText(/Usar también en las salas nuevas/).matches(':disabled')).toBe(true)
+    expect(botonR('Guardar').disabled).toBe(true)
+  })
+})

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
+import { Rubricas } from './Rubricas'
 import type { ConfigSala, Pais, SalaDetalle, ZonaHoraria } from '../tipos'
 import { PAISES, ZONAS, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala } from '../textos'
 
@@ -41,6 +42,7 @@ export function Configuracion() {
               <Cierres d={d} guardar={guardar} />
             </div>
           </div>
+          <Rubricas salaId={d.sala.id} version={d.version} />
         </>
       )}
     </ConSala>

@@ -6,7 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { type Transporte, usarTransporte } from './api'
-import { type Entorno, crearEntorno, inscribir, votar } from '../../tests/server/ayuda'
+import { type Entorno, accion, crearEntorno, inscribir, votar } from '../../tests/server/ayuda'
 
 let e: Entorno
 let cookie = ''
@@ -239,4 +239,21 @@ describe('panel admin contra la API real', () => {
     expect((e.db.prepare('SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?').get(copia.id) as { n: number }).n).toBe(3)
     expect((e.db.prepare('SELECT COUNT(*) AS n FROM participantes WHERE sala_id = ?').get(copia.id) as { n: number }).n).toBe(0)
   }, 20_000)
+
+  it('edita la rúbrica de inversión contra la API real y el celular la recibe', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId, mesas } = await crearSalaDesdePanel('Rúbrica real', 1)
+    fireEvent.click(nav().getByText('Configuración'))
+    const rubricas = within(await screen.findByRole('region', { name: 'Rúbricas' }))
+    fireEvent.change(await rubricas.findByLabelText('Nivel 9'), { target: { value: 'Inversión muy alta (> USD 2MM)' } })
+    fireEvent.click(rubricas.getByRole('button', { name: 'Guardar' }))
+    expect(await rubricas.findByText(/Guardamos la rúbrica de Inversión Requerida para Probar/)).toBeTruthy()
+
+    expect((await accion(e, salaId, 'abrir_inscripcion')).statusCode).toBe(200)
+    const token = (await inscribir(e, mesas[0].codigo, 'ana@x.co')).json().token as string
+    const yo = await e.app.inject({ method: 'GET', url: '/api/yo', headers: { 'x-participante-token': token } })
+    const inversion = (yo.json().criterios as { id: string; rubrica: { valor: number; texto: string }[] }[]).find((c) => c.id === 'inversion_requerida')!
+    expect(inversion.rubrica[0]).toEqual({ valor: 9, texto: 'Inversión muy alta (> USD 2MM)' })
+  })
 })

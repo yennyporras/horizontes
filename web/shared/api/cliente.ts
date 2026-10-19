@@ -6,11 +6,13 @@ import type {
   AdminYo,
   Config,
   CuerpoInscripcion,
+  CuerpoRubrica,
   CuerpoVoto,
   DetalleSala,
   InfoMesa,
   RespuestaInscripcion,
   RespuestaVoto,
+  RubricasSala,
   SalaResumen,
   Tablero,
   Yo,
@@ -110,6 +112,8 @@ export const api = {
   crearAdmin: (a: { usuario: string; nombre: string; correo?: string; clave_temporal: string }) => datos(pedir<Admin>('/api/admin/admins', { metodo: 'POST', cuerpo: a })),
   editarAdmin: (id: number, c: { activo?: boolean; nombre?: string; correo?: string; restablecer_clave?: boolean | string }) =>
     datos(pedir<Admin>(`/api/admin/admins/${id}`, { metodo: 'PATCH', cuerpo: c })),
+  rubricas: (id: string) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas`)),
+  editarRubrica: (id: string, criterio: string, c: CuerpoRubrica) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas/${criterio}`, { metodo: 'PUT', cuerpo: c })),
   urlQr: (mesaId: string) => `/api/admin/mesas/${mesaId}/qr.svg`,
   urlExport: (salaId: string, archivo: 'inscritos.csv' | 'votos.csv') => `/api/admin/salas/${salaId}/export/${archivo}`,
 }

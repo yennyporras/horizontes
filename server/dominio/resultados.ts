@@ -25,7 +25,8 @@ export interface ProyectoFila {
   inputs_json: string | null
 }
 
-// El contenido y los proyectos no cambian después de crear la sala: se cachean por BD y sala.
+// Los proyectos no cambian después de crear la sala y el contenido solo al editar una rúbrica (que borra su caché):
+// se cachean por BD y sala.
 const cacheContenido = new WeakMap<Db, Map<string, Contenido>>()
 const cacheProyectos = new WeakMap<Db, Map<string, ProyectoFila[]>>()
 
@@ -49,6 +50,11 @@ export function contenido(db: Db, salaId: string): Contenido {
     m.set(salaId, c)
   }
   return c
+}
+
+/** Descarta el contenido cacheado de la sala (después de cambiarlo en contenido_sala). */
+export function olvidarContenido(db: Db, salaId: string) {
+  mapaDe(cacheContenido, db).delete(salaId)
 }
 
 export function proyectos(db: Db, salaId: string): ProyectoFila[] {
