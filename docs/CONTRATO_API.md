@@ -38,7 +38,7 @@ Ejemplos completos de respuesta en `mocks/`. T2, T3 y T4 trabajan contra esos mo
 | `GET /api/admin/yo` | `{id, usuario, nombre, rol}` (para mostrar u ocultar la gestión de admins) |
 | `GET /api/admin/admins` · `POST /api/admin/admins` `{usuario, nombre, correo, clave_temporal}` · `PATCH /api/admin/admins/{id}` `{activo?, nombre?, correo?, restablecer_clave?}` | **Solo superadmin** (403 `SOLO_SUPERADMIN`). No se puede crear otro superadmin por API |
 | `POST /api/admin/cambiar-clave` `{actual, nueva}` | Obligatorio en el primer ingreso si `debe_cambiar_clave` |
-| `GET /api/admin/salas/{id}/export/inscritos.csv` · `.../export/votos.csv` | CSV UTF-8 con BOM (abre bien en Excel). Al final, columnas `ip` (inscripción o último guardado del voto) y `pais` |
+| `GET /api/admin/salas/{id}/export/inscritos.csv` · `.../export/votos.csv` | CSV UTF-8 con BOM (abre bien en Excel). Al final, columnas `ip` (inscripción o último guardado del voto) y `pais` (del aviso aceptado) |
 
 ## Reglas que el servidor garantiza
 - Un voto por participante, proyecto y ronda (upsert).

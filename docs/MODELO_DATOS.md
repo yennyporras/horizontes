@@ -93,7 +93,8 @@ CREATE TABLE consentimientos (
   politica_url    VARCHAR(255) NOT NULL,   -- política de tratamiento de datos de Estratek vigente
   texto_hash      VARCHAR(64) NOT NULL,    -- sha256 del aviso mostrado
   aceptado_at     DATETIME    NOT NULL,
-  ip              VARCHAR(45), user_agent VARCHAR(255)
+  ip              VARCHAR(45), user_agent VARCHAR(255),
+  pais            VARCHAR(2)  NOT NULL DEFAULT 'CO'  -- país del aviso aceptado (R4)
 );
 
 CREATE TABLE votos (
