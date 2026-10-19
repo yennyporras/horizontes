@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import type { SalaDetalle } from '../tipos'
 import { ESTADOS } from '../textos'
 
@@ -9,9 +10,14 @@ export function ConSala({ titulo, datos, error, children }: { titulo: string; da
       <>
         <h1>{titulo}</h1>
         {error ? (
-          <p className="alerta alerta--error" role="alert">
-            No pudimos cargar la sala. {error}
-          </p>
+          <>
+            <p className="alerta alerta--error" role="alert">
+              No pudimos cargar la sala. {error}
+            </p>
+            <Link className="btn" to="/admin/salas">
+              Elegir otra sala
+            </Link>
+          </>
         ) : (
           <p role="status">Cargando sala…</p>
         )}
