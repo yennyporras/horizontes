@@ -26,8 +26,16 @@ CREATE TABLE salas (
   alcance_resultados          VARCHAR(5)   NOT NULL DEFAULT 'mesa',       -- mesa|sala (salas nuevas desde R4: 'sala', lo fija el código)
   vista_participante          VARCHAR(10)  NOT NULL DEFAULT 'registrado', -- registrado|en_vivo (salas nuevas desde R4: 'en_vivo')
   revelar_hojas               BOOLEAN      NOT NULL DEFAULT FALSE,
-  cierre_programado_ronda_at  DATETIME     NULL,
+  cierre_programado_ronda_at  DATETIME     NULL,             -- sin uso desde la migración 4: la API lo deriva de r1/r2
   cierre_programado_sala_at   DATETIME     NULL,
+  apertura_programada_sala_at DATETIME     NULL,             -- 19-oct (migración 4): abre la inscripción
+  apertura_programada_r1_at   DATETIME     NULL,
+  cierre_programado_r1_at     DATETIME     NULL,
+  apertura_programada_r2_at   DATETIME     NULL,
+  cierre_programado_r2_at     DATETIME     NULL,
+  modo_preguntas              VARCHAR(10)  NOT NULL DEFAULT 'automatico', -- automatico|guiado (migración 4)
+  pregunta_guiada_proyecto_id VARCHAR(40)  NULL,             -- pregunta que fija el admin en modo guiado (migración 4)
+  pregunta_guiada_criterio_id VARCHAR(40)  NULL,
   pais                        VARCHAR(2)   NOT NULL DEFAULT 'CO',             -- CO|PE|GT (R4)
   zona_horaria                VARCHAR(20)  NOT NULL DEFAULT 'America/Bogota', -- America/Bogota|America/Lima|America/Guatemala (R4)
   token_tablero_hash          VARCHAR(255) NOT NULL,
@@ -137,4 +145,6 @@ CREATE TABLE eventos (                      -- auditoría y bitácora visible al
 - Agregados se calculan al leer (datos pequeños). Si el tablero supera 50 ms, cachear por `(sala_id, version, alcance, mesa)`.
 - `version` de la sala sube en la misma transacción de cualquier escritura.
 - Votos de participantes con `activo = false` no cuentan para promedios ni para precierre.
+- Horas programadas en UTC ISO (comparables como texto). Se aplican y se consumen (NULL) a su hora, o se descartan si la transición no vale en ese momento; la transición manual consume la suya. La migración 4 pasó el `cierre_programado_ronda_at` que hubiera a `cierre_programado_r1_at` (sala sin ronda o con R1 abierta) o a `cierre_programado_r2_at` (lo demás) y dejó la columna en NULL.
+- La pregunta guiada se borra con cualquier cambio de estado de la sala, al cambiar `modo_preguntas` y en el reinicio limpio (que también borra la programación y vuelve a `automatico`).
 - `contenido_sala.criterios_json` es la copia de los criterios de cada sala: al crearla sale de la semilla con las rúbricas de `rubricas_plantilla` encima; al duplicarla, de la sala original. El admin cambia sus textos de rúbrica mientras la sala no tenga votos. Reiniciar una ronda o la sala no la toca.
