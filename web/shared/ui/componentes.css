@@ -1,7 +1,7 @@
 /* Base y componentes de Horizontes. Solo consume tokens de tokens.css. Clases con prefijo hz-. */
 
 /* Sin el margen de 8 px del navegador: cabecera y fondos llegan al borde (triage #17).
-   El lienzo oscuro también detrás de la página (rebote del desplazamiento, zonas sin contenido). */
+   El fondo del tema también detrás de la página (rebote del desplazamiento, zonas sin contenido). */
 body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 
 .hz, .hz *, .hz *::before, .hz *::after { box-sizing: border-box; }
@@ -18,14 +18,14 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 }
 .hz h1, .hz h2, .hz h3, .hz p { margin: 0; }
 :where(.hz) button, :where(.hz) input, :where(.hz) select, :where(.hz) textarea { font: inherit; color: inherit; }
-:where(.hz) a { color: var(--hz-acento); }
-.hz ::selection { background: var(--hz-acento); color: var(--hz-sobre-acento); }
+:where(.hz) a { color: var(--hz-accion); }
+.hz ::selection { background: var(--hz-accion); color: var(--hz-sobre-accion); }
 /* Títulos que reciben el foco al cambiar de pantalla: sin anillo, no son interactivos. */
 .hz h1[tabindex="-1"]:focus { box-shadow: none; outline: none; }
 
-/* Foco del IRMI: contorno teal de 2 px separado 2 px. Es un contorno real (no sombra): también se ve en
-   alto contraste de Windows, donde se refuerza con el color del sistema. */
-.hz :focus-visible { outline: 2px solid var(--hz-acento); outline-offset: 2px; }
+/* Foco de la familia Estratek: contorno de 2 px en el color de foco, separado 2 px. Es un contorno real (no sombra):
+   también se ve en alto contraste de Windows, donde se refuerza con el color del sistema. */
+.hz :focus-visible { outline: 2px solid var(--hz-foco-color); outline-offset: 2px; }
 @media (forced-colors: active) {
   .hz :focus-visible, .hz-opcion:has(.hz-opcion__input:focus-visible) { outline: 3px solid CanvasText; outline-offset: 2px; }
 }
@@ -71,31 +71,34 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-encabezado__sala { position: relative; font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); max-width: 75%; }
 .hz-encabezado__meta { position: relative; font-size: var(--hz-fs-14); color: var(--hz-tinta-2); max-width: 75%; }
 
-/* ── Botón ──────────────────────────────────────────── */
+/* ── Botón (píldora, como estratek.com.co) ─────────── */
 .hz-boton {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--hz-sp-2);
   min-height: var(--hz-tactil);
-  padding: 0 var(--hz-sp-5);
-  border-radius: var(--hz-r-m);
-  border: 1px solid transparent;
-  font-size: var(--hz-fs-16); font-weight: var(--hz-fw-titulo); letter-spacing: -0.01em;
+  padding: 0 var(--hz-sp-6);
+  border-radius: var(--hz-r-boton);
+  border: 1.5px solid transparent;
+  font-size: var(--hz-fs-16); font-weight: var(--hz-fw-etiqueta);
   text-decoration: none;
   cursor: pointer;
-  transition: transform var(--hz-t-rapido) var(--hz-curva), box-shadow var(--hz-t-rapido), border-color var(--hz-t-rapido), color var(--hz-t-rapido), background-color var(--hz-t-rapido);
+  transition: transform var(--hz-t-rapido) var(--hz-curva), border-color var(--hz-t-rapido), color var(--hz-t-rapido), background-color var(--hz-t-rapido);
 }
 .hz-boton:active { transform: scale(0.98); }
 .hz-boton--bloque { display: flex; width: 100%; }
-/* Primario: el degradado de marca, uno por vista. */
-.hz-boton--primario { background: var(--hz-grad-marca); color: var(--hz-sobre-acento); }
-.hz-boton--primario:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(71, 235, 194, 0.25); }
-.hz-boton--secundario { background: var(--hz-superficie-2); color: var(--hz-tinta); border-color: var(--hz-borde-fuerte); }
-.hz-boton--secundario:hover { border-color: var(--hz-acento-borde); color: var(--hz-acento); }
-.hz-boton--fantasma { background: transparent; color: var(--hz-acento); padding: 0 var(--hz-sp-2); font-weight: var(--hz-fw-etiqueta); }
+/* Primario: sólido en el color de acción, uno por vista. */
+.hz-boton--primario { background: var(--hz-accion); color: var(--hz-sobre-accion); }
+.hz-boton--primario:hover { background: var(--hz-azul-presionado); }
+/* Secundario: contorno; el texto queda en tinta para cumplir AA sobre cualquier superficie. */
+.hz-boton--secundario { background: transparent; color: var(--hz-tinta); border-color: var(--hz-borde-control); }
+.hz-boton--secundario:hover { border-color: var(--hz-accion); background: var(--hz-acento-suave); }
+.hz-boton--fantasma { background: transparent; color: var(--hz-accion); padding: 0 var(--hz-sp-2); }
 .hz-boton--fantasma:hover { text-decoration: underline; text-underline-offset: 3px; }
-/* Deshabilitado plano y legible: sin degradado ni opacidad (5,5:1). */
+/* Destructivo: solo para borrar o retirar. */
+.hz-boton--destructivo { background: var(--hz-error); color: var(--hz-fondo); }
+/* Deshabilitado plano y legible: sin opacidad. */
 .hz-boton[aria-disabled='true'] {
   background: var(--hz-deshabilitado-fondo); color: var(--hz-deshabilitado-texto); border-color: var(--hz-deshabilitado-borde);
-  cursor: not-allowed; transform: none; box-shadow: none;
+  cursor: not-allowed; transform: none; text-decoration: none;
 }
 .hz-boton[aria-busy='true'] { cursor: progress; }
 .hz-boton__giro {
@@ -118,21 +121,21 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 
 /* ── Campo ──────────────────────────────────────────── */
 .hz-campo { display: grid; gap: var(--hz-sp-1); }
-.hz-campo__etiqueta { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-campo__etiqueta { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 .hz-campo__entrada {
   min-height: var(--hz-tactil);
   padding: 0 var(--hz-sp-4);
   font-size: var(--hz-fs-16);
   color: var(--hz-tinta);
   border: 1.5px solid var(--hz-borde-control);
-  border-radius: var(--hz-r-s);
-  background: var(--hz-superficie-2);
+  border-radius: var(--hz-r-campo);
+  background: var(--hz-fondo);
   transition: border-color var(--hz-t-rapido), box-shadow var(--hz-t-rapido);
 }
 .hz-campo__entrada::placeholder { color: var(--hz-tinta-3); opacity: 1; }
-.hz-campo__entrada:focus-visible { border-color: var(--hz-acento); }
+.hz-campo__entrada:focus-visible { border-color: var(--hz-foco-color); }
 .hz-campo__entrada:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 100px var(--hz-superficie-2) inset;
+  -webkit-box-shadow: 0 0 0 100px var(--hz-fondo) inset;
   -webkit-text-fill-color: var(--hz-tinta);
   caret-color: var(--hz-tinta);
 }
@@ -148,7 +151,8 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
   font-size: var(--hz-fs-12); font-weight: 800; line-height: 1;
   background: currentColor;
 }
-.hz-icono > span { color: var(--hz-sobre-acento); }
+/* El símbolo va en el color del fondo: blanco sobre los estados del tema claro, carbón sobre los del carbón. */
+.hz-icono > span { color: var(--hz-fondo); }
 
 /* ── Casilla ────────────────────────────────────────── */
 .hz-casilla { display: flex; gap: var(--hz-sp-3); align-items: flex-start; padding: var(--hz-sp-3) 0; }
@@ -160,20 +164,20 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
   appearance: none; -webkit-appearance: none;
   width: 24px; height: 24px; margin: 0;
   border: 2px solid var(--hz-borde-control); border-radius: 6px;
-  background: var(--hz-superficie-2);
+  background: var(--hz-fondo);
   display: grid; place-items: center;
   cursor: pointer;
 }
 .hz-casilla__input::after {
   content: ''; width: 12px; height: 7px;
-  border: solid var(--hz-sobre-acento); border-width: 0 0 3px 3px;
+  border: solid var(--hz-sobre-accion); border-width: 0 0 3px 3px;
   transform: translateY(-2px) rotate(-45deg);
   opacity: 0;
 }
-.hz-casilla__input:checked { background: var(--hz-acento); border-color: var(--hz-acento); }
+.hz-casilla__input:checked { background: var(--hz-accion); border-color: var(--hz-accion); }
 .hz-casilla__input:checked::after { opacity: 1; }
 .hz-casilla__texto { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
-.hz-casilla__texto a { color: var(--hz-acento); font-weight: var(--hz-fw-etiqueta); text-underline-offset: 3px; }
+.hz-casilla__texto a { color: var(--hz-accion); font-weight: var(--hz-fw-etiqueta); text-underline-offset: 3px; }
 
 /* ── Rúbrica ────────────────────────────────────────── */
 .hz-rubrica { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--hz-sp-3); }
@@ -196,21 +200,21 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-opcion__input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .hz-opcion__valor { font-size: var(--hz-fs-25); font-weight: var(--hz-fw-cifra); color: var(--hz-tinta); text-align: center; font-variant-numeric: tabular-nums; }
 .hz-opcion__texto { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
-/* Elegida, como el IRMI: tinte teal, borde teal con barra lateral de 4 px y texto en negrita. */
+/* Elegida: tinte de la acción, borde de la acción con barra lateral de 4 px y texto en negrita. */
 .hz-opcion:has(.hz-opcion__input:checked) {
   background: var(--hz-acento-tinte);
   border-radius: var(--hz-r-m);
-  box-shadow: inset 0 0 0 1.5px var(--hz-acento), inset 4px 0 0 var(--hz-acento);
+  box-shadow: inset 0 0 0 1.5px var(--hz-accion), inset 4px 0 0 var(--hz-accion);
   border-bottom-color: transparent;
 }
-.hz-opcion:has(.hz-opcion__input:checked) .hz-opcion__valor { color: var(--hz-acento); }
+.hz-opcion:has(.hz-opcion__input:checked) .hz-opcion__valor { color: var(--hz-accion); }
 .hz-opcion:has(.hz-opcion__input:checked) .hz-opcion__texto { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
-.hz-opcion:has(.hz-opcion__input:focus-visible) { outline: 3px solid var(--hz-acento); outline-offset: 2px; border-radius: var(--hz-r-m); z-index: 1; }
+.hz-opcion:has(.hz-opcion__input:focus-visible) { outline: 3px solid var(--hz-foco-color); outline-offset: 2px; border-radius: var(--hz-r-m); z-index: 1; }
 
 .hz-arco { display: block; width: 40px; height: 40px; }
 .hz-arco__guia { fill: none; stroke: var(--hz-h3); stroke-width: 1.5; }
 .hz-arco__forma { fill: var(--hz-superficie-3); stroke: var(--hz-azul-medio); stroke-width: 2; transition: fill var(--hz-t-rapido); }
-.hz-opcion:has(.hz-opcion__input:checked) .hz-arco__forma { fill: var(--hz-acento); stroke: var(--hz-cielo); }
+.hz-opcion:has(.hz-opcion__input:checked) .hz-arco__forma { fill: var(--hz-accion); stroke: var(--hz-accion); }
 
 .hz-rubrica__error { display: flex; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-error); }
 
@@ -231,10 +235,10 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
   cursor: pointer;
 }
 .hz-pestanas__tab:hover { color: var(--hz-tinta); }
-.hz-pestanas__tab[aria-selected='true'] { background: var(--hz-superficie-3); color: var(--hz-tinta); font-weight: var(--hz-fw-titulo); box-shadow: inset 0 0 0 1px var(--hz-acento-borde); }
+.hz-pestanas__tab[aria-selected='true'] { background: var(--hz-fondo); color: var(--hz-tinta); font-weight: var(--hz-fw-titulo); box-shadow: inset 0 0 0 1.5px var(--hz-accion); }
 .hz-pestanas__panel { padding-top: var(--hz-sp-4); }
 
-/* ── Barra de progreso (degradado de marca) ─────────── */
+/* ── Barra de progreso (el degradado de Estratek como relleno) ─ */
 .hz-progreso { display: grid; gap: var(--hz-sp-2); }
 .hz-progreso__texto { display: flex; justify-content: space-between; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 .hz-progreso__texto strong { color: var(--hz-tinta); font-weight: var(--hz-fw-titulo); font-variant-numeric: tabular-nums; }
@@ -246,17 +250,17 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
   display: flex; gap: var(--hz-sp-3); align-items: flex-start;
   padding: var(--hz-sp-3) var(--hz-sp-4);
   border-radius: var(--hz-r-m);
-  border: 1px solid var(--hz-borde);
-  border-left: 4px solid currentColor;
+  border: 1px solid currentColor;
+  border-left-width: 4px;
   font-size: var(--hz-fs-14);
 }
 .hz-aviso__cuerpo { display: grid; gap: var(--hz-sp-1); flex: 1; color: var(--hz-tinta); }
 .hz-aviso__titulo { font-weight: var(--hz-fw-etiqueta); font-size: var(--hz-fs-16); }
-.hz-aviso--info { color: var(--hz-acento); background: var(--hz-info-fondo); }
+.hz-aviso--info { color: var(--hz-accion); background: var(--hz-info-fondo); }
 .hz-aviso--ok { color: var(--hz-ok); background: var(--hz-ok-fondo); }
 .hz-aviso--alerta { color: var(--hz-alerta); background: var(--hz-alerta-fondo); }
 .hz-aviso--error { color: var(--hz-error); background: var(--hz-error-fondo); }
-.hz-aviso .hz-boton--fantasma { min-height: 40px; padding: 0; justify-self: start; }
+.hz-aviso .hz-boton--fantasma { min-height: 40px; padding: 0; justify-self: start; color: var(--hz-tinta); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── Insignia ───────────────────────────────────────── */
 .hz-insignia {
@@ -267,23 +271,49 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
   white-space: nowrap;
 }
 .hz-insignia--neutra { background: var(--hz-h2); color: var(--hz-tinta); }
+/* Estados: fondo, texto y símbolo del estado; el símbolo no se lee en voz alta. */
 .hz-insignia--ok { background: var(--hz-ok-fondo); color: var(--hz-ok); }
 .hz-insignia--alerta { background: var(--hz-alerta-fondo); color: var(--hz-alerta); }
-/* R1 hueco (borde y texto verdes sobre el fondo de quien la aloja), R2 sólido (relleno rojo, texto oscuro). */
+.hz-insignia--error { background: var(--hz-error-fondo); color: var(--hz-error); }
+.hz-insignia--ok::before, .hz-insignia--alerta::before, .hz-insignia--error::before { margin-right: var(--hz-sp-1); }
+.hz-insignia--ok::before { content: '✓'; content: '✓' / ''; }
+.hz-insignia--alerta::before, .hz-insignia--error::before { content: '!'; content: '!' / ''; }
+/* R1 hueco (borde y texto verdes sobre el fondo de quien la aloja), R2 sólido (relleno rojo, texto encima según el tema). */
 .hz-insignia--r1 { background: transparent; color: var(--hz-r1); outline: 1.5px solid var(--hz-r1); outline-offset: -1.5px; }
 .hz-insignia--r2 { background: var(--hz-r2); color: var(--hz-sobre-r2); }
 
-/* ── Hoja (tarjeta tonal; la activa lleva el filo teal) ─ */
+/* ── Hoja (tarjeta: superficie 1 con borde; la activa lleva el filo de la acción) ─ */
 .hz-hoja {
   display: grid; gap: var(--hz-sp-3);
   padding: var(--hz-sp-5) var(--hz-sp-4);
-  border: 1px solid var(--hz-borde-suave);
-  border-radius: var(--hz-r-l);
+  border: 1px solid var(--hz-borde);
+  border-radius: var(--hz-r-tarjeta);
   background: var(--hz-superficie-1);
 }
-.hz-hoja--activa { border-color: var(--hz-acento-borde); box-shadow: inset 0 2px 0 var(--hz-acento); }
+.hz-hoja--activa { border-color: var(--hz-acento-borde); box-shadow: inset 0 3px 0 var(--hz-accion); }
 .hz-hoja__titulo { display: flex; justify-content: space-between; align-items: center; gap: var(--hz-sp-2); font-size: var(--hz-fs-18); font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 .hz-hoja__texto { color: var(--hz-tinta); }
+
+/* ── Encabezado de producto (familia Estratek) ──────────
+   Glifo en el acento de la herramienta, nombre, «por Estratek »» y la línea del degradado debajo. */
+.hz-producto { position: relative; background: var(--hz-fondo); }
+.hz-producto::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--hz-grad-marca); }
+.hz-producto__fila {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3);
+  padding: var(--hz-sp-3) var(--hz-sp-4) calc(var(--hz-sp-3) + 4px);
+}
+.hz-producto__marca { display: inline-flex; align-items: center; gap: var(--hz-sp-3); min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
+.hz-producto__glifo {
+  flex: none; display: grid; place-items: center;
+  width: 2.5rem; height: 2.5rem; border-radius: var(--hz-r-campo);
+  background: var(--hz-acento-producto); color: var(--et-carbon);
+  font-size: var(--hz-fs-24); font-weight: var(--hz-fw-display); line-height: 1;
+}
+.hz-producto__textos { display: grid; line-height: 1.1; }
+.hz-producto__nombre { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-display); letter-spacing: var(--hz-ls-titulo); }
+.hz-producto__firma { font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-producto__flecha { color: var(--hz-accion); font-weight: var(--hz-fw-display); }
+.hz-producto__extra { display: flex; align-items: center; gap: var(--hz-sp-2); min-width: 0; }
 
 /* ── Blindaje ante estilos globales de otras áreas ─────
    tablero.css (T3) define .hz-cifra, .hz-insignia y .hz-progreso sin alcance y se carga en toda la SPA.
@@ -291,3 +321,8 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz .hz-cifra { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
 .hz .hz-progreso { padding: 0; background: none; border-radius: 0; }
 .hz .hz-insignia { padding: 2px var(--hz-sp-2); border-radius: var(--hz-r-pill); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); }
+
+/* El encabezado de producto llega a los bordes de la página del celular. */
+.hz-pagina > .hz-producto { margin-inline: calc(var(--hz-sp-4) * -1); }
+/* Muestra del tema carbón dentro de /m/_ui. */
+.hz-muestra-carbon { padding: var(--hz-sp-4); border-radius: var(--hz-r-tarjeta); background: var(--hz-fondo); color: var(--hz-tinta); }
