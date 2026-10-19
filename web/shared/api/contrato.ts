@@ -92,7 +92,7 @@ export interface Yo {
   contenido: {
     caso: { titulo: string; descripcion_md: string; situacion_md: string }
     portafolio: { id: string; nombre: string; tipo: string; sector: string; descripcion: string; modo: 'fijo' | 'vivo' }[]
-    hojas: { proyecto_id: string; proyecto: string; perfil_id: PerfilId; perfil?: string; texto: string }[]
+    hojas: HojaPerfil[]
   }
   criterios: Criterio[]
   escala: Valor[]
@@ -101,6 +101,15 @@ export interface Yo {
   completo_ronda: boolean
   progreso_mesa: ProgresoMesa
   resultados: Tablero | null
+}
+
+/** Hoja de información de un perfil para un proyecto vivo. */
+export interface HojaPerfil {
+  proyecto_id: string
+  proyecto: string
+  perfil_id: PerfilId
+  perfil?: string
+  texto: string
 }
 
 export interface CuerpoVoto {
@@ -229,6 +238,10 @@ export interface RubricasSala {
   editable: boolean
   /** Solo cuando `editable` es false: por qué no se puede editar. */
   motivo_no_editable?: string
+}
+/** GET /api/admin/salas/{id}/hojas: las 6 hojas de cada proyecto vivo, en el orden del catálogo de perfiles (solo lectura). */
+export interface HojasSala {
+  hojas: (HojaPerfil & { perfil: string })[]
 }
 /** PUT /api/admin/salas/{id}/rubricas/{criterio_id}: los 5 niveles (1, 3, 5, 7, 9), solo cambian los textos. */
 export interface CuerpoRubrica {
