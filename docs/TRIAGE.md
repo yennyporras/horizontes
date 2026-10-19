@@ -62,3 +62,20 @@ Puntas: t1 `5ae982e`, t2 `f43075c`, t3 `2ce0b95` (sin cambios desde la pasada 2)
 - **Abiertos: #1 (solo falta el aviso del tablero, T3), #29 (decisión de mínimo 3), y de T3: #5, #6, #7, #9, #11 (parte del tablero), #12, #13, #14.** Ninguno abierto de T4.
 
 Revisado y descartado: la hora de la bitácora del panel ("5:37 a. m.") es correcta, el panel muestra hora de Bogotá y la máquina de QA está en hora de Europa.
+
+## Pasada R4 · 19-oct 14:15 (cambios del acta)
+Puntas: t1 `c4de916`, t2 `6caf103`, t3 `c2aa235` (solo la animación; sus cambios del acta aún no estaban), t4 `8529ab5`. Solo conflicto en `docs/DECISIONES.md` (resuelto uniendo en la rama temporal). Esta vez sin Docker: build de producción servido por el mismo servidor (`npx tsx server/index.ts` con `NODE_ENV=production`, :3999), más liviano para la máquina compartida.
+- `tools/test.sh` integrado: **rojo, 4 de 441** (436 en verde, 1 omitida, 29 archivos). Las 4 son e2e de T2 (`web/participante/e2e/recorrido.test.ts` y los 3 perfiles de `perfiles.test.ts`), ver #31. Las pruebas del panel (simulador y API real) pasan integradas: 21 de 21.
+- Recorrido en navegador a 360 y 1920 px (`QA-tests/recorrido_integrado.cjs`, ahora también abre el resultado preliminar del panel en R1 y R2 y cambia el país a Perú): **en verde** salvo #5 y los 401 de #14. Puntos de la sala iguales en los dos anchos. Sin rayas en ningún texto.
+- Acta verificada en lo integrado: panel y celular muestran los 6 criterios y «Total» con los mismos valores (sala, R2: INSUMEX 13,21 → 16,20; NUTRIWHAT 11,20 → 14,20), R1 verde hueco y R2 rojo sólido con texto; sala nueva con «Todos ven la sala completa» y «Tablero en vivo»; tras votar el celular muestra «Resultados en vivo de la sala»; país e IP en Participantes del panel; Configuración guarda Perú con hora de Lima.
+- Hoja de QR A4: PDF desde el recorrido y desde el script nuevo `QA-tests/hoja_qr_pdf.cjs` (2 mesas, 1 página).
+- T4 verificados otra vez a 360 px: #2, #3, #4, #18, #19, #20 y #21 siguen corregidos (sin desborde en ninguna pantalla del panel).
+
+| # | Sev. | Pantalla | Qué pasa y cómo reproducir | Dueña | Estado |
+|---|---|---|---|---|---|
+| 30 | alta | Tablero (proyector y matriz del celular) | Sin los cambios del acta en la integración de las 14:15: la tabla sigue con T2M, Eje X, Eje Y y Votos y sin «Total» (A3, A4); vivos en naranja y cielo en vez de R1 verde hueco y R2 rojo sólido (P3); la leyenda dice "Ronda 1 / Ronda 2" con puntos azules. T3 no había publicado commits de R4 a esa hora. | T3 | abierto |
+| 31 | alta | Pruebas e2e del participante | Con el valor por defecto nuevo de T1 (A2: `vista_participante: 'en_vivo'`), tras votar el celular muestra «Resultados en vivo de la sala», pero `recorrido.test.ts` y `perfiles.test.ts` esperan «Voto registrado» (y un perfil busca el texto viejo «Eje X (Time 2 Market)»). Ramas por separado en verde; integradas, rojo. Arreglo: que las pruebas acepten la vista en vivo o creen la sala con `vista_participante: 'registrado'`. | T2 | abierto |
+| 32 | media | Panel · Sala en vivo a 360 px | El resultado preliminar (nuevo de R4) iba dentro del aviso de precierre y la columna R2 quedaba cortada. Ahora va como panel aparte, con celdas más compactas. | T4 | corregido (`8529ab5`, verificado con capturas) |
+
+**Abiertos tras la pasada R4:** #30 (T3), #31 (T2), y de rondas anteriores #5, #6, #7, #9, #11 (parte del tablero, la cubre #30), #12, #13 (la cubre #30) y #14, todos de T3. #1 y #29 quedan cerrados por el mínimo de 3 votos de T1 (servidor) y T2 (celular); falta el aviso del tablero, dentro de #30. Ninguno abierto de T4.
+
