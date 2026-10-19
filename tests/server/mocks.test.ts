@@ -61,7 +61,11 @@ describe('servidor de mocks', () => {
     expect(d.base_url).toMatch(/^https:\/\//)
     expect(d.sala.config).toHaveProperty('apertura_programada_r2_at')
     expect((await app.inject('/api/yo')).json().config.modo_preguntas).toBe('automatico')
-    expect((await app.inject('/api/tablero/s_demo?t=x')).json().sala.pregunta_guiada).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'alineacion_core' })
+    // El tablero de `npm run dev` queda en automático (muestra la matriz); el ejemplo guiado vive en el mock del admin.
+    const tb = (await app.inject('/api/tablero/s_demo?t=x')).json()
+    expect(tb.sala.pregunta_guiada).toBeNull()
+    expect(tb.config.modo_preguntas).toBe('automatico')
+    expect(d.sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'regulacion' })
   })
 
   it('mesa inexistente responde 404 MESA_NO_EXISTE', async () => {

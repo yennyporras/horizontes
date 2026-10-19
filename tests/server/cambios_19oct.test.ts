@@ -341,6 +341,27 @@ describe('modo de preguntas y pregunta guiada', () => {
     expect((await tablero(s)).config.modo_preguntas).toBe('guiado')
   })
 
+  it('el tablero trae pregunta y rúbrica de cada criterio solo en modo guiado', async () => {
+    const s = await crearSala(e, 1)
+    await accion(e, s.id, 'abrir_ronda_1')
+    const auto = await tablero(s)
+    expect(auto.criterios).toHaveLength(6)
+    for (const c of auto.criterios) expect(Object.keys(c).sort()).toEqual(['id', 'nombre'])
+
+    await config(s.id, { modo_preguntas: 'guiado' })
+    const t = (await inscribir(e, s.mesas[0].codigo, 'a@prueba.co')).json().token
+    const deYo = (await yo(t)).json().criterios as { id: string; pregunta: string; rubrica: unknown[] }[]
+    const guiado = await tablero(s)
+    expect(guiado.version).not.toBe(auto.version)
+    expect(guiado.criterios.map((c: { id: string; nombre: string; pregunta: string; rubrica: unknown[] }) => ({ id: c.id, pregunta: c.pregunta, rubrica: c.rubrica }))).toEqual(
+      deYo.map((c) => ({ id: c.id, pregunta: c.pregunta, rubrica: c.rubrica })),
+    )
+    expect(guiado.criterios[0].rubrica.map((r: { valor: number }) => r.valor).sort()).toEqual([1, 3, 5, 7, 9])
+
+    await config(s.id, { modo_preguntas: 'automatico' })
+    for (const c of (await tablero(s)).criterios) expect(c).not.toHaveProperty('rubrica')
+  })
+
   it('409 RONDA_CERRADA sin ronda abierta', async () => {
     const s = await crearSala(e, 1)
     await accion(e, s.id, 'abrir_inscripcion')
