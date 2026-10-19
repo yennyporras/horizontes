@@ -3,6 +3,7 @@
 //   t2m   = alistamiento_tecnico·0,30 + conocimiento_cliente·0,35 + regulacion·0,35
 //   eje_x = t2m·0,6 + capacidades_organizacionales·0,4
 //   eje_y = alineacion_core·0,7 + inversion_requerida·0,3
+//   total = eje_x + eje_y   (fila «Total» de las tablas, acta del 16-oct P2; la matriz sigue usando los ejes)
 // Los pesos llegan de data/seed_foodsume.json (motor.pesos). Los valores no se invierten.
 
 export const CRITERIOS = [
@@ -34,6 +35,7 @@ export interface Punto {
   t2m: number
   eje_x: number
   eje_y: number
+  total: number
 }
 
 export function calcularT2m(e: Pick<Entradas, 'alistamiento_tecnico' | 'conocimiento_cliente' | 'regulacion'>, p: Pesos = PESOS_CANONICOS): number {
@@ -42,11 +44,9 @@ export function calcularT2m(e: Pick<Entradas, 'alistamiento_tecnico' | 'conocimi
 
 export function calcularPunto(e: Entradas, p: Pesos = PESOS_CANONICOS): Punto {
   const t2m = calcularT2m(e, p)
-  return {
-    t2m,
-    eje_x: t2m * p.eje_x.t2m + e.capacidades_organizacionales * p.eje_x.capacidades_organizacionales,
-    eje_y: e.alineacion_core * p.eje_y.alineacion_core + e.inversion_requerida * p.eje_y.inversion_requerida,
-  }
+  const eje_x = t2m * p.eje_x.t2m + e.capacidades_organizacionales * p.eje_x.capacidades_organizacionales
+  const eje_y = e.alineacion_core * p.eje_y.alineacion_core + e.inversion_requerida * p.eje_y.inversion_requerida
+  return { t2m, eje_x, eje_y, total: eje_x + eje_y }
 }
 
 export type Distribucion = Record<CriterioId, Record<'1' | '3' | '5' | '7' | '9', number>>
@@ -57,7 +57,7 @@ export interface Agregado extends Punto {
   distribucion: Distribucion
 }
 
-/** Alias con el nombre del prompt R0: inputs (promedios) y pesos → {t2m, eje_x, eje_y}. */
+/** Alias con el nombre del prompt R0: inputs (promedios) y pesos → {t2m, eje_x, eje_y, total}. */
 export const calcular = calcularPunto
 
 /** Promedio simple por criterio. `null` si no hay votos. */
