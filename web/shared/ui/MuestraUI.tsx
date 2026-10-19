@@ -129,7 +129,8 @@ export function MuestraUI() {
             <Insignia tono="ok">Guardado</Insignia>
             <Insignia>Pendiente</Insignia>
             <Insignia tono="alerta">Preliminar</Insignia>
-            <Insignia>Ronda 2</Insignia>
+            <Insignia tono="r1">R1</Insignia>
+            <Insignia tono="r2">R2</Insignia>
           </p>
         </section>
 
