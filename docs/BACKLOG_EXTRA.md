@@ -20,3 +20,6 @@
 - Hoja imprimible con QR de todas las mesas (A4, una mesa por cuarto de hoja).
 - Duplicar sala para ensayos.
 - Monitor de salud en `/admin/salud` (latencia, versión desplegada, último error).
+
+## Ideas para después de la v1 (acta del 16-oct, fuera de alcance)
+- **Panel unificado de herramientas (IRMI, Horizontes…)** (acta A12): un solo acceso para los facilitadores de Estratek con las herramientas en una lista, usuarios y roles compartidos, y cada herramienta en su propio repo y despliegue. Solo idea: no se diseña ni se construye en esta entrega.
