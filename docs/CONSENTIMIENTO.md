@@ -78,6 +78,8 @@ Cómo se arma la pantalla de inscripción:
 
 ### 5.1 Texto de la casilla (`texto_autorizacion`)
 
+> Tras la integración con T1 (19-oct), el texto vigente es el de `server/dominio/consentimiento.ts` (`TEXTOS_AUTORIZACION`) y **manda ese**. El de abajo es la propuesta de T2 para la revisión de Paola; diferencias en `docs/DECISIONES.md` (19-oct, [T2] Texto legal `hz-1.1`).
+
 **Colombia (`CO`)**
 
 ```text
