@@ -15,8 +15,17 @@ export interface SalaFila {
   alcance_resultados: 'mesa' | 'sala'
   vista_participante: 'registrado' | 'en_vivo'
   revelar_hojas: number
+  /** Sin uso desde la migración 4: la API lo deriva de cierre_programado_r1_at o cierre_programado_r2_at. */
   cierre_programado_ronda_at: string | null
   cierre_programado_sala_at: string | null
+  apertura_programada_sala_at: string | null
+  apertura_programada_r1_at: string | null
+  cierre_programado_r1_at: string | null
+  apertura_programada_r2_at: string | null
+  cierre_programado_r2_at: string | null
+  modo_preguntas: 'automatico' | 'guiado'
+  pregunta_guiada_proyecto_id: string | null
+  pregunta_guiada_criterio_id: string | null
   pais: Pais
   zona_horaria: ZonaHoraria
   token_tablero_hash: string
