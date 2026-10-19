@@ -2,6 +2,9 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { matrizSVG } from './matriz/matriz.js'
 import type { DatosTablero, Vista } from './tipos'
 
+/** Animación R1 → R2: 1,2 s de movimiento y la flecha y las etiquetas aparecen hasta 1,4 s. */
+const DURACION_ANIMACION_MS = 1600
+
 export interface MatrizHorizontesProps {
   /** Respuesta de GET /api/tablero o GET /api/resultados. Sin fetch interno. */
   datos: DatosTablero | null
@@ -51,24 +54,36 @@ export function MatrizHorizontes({ datos, vista = 'comparacion', alto, llenar = 
     }
   }, [])
 
-  // Al pasar a Comparación, una sola animación R1 → R2; luego se redibuja sin ella para que el
-  // polling o un cambio de tamaño no la repitan.
-  const [animar, setAnimar] = useState(false)
-  const vistaPrevia = useRef(vista)
+  // Al pasar a Comparación, una sola animación R1 → R2. Arranca en el mismo render que cambia la
+  // vista (sin un cuadro previo con la comparación quieta). Si el SVG se redibuja mientras dura
+  // (el encabezado cambia de alto al cerrar la ronda, llegan datos nuevos), sigue donde iba en vez de
+  // volver a R1. Al terminar se redibuja sin ella para que el polling o un cambio de tamaño no la repitan.
+  const [vistaPrevia, setVistaPrevia] = useState(vista)
+  const [inicioAnimacion, setInicioAnimacion] = useState<number | null>(null)
+  if (vistaPrevia !== vista) {
+    setVistaPrevia(vista)
+    setInicioAnimacion(animarComparacion && vista === 'comparacion' ? performance.now() : null)
+  }
   useEffect(() => {
-    const antes = vistaPrevia.current
-    vistaPrevia.current = vista
-    if (!animarComparacion || antes === vista || vista !== 'comparacion') return
-    setAnimar(true)
-    const t = setTimeout(() => setAnimar(false), 1600)
+    if (inicioAnimacion === null) return
+    const t = setTimeout(() => setInicioAnimacion(null), DURACION_ANIMACION_MS)
     return () => clearTimeout(t)
-  }, [vista, animarComparacion])
+  }, [inicioAnimacion])
 
   const ancho = tam.w || 360
   const altoFinal = alto ?? (llenar && tam.h > 0 ? tam.h : Math.max(320, Math.min(ancho, 900)))
   const svg = useMemo(
-    () => matrizSVG(datos, { ancho, alto: altoFinal, vista, idPrefijo, escalaTexto, animar: animar && vista === 'comparacion' }),
-    [datos, ancho, altoFinal, vista, idPrefijo, escalaTexto, animar],
+    () =>
+      matrizSVG(datos, {
+        ancho,
+        alto: altoFinal,
+        vista,
+        idPrefijo,
+        escalaTexto,
+        animar: inicioAnimacion !== null,
+        animarDesdeMs: inicioAnimacion === null ? 0 : performance.now() - inicioAnimacion,
+      }),
+    [datos, ancho, altoFinal, vista, idPrefijo, escalaTexto, inicioAnimacion],
   )
 
   return (

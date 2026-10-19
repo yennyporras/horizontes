@@ -10,6 +10,8 @@ export interface OpcionesMatriz {
   escalaTexto?: number
   /** Anima R2 saliendo desde R1 (al pasar a Comparación). Respeta prefers-reduced-motion. */
   animar?: boolean
+  /** Milisegundos ya transcurridos de esa animación: un redibujo a mitad de camino la continúa sin reiniciarla. */
+  animarDesdeMs?: number
   colores?: Record<string, unknown>
 }
 

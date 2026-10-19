@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Contrato de MatrizHorizontes para otras áreas (T2): solo props, sin fetch, sin parpadeo.
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { act, cleanup, render } from '@testing-library/react'
 import mockJson from '../../mocks/GET_api_tablero.json'
 import { MatrizHorizontes, insigniaResultado, mensajeVacio } from './index'
 import type { DatosTablero } from './index'
@@ -44,6 +44,27 @@ describe('MatrizHorizontes', () => {
     const antes = r.container.querySelector('svg')
     r.rerender(<MatrizHorizontes datos={structuredClone(mock)} vista={2} />)
     expect(r.container.querySelector('svg')).toBe(antes)
+  })
+
+  test('al pasar a Comparación anima desde el primer render y un redibujo a mitad de camino continúa sin reiniciar', () => {
+    vi.useFakeTimers()
+    const reloj = vi.spyOn(performance, 'now').mockReturnValue(1000)
+    const r = render(<MatrizHorizontes datos={mock} vista={2} alto={600} />)
+    expect(r.container.querySelector('.hz-anim-mov')).toBeNull()
+    r.rerender(<MatrizHorizontes datos={mock} vista="comparacion" alto={600} />)
+    expect(r.container.querySelector('.hz-anim-mov')).not.toBeNull()
+    expect(r.container.querySelector('style')!.textContent).toContain('hzMover 1.2s cubic-bezier(.22,.8,.3,1) 0ms both')
+    // 400 ms después el encabezado cambia de alto: el SVG nuevo sigue la animación en 400 ms.
+    reloj.mockReturnValue(1400)
+    r.rerender(<MatrizHorizontes datos={mock} vista="comparacion" alto={604} />)
+    expect(r.container.querySelector('svg')!.getAttribute('height')).toBe('604')
+    expect(r.container.querySelector('style')!.textContent).toContain('cubic-bezier(.22,.8,.3,1) -400ms both')
+    expect(r.container.querySelector('style')!.textContent).toContain('ease-out 500ms both')
+    // Al terminar se redibuja quieta.
+    act(() => vi.advanceTimersByTime(1600))
+    expect(r.container.querySelector('.hz-anim-mov')).toBeNull()
+    reloj.mockRestore()
+    vi.useRealTimers()
   })
 
   test('alto fijo y clase extra', () => {

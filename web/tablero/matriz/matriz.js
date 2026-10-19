@@ -270,10 +270,13 @@ export function matrizSVG(datos, opciones = {}) {
   const animar = !!opciones.animar && L.vivos.some((v) => v.r1 && v.r2);
   if (animar) {
     // Animación R1 → R2: la burbuja R2 sale desde la posición R1; flecha y etiquetas aparecen después.
+    // Si el SVG se redibuja a mitad de camino (cambio de tamaño, datos nuevos), animarDesdeMs la
+    // continúa donde iba (retraso negativo) en vez de volver a empezar desde R1.
+    const desde = Math.max(0, Math.round(esNumero(opciones.animarDesdeMs) ? opciones.animarDesdeMs : 0));
     partes.push(
       `<style>` +
-        `.hz-anim-mov{animation:hzMover 1.2s cubic-bezier(.22,.8,.3,1) both}` +
-        `.hz-anim-apar{animation:hzAparecer .5s ease-out .9s both}` +
+        `.hz-anim-mov{animation:hzMover 1.2s cubic-bezier(.22,.8,.3,1) ${-desde}ms both}` +
+        `.hz-anim-apar{animation:hzAparecer .5s ease-out ${900 - desde}ms both}` +
         `@keyframes hzMover{from{transform:translate(var(--dx),var(--dy))}to{transform:translate(0,0)}}` +
         `@keyframes hzAparecer{from{opacity:0}to{opacity:1}}` +
         `@media (prefers-reduced-motion: reduce){.hz-anim-mov,.hz-anim-apar{animation:none}}` +

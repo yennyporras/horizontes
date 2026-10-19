@@ -80,7 +80,6 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
   let browser: Browser
   let base = ''
   let golden1: { id: string; token: string }
-  let vivo: { id: string; token: string; tokens: string[] }
   const capturas = process.env.HZ_CAPTURAS ?? ''
 
   async function inscribirTodos(sala: Awaited<ReturnType<typeof crearSala>>, ids: (number | string)[]) {
@@ -114,12 +113,6 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     await votarGolden(t1, 2)
     await accion(e, s1.id, 'cerrar_ronda_2')
     golden1 = { id: s1.id, token: s1.token_tablero }
-    // Sala 2: R1 abierta con 2 personas en 1 mesa, sin votos.
-    const s2 = await crearSala(e, 1, 'Sala en vivo')
-    await accion(e, s2.id, 'abrir_inscripcion')
-    const t2 = await inscribirTodos(s2, ['a', 'b'])
-    await accion(e, s2.id, 'abrir_ronda_1')
-    vivo = { id: s2.id, token: s2.token_tablero, tokens: [...t2.values()] }
 
     // Vite y Chromium cargan la CPU: dentro de tools/test.sh esperan a que avancen los demás archivos
     // (≈ 30 s sin esta prueba) para no vencer los tiempos de las pruebas de jsdom de otras áreas.
@@ -301,6 +294,12 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
   }, 60_000)
 
   it('con R1 abierta: 304 sin cambios y mismo SVG; un voto y el cierre se ven en menos de 5 s', async () => {
+    // Sala propia de esta prueba (un reintento empieza limpio): R1 abierta, 3 personas en 1 mesa, sin votos.
+    const s2 = await crearSala(e, 1, 'Sala en vivo')
+    await accion(e, s2.id, 'abrir_inscripcion')
+    const tk = await inscribirTodos(s2, ['a', 'b', 'c'])
+    await accion(e, s2.id, 'abrir_ronda_1')
+    const vivo = { id: s2.id, token: s2.token_tablero, tokens: [...tk.values()] }
     const p = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}`, 'svg.hz-matriz', true)
     const estados: number[] = []
     p.on('response', (res) => res.url().includes('/api/tablero/') && estados.push(res.status()))
@@ -312,7 +311,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     expect(estados).toContain(304)
     expect(await p.evaluate(() => (window as unknown as { __svg: Element }).__svg === document.querySelector('svg.hz-matriz'))).toBe(true)
 
-    // Voto de las 2 personas en los 2 proyectos: aparece el punto y la sala entra en precierre.
+    // Voto de las 3 personas en los 2 proyectos: aparece el punto y la sala entra en precierre.
     const resp = Object.fromEntries(CRITERIOS.map((c) => [c, 7]))
     const t0 = Date.now()
     for (const tk of vivo.tokens) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 1, resp)).statusCode).toBe(200)
@@ -345,6 +344,13 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     await accion(e, vivo.id, 'cerrar_ronda_2')
     await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Comparación')
     const tComparacion = Date.now() - t2
+    // A mitad de la animación el lienzo cambia de tamaño (como cuando el encabezado cambia de alto al
+    // cerrar la ronda): el SVG se redibuja y la animación debe seguir donde iba, sin volver a R1.
+    await p.waitForTimeout(300)
+    const altoAntes = await p.locator('svg.hz-matriz').getAttribute('height')
+    await p.setViewportSize({ width: 1920, height: 1040 })
+    await expect.poll(() => p.locator('svg.hz-matriz').getAttribute('height'), { timeout: 1000, interval: 20 }).not.toBe(altoAntes)
+    expect(await p.locator('svg.hz-matriz .hz-anim-mov').count(), 'el redibujo llega con la animación en curso').toBe(2)
     expect(await p.locator('svg.hz-matriz .hz-flecha').count()).toBe(2)
     expect(tComparacion).toBeLessThan(5000)
     await expect.poll(() => p.locator('svg.hz-matriz .hz-anim-mov').count(), { timeout: 5000, interval: 100 }).toBe(0)
@@ -502,45 +508,52 @@ interface ResultadoAnimacion {
 }
 
 /**
- * Corre en el navegador: en cada cuadro anota si hay animación y dónde se ve cada burbuja R2.
- * `window.__anim()` resume: arranques, duración, intervalos entre cuadros, recorrido y retroceso
- * (cuánto se aleja del punto final de un cuadro al siguiente) y error final contra cx/cy.
+ * Corre en el navegador: en cada cuadro anota si hay animación y, por burbuja R2, cuánto le falta para
+ * llegar a su punto (`falta`) y el largo del tramo R1 → R2 (`tramo`), ambos con la geometría del SVG de
+ * ese cuadro: así un redibujo con otro tamaño no se confunde con un retroceso.
+ * `window.__anim()` resume: arranques, duración, intervalos entre cuadros, recorrido, retroceso (en px,
+ * cuánto pierde el avance de un cuadro al siguiente) y error final.
  */
 function registrarCuadros() {
-  type Cuadro = { t: number; anim: boolean; pos: Record<string, [number, number]> }
+  type Cuadro = { t: number; anim: boolean; avance: Record<string, { falta: number; tramo: number }> }
   const cuadros: Cuadro[] = []
+  const centro = (c: Element) => {
+    const b = c.getBoundingClientRect()
+    return [b.x + b.width / 2, b.y + b.height / 2]
+  }
   const paso = (t: number) => {
     const svg = document.querySelector('svg.hz-matriz')
-    const pos: Record<string, [number, number]> = {}
+    const avance: Cuadro['avance'] = {}
     let anim = false
-    svg?.querySelectorAll<SVGCircleElement>('circle.hz-r2').forEach((c) => {
-      const b = c.getBoundingClientRect()
-      pos[c.dataset.proyecto!] = [b.x + b.width / 2, b.y + b.height / 2]
-      anim ||= c.classList.contains('hz-anim-mov')
-    })
-    cuadros.push({ t, anim, pos })
+    if (svg) {
+      const sr = svg.getBoundingClientRect()
+      const punto = (c: Element | null) => (c ? [sr.x + Number(c.getAttribute('cx')), sr.y + Number(c.getAttribute('cy'))] : null)
+      svg.querySelectorAll<SVGCircleElement>('circle.hz-r2').forEach((c) => {
+        const id = c.dataset.proyecto!
+        const [ax, ay] = centro(c)
+        const [fx, fy] = punto(c)!
+        const r1 = punto(svg.querySelector(`circle.hz-r1[data-proyecto="${id}"]`))
+        avance[id] = { falta: Math.hypot(ax - fx, ay - fy), tramo: r1 ? Math.hypot(r1[0] - fx, r1[1] - fy) : 0 }
+        anim ||= c.classList.contains('hz-anim-mov')
+      })
+    }
+    cuadros.push({ t, anim, avance })
     requestAnimationFrame(paso)
   }
   requestAnimationFrame(paso)
   ;(window as unknown as { __anim: () => ResultadoAnimacion }).__anim = () => {
-    const svg = document.querySelector('svg.hz-matriz')!
-    const sr = svg.getBoundingClientRect()
-    const final: Record<string, [number, number]> = {}
-    svg.querySelectorAll<SVGCircleElement>('circle.hz-r2').forEach((c) => {
-      final[c.dataset.proyecto!] = [sr.x + Number(c.getAttribute('cx')), sr.y + Number(c.getAttribute('cy'))]
-    })
     const arranques = cuadros.filter((c, i) => c.anim && !cuadros[i - 1]?.anim).length
     const con = cuadros.filter((c) => c.anim)
     const intervalos = con.slice(1).map((c, i) => c.t - con[i].t).sort((a, b) => a - b)
-    const dist = (c: Cuadro, id: string) => (c.pos[id] ? Math.hypot(c.pos[id][0] - final[id][0], c.pos[id][1] - final[id][1]) : 0)
+    const ultimo = cuadros[cuadros.length - 1]
     let recorrido = 0
     let retroceso = 0
-    for (const id of Object.keys(final)) {
-      const d = con.map((c) => dist(c, id))
-      recorrido = Math.max(recorrido, Math.max(...d) - Math.min(...d))
-      for (let i = 1; i < d.length; i++) retroceso = Math.max(retroceso, d[i] - d[i - 1])
+    for (const id of Object.keys(ultimo.avance)) {
+      const a = con.map((c) => c.avance[id]).filter((x) => x && x.tramo > 0)
+      const hecho = a.map((x) => 1 - x.falta / x.tramo)
+      recorrido = Math.max(recorrido, ...a.map((x) => x.tramo * (Math.max(...hecho) - Math.min(...hecho))))
+      for (let i = 1; i < a.length; i++) retroceso = Math.max(retroceso, (hecho[i - 1] - hecho[i]) * a[i].tramo)
     }
-    const ultimo = cuadros[cuadros.length - 1]
     return {
       arranques,
       duracion: con.length ? Math.round(con[con.length - 1].t - con[0].t) : 0,
@@ -549,7 +562,7 @@ function registrarCuadros() {
       maximo: Math.round(intervalos[intervalos.length - 1] ?? 0),
       recorrido: Math.round(recorrido),
       retroceso,
-      errorFinal: Math.max(0, ...Object.keys(final).map((id) => dist(ultimo, id))),
+      errorFinal: Math.max(0, ...Object.values(ultimo.avance).map((x) => x.falta)),
     }
   }
 }
