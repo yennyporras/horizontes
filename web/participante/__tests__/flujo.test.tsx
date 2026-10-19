@@ -6,7 +6,7 @@ import yoBase from '../../../mocks/GET_api_yo.json'
 import tablero from '../../../mocks/GET_api_tablero.json'
 import PaginaMesa from '../PaginaMesa'
 import { AVANCE_MS } from '../pantallas/Votacion'
-import type { Yo } from '../api'
+import type { PreguntaGuiada, Yo } from '../api'
 
 const CODIGO = 'HZ7K2-1'
 const MESA = {
@@ -393,7 +393,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
 })
 
 describe('votación en modo guiado', () => {
-  const guiado = (pregunta: { proyecto_id: string; criterio_id: string } | null, cambios: (y: Yo) => void = () => {}) =>
+  const guiado = (pregunta: PreguntaGuiada | null, cambios: (y: Yo) => void = () => {}) =>
     yoCon((y) => {
       y.config.modo_preguntas = 'guiado'
       y.sala.pregunta_guiada = pregunta

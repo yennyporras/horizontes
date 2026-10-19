@@ -1,5 +1,9 @@
 // Cliente del participante para el contrato v1 (docs/CONTRATO_API.md).
 // Provisional hasta que T1 publique web/shared/api/: misma forma, solo cambia el import.
+// Los tipos del 19-oct (modo de preguntas y pregunta guiada) ya vienen del contrato compartido.
+import type { ModoPreguntas, PreguntaGuiada } from '../shared/api/contrato'
+
+export type { ModoPreguntas, PreguntaGuiada }
 
 export type EstadoSala = 'preparada' | 'inscripcion' | 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cerrada' | 'cerrada'
 export type Valor = 1 | 3 | 5 | 7 | 9
@@ -96,15 +100,6 @@ export interface Resultados {
   preliminar?: boolean
   /** Votos mínimos por proyecto, ronda y alcance para mostrar resultados (R4_CONTRATO C3: 3). */
   minimo_votos?: number
-}
-
-/** C19-5 (CAMBIOS_19OCT_CONTRATO S4): automático pasa sola a la siguiente pregunta; guiado muestra la que elige el facilitador. */
-export type ModoPreguntas = 'automatico' | 'guiado'
-
-/** Pregunta que el facilitador muestra a toda la sala en modo guiado (S4). null: aún no elige ninguna. */
-export interface PreguntaGuiada {
-  proyecto_id: string
-  criterio_id: string
 }
 
 export interface Yo {
