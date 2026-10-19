@@ -4,10 +4,14 @@
 .hzp-avisos { display: grid; gap: var(--hz-sp-2); }
 .hzp-acciones { display: grid; gap: var(--hz-sp-2); justify-items: center; }
 .hzp-seccion { display: grid; gap: var(--hz-sp-4); padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-h3); }
-.hzp-volver { justify-self: start; min-height: 40px; padding: 0; }
+.hzp-volver { justify-self: start; min-height: 44px; padding: 0; }
 
 /* Consentimiento (patrón del IRMI: bloque con título y casilla obligatoria) */
 .hzp-consentimiento { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); }
+.hzp-aviso-datos { margin: var(--hz-sp-2) 0 0; display: grid; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
+.hzp-aviso-datos dt { font-weight: 700; color: var(--hz-tinta); }
+.hzp-aviso-datos dd { margin: 0; }
+.hzp-aviso-datos a { color: var(--hz-azul); font-weight: 600; text-underline-offset: 3px; }
 .hzp-consentimiento__titulo { font-size: var(--hz-fs-16); font-weight: 700; color: var(--hz-azul); }
 
 /* Esqueleto de carga */
@@ -42,19 +46,29 @@
 /* Resultado del alcance */
 .hzp-resultado { display: grid; gap: var(--hz-sp-5); }
 .hzp-resultado__proyecto { display: grid; gap: var(--hz-sp-3); padding: var(--hz-sp-4); border: 1px solid var(--hz-h3); border-radius: var(--hz-r-l); }
-.hzp-posicion { margin: 0; display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
-.hzp-posicion__fila { display: grid; gap: 2px; }
-.hzp-posicion dt { font-weight: 700; color: var(--hz-tinta-2); }
-.hzp-posicion dd { margin: 0; }
 .hzp-tabla { width: 100%; border-collapse: collapse; font-size: var(--hz-fs-14); }
 .hzp-tabla th, .hzp-tabla td { padding: var(--hz-sp-2) 0; border-bottom: 1px solid var(--hz-h3); text-align: left; vertical-align: top; }
-.hzp-tabla thead th { font-weight: 700; color: var(--hz-tinta-2); }
+.hzp-tabla thead { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); }
+.hzp-tabla thead th { font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+/* Posición en la matriz (eje X y eje Y): lo más importante del resultado, primero y más marcado. */
+.hzp-tabla__ejes { font-size: var(--hz-fs-16); color: var(--hz-azul); }
+.hz .hzp-tabla__ejes th { font-weight: 700; }
+.hz .hzp-tabla__eje-nombre { display: block; font-size: var(--hz-fs-12); font-weight: 600; color: var(--hz-tinta-2); }
+.hzp-tabla__ejes tr:last-child > * { border-bottom: 2px solid var(--hz-h3); }
+.hzp-resultado__pie { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); font-variant-numeric: tabular-nums; }
 .hzp-tabla tbody th { font-weight: 500; padding-right: var(--hz-sp-3); }
-.hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 4.5rem; font-weight: 700; }
+/* Columnas de cifras justas ("7,00"): el nombre del criterio se queda con el resto del ancho (triage #23). */
+.hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 3.25rem; padding-left: var(--hz-sp-2); white-space: nowrap; }
+.hzp-tabla td { font-weight: 700; }
 
 /* Matriz de T3 dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
    (min-width: auto): sin min-width 0, el SVG inicial de 360 px ensancha la página. */
 .hzp-resultado > *, .hzp-matriz { min-width: 0; }
 .hzp-matriz { min-height: 320px; overflow: hidden; }
 /* Las cifras de la tabla siguen en negrita pese al blindaje de .hz-cifra (componentes.css). */
-.hz .hzp-tabla td, .hz .hzp-tabla thead th + th { font-weight: 700; }
+.hz .hzp-tabla td { font-weight: 700; }
+
+/* Celular abierto en escritorio (triage #25): la matriz sale de la columna de lectura y crece. */
+@media (min-width: 64rem) {
+  .hzp-matriz { --hzp-ancho-matriz: min(60rem, 100vw - 4rem); width: var(--hzp-ancho-matriz); margin-left: calc((100% - var(--hzp-ancho-matriz)) / 2); }
+}

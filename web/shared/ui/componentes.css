@@ -1,5 +1,8 @@
 /* Base y componentes de Horizontes. Solo consume tokens de tokens.css. Clases con prefijo hz-. */
 
+/* Sin el margen de 8 px del navegador: cabecera y fondos llegan al borde (triage #17). */
+body { margin: 0; }
+
 .hz, .hz *, .hz *::before, .hz *::after { box-sizing: border-box; }
 
 .hz {
@@ -16,7 +19,11 @@
 /* Títulos que reciben el foco al cambiar de pantalla: sin anillo, no son interactivos. */
 .hz h1[tabindex="-1"]:focus { box-shadow: none; outline: none; }
 
-.hz :focus-visible { outline: none; box-shadow: var(--hz-foco); }
+.hz :focus-visible { outline: 2px solid transparent; box-shadow: var(--hz-foco); }
+/* Alto contraste de Windows borra las sombras: el contorno transparente se vuelve visible y aquí se refuerza. */
+@media (forced-colors: active) {
+  .hz :focus-visible, .hz-opcion:has(.hz-opcion__input:focus-visible) { outline: 3px solid CanvasText; outline-offset: 2px; }
+}
 
 .hz-visual-oculto {
   position: absolute !important;
@@ -50,6 +57,10 @@
   margin: 0 calc(var(--hz-sp-4) * -1) var(--hz-sp-2);
   padding: var(--hz-sp-5) var(--hz-sp-4) var(--hz-sp-4);
   border-bottom: 1px solid var(--hz-h3);
+}
+/* En pantallas anchas, el texto del encabezado se alinea con la columna de contenido. */
+@media (min-width: 40rem) {
+  .hz-encabezado { padding-inline: max(var(--hz-sp-4), calc(50vw - var(--hz-medida) / 2)); }
 }
 .hz-encabezado__arcos { position: absolute; top: 0; right: 0; width: 132px; height: 100%; pointer-events: none; }
 .hz-encabezado__sala { position: relative; font-size: var(--hz-fs-14); font-weight: 700; color: var(--hz-azul); max-width: 75%; }
@@ -119,7 +130,10 @@
 .hz-icono > span { color: #FFFFFF; }
 
 /* ── Casilla ────────────────────────────────────────── */
-.hz-casilla { display: flex; gap: var(--hz-sp-3); align-items: flex-start; cursor: pointer; padding: var(--hz-sp-3) 0; }
+.hz-casilla { display: flex; gap: var(--hz-sp-3); align-items: flex-start; padding: var(--hz-sp-3) 0; }
+/* Área táctil de 44 px alrededor de la casilla de 24 px, sin mover el diseño. */
+.hz-casilla__toque { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: -10px; cursor: pointer; }
+.hz-casilla__texto { cursor: pointer; }
 .hz-casilla__input {
   flex: none;
   appearance: none; -webkit-appearance: none;

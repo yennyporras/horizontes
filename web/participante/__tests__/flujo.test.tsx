@@ -106,7 +106,7 @@ describe('antes de inscribirse', () => {
       return { status: 404 }
     })
     montar()
-    await screen.findByRole('heading', { name: 'Bienvenido al taller Horizontes' })
+    await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
     const boton = screen.getByRole('button', { name: 'Inscribirme' })
     expect(boton.getAttribute('aria-disabled')).toBe('true')
     expect(screen.getByText('Para inscribirte necesitamos tu autorización de tratamiento de datos.')).toBeTruthy()
@@ -148,12 +148,12 @@ describe('antes de inscribirse', () => {
       return { status: 200, body: yoBase, headers: { ETag: 'v1' } }
     })
     montar()
-    await screen.findByRole('heading', { name: 'Bienvenido al taller Horizontes' })
+    await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
     fireEvent.change(screen.getByLabelText('Tu nombre'), { target: { value: 'Ana' } })
     fireEvent.change(screen.getByLabelText('Tu correo'), { target: { value: 'ana@empresa.com' } })
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: 'Inscribirme' }))
-    expect(await screen.findByText('Ya estabas inscrito con este correo. Retomas donde ibas.')).toBeTruthy()
+    expect(await screen.findByText('Este correo ya estaba en la mesa. Retomas donde ibas.')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: /Tu perfil es/ })).toBeNull()
     expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBe('tok-viejo')
   })
@@ -198,7 +198,8 @@ describe('votación', () => {
     expect(Object.values(puts[0].respuestas as object)).toEqual([9, 9, 9, 9, 9, 9])
     expect(await screen.findByRole('heading', { name: 'Voto registrado' })).toBeTruthy()
     expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe('6 de 7 completaron en Mesa 1')
-  })
+    // 12 clics de rúbrica y 2 guardados: con la suite completa en paralelo pasa de 5 s.
+  }, 15_000)
 
   it('conserva lo marcado tras recargar y avisa si la ronda se cerró', async () => {
     servidor((url) => {
