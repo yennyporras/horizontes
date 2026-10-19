@@ -51,6 +51,12 @@
   --hz-error: #A3261B;
   --hz-error-fondo: #FDECEA;
 
+  /* Rondas (acta A7, P3): R1 verde, individual y en silencio; R2 rojo, con discusión en la mesa.
+     5,4:1 y 5,6:1 sobre blanco. Siempre con el texto «R1»/«R2» y forma distinta: R1 hueco, R2 sólido.
+     Los proyectos fijos no usan estos colores. T3 y T4: var(--hz-r1, #1F7A3A) y var(--hz-r2, #C62828). */
+  --hz-r1: #1F7A3A;
+  --hz-r2: #C62828;
+
   /* Tipografía */
   --hz-fuente: 'Montserrat Variable', 'Montserrat', 'Montserrat Respaldo', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --hz-fs-12: 0.75rem;
