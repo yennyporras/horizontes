@@ -91,7 +91,7 @@ export function Administradores() {
           {aviso.texto}
           {aviso.clave && (
             <p>
-              <code style={{ fontSize: 20, fontWeight: 700 }}>{aviso.clave}</code>
+              <code className="clave-temporal">{aviso.clave}</code>
             </p>
           )}
         </div>
@@ -116,7 +116,7 @@ export function Administradores() {
             <span>Clave temporal</span>
             <input required minLength={10} value={clave} onChange={(e) => setClave(e.target.value)} />
           </label>
-          <button className="btn btn--primario" type="submit">
+          <button className="hz-boton hz-boton--primario" type="submit">
             Crear administrador
           </button>
         </form>
@@ -164,11 +164,11 @@ export function Administradores() {
                       {a.rol === 'superadmin' ? (
                         <span className="pista">Se administra desde el servidor</span>
                       ) : (
-                        <span className="acciones" style={{ marginBottom: 0 }}>
-                          <button className="btn btn--chico" onClick={() => restablecer(a)} disabled={!a.activo}>
+                        <span className="acciones">
+                          <button className="hz-boton hz-boton--secundario hz-boton--chico" onClick={() => restablecer(a)} disabled={!a.activo}>
                             Restablecer clave
                           </button>
-                          <button className={a.activo ? 'btn btn--peligro btn--chico' : 'btn btn--chico'} onClick={() => cambiarActivo(a)}>
+                          <button className="hz-boton hz-boton--secundario hz-boton--chico" onClick={() => cambiarActivo(a)}>
                             {a.activo ? 'Desactivar' : 'Activar'}
                           </button>
                         </span>

@@ -40,10 +40,10 @@ export function useConfirmar(): [ReactNode, (titulo: string, texto: string, conf
       <h2 id="confirmar-titulo">{pedido.titulo}</h2>
       <p>{pedido.texto}</p>
       <div className="acciones">
-        <button className="btn btn--peligro" onClick={() => cerrar(true)}>
+        <button className="hz-boton hz-boton--destructivo" onClick={() => cerrar(true)}>
           {pedido.confirmar}
         </button>
-        <button className="btn" autoFocus onClick={() => cerrar(false)}>
+        <button className="hz-boton hz-boton--secundario" autoFocus onClick={() => cerrar(false)}>
           Cancelar
         </button>
       </div>
