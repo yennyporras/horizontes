@@ -151,7 +151,7 @@ export function Participantes() {
                   </table>
                 </div>
               )}
-              <p className="pista">Las respuestas de cada persona no se muestran aquí ni en ningún tablero. País e IP son registro interno: solo salen en este panel y en el export.</p>
+              <p className="pista">Qué calificó cada persona está en Respuestas, solo para administradores; ningún tablero lo muestra. País e IP son registro interno: solo salen en este panel y en el export.</p>
             </section>
           </>
         )

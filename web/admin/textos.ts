@@ -1,7 +1,16 @@
 import seed from '../../data/seed_foodsume.json'
+import { nombreCorto } from '../tablero/logica'
 import type { Accion, EstadoSala, Pais, ZonaHoraria } from './tipos'
 
 export const PERFILES: { id: string; nombre: string }[] = seed.perfiles
+
+/** Los 6 criterios de la plantilla, en el orden del motor (el mismo de la hoja de votación). */
+export const CRITERIOS = seed.motor.criterios.map((c) => ({ id: c.id, nombre: c.nombre, corto: nombreCorto(c.id, c.nombre), pregunta: c.pregunta }))
+
+/** Los proyectos vivos que califica la sala (INSUMEX y NUTRIWHAT), en el orden de la plantilla. */
+export const PROYECTOS_VIVOS = seed.plantilla.proyectos.filter((p) => p.modo === 'vivo').map((p) => ({ id: p.id, nombre: p.nombre }))
+
+export const nombreProyecto = (id: string) => seed.plantilla.proyectos.find((p) => p.id === id)?.nombre ?? id
 
 /** País de la sala (R4_CONTRATO C4) con su zona horaria por defecto. */
 export const PAISES: Record<Pais, { nombre: string; zona: ZonaHoraria }> = {
@@ -167,6 +176,9 @@ const TEXTO_EVENTO: Record<string, string> = {
   participante_editado: 'Participante editado',
   cierre_programado: 'Cierre programado aplicado',
   cierre_programado_descartado: 'Cierre programado descartado',
+  apertura_programada: 'Apertura programada aplicada',
+  apertura_programada_descartada: 'Apertura programada descartada',
+  pregunta_guiada: 'Pregunta guiada cambiada',
   rubrica_editada: 'Rúbrica editada',
 }
 
@@ -178,4 +190,42 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
   if (/^ronda_/.test(ev.tipo) && typeof d.ronda === 'number') t = t.replace('Ronda', `Ronda ${d.ronda}`)
   const por = ev.por === 'sistema' ? '' : ev.por === 'programado' ? ' · automático' : ` · ${ev.por.replace(/^admin:/, '')}`
   return t + por
+}
+
+/** Orden de las preguntas en modo guiado (C19-5): los proyectos vivos y, en cada uno, los 6 criterios. */
+export const ORDEN_PREGUNTAS = PROYECTOS_VIVOS.flatMap((p) => CRITERIOS.map((c) => ({ proyecto_id: p.id, criterio_id: c.id })))
+
+/** Aperturas y cierres programados de la sala, con su texto para Sala en vivo. Sin los campos de C19-4, los de antes. */
+export function programaciones(c: {
+  cierre_programado_ronda_at: string | null
+  cierre_programado_sala_at: string | null
+  apertura_programada_sala_at?: string | null
+  apertura_programada_r1_at?: string | null
+  cierre_programado_r1_at?: string | null
+  apertura_programada_r2_at?: string | null
+  cierre_programado_r2_at?: string | null
+}): { texto: string; at: string | null }[] {
+  if (c.cierre_programado_r1_at === undefined) {
+    return [
+      { texto: 'Cierre programado de la ronda', at: c.cierre_programado_ronda_at },
+      { texto: 'Cierre programado de la sala', at: c.cierre_programado_sala_at },
+    ]
+  }
+  return [
+    { texto: 'Abre la inscripción', at: c.apertura_programada_sala_at ?? null },
+    { texto: 'Abre la ronda 1', at: c.apertura_programada_r1_at ?? null },
+    { texto: 'Cierra la ronda 1', at: c.cierre_programado_r1_at ?? null },
+    { texto: 'Abre la ronda 2', at: c.apertura_programada_r2_at ?? null },
+    { texto: 'Cierra la ronda 2', at: c.cierre_programado_r2_at ?? null },
+    { texto: 'Cierra la sala', at: c.cierre_programado_sala_at },
+  ].filter((p) => p.at)
+}
+
+/** C19-1: true si BASE_URL del servidor no es el origen desde el que se abre el panel. */
+export function dominioDistinto(baseUrl: string, origen: string): boolean {
+  try {
+    return new URL(baseUrl).origin !== new URL(origen).origin
+  } catch {
+    return true
+  }
 }
