@@ -5,14 +5,20 @@ import { useSala } from '../useSala'
 import { useConfirmar } from '../componentes/Confirmar'
 import { ConSala } from './EncabezadoSala'
 import { ComoVoto } from '../../tablero'
-import type { Accion, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
+import type { CriterioId } from '../../shared/api/contrato'
+import type { Accion, PreguntaGuiada, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
 import {
   ACCIONES,
   ACCIONES_POR_ESTADO,
   CONFIRMACIONES,
+  CRITERIOS,
   ORDEN_ACCIONES,
+  ORDEN_PREGUNTAS,
+  PROYECTOS_VIVOS,
   decimal,
   faltan,
+  nombreProyecto,
+  programaciones,
   fechaHora,
   estadoMesa,
   rondaAbierta,
@@ -89,6 +95,7 @@ export function SalaEnVivo() {
               </p>
             )}
           </section>
+          {d.sala.config.modo_preguntas === 'guiado' && <PreguntaEnPantalla d={d} refrescar={refrescar} />}
           {d.sala.ronda_actual ? <ComoVotoSala d={d} /> : null}
           <Mesas d={d} />
           <Eventos d={d} />
@@ -103,7 +110,7 @@ function Estado({ d }: { d: SalaDetalle }) {
   const ronda = rondaAbierta(d.sala.estado)
   const inscritos = d.mesas.reduce((s, m) => s + m.inscritos, 0)
   const completos = d.mesas.reduce((s, m) => s + m.completos, 0)
-  const { cierre_programado_ronda_at: cRonda, cierre_programado_sala_at: cSala } = d.sala.config
+  const programados = programaciones(d.sala.config)
   const tablero = urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero)
   const zona = zonaSala(d.sala.config)
 
@@ -126,39 +133,22 @@ function Estado({ d }: { d: SalaDetalle }) {
           </div>
         </div>
       </div>
-      <ul className="pista" aria-label="Cierres programados">
-        <li>
-          Cierre programado de la ronda:{' '}
-          {cRonda ? (
-            <>
-              {fechaHora(cRonda, zona)}
-              {ronda && (
+      <ul className="pista" aria-label="Programado">
+        {programados.length === 0 ? (
+          <li>Sin aperturas ni cierres programados.</li>
+        ) : (
+          programados.map((p) => (
+            <li key={p.texto}>
+              {p.texto}: {fechaHora(p.at, zona)}
+              {new Date(p.at).getTime() > ahora && (
                 <>
                   {' '}
-                  · <span className="cuenta">se cierra en {faltan(new Date(cRonda).getTime() - ahora)}</span>
+                  · <span className="cuenta">faltan {faltan(new Date(p.at).getTime() - ahora)}</span>
                 </>
               )}
-            </>
-          ) : (
-            'sin programar'
-          )}
-        </li>
-        <li>
-          Cierre programado de la sala:{' '}
-          {cSala ? (
-            <>
-              {fechaHora(cSala, zona)}
-              {d.sala.estado !== 'cerrada' && (
-                <>
-                  {' '}
-                  · <span className="cuenta">se cierra en {faltan(new Date(cSala).getTime() - ahora)}</span>
-                </>
-              )}
-            </>
-          ) : (
-            'sin programar'
-          )}
-        </li>
+            </li>
+          ))
+        )}
       </ul>
       <div className="acciones">
         {tablero && (
@@ -173,6 +163,108 @@ function Estado({ d }: { d: SalaDetalle }) {
           Mesas y QR
         </Link>
       </div>
+    </section>
+  )
+}
+
+const nombreCriterio = (id: string) => CRITERIOS.find((c) => c.id === id)?.nombre ?? id
+const mismaPregunta = (a: PreguntaGuiada, b: PreguntaGuiada) => a.proyecto_id === b.proyecto_id && a.criterio_id === b.criterio_id
+
+/**
+ * Modo guiado (C19-5): todos los celulares muestran la pregunta que elige el admin. Anterior y Siguiente recorren
+ * los proyectos vivos y, en cada uno, los 6 criterios; la lista salta a cualquiera.
+ */
+function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<void> }) {
+  const ronda = rondaAbierta(d.sala.estado)
+  const actual = d.sala.pregunta_guiada ?? null
+  const indice = actual ? ORDEN_PREGUNTAS.findIndex((q) => mismaPregunta(q, actual)) : -1
+  const [elegida, setElegida] = useState<PreguntaGuiada>(actual ?? ORDEN_PREGUNTAS[0])
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (actual) setElegida(actual)
+  }, [actual?.proyecto_id, actual?.criterio_id])
+
+  const mostrar = async (p: PreguntaGuiada) => {
+    setEnviando(true)
+    setError(null)
+    try {
+      await api.put(`/api/admin/salas/${d.sala.id}/pregunta-guiada`, p)
+      await refrescar()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cambiar la pregunta.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <section className="panel" aria-labelledby="t-guiada">
+      <h2 id="t-guiada">Pregunta en pantalla</h2>
+      {!ronda ? (
+        <p className="pista">Modo guiado. Al abrir una ronda, aquí eliges qué pregunta ven todos los celulares.</p>
+      ) : (
+        <>
+          <div className="pregunta-actual" role="status">
+            {actual ? (
+              <>
+                <p className="pista">
+                  Pregunta {indice + 1} de {ORDEN_PREGUNTAS.length} · ronda {ronda}
+                </p>
+                <p className="pregunta-actual__titulo">
+                  {nombreProyecto(actual.proyecto_id)} · {nombreCriterio(actual.criterio_id)}
+                </p>
+                <p>{CRITERIOS.find((c) => c.id === actual.criterio_id)?.pregunta}</p>
+              </>
+            ) : (
+              <p>Aún no hay pregunta en pantalla. Los celulares esperan la primera. Usa Siguiente para empezar.</p>
+            )}
+          </div>
+          <div className="acciones">
+            <button className="btn" type="button" disabled={enviando || indice <= 0} onClick={() => void mostrar(ORDEN_PREGUNTAS[indice - 1])}>
+              Anterior
+            </button>
+            <button
+              className="btn btn--primario"
+              type="button"
+              disabled={enviando || indice === ORDEN_PREGUNTAS.length - 1}
+              onClick={() => void mostrar(ORDEN_PREGUNTAS[indice + 1])}
+            >
+              Siguiente
+            </button>
+          </div>
+          <div className="fila-form">
+            <label className="campo">
+              <span>Proyecto</span>
+              <select value={elegida.proyecto_id} onChange={(e) => setElegida({ ...elegida, proyecto_id: e.target.value })}>
+                {PROYECTOS_VIVOS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="campo">
+              <span>Pregunta</span>
+              <select value={elegida.criterio_id} onChange={(e) => setElegida({ ...elegida, criterio_id: e.target.value as CriterioId })}>
+                {CRITERIOS.map((c, i) => (
+                  <option key={c.id} value={c.id}>
+                    {i + 1}. {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="btn" type="button" disabled={enviando || (actual !== null && mismaPregunta(elegida, actual))} onClick={() => void mostrar(elegida)}>
+              Mostrar esta pregunta
+            </button>
+          </div>
+          {error && (
+            <p className="alerta alerta--error" role="alert">
+              {error}
+            </p>
+          )}
+        </>
+      )}
     </section>
   )
 }
@@ -263,7 +355,7 @@ function MarcaRonda({ ronda }: { ronda: number }) {
   return <span className={`ronda ronda--${ronda}`}>R{ronda}</span>
 }
 
-/** Promedios por criterio y la fila «Total» (eje X + eje Y, del servidor). Sin T2M, ejes ni votos (acta A3 y A4). */
+/** Promedios por criterio. Sin T2M, ejes ni votos (acta A3 y A4) ni fila «Total» (preentrega 19-oct: no dice nada). */
 function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResumen['proyectos_vivos'][number]; criterios: TableroResumen['criterios']; rondas: number[] }) {
   const porRonda = rondas.map((n) => proyecto.rondas.find((r) => r.ronda === n))
   const valor = (r: RondaVivo | undefined, v: number | null | undefined) => (r?.bajo_minimo ? 'Faltan votos' : decimal(v))
@@ -292,14 +384,6 @@ function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResu
               ))}
             </tr>
           ))}
-          <tr className="fila-total">
-            <th scope="row">Total</th>
-            {porRonda.map((r, i) => (
-              <td key={rondas[i]} className="num">
-                {valor(r, r?.total)}
-              </td>
-            ))}
-          </tr>
         </tbody>
       </table>
     </div>

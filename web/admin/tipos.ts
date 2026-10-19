@@ -1,4 +1,5 @@
-// Tipos del contrato (docs/CONTRATO_API.md). Cuando T1 publique web/shared/api, se reemplazan por los generados.
+// Tipos del contrato (docs/CONTRATO_API.md). Lo nuevo se toma de web/shared/api/contrato.ts; lo anterior sigue aquí.
+import type { DetalleSala as DetalleContrato, Config, PreguntaGuiada } from '../shared/api/contrato'
 
 export type Rol = 'superadmin' | 'admin'
 
@@ -27,16 +28,8 @@ export type EstadoSala =
 export type Pais = 'CO' | 'PE' | 'GT'
 export type ZonaHoraria = 'America/Bogota' | 'America/Lima' | 'America/Guatemala'
 
-export interface ConfigSala {
-  alcance_resultados: 'mesa' | 'sala'
-  vista_participante: 'registrado' | 'en_vivo'
-  revelar_hojas: boolean
-  cierre_programado_ronda_at: string | null
-  cierre_programado_sala_at: string | null
-  /** R4_CONTRATO C4: si faltan, el servidor usa CO y la zona del país. */
-  pais?: Pais
-  zona_horaria?: ZonaHoraria
-}
+// Config, programación (C19-4), modo de preguntas (C19-5) y respuestas por persona (C19-3): tipos del contrato.
+export type { Config as ConfigSala, ModoPreguntas, PreguntaGuiada, RespuestaPersona } from '../shared/api/contrato'
 
 export interface SalaResumen {
   id: string
@@ -84,11 +77,13 @@ export interface Evento {
 export interface SalaDetalle {
   version: string
   /** url_tablero es opcional (CONTRATO: agregado por T4); si falta, se deriva del tablero de una mesa. */
-  sala: SalaResumen & { config: ConfigSala; url_tablero?: string }
+  sala: SalaResumen & { config: Config; url_tablero?: string; pregunta_guiada?: PreguntaGuiada | null }
   mesas: Mesa[]
   participantes: Participante[]
   eventos: Evento[]
   admin_actual: AdminYo
+  servidor_at?: DetalleContrato['servidor_at']
+  base_url?: DetalleContrato['base_url']
 }
 
 /** GET /api/admin/salas/{id}/rubricas y respuesta del PUT de un criterio. */

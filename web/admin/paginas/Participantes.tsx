@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
+import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import type { Participante, SalaDetalle } from '../tipos'
 import { PERFILES, nombrePerfil, rondaAbierta } from '../textos'
 
@@ -42,6 +43,7 @@ export function Participantes() {
 
         return (
           <>
+            <AvisoPrivado>Nombre, correo, mesa, perfil, país e IP de cada inscrito. Para gestionar la sala, no para mostrarla.</AvisoPrivado>
             <Resumen d={d} />
             <section className="panel" aria-labelledby="t-lista">
               <h2 id="t-lista">Inscritos</h2>
@@ -151,7 +153,7 @@ export function Participantes() {
                   </table>
                 </div>
               )}
-              <p className="pista">Las respuestas de cada persona no se muestran aquí ni en ningún tablero. País e IP son registro interno: solo salen en este panel y en el export.</p>
+              <p className="pista">Qué calificó cada persona está en Respuestas, solo para administradores; ningún tablero lo muestra. País e IP son registro interno: solo salen en este panel y en el export.</p>
             </section>
           </>
         )
