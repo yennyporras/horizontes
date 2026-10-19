@@ -1,13 +1,16 @@
 // Recorrido del participante en 3 celulares emulados contra la API real: Chrome Android (Chromium),
 // Safari iOS (WebKit, el motor real de Safari) y Samsung Internet (Chromium con su user agent).
 // Inscripción, 2 rondas de votación, resultado de la ronda 1, comparación R1→R2, recarga y sala cerrada.
-// Sin WebKit instalado (`npx playwright-core install webkit`), ese perfil se omite con aviso.
+// Sin WebKit instalado (`npx playwright-core install webkit`), ese perfil se omite con aviso. Sin Chromium, en CI falla.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { calificar, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
+import { sinNavegador } from '../../../tests/navegador'
 import { accion, celularPerfil, crearSala, hayNavegador, iniciar, inscribirApi, PERFILES_MOVILES, votarApi, type Entorno } from './entorno'
 
 const disponibles = PERFILES_MOVILES.filter((p) => hayNavegador(p.motor))
-for (const p of PERFILES_MOVILES.filter((x) => !disponibles.includes(x))) {
+// Sin Chromium no corre ningún perfil (en CI falla); sin WebKit solo se omite Safari, con aviso (CI no lo instala).
+if (!hayNavegador('chromium')) sinNavegador('[e2e perfiles]', 'No hay Chromium de Playwright para los celulares emulados.')
+for (const p of PERFILES_MOVILES.filter((x) => x.motor !== 'chromium' && !disponibles.includes(x))) {
   console.warn(`[e2e perfiles] No hay ${p.motor} de Playwright: se omite ${p.nombre}.`)
 }
 

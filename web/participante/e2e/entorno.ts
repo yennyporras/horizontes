@@ -1,5 +1,5 @@
 // Entorno del recorrido e2e del participante: API real (BD en memoria) + Vite + Chromium a 360 px.
-// Corre dentro de Vitest (tools/test.sh). Sin Chromium instalado, las pruebas se omiten con aviso.
+// Corre dentro de Vitest (tools/test.sh). Sin Chromium instalado, las pruebas se omiten con aviso (en CI fallan).
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { createServer as servidorHttp, request, type Server } from 'node:http'
 import { homedir, tmpdir } from 'node:os'
