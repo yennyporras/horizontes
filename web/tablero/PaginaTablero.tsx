@@ -5,9 +5,10 @@ import { PanelProyecto } from './PanelProyecto'
 import { Progreso } from './Progreso'
 import { TablaComparada } from './TablaComparada'
 import { CuadriculaMesas } from './CuadriculaMesas'
+import { ComoVoto } from './ComoVoto'
 import { usePollingTablero } from './usePollingTablero'
 import { usePantallaCompleta } from './usePantallaCompleta'
-import { insigniaResultado, mensajeVacio, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
+import { insigniaResultado, mensajeVacio, mostrarR2, nombreEstado, urlApiTablero, vistaPorDefecto } from './logica'
 import type { DatosTablero, EstadoSala, Vista } from './tipos'
 import './tablero.css'
 
@@ -16,6 +17,15 @@ const VISTAS: { id: Vista; texto: string }[] = [
   { id: 2, texto: 'Ronda 2' },
   { id: 'comparacion', texto: 'Comparación' },
 ]
+
+type Detalle = 'promedios' | 'votos'
+const DETALLES: { id: Detalle; texto: string }[] = [
+  { id: 'promedios', texto: 'Promedios' },
+  { id: 'votos', texto: 'Cómo votó' },
+]
+
+/** Rondas del bloque «Cómo votó»: las de la vista; en Comparación, R1 y R2 cuando ya hay ronda 2. */
+const rondasDe = (vista: Vista, conR2: boolean): (1 | 2)[] => (vista === 'comparacion' ? (conR2 ? [1, 2] : [1]) : [vista])
 
 // T3: /tablero/:sala?mesa=&t= · modo proyector (1920 px) y legible en 1366 y 360 px.
 export default function PaginaTablero() {
@@ -38,8 +48,12 @@ export default function PaginaTablero() {
   const setElegida = useCallback((v: Vista) => setElegidaConEstado({ vista: v, estado: estadoRef.current }), [])
   const vista = elegida && elegida.estado === estado ? elegida.vista : vistaPorDefecto(estado, datos?.sala?.ronda_actual)
 
+  // Panel lateral: promedios (tabla) o «Cómo votó la sala» (conteo 1-3-5-7-9). Cambia con el botón o la tecla D.
+  const [detalle, setDetalle] = useState<Detalle>('promedios')
+  const alternarDetalle = useCallback(() => setDetalle((d) => (d === 'promedios' ? 'votos' : 'promedios')), [])
+
   const escalaTexto = useEscalaProyector()
-  const pantalla = usePantallaCompleta(setElegida)
+  const pantalla = usePantallaCompleta(setElegida, alternarDetalle)
 
   const cambiarAlcance = (valor: string) => {
     const p = new URLSearchParams(params)
@@ -102,15 +116,28 @@ export default function PaginaTablero() {
           </section>
           <aside className="hz-lateral" aria-label="Detalle por proyecto y progreso">
             <Progreso datos={datos} />
-            {/* Proyector (≥ 1100 px): tabla comparada. Móvil y tableta: un panel por proyecto. Solo se ve uno (CSS). */}
-            <div className="hz-solo-ancho">
-              <TablaComparada datos={datos} vista={vista} />
-            </div>
-            <div className="hz-solo-angosto">
-              {datos.proyectos_vivos.map((p) => (
-                <PanelProyecto key={p.id} proyecto={p} datos={datos} vista={vista} />
+            <div className="hz-detalle" role="group" aria-label="Detalle del panel">
+              {DETALLES.map((d) => (
+                <button key={d.id} type="button" aria-pressed={detalle === d.id} aria-keyshortcuts="D" onClick={() => setDetalle(d.id)}>
+                  {d.texto}
+                </button>
               ))}
             </div>
+            {detalle === 'votos' ? (
+              <ComoVoto datos={datos} rondas={rondasDe(vista, mostrarR2(datos))} />
+            ) : (
+              <>
+                {/* Proyector (≥ 1100 px): tabla comparada. Móvil y tableta: un panel por proyecto. Solo se ve uno (CSS). */}
+                <div className="hz-solo-ancho">
+                  <TablaComparada datos={datos} vista={vista} />
+                </div>
+                <div className="hz-solo-angosto">
+                  {datos.proyectos_vivos.map((p) => (
+                    <PanelProyecto key={p.id} proyecto={p} datos={datos} vista={vista} />
+                  ))}
+                </div>
+              </>
+            )}
           </aside>
         </div>
       )}
