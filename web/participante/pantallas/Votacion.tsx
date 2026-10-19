@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Aviso, BarraProgreso, Boton, Hoja, Insignia, Rubrica } from '../../shared/ui'
-import { ErrorApi, guardarVoto, type RespuestaVoto, type Yo } from '../api'
+import { ErrorApi, guardarVoto, type Criterio, type ProyectoPortafolio, type RespuestaVoto, type Yo } from '../api'
 import type { VotoEnCola } from '../cola'
 import { FaseRonda, Marco, Md, type MarcoBase } from '../Comun'
 import { hojasDeProyecto, nombrePerfil } from './Lectura'
@@ -45,13 +45,18 @@ export function ElegirProyecto({ yo, porEnviar = [], onCalificar }: { yo: Yo; po
   )
 }
 
-export interface CalificarProps {
+/** Pausa antes de pasar sola a la siguiente pregunta: deja ver la opción elegida. */
+export const AVANCE_MS = 300
+
+type Respuestas = Record<string, number>
+const completas = (yo: Yo, r: Respuestas) => yo.criterios.every((c) => Boolean(r[c.id]))
+const iguales = (a: Respuestas | null | undefined, b: Respuestas) => Boolean(a) && Object.keys(b).every((k) => a![k] === b[k])
+
+interface EnvioProps {
   yo: Yo
   codigo: string
   token: string
-  proyectoId: string
   onGuardado: (r: RespuestaVoto, proyecto: string) => void
-  onVolver: () => void
   /** Sin señal: el voto pasa a la cola del celular y se reenvía solo. */
   onSinSenal: (voto: Omit<VotoEnCola, 'id' | 'participante_id'>) => void
   /** Espera el reenvío de la cola en curso antes del PUT. */
@@ -61,138 +66,349 @@ export interface CalificarProps {
   marco: MarcoBase
 }
 
-/** 8.8 Calificar proyecto: 6 rúbricas obligatorias, borrador en sessionStorage. */
-export function Calificar({ yo, codigo, token, proyectoId, onGuardado, onVolver, onSinSenal, onSesionVencida, esperarCola, marco }: CalificarProps) {
+/**
+ * PUT del voto completo con los avisos de siempre. Los envíos van en fila y, si llega uno más nuevo
+ * mientras otro está en curso, solo sale el último (en guiado, cada cambio de un proyecto completo reenvía).
+ */
+function usarEnvio({ yo, codigo, token, onGuardado, onSinSenal, onSesionVencida, esperarCola }: EnvioProps, proyecto: ProyectoPortafolio) {
   const ronda = yo.sala.ronda_actual
-  const proyecto = yo.contenido.portafolio.find((p) => p.id === proyectoId)
-  const mio = yo.participante.perfil.id
-  const hojas = hojasDeProyecto(yo, proyectoId)
-  const variasHojas = hojas.length > 1
-  const [respuestas, setRespuestas] = useState<Record<string, number>>(
-    () => leerBorrador(codigo, proyectoId, ronda) ?? { ...(votoDe(yo, proyectoId)?.respuestas ?? {}) },
-  )
-  const [intento, setIntento] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [verHoja, setVerHoja] = useState(false)
-  const contenedor = useRef<HTMLDivElement>(null)
+  const fila = useRef<Promise<void>>(Promise.resolve())
+  const ultimo = useRef(0)
 
-  const faltan = yo.criterios.filter((c) => !respuestas[c.id]).length
-
-  const elegir = (criterio: string, valor: number) => {
-    const nuevas = { ...respuestas, [criterio]: valor }
-    setRespuestas(nuevas)
-    guardarBorrador(codigo, proyectoId, ronda, nuevas)
-  }
-
-  const guardar = async () => {
-    if (guardando) return
-    setIntento(true)
-    setError(null)
-    const pendiente = yo.criterios.find((c) => !respuestas[c.id])
-    if (pendiente) {
-      contenedor.current?.querySelector<HTMLInputElement>(`[data-criterio="${pendiente.id}"] input`)?.focus()
-      return
-    }
+  const enviarYa = async (respuestas: Respuestas) => {
     setGuardando(true)
-    const resp = {} as Record<string, number>
-    for (const c of yo.criterios) resp[c.id] = respuestas[c.id]
+    setError(null)
     try {
       await esperarCola?.()
-      const r = await guardarVoto(token, { proyecto_id: proyectoId, ronda, respuestas: resp })
-      guardarBorrador(codigo, proyectoId, ronda, null)
-      onGuardado(r, proyecto?.nombre ?? proyectoId)
+      const r = await guardarVoto(token, { proyecto_id: proyecto.id, ronda, respuestas })
+      // Si entretanto cambió una respuesta, ese borrador sigue: sale en el próximo envío.
+      if (iguales(leerBorrador(codigo, proyecto.id, ronda), respuestas)) guardarBorrador(codigo, proyecto.id, ronda, null)
+      onGuardado(r, proyecto.nombre)
     } catch (e) {
       const ea = e instanceof ErrorApi ? e : null
       if (ea?.esRed || !ea) {
         // Sin señal: queda en la cola del celular y se envía sola al volver la conexión.
-        onSinSenal({ proyecto_id: proyectoId, nombre: proyecto?.nombre ?? proyectoId, ronda, respuestas: resp })
+        onSinSenal({ proyecto_id: proyecto.id, nombre: proyecto.nombre, ronda, respuestas })
         return
       }
       if (ea.status === 401) {
         setError('Tu sesión se cerró. Lo que marcaste está guardado en este celular. Recupera tu sesión y guarda de nuevo.')
         onSesionVencida()
-      } else if (ea?.codigo === 'RESPUESTA_INVALIDA') setError('Una de las respuestas no es válida. Vuelve a elegir y guarda de nuevo.')
-      else if (ea?.codigo === 'RONDA_CERRADA') setError(`La ronda ${ronda} ya se cerró. Tu última calificación guardada es la que cuenta.`)
-      else if (ea?.codigo === 'RONDA_NO_ACTIVA') setError(`La ronda ${ronda} todavía no está abierta.`)
+      } else if (ea.codigo === 'RESPUESTA_INVALIDA') setError('Una de las respuestas no es válida. Vuelve a elegir y guarda de nuevo.')
+      else if (ea.codigo === 'RONDA_CERRADA') setError(`La ronda ${ronda} ya se cerró. Tu última calificación guardada es la que cuenta.`)
+      else if (ea.codigo === 'RONDA_NO_ACTIVA') setError(`La ronda ${ronda} todavía no está abierta.`)
       else setError('Algo falló de nuestro lado. Vuelve a intentarlo en unos segundos.')
     } finally {
       setGuardando(false)
     }
   }
 
+  const enviar = (respuestas: Respuestas) => {
+    const resp: Respuestas = {}
+    for (const c of yo.criterios) resp[c.id] = respuestas[c.id]
+    const n = ++ultimo.current
+    fila.current = fila.current.then(() => (n === ultimo.current ? enviarYa(resp) : undefined))
+    return fila.current
+  }
+  return { guardando, error, enviar }
+}
+
+/** Lo marcado sin enviar (borrador) encima del voto ya guardado en esta ronda. */
+const respuestasIniciales = (yo: Yo, codigo: string, proyectoId: string): Respuestas => ({
+  ...(votoDe(yo, proyectoId)?.respuestas ?? {}),
+  ...(leerBorrador(codigo, proyectoId, yo.sala.ronda_actual) ?? {}),
+})
+
+/** P1: una pregunta con su encabezado (lector de pantalla), la barra «Pregunta 3 de 6 · INSUMEX» y su rúbrica. */
+function Pregunta({
+  yo,
+  proyecto,
+  indice,
+  valor,
+  onElegir,
+  titulo,
+}: {
+  yo: Yo
+  proyecto: ProyectoPortafolio
+  indice: number
+  valor: number | null
+  /** `conFlechas`: recorre las opciones con las flechas del teclado; elegir así no pasa de pregunta. */
+  onElegir: (valor: number, conFlechas: boolean) => void
+  titulo?: Ref<HTMLHeadingElement>
+}) {
+  const c = yo.criterios[indice]
+  const total = yo.criterios.length
+  const flechas = useRef(false)
+  return (
+    <section
+      className="hzp-pregunta"
+      data-paso={indice}
+      onKeyDown={(e) => {
+        if (e.key.startsWith('Arrow')) flechas.current = true
+      }}
+      onKeyUp={() => {
+        flechas.current = false
+      }}
+    >
+      <BarraProgreso actual={indice + 1} total={total} texto={`Pregunta ${indice + 1} de ${total} · ${proyecto.nombre}`} />
+      <h2 ref={titulo} tabIndex={-1} className="hz-visual-oculto">
+        Pregunta {indice + 1} de {total}: {c.nombre}
+      </h2>
+      <Rubrica
+        key={c.id}
+        criterioId={c.id}
+        nombre={c.nombre}
+        pregunta={c.pregunta}
+        opciones={c.rubrica}
+        valor={valor}
+        onCambio={(v) => onElegir(v, flechas.current)}
+      />
+    </section>
+  )
+}
+
+/** Tu hoja (o las 6 hojas en R2) del proyecto, plegada para no tapar la pregunta. */
+function HojaPlegable({ yo, proyectoId }: { yo: Yo; proyectoId: string }) {
+  const [ver, setVer] = useState(false)
+  const hojas = hojasDeProyecto(yo, proyectoId)
+  const mio = yo.participante.perfil.id
+  const varias = hojas.length > 1
+  if (hojas.length === 0) return null
+  return (
+    <div className="hzp-hoja-plegable">
+      <Boton variante="fantasma" aria-expanded={ver} aria-controls="hzp-hojas-calificar" onClick={() => setVer((v) => !v)}>
+        {`${ver ? 'Ocultar' : 'Ver'} ${varias ? 'las hojas' : 'tu hoja'} de este proyecto`}
+      </Boton>
+      {ver && (
+        <div id="hzp-hojas-calificar" className="hzp-grupo-hojas">
+          {varias ? (
+            hojas.map((h) => (
+              <Hoja key={h.perfil_id} titulo={nombrePerfil(h)} activa={h.perfil_id === mio} extra={h.perfil_id === mio ? <Insignia tono="ok">Tu hoja</Insignia> : undefined}>
+                <Md texto={h.texto} />
+              </Hoja>
+            ))
+          ) : (
+            <div className="hzp-hoja-plegable__texto">
+              <Md texto={hojas[0].texto} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const textoNivel = (c: Criterio, v: number) => c.rubrica.find((o) => o.valor === v)?.texto ?? ''
+
+export interface CalificarProps extends EnvioProps {
+  proyectoId: string
+  onVolver: () => void
+}
+
+/**
+ * 8.8 Calificar en modo automático (C19-5, P1): una pregunta por pantalla. Al elegir pasa sola a la
+ * siguiente sin responder; al final, el resumen con Guardar. Borrador en sessionStorage.
+ */
+export function Calificar(props: CalificarProps) {
+  const proyecto = props.yo.contenido.portafolio.find((p) => p.id === props.proyectoId)
   if (!proyecto) {
     return (
-      <Marco {...marco} claveFoco="sin-proyecto">
+      <Marco {...props.marco} claveFoco="sin-proyecto">
         <h1 className="hz-titulo">No encontramos ese proyecto</h1>
-        <Boton variante="secundario" onClick={onVolver}>
+        <Boton variante="secundario" onClick={props.onVolver}>
           Volver a los proyectos
         </Boton>
       </Marco>
     )
   }
+  return <CalificarProyecto {...props} proyecto={proyecto} />
+}
+
+function CalificarProyecto(props: CalificarProps & { proyecto: ProyectoPortafolio }) {
+  const { yo, codigo, proyecto, onVolver, marco } = props
+  const ronda = yo.sala.ronda_actual
+  const criterios = yo.criterios
+  const total = criterios.length
+  const [respuestas, setRespuestas] = useState<Respuestas>(() => respuestasIniciales(yo, codigo, proyecto.id))
+  // Empieza en la primera sin responder; con todo respondido (editar), en el resumen.
+  const [paso, setPaso] = useState(() => {
+    const i = criterios.findIndex((c) => !respuestas[c.id])
+    return i === -1 ? total : i
+  })
+  const [intento, setIntento] = useState(false)
+  const { guardando, error, enviar } = usarEnvio(props, proyecto)
+  const titulo = useRef<HTMLHeadingElement>(null)
+  const reloj = useRef<ReturnType<typeof setTimeout>>()
+  const primera = useRef(true)
+
+  useEffect(() => () => clearTimeout(reloj.current), [])
+  // Al cambiar de pregunta el foco va a su encabezado (al entrar lo toma el título de la pantalla).
+  useEffect(() => {
+    if (primera.current) {
+      primera.current = false
+      return
+    }
+    titulo.current?.focus()
+  }, [paso])
+
+  const irA = (n: number) => {
+    clearTimeout(reloj.current)
+    setPaso(Math.min(Math.max(n, 0), total))
+  }
+  const faltan = criterios.filter((c) => !respuestas[c.id]).length
+
+  const elegir = (valor: number, conFlechas: boolean) => {
+    const nuevas = { ...respuestas, [criterios[paso].id]: valor }
+    setRespuestas(nuevas)
+    guardarBorrador(codigo, proyecto.id, ronda, nuevas)
+    clearTimeout(reloj.current)
+    if (conFlechas) return
+    // Pasa a la siguiente sin responder; si no queda ninguna, al resumen.
+    const desde = paso
+    reloj.current = setTimeout(() => {
+      const sig = criterios.findIndex((c, i) => i > desde && !nuevas[c.id])
+      irA(sig === -1 ? total : sig)
+    }, AVANCE_MS)
+  }
+
+  const guardar = () => {
+    if (guardando) return
+    setIntento(true)
+    if (faltan === 0) void enviar(respuestas)
+  }
+
+  const enResumen = paso >= total
+  const barra = enResumen ? (
+    <Boton bloque cargando={guardando} textoCargando="Guardando…" onClick={guardar}>
+      Guardar calificación
+    </Boton>
+  ) : (
+    <div className="hzp-navegacion">
+      <Boton variante="secundario" deshabilitado={paso === 0} onClick={() => irA(paso - 1)}>
+        Anterior
+      </Boton>
+      <Boton variante={respuestas[criterios[paso].id] ? 'primario' : 'secundario'} onClick={() => irA(paso + 1)}>
+        {paso === total - 1 ? 'Ver resumen' : 'Siguiente'}
+      </Boton>
+    </div>
+  )
 
   return (
-    <Marco
-      {...marco}
-      claveFoco={`calificar-${proyectoId}`}
-      notaBarra={faltan > 0 ? `Llevas ${yo.criterios.length - faltan} de ${yo.criterios.length} criterios` : `${yo.criterios.length} de ${yo.criterios.length} criterios listos`}
-      barra={
-        <Boton bloque cargando={guardando} textoCargando="Guardando…" onClick={() => void guardar()}>
-          Guardar calificación
-        </Boton>
-      }
-    >
+    <Marco {...marco} claveFoco={`calificar-${proyecto.id}`} barra={barra}>
       <Boton variante="fantasma" className="hzp-volver" onClick={onVolver}>
         Volver a los proyectos
       </Boton>
       <h1 className="hz-titulo">{proyecto.nombre}</h1>
       <FaseRonda ronda={ronda} />
-      {proyecto.descripcion && <p className="hz-texto-2">{proyecto.descripcion}</p>}
-      {hojas.length > 0 && (
-        <div className="hzp-hoja-plegable">
-          <Boton variante="fantasma" aria-expanded={verHoja} aria-controls="hzp-hojas-calificar" onClick={() => setVerHoja((v) => !v)}>
-            {`${verHoja ? 'Ocultar' : 'Ver'} ${variasHojas ? 'las hojas' : 'tu hoja'} de este proyecto`}
-          </Boton>
-          {verHoja && (
-            <div id="hzp-hojas-calificar" className="hzp-grupo-hojas">
-              {variasHojas ? (
-                hojas.map((h) => (
-                  <Hoja key={h.perfil_id} titulo={nombrePerfil(h)} activa={h.perfil_id === mio} extra={h.perfil_id === mio ? <Insignia tono="ok">Tu hoja</Insignia> : undefined}>
-                    <Md texto={h.texto} />
-                  </Hoja>
-                ))
-              ) : (
-                <div className="hzp-hoja-plegable__texto">
-                  <Md texto={hojas[0].texto} />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
       {error && <Aviso tono="error">{error}</Aviso>}
-      {intento && faltan > 0 && (
-        <Aviso tono="error">
-          Te faltan {faltan} {faltan === 1 ? 'criterio' : 'criterios'}. Elige una opción en cada uno.
+      {enResumen ? (
+        <section className="hzp-resumen" aria-labelledby="hzp-resumen-titulo">
+          <BarraProgreso actual={total - faltan} total={total} texto={`${total - faltan} de ${total} respondidas · ${proyecto.nombre}`} />
+          <h2 id="hzp-resumen-titulo" ref={titulo} tabIndex={-1} className="hz-subtitulo">
+            Revisa tus respuestas
+          </h2>
+          {intento && faltan > 0 && (
+            <Aviso tono="error">{faltan === 1 ? 'Te falta 1 pregunta. Respóndela para guardar.' : `Te faltan ${faltan} preguntas. Respóndelas para guardar.`}</Aviso>
+          )}
+          <ol className="hzp-resumen__lista">
+            {criterios.map((c, i) => {
+              const v = respuestas[c.id]
+              return (
+                <li key={c.id} className="hzp-resumen__fila" data-criterio={c.id}>
+                  <div className="hzp-resumen__dato">
+                    <p className="hzp-resumen__criterio">{c.nombre}</p>
+                    {v ? (
+                      <p className="hzp-resumen__valor">
+                        <strong className="hzp-resumen__cifra">{v}</strong> {textoNivel(c, v)}
+                      </p>
+                    ) : (
+                      <p className="hzp-resumen__valor hzp-resumen__valor--falta">Sin responder</p>
+                    )}
+                  </div>
+                  <Boton variante="secundario" aria-label={`${v ? 'Cambiar' : 'Responder'} ${c.nombre}`} onClick={() => irA(i)}>
+                    {v ? 'Cambiar' : 'Responder'}
+                  </Boton>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+      ) : (
+        <Pregunta yo={yo} proyecto={proyecto} indice={paso} valor={respuestas[criterios[paso].id] ?? null} onElegir={elegir} titulo={titulo} />
+      )}
+      <HojaPlegable yo={yo} proyectoId={proyecto.id} />
+    </Marco>
+  )
+}
+
+export interface GuiadaProps extends EnvioProps {
+  /** Debajo de la pregunta: leer el caso y, en precierre, el resultado preliminar. */
+  children?: ReactNode
+}
+
+/**
+ * Modo guiado (C19-5, P1): solo la pregunta que eligió el facilitador (`sala.pregunta_guiada`). La respuesta
+ * queda en este celular y el voto sale cuando las 6 del proyecto están respondidas. Se puede cambiar mientras
+ * la ronda siga abierta: con el proyecto completo, el cambio se reenvía.
+ */
+export function PreguntaGuiada(props: GuiadaProps) {
+  const { yo, marco, children } = props
+  const g = yo.sala.pregunta_guiada
+  const vivos = proyectosVivos(yo)
+  const proyecto = g ? vivos.find((p) => p.id === g.proyecto_id) : undefined
+  const indice = proyecto && g ? yo.criterios.findIndex((c) => c.id === g.criterio_id) : -1
+  if (!proyecto || indice < 0) {
+    const hechos = vivos.filter((p) => votoDe(yo, p.id)).length
+    return (
+      <Marco {...marco} claveFoco="guiada-espera">
+        <h1 className="hz-titulo">Espera la pregunta del facilitador</h1>
+        <FaseRonda ronda={yo.sala.ronda_actual} />
+        <p className="hz-texto-2">El facilitador elige cada pregunta y aparece aquí sola. Deja esta pantalla abierta.</p>
+        <BarraProgreso actual={hechos} total={vivos.length} texto={`Llevas ${hechos} de ${vivos.length} proyectos`} />
+        {children}
+      </Marco>
+    )
+  }
+  return <RespuestaGuiada {...props} key={`${proyecto.id}-${yo.sala.ronda_actual}`} proyecto={proyecto} indice={indice} />
+}
+
+function RespuestaGuiada(props: GuiadaProps & { proyecto: ProyectoPortafolio; indice: number }) {
+  const { yo, codigo, proyecto, indice, marco, children } = props
+  const ronda = yo.sala.ronda_actual
+  const criterio = yo.criterios[indice]
+  const total = yo.criterios.length
+  const [respuestas, setRespuestas] = useState<Respuestas>(() => respuestasIniciales(yo, codigo, proyecto.id))
+  const { error, enviar } = usarEnvio(props, proyecto)
+  const valor = respuestas[criterio.id] ?? null
+  const respondidas = yo.criterios.filter((c) => respuestas[c.id]).length
+  const enviado = completas(yo, respuestas) && iguales(votoDe(yo, proyecto.id)?.respuestas, respuestas)
+
+  const elegir = (v: number) => {
+    const nuevas = { ...respuestas, [criterio.id]: v }
+    setRespuestas(nuevas)
+    guardarBorrador(codigo, proyecto.id, ronda, nuevas)
+    if (completas(yo, nuevas)) void enviar(nuevas)
+  }
+
+  return (
+    <Marco {...marco} claveFoco={`guiada-${proyecto.id}-${criterio.id}`}>
+      <h1 className="hz-titulo">{proyecto.nombre}</h1>
+      <FaseRonda ronda={ronda} />
+      {error && <Aviso tono="error">{error}</Aviso>}
+      <Pregunta yo={yo} proyecto={proyecto} indice={indice} valor={valor} onElegir={elegir} />
+      {valor !== null && (
+        <Aviso tono={enviado ? 'ok' : 'info'} titulo="Espera la siguiente pregunta del facilitador">
+          {enviado
+            ? `Tus ${total} respuestas de ${proyecto.nombre} quedaron guardadas. Puedes cambiar esta mientras la ronda siga abierta.`
+            : respondidas < total
+              ? `Tu respuesta quedó en este celular. Enviamos tu calificación de ${proyecto.nombre} cuando respondas las ${total} preguntas (llevas ${respondidas}).`
+              : `Tus ${total} respuestas de ${proyecto.nombre} están listas. Las enviamos apenas haya señal.`}
         </Aviso>
       )}
-      <div ref={contenedor} className="hzp-rubricas">
-        {yo.criterios.map((c, i) => (
-          <div key={c.id} data-criterio={c.id}>
-            <Rubrica
-              criterioId={c.id}
-              nombre={c.nombre}
-              pregunta={c.pregunta}
-              opciones={c.rubrica}
-              valor={respuestas[c.id] ?? null}
-              onCambio={(v) => elegir(c.id, v)}
-              posicion={{ actual: i + 1, total: yo.criterios.length }}
-              error={intento && !respuestas[c.id] ? 'Elige una opción para este criterio' : null}
-            />
-          </div>
-        ))}
-      </div>
+      <HojaPlegable yo={yo} proyectoId={proyecto.id} />
+      {children}
     </Marco>
   )
 }

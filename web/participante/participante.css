@@ -39,8 +39,25 @@
 .hzp-elegir__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-4) 0; border-bottom: 1px solid var(--hz-h3); }
 .hzp-elegir__info { display: grid; gap: var(--hz-sp-1); justify-items: start; }
 
-/* Calificar */
-.hzp-rubricas { display: grid; gap: var(--hz-sp-8); }
+/* Calificar: una pregunta por pantalla (C19-5, P1) */
+.hzp-pregunta { display: grid; gap: var(--hz-sp-5); min-width: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .hzp-pregunta .hz-rubrica { animation: hzp-entra var(--hz-t-medio) var(--hz-curva, ease-out); }
+}
+@keyframes hzp-entra { from { opacity: 0; transform: translateX(var(--hz-sp-4)); } }
+/* Anterior y Siguiente lado a lado en la barra del pulgar (cada uno de 44 px o más). */
+.hzp-navegacion { display: grid; grid-template-columns: 1fr 1fr; gap: var(--hz-sp-3); }
+.hzp-navegacion > .hz-boton { width: 100%; min-height: 44px; }
+/* Resumen antes de guardar */
+.hzp-resumen { display: grid; gap: var(--hz-sp-4); }
+.hzp-resumen__lista { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--hz-h3); }
+.hzp-resumen__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-3) 0; border-bottom: 1px solid var(--hz-h3); }
+.hzp-resumen__dato { display: grid; gap: var(--hz-sp-1); min-width: 0; }
+.hzp-resumen__criterio { font-size: var(--hz-fs-14); font-weight: 700; color: var(--hz-tinta); }
+.hzp-resumen__valor { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
+.hzp-resumen__cifra { font-size: var(--hz-fs-18); font-weight: 800; color: var(--hz-azul); margin-right: var(--hz-sp-1); font-variant-numeric: tabular-nums; }
+.hzp-resumen__valor--falta { font-weight: 700; color: var(--hz-error); }
+.hzp-resumen__fila > .hz-boton { flex: none; min-height: 44px; min-width: 44px; }
 .hzp-hoja-plegable { display: grid; gap: var(--hz-sp-2); }
 .hzp-hoja-plegable > .hz-boton { justify-self: start; padding: 0; }
 .hzp-hoja-plegable__texto { padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); font-size: var(--hz-fs-14); }
