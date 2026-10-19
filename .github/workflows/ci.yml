@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Typecheck, pruebas y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Chromium para las pruebas en navegador
+        run: npx playwright-core install --with-deps chromium-headless-shell
+      - run: bash tools/test.sh
+      - run: npm run build
+
+  imagen:
+    name: Imagen Docker de producción
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f deploy/Dockerfile -t horizontes:ci .
