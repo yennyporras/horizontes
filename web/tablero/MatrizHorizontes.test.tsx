@@ -67,6 +67,24 @@ describe('MatrizHorizontes', () => {
     vi.useRealTimers()
   })
 
+  test('zoom: el encuadre cambia solo el viewBox (mismo nodo, texto vectorial) y se conserva con datos nuevos', () => {
+    const r = render(<MatrizHorizontes datos={mock} vista={2} alto={600} />)
+    const svg = r.container.querySelector('svg')!
+    const W = svg.getAttribute('width')
+    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${W} 600`)
+    r.rerender(<MatrizHorizontes datos={mock} vista={2} alto={600} encuadre={{ k: 2, cx: 0.5, cy: 0.5 }} />)
+    expect(r.container.querySelector('svg')).toBe(svg)
+    expect(svg.getAttribute('viewBox')).toBe(`${Number(W) / 4} 150 ${Number(W) / 2} 300`)
+    expect(svg.getAttribute('width')).toBe(W)
+    // El polling trae un voto nuevo: SVG nuevo, mismo encuadre.
+    const otro = structuredClone(mock)
+    otro.version = 'v-nueva'
+    otro.proyectos_vivos[0].rondas[1].eje_x = 4.2
+    r.rerender(<MatrizHorizontes datos={otro} vista={2} alto={600} encuadre={{ k: 2, cx: 0.5, cy: 0.5 }} />)
+    expect(r.container.querySelector('svg')).not.toBe(svg)
+    expect(r.container.querySelector('svg')!.getAttribute('viewBox')).toBe(`${Number(W) / 4} 150 ${Number(W) / 2} 300`)
+  })
+
   test('alto fijo y clase extra', () => {
     const { container } = render(<MatrizHorizontes datos={mock} alto={400} className="mi-matriz" />)
     expect(container.querySelector('.hz-matriz-contenedor.mi-matriz')).not.toBeNull()
