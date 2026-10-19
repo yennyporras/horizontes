@@ -377,3 +377,31 @@
 .hz-admin .tabla-resultado .num { white-space: nowrap; }
 .hz-admin .tabla-resultado .fila-total th,
 .hz-admin .tabla-resultado .fila-total td { font-weight: 800; color: var(--a-azul); border-top: 2px solid var(--a-azul); border-bottom: 0; }
+
+/* Elegir sala: una fila por sala, el nombre como botón */
+.hz-admin .lista-elegir { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
+.hz-admin .lista-elegir li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+
+/* Aviso de dominio (C19-1): pegado a la cabecera, visible en todas las secciones */
+.hz-admin .aviso-dominio { margin: 0; border-radius: 0; overflow-wrap: anywhere; font-weight: 700; }
+
+/* Apertura y cierre programados */
+.hz-admin .campo-hora { margin-bottom: 8px; }
+.hz-admin .campo-hora .campo { min-width: min(220px, 100%); }
+.hz-admin .campo-hora__nota { flex-basis: 100%; margin: 0 0 8px; }
+
+/* Pregunta en pantalla (modo guiado) */
+.hz-admin .pregunta-actual { padding: 16px; margin-bottom: 16px; border-radius: var(--a-r-m); background: var(--a-h1); border-left: 4px solid var(--a-azul); }
+.hz-admin .pregunta-actual p { margin: 0 0 4px; max-width: 70ch; }
+.hz-admin .pregunta-actual__titulo { font-size: 18px; font-weight: 800; }
+
+/* Respuestas por persona: 13 columnas; en escritorio caben sin cortar los números */
+.hz-admin .tabla-respuestas caption { text-align: left; caption-side: top; padding-bottom: 8px; }
+.hz-admin .tabla-respuestas thead th { vertical-align: bottom; }
+.hz-admin .tabla-respuestas .num { white-space: nowrap; }
+@media (min-width: 641px) {
+  .hz-admin .tabla-respuestas { font-size: 14px; }
+  .hz-admin .tabla-respuestas th,
+  .hz-admin .tabla-respuestas td { padding: 8px 6px; }
+  .hz-admin .tabla-respuestas thead th.num { max-width: 9ch; white-space: normal; hyphens: auto; }
+}

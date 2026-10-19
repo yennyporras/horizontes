@@ -3,12 +3,47 @@
 import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
-import type { Accion, AdminFila, AdminYo, EstadoSala, Mesa, Participante, RubricasSala, SalaDetalle, SalaResumen } from '../tipos'
-import { ACCIONES_POR_ESTADO, PERFILES, nombrePerfil, rondaAbierta } from '../textos'
+import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Participante, RubricasSala, SalaDetalle, SalaResumen } from '../tipos'
+import { ACCIONES_POR_ESTADO, CRITERIOS, PERFILES, PROYECTOS_VIVOS, nombrePerfil, rondaAbierta } from '../textos'
 import type { Respuesta } from '../api'
 
 const CLAVE_DEMO = 'demo1234'
 const LLAVE_SESION = 'hz_admin_mock'
+
+/** C19-4 y C19-5 (S2, S4): programación por sala y ronda, y modo de preguntas. */
+const CONFIG_19OCT = {
+  apertura_programada_sala_at: null,
+  apertura_programada_r1_at: null,
+  cierre_programado_r1_at: null,
+  apertura_programada_r2_at: null,
+  cierre_programado_r2_at: null,
+  modo_preguntas: 'automatico',
+} as const
+
+/** Pares apertura y cierre que el servidor valida en orden. */
+const PARES_PROGRAMADOS: [keyof ConfigSala, keyof ConfigSala][] = [
+  ['apertura_programada_sala_at', 'cierre_programado_sala_at'],
+  ['apertura_programada_r1_at', 'cierre_programado_r1_at'],
+  ['apertura_programada_r2_at', 'cierre_programado_r2_at'],
+]
+
+/** Como el servidor (S2): 422 HORA_PASADA y la apertura antes del cierre. */
+function validarConfig(actual: ConfigSala, cambio: Record<string, unknown>): Respuesta | null {
+  for (const [campo, v] of Object.entries(cambio)) {
+    if (/_at$/.test(campo) && typeof v === 'string' && Date.parse(v) <= Date.now()) {
+      return error(422, 'HORA_PASADA', 'Esa hora ya pasó. Elige una hora futura.')
+    }
+  }
+  const nueva = { ...actual, ...cambio } as ConfigSala
+  for (const [abre, cierra] of PARES_PROGRAMADOS) {
+    const a = nueva[abre]
+    const c = nueva[cierra]
+    if (typeof a === 'string' && typeof c === 'string' && Date.parse(a) >= Date.parse(c)) {
+      return error(422, 'CONFIG_INVALIDA', 'La apertura debe quedar antes del cierre.')
+    }
+  }
+  return null
+}
 
 type AdminInterno = AdminFila & { clave: string }
 
@@ -53,6 +88,7 @@ function derivar(s: SalaDetalle) {
 
 function inicial(): Estado {
   const base = structuredClone(detalleBase) as SalaDetalle
+  base.sala.config = { ...CONFIG_19OCT, ...base.sala.config }
   base.mesas = [1, 2, 3].map((i) => mesa(base.sala.codigo, i))
   base.participantes = NOMBRES.map(
     (nombre, i): Participante => ({
@@ -157,6 +193,7 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
       cierre_programado_sala_at: null,
       pais: 'CO',
       zona_horaria: 'America/Bogota',
+      ...CONFIG_19OCT,
     },
   }
   nueva.mesas = Array.from({ length: n }, (_, i) => mesa(codigo, i + 1))
@@ -264,6 +301,32 @@ function rubricas(metodo: string, s: SalaDetalle, criterioId: string | undefined
   return ok(vista())
 }
 
+/** Respuestas por persona (C19-3): las rondas ya cerradas de todos los activos y la ronda en curso de quien la completó. */
+function respuestasSimuladas(s: SalaDetalle) {
+  const valores = [1, 3, 5, 7, 9]
+  const ronda = s.sala.ronda_actual ?? 0
+  return s.participantes.flatMap((p, i) =>
+    p.activo
+      ? [1, 2]
+          .filter((r) => r < ronda || (r === ronda && p.completo_ronda))
+          .flatMap((r) =>
+            PROYECTOS_VIVOS.map((pr, j) => ({
+              participante_id: p.id,
+              nombre: p.nombre,
+              correo: p.correo,
+              mesa_id: p.mesa_id,
+              mesa: s.mesas.find((m) => m.id === p.mesa_id)?.nombre ?? p.mesa_id,
+              perfil_id: p.perfil_id,
+              ronda: r,
+              proyecto_id: pr.id,
+              respuestas: Object.fromEntries(CRITERIOS.map((c, k) => [c.id, valores[(i + j + k + r) % 5]])),
+              actualizado_at: s.sala.creada_at,
+            })),
+          )
+      : [],
+  )
+}
+
 function salaPorId(id: string) {
   return estado.salas.find((x) => x.sala.id === id)
 }
@@ -300,6 +363,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
   const por = `admin:${a.usuario}`
 
   if (metodo === 'GET' && camino === '/api/admin/yo') return ok(yo(a))
+  if (metodo === 'GET' && camino === '/api/admin/salud') return ok({ ok: true, base_url: window.location.origin })
 
   if (metodo === 'POST' && camino === '/api/admin/cambiar-clave') {
     if (b.actual !== a.clave) return error(422, 'CLAVE_ACTUAL_INVALIDA', 'La clave actual no coincide.')
@@ -324,7 +388,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (metodo === 'GET' && resto === '') {
       simularVoto(s)
       if (etag && etag === s.version) return { status: 304, body: null, etag }
-      return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a) }, etag: s.version }
+      return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a), servidor_at: new Date().toISOString() }, etag: s.version }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
       const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
@@ -333,13 +397,23 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       return r
     }
     if (metodo === 'GET' && resto === '/hojas') return ok({ hojas: hojasSemilla() })
+    if (metodo === 'GET' && resto === '/respuestas') return ok({ respuestas: respuestasSimuladas(s) })
     const r = /^\/rubricas(?:\/([^/]+))?$/.exec(resto)
     if (r) return rubricas(metodo, s, r[1], b, por)
     if (metodo === 'GET' && resto.startsWith('/export/')) return ok(csv(s, resto.slice('/export/'.length)))
     if (metodo === 'PATCH' && resto === '/config') {
+      const rechazo = validarConfig(s.sala.config, b)
+      if (rechazo) return rechazo
       Object.assign(s.sala.config, b)
       tocar(s, 'config', por, b)
       return ok(s.sala.config)
+    }
+    if (metodo === 'PUT' && resto === '/pregunta-guiada') {
+      if (!rondaAbierta(s.sala.estado)) return error(409, 'RONDA_CERRADA', 'La pregunta guiada solo se cambia con una ronda abierta.')
+      const pregunta = cuerpo && typeof b.proyecto_id === 'string' && typeof b.criterio_id === 'string' ? { proyecto_id: b.proyecto_id, criterio_id: b.criterio_id } : null
+      s.sala.pregunta_guiada = pregunta
+      tocar(s, 'pregunta_guiada', por, pregunta ?? {})
+      return ok({ pregunta_guiada: pregunta })
     }
     if (metodo === 'POST' && resto === '/mesas') {
       const n = Number(b.cantidad)
