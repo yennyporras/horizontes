@@ -88,7 +88,7 @@ export function Participantes() {
                       {filas.map((p) => (
                         <tr key={p.id} className={p.activo ? undefined : 'inactivo'} aria-busy={guardando === p.id}>
                           <th scope="row">{p.nombre}</th>
-                          <td data-label="Correo">{p.correo}</td>
+                          <td data-label="Correo" className="td-largo">{p.correo}</td>
                           <td data-label="Mesa">
                             <select
                               className="chico"
