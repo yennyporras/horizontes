@@ -54,6 +54,9 @@ T1 fijó **SQLite** (`node:sqlite`) en `docs/STACK.md`. Se usa la segunda opció
 
 ### 2.5 Variables de entorno (todas solo Runtime; secretos con Literal + candado)
 
+El dominio de producción que usa `tools/deploy.sh` (y con él `BASE_URL`) sale de `HZ_DOMINIO_PROD` en `deploy/.env.deploy`; sin ella, `horizontes.estratek.com.co`. Ver §6.
+
+
 | Variable | Staging | Producción | Notas |
 |---|---|---|---|
 | `APP_ENV` | `staging` | `production` | |
@@ -66,7 +69,7 @@ T1 fijó **SQLite** (`node:sqlite`) en `docs/STACK.md`. Se usa la segunda opció
 | `SUPERADMIN_USUARIO` | `paola` | `paola` | Se crea la primera vez que arranca sobre una base vacía. |
 | `SUPERADMIN_CLAVE` | ≥ 12 caracteres | otra distinta | Solo cuenta la primera vez. Después, se cambia desde el panel o con el script de restablecer de T1. |
 | `POLITICA_PRIVACIDAD_URL` | `https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/` | igual | Ver `docs/CONSENTIMIENTO.md`. |
-| `CONSENTIMIENTO_VERSION` | `hz-1.1` | `hz-1.1` | Versión vigente del aviso (R4: el texto cita la ley del país de la sala). Paola revisa el texto legal antes de producción. |
+| `CONSENTIMIENTO_VERSION` | no aplica | no aplica | El servidor no la lee: la versión vive en el código (`hz-1.1`, el texto cita la ley del país de la sala). `tools/deploy.sh` todavía la escribe como `hz-1.0`, sin efecto. Paola revisa el texto legal antes de producción. |
 | `TRUST_PROXY_HOPS` | `1` | `1` | IP real detrás del proxy de Coolify: evidencia del consentimiento y registro interno de cada inscripción y voto (acta A1 y P4). |
 | `CIERRES_INTERVALO_MS` | no aplica | no aplica | El servidor usa 15 s fijos (no lee esta variable). |
 

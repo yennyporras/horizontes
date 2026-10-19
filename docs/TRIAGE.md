@@ -44,7 +44,7 @@ Puntas: t1 `7965f26`, t2 `262a692`, t3 `ee79b7d`, t4 `a13165d`. Merge sin confli
 | 26 | baja | Panel a 360 px · menú | La pestaña activa podía quedar fuera de la fila deslizable (Configuración no se veía). | T4 | corregido |
 | 27 | baja | Panel a 360 px · Administradores | La tabla "Cuentas" se cortaba ("Superadm", sin Estado ni Acciones). | T4 | corregido |
 | 28 | baja | Panel a 360 px · encabezado de sala | El separador "·" quedaba colgando al final de la línea cuando el estado bajaba. | T4 | corregido |
-| 29 | media | Regla de anonimato (todas las vistas por mesa) | Con mínimo 2, en una mesa de 2 personas cada una despeja el voto de la otra (lo señala T2). Propuesta: mínimo 3 votos por alcance. Decisión de producto: en el taller las mesas son de 5 a 8, así que no bloquea; si Paola lo aprueba, T1 cambia la constante y T2 y T3 ya muestran el aviso. | T1 (con visto bueno de Paola) | abierto |
+| 29 | media | Regla de anonimato (todas las vistas por mesa) | Con mínimo 2, en una mesa de 2 personas cada una despeja el voto de la otra (lo señala T2). Propuesta: mínimo 3 votos por alcance. Decisión de producto: en el taller las mesas son de 5 a 8, así que no bloquea; si Paola lo aprueba, T1 cambia la constante y T2 y T3 ya muestran el aviso. | T1 (con visto bueno de Paola) | resuelto en el servidor (R4, T1: `MINIMO_VOTOS = 3`, `minimo_votos: 3` en el tablero; verificado integrado: panel, celular y API) |
 
 ## Pasada 2 · 16-oct 13:05
 Puntas: t1 `7558574`, t2 `3ba7898`, t3 `2ce0b95`, t4 `f3d37a1`+. Solo conflicto en `docs/DECISIONES.md` (resuelto uniendo en la rama temporal).
