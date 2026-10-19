@@ -6,7 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { type Transporte, usarTransporte } from './api'
-import { type Entorno, accion, crearEntorno, inscribir, votar } from '../../tests/server/ayuda'
+import { type Entorno, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from '../../tests/server/ayuda'
 
 let e: Entorno
 let cookie = ''
@@ -42,6 +42,13 @@ async function entrar(usuario: string, clave: string) {
 
 const nav = () => within(screen.getByRole('navigation', { name: 'Secciones del panel' }))
 const boton = (n: string) => screen.getByRole('button', { name: n }) as HTMLButtonElement
+/** Campos de la programación (C19-4) dentro de su grupo: «Ronda 1» → «Cerrar el». */
+const enGrupo = (grupo: string) => within(screen.getByRole('group', { name: grupo }))
+const programar = (grupo: string, etiqueta: string, valor: string) => {
+  const campo = enGrupo(grupo).getByLabelText(etiqueta)
+  fireEvent.change(campo, { target: { value: valor } })
+  fireEvent.click(within(campo.closest('.campo-hora') as HTMLElement).getByRole('button', { name: 'Programar' }))
+}
 
 async function crearSalaDesdePanel(nombre: string, mesas: number) {
   await screen.findByRole('heading', { level: 1, name: 'Salas' })
@@ -65,6 +72,7 @@ beforeEach(async () => {
   e = await crearEntorno()
   cookie = ''
   usarTransporte(transporteInject)
+  localStorage.removeItem('hz_admin_sala')
 })
 afterEach(async () => {
   cleanup()
@@ -96,8 +104,9 @@ describe('panel admin contra la API real', () => {
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
     const tabla = screen.getByRole('table', { name: 'INSUMEX' })
-    expect(within(tabla).getByRole('rowheader', { name: 'Total' })).toBeTruthy()
-    expect(within(tabla).getAllByRole('rowheader')).toHaveLength(7)
+    // Preentrega 19-oct: los 6 criterios, sin fila «Total».
+    expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
+    expect(within(tabla).getAllByRole('rowheader')).toHaveLength(6)
 
     await pasar('Cerrar ronda 1', 'Ronda 1 cerrada')
     await pasar('Abrir ronda 2', 'Ronda 2 abierta')
@@ -130,11 +139,12 @@ describe('panel admin contra la API real', () => {
     const r = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
     expect(r.json().sala.config).toMatchObject({ alcance_resultados: 'sala', vista_participante: 'registrado' })
 
-    // Cierre programado de la ronda en hora Bogotá: el servidor lo aplica al llegar la hora.
-    fireEvent.change(screen.getByLabelText('Cerrar la ronda abierta el'), { target: { value: '2026-10-20T14:30' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Programar' })[0])
-    await screen.findByText(/La ronda se cerrará el/)
+    // Cierre programado de la ronda 1 en hora Bogotá: el servidor lo aplica al llegar la hora.
+    programar('Ronda 1', 'Cerrar el', '2026-10-20T14:30')
+    await screen.findByText(/La ronda 1 se cerrará el/)
     const r2 = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
+    expect(Date.parse(r2.json().sala.config.cierre_programado_r1_at)).toBe(Date.parse('2026-10-20T14:30:00-05:00'))
+    // El alias de antes sigue leyendo el cierre de la próxima ronda.
     expect(Date.parse(r2.json().sala.config.cierre_programado_ronda_at)).toBe(Date.parse('2026-10-20T14:30:00-05:00'))
 
     // Mesas y QR
@@ -177,12 +187,11 @@ describe('panel admin contra la API real', () => {
 
     // 16:00 en Guatemala son las 17:00 en Bogotá: el servidor guarda ese instante y el panel lo muestra como 16:00 (4:00 p. m.).
     await screen.findByText(/^Hora de Guatemala \(UTC-6\)/)
-    fireEvent.change(screen.getByLabelText('Cerrar la ronda abierta el'), { target: { value: '2026-10-20T16:00' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Programar' })[0])
-    await screen.findByText(/La ronda se cerrará el .*4:00/)
+    programar('Ronda 1', 'Cerrar el', '2026-10-20T16:00')
+    await screen.findByText(/La ronda 1 se cerrará el .*4:00/)
     const r2 = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
-    expect(Date.parse(r2.json().sala.config.cierre_programado_ronda_at)).toBe(Date.parse('2026-10-20T16:00:00-06:00'))
-    await waitFor(() => expect((screen.getByLabelText('Cerrar la ronda abierta el') as HTMLInputElement).value).toBe('2026-10-20T16:00'))
+    expect(Date.parse(r2.json().sala.config.cierre_programado_r1_at)).toBe(Date.parse('2026-10-20T16:00:00-06:00'))
+    await waitFor(() => expect((enGrupo('Ronda 1').getByLabelText('Cerrar el') as HTMLInputElement).value).toBe('2026-10-20T16:00'))
   }, 20_000)
 
   it('el superadmin crea un admin y ese admin cambia la clave en su primer ingreso', async () => {
@@ -282,4 +291,135 @@ describe('panel admin contra la API real', () => {
     const reg = api.find((h) => h.proyecto_id === 'nutriwhat' && h.perfil === 'Regulación')!
     expect(within(nutriwhat).getByRole('article', { name: 'Regulación' }).textContent).toContain(reg.texto)
   })
+})
+
+describe('cambios del 19-oct contra la API real', () => {
+  // A6 (C19-2): un admin de rol admin ve y usa todo lo de la sala de otra persona; solo le falta Administradores.
+  it('un admin recorre cada sección de una sala creada por el superadmin', async () => {
+    const creado = await e.app.inject({
+      method: 'POST',
+      url: '/api/admin/admins',
+      headers: { cookie: e.cookie },
+      payload: { usuario: 'jorge', nombre: 'Jorge Puentes', clave_temporal: 'temporal-12345' },
+    })
+    expect(creado.statusCode).toBe(201)
+    const cj = await loginCookie(e.app, 'jorge', 'temporal-12345')
+    const cambio = await e.app.inject({ method: 'POST', url: '/api/admin/cambiar-clave', headers: { cookie: cj }, payload: { actual: 'temporal-12345', nueva: 'definitiva-6789' } })
+    expect(cambio.statusCode).toBe(200)
+    const sala = await crearSala(e, 1, 'Sala de Paola')
+    expect((await accion(e, sala.id, 'abrir_inscripcion')).statusCode).toBe(200)
+    const tokens: string[] = []
+    for (const i of [1, 2, 3]) tokens.push((await inscribir(e, sala.mesas[0].codigo, `p${i}@x.co`, `Persona ${i}`)).json().token)
+    expect((await accion(e, sala.id, 'abrir_ronda_1')).statusCode).toBe(200)
+    for (const t of tokens) expect((await votar(e, t, 'insumex', 1)).statusCode).toBe(200)
+
+    montar('/admin/login')
+    await entrar('jorge', 'definitiva-6789')
+    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    expect(nav().getAllByRole('link').map((a) => a.textContent)).toEqual([
+      'Salas',
+      'Sala en vivo',
+      'Mesas y QR',
+      'Participantes',
+      'Respuestas',
+      'Hojas',
+      'Configuración',
+      'Exportar',
+      'Salud',
+    ])
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    fireEvent.click(await screen.findByRole('link', { name: 'Sala de Paola' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    await waitFor(() => expect(boton('Cerrar ronda 1').disabled).toBe(false))
+
+    const esperado: [string, () => Promise<unknown>][] = [
+      ['Mesas y QR', () => screen.findByRole('heading', { name: 'Agregar mesas' })],
+      ['Participantes', () => screen.findByRole('rowheader', { name: 'Persona 1' })],
+      ['Respuestas', () => screen.findByRole('rowheader', { name: 'Persona 1' })],
+      ['Hojas', () => screen.findByRole('region', { name: 'INSUMEX' })],
+      ['Configuración', () => screen.findByRole('region', { name: 'Rúbricas' })],
+      ['Exportar', () => screen.findByRole('heading', { name: 'Inscritos' })],
+      ['Salud', () => screen.findByText('En línea')],
+    ]
+    for (const [seccion, ver] of esperado) {
+      fireEvent.click(nav().getByText(seccion))
+      await ver()
+      expect(screen.queryByRole('heading', { name: 'Sin permiso' })).toBeNull()
+      expect(screen.queryByText(/No pudimos cargar/)).toBeNull()
+    }
+    // Respuestas con los votos reales: una fila por persona en INSUMEX, con sus 6 valores.
+    fireEvent.click(nav().getByText('Respuestas'))
+    const fila = (await screen.findByRole('rowheader', { name: 'Persona 1' })).parentElement!
+    expect([...fila.children].slice(1, 11).map((c) => c.textContent)).toEqual(['Mesa 1', expect.any(String), 'R1', 'INSUMEX', '5', '5', '5', '5', '5', '5'])
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(1 + 3)
+    cleanup()
+    montar('/admin/administradores')
+    expect(await screen.findByRole('heading', { name: 'Sin permiso' })).toBeTruthy()
+  }, 20_000)
+
+  // A2 (C19-4)
+  it('programa aperturas y cierres; el servidor rechaza tal cual y abre la ronda 1 a su hora', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId } = await crearSalaDesdePanel('Programada real', 1)
+    fireEvent.click(nav().getByText('Configuración'))
+    await screen.findByRole('heading', { name: 'Apertura y cierre programados' })
+    // El reloj del servidor de prueba está en el 20-oct a las 2:00 p. m. de Bogotá.
+    expect(screen.getByText(/^Hora del servidor:/).textContent).toMatch(/2026.*2:00/)
+
+    programar('Sala', 'Abrir inscripción el', '2026-10-20T14:10')
+    await screen.findByText(/^La inscripción se abrirá el/)
+    programar('Ronda 1', 'Abrir el', '2026-10-20T14:20')
+    await screen.findByText(/^La ronda 1 se abrirá el/)
+    programar('Ronda 1', 'Cerrar el', '2026-10-20T14:15')
+    expect((await enGrupo('Ronda 1').findByRole('alert')).textContent).toBe('La apertura de la ronda 1 debe ser antes que el cierre de la ronda 1.')
+    programar('Sala', 'Cerrar la sala el', '2026-10-20T13:00')
+    expect((await enGrupo('Sala').findByRole('alert')).textContent).toBe('Esa hora ya pasó. En el servidor son las 14:00:00; elige una hora posterior.')
+
+    const config = (await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })).json().sala.config
+    expect(Date.parse(config.apertura_programada_sala_at)).toBe(Date.parse('2026-10-20T14:10:00-05:00'))
+    expect(Date.parse(config.apertura_programada_r1_at)).toBe(Date.parse('2026-10-20T14:20:00-05:00'))
+    expect(config.cierre_programado_r1_at).toBeNull()
+
+    // A las 2:21 p. m. el servidor ya abrió la inscripción y la ronda 1.
+    e.reloj.ms = Date.parse('2026-10-20T14:21:00-05:00')
+    await e.app.inject({ method: 'GET', url: '/api/health' })
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    await screen.findByText('Ronda 1 abierta', { selector: '.estado' }, { timeout: 5000 })
+    expect(screen.getAllByText(/Apertura programada aplicada · automático/)).toHaveLength(2)
+  }, 20_000)
+
+  // A4 (C19-5)
+  it('modo guiado: Siguiente fija la pregunta que recibe el celular', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId, mesas } = await crearSalaDesdePanel('Guiada real', 1)
+    fireEvent.click(nav().getByText('Configuración'))
+    fireEvent.click(await screen.findByLabelText(/^Guiado/))
+    await screen.findByText('Modo guiado: todos ven la pregunta que elijas en Sala en vivo.')
+    expect((await accion(e, salaId, 'abrir_inscripcion')).statusCode).toBe(200)
+    const token = (await inscribir(e, mesas[0].codigo, 'ana@x.co')).json().token as string
+    expect((await accion(e, salaId, 'abrir_ronda_1')).statusCode).toBe(200)
+    const yo = async () => (await e.app.inject({ method: 'GET', url: '/api/yo', headers: { 'x-participante-token': token } })).json()
+
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    const seccion = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
+    const siguiente = (await seccion.findByRole('button', { name: 'Siguiente' }, { timeout: 5000 })) as HTMLButtonElement
+    fireEvent.click(siguiente)
+    expect(await seccion.findByText('Pregunta 1 de 12 · ronda 1')).toBeTruthy()
+    expect((await yo()).sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'alistamiento_tecnico' })
+    await waitFor(() => expect(siguiente.disabled).toBe(false))
+    fireEvent.click(siguiente)
+    expect(await seccion.findByText('Pregunta 2 de 12 · ronda 1')).toBeTruthy()
+    expect((await yo()).sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'conocimiento_cliente' })
+  }, 20_000)
+
+  // A5 (C19-1): el servidor de prueba arma los QR con https://horizontes.test, que no es el origen de jsdom.
+  it('avisa en rojo que BASE_URL del servidor no es el dominio del panel', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    await crearSalaDesdePanel('Dominio real', 1)
+    const aviso = await screen.findByText(/^Los QR apuntan a/)
+    expect(aviso.textContent).toBe(`Los QR apuntan a https://horizontes.test, pero estás en ${window.location.origin}. Corrige BASE_URL en Coolify.`)
+  }, 20_000)
 })

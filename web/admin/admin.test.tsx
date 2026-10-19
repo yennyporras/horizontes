@@ -187,7 +187,7 @@ describe('panel admin contra el simulador', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ver resultado de Mesa 1' }))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    // Acta A3, A4 y P2: los 6 criterios y la fila Total del servidor; sin T2M, ejes ni votos.
+    // Acta A3, A4 y P2: los 6 criterios; sin T2M, ejes ni votos. Preentrega 19-oct: sin fila «Total».
     const tabla = screen.getByRole('table', { name: 'INSUMEX' })
     expect(within(tabla).getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
       'Nivel de Alistamiento Técnico',
@@ -196,12 +196,11 @@ describe('panel admin contra el simulador', () => {
       'Capacidades Organizacionales',
       'Alineación y Cercanía Estratégica con el Core',
       'Inversión Requerida para Probar',
-      'Total',
     ])
     expect(within(tabla).getByRole('columnheader', { name: 'R1' }).querySelector('.ronda--1')).toBeTruthy()
-    expect(within(tabla).queryByText(/eje|votos|time to market/i)).toBeNull()
-    const total = within(tabla).getByRole('rowheader', { name: 'Total' }).parentElement
-    expect(total?.textContent).toBe('Total9,65') // `total` 9,653 del mock del servidor, con 2 decimales
+    expect(within(tabla).queryByText(/eje|votos|time to market|total/i)).toBeNull()
+    // Promedio del servidor con 2 decimales.
+    expect(within(tabla).getByRole('rowheader', { name: 'Regulación' }).parentElement?.textContent).toMatch(/^Regulación\d+,\d\d$/)
   })
 
   it('una sala nueva muestra la sala completa tras votar y el país cambia la zona de los cierres', async () => {
@@ -334,7 +333,14 @@ describe('rúbricas en la configuración de la sala', () => {
 describe('cambios del 19-oct en el panel', () => {
   const nav = () => within(screen.getByRole('navigation', { name: 'Secciones del panel' }))
   const boton = (n: string) => screen.getByRole('button', { name: n }) as HTMLButtonElement
-  const campo = (etiqueta: string) => screen.getByLabelText(etiqueta) as HTMLInputElement
+  /** Campos de la programación dentro de su grupo: «Ronda 1» → «Abrir el». */
+  const enGrupo = (grupo: string) => within(screen.getByRole('group', { name: grupo }))
+  const campo = (grupo: string, etiqueta: string) => enGrupo(grupo).getByLabelText(etiqueta) as HTMLInputElement
+  const fila = (grupo: string, etiqueta: string) => within(campo(grupo, etiqueta).closest('.campo-hora') as HTMLElement)
+  const programar = (grupo: string, etiqueta: string, valor: string) => {
+    fireEvent.change(campo(grupo, etiqueta), { target: { value: valor } })
+    fireEvent.click(fila(grupo, etiqueta).getByRole('button', { name: 'Programar' }))
+  }
 
   async function abrirDemo(usuario = 'paola') {
     montar('/admin/login')
@@ -357,19 +363,17 @@ describe('cambios del 19-oct en el panel', () => {
     expect(ORDEN_PREGUNTAS[0]).toEqual({ proyecto_id: 'insumex', criterio_id: 'alistamiento_tecnico' })
     expect(ORDEN_PREGUNTAS[6]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'alistamiento_tecnico' })
     expect(ORDEN_PREGUNTAS[11]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'inversion_requerida' })
-    // Servidor anterior a C19-4: los dos cierres de siempre, aunque estén vacíos.
-    expect(programaciones({ cierre_programado_ronda_at: null, cierre_programado_sala_at: null }).map((p) => p.texto)).toEqual([
-      'Cierre programado de la ronda',
-      'Cierre programado de la sala',
-    ])
-    // Con C19-4: solo lo programado, en el orden del taller.
-    const conRondas = programaciones({
-      cierre_programado_ronda_at: null,
+    // Solo lo programado, en el orden del taller (no en el de los campos).
+    const lista = programaciones({
       cierre_programado_sala_at: '2030-01-10T18:00:00-05:00',
       cierre_programado_r1_at: null,
       apertura_programada_r1_at: '2030-01-10T09:00:00-05:00',
     })
-    expect(conRondas.map((p) => p.texto)).toEqual(['Abre la ronda 1', 'Cierra la sala'])
+    expect(lista).toEqual([
+      { texto: 'Abre la ronda 1', at: '2030-01-10T09:00:00-05:00' },
+      { texto: 'Cierra la sala', at: '2030-01-10T18:00:00-05:00' },
+    ])
+    expect(programaciones({})).toEqual([])
     expect(dominioDistinto('https://horizontes.estratek.com.co/', 'https://horizontes.estratek.com.co')).toBe(false)
     expect(dominioDistinto('https://staging-horizontes.estratek.com.co', 'https://horizontes.estratek.com.co')).toBe(true)
     expect(dominioDistinto('no es una url', 'https://horizontes.estratek.com.co')).toBe(true)
@@ -423,6 +427,18 @@ describe('cambios del 19-oct en el panel', () => {
     await waitFor(() => expect(localStorage.getItem('hz_admin_sala')).toBeNull())
   })
 
+  // Preentrega 19-oct: ayudas de mesas y QR, y aviso en las vistas con datos personales.
+  it('ayudas de la preentrega: mesas recomendadas, QR impreso y aviso de datos personales', async () => {
+    await abrirDemo()
+    fireEvent.click(nav().getByText('Salas'))
+    const mesas = await screen.findByLabelText('Mesas')
+    expect(document.getElementById(mesas.getAttribute('aria-describedby')!)?.textContent).toBe('Recomendado: una mesa por cada 6 personas (hay 6 perfiles por mesa).')
+    fireEvent.click(nav().getByText('Mesas y QR'))
+    expect(await screen.findByText('Imprime el QR de cada mesa y ponlo en su mesa; no lo proyectes, así cada persona entra a su mesa.')).toBeTruthy()
+    fireEvent.click(nav().getByText('Participantes'))
+    expect(await screen.findByText('Solo administradores. No se proyecta.')).toBeTruthy()
+  })
+
   // A3 (C19-3)
   it('Respuestas muestra lo que calificó cada persona, con filtros por mesa y ronda', async () => {
     await abrirDemo()
@@ -474,31 +490,32 @@ describe('cambios del 19-oct en el panel', () => {
     expect(await screen.findByText('Aún nadie ha votado en esta sala.')).toBeTruthy()
   })
 
-  // A2 (C19-4)
-  it('programa apertura y cierre por ronda en la hora de la sala, y muestra los rechazos del servidor tal cual', async () => {
+  // A2 (C19-4) con los títulos de la preentrega: grupos Sala, Ronda 1 y Ronda 2, y una línea de qué pasa a esa hora.
+  it('programa apertura y cierre por etapa en la hora de la sala, y muestra los rechazos del servidor tal cual', async () => {
     await salaNueva('Programada')
     fireEvent.click(nav().getByText('Configuración'))
     await screen.findByRole('heading', { name: 'Apertura y cierre programados' })
     expect(screen.getByText(/^Hora del servidor:/)).toBeTruthy()
-    for (const g of ['Sala', 'Ronda 1', 'Ronda 2']) expect(screen.getByRole('group', { name: g })).toBeTruthy()
-    const fila = (etiqueta: string) => within(campo(etiqueta).closest('.campo-hora') as HTMLElement)
-    const programar = (etiqueta: string, valor: string) => {
-      fireEvent.change(campo(etiqueta), { target: { value: valor } })
-      fireEvent.click(fila(etiqueta).getByRole('button', { name: 'Programar' }))
-    }
+    expect(['Abrir inscripción el', 'Cerrar la sala el'].map((e) => campo('Sala', e).id)).toEqual(['apertura_programada_sala_at', 'cierre_programado_sala_at'])
+    expect(['Abrir el', 'Cerrar el'].map((e) => campo('Ronda 1', e).id)).toEqual(['apertura_programada_r1_at', 'cierre_programado_r1_at'])
+    expect(['Abrir el', 'Cerrar el'].map((e) => campo('Ronda 2', e).id)).toEqual(['apertura_programada_r2_at', 'cierre_programado_r2_at'])
+    // Cada campo dice qué pasa a esa hora (descripción accesible del campo).
+    const describe = (g: string, e: string) => campo(g, e).getAttribute('aria-describedby')!.split(' ').map((id) => document.getElementById(id)?.textContent).join(' ')
+    expect(describe('Sala', 'Abrir inscripción el')).toBe('A partir de esta hora se puede entrar con el QR.')
+    expect(describe('Ronda 1', 'Cerrar el')).toBe('Después de esta hora nadie más puede responder la ronda 1.')
 
-    programar('Abrir la ronda 1 el', '2030-01-10T09:00')
-    expect((await fila('Abrir la ronda 1 el').findByRole('status')).textContent).toMatch(/^La ronda 1 se abrirá el .*2030/)
+    programar('Ronda 1', 'Abrir el', '2030-01-10T09:00')
+    expect((await fila('Ronda 1', 'Abrir el').findByRole('status')).textContent).toMatch(/^La ronda 1 se abrirá el .*2030/)
 
-    programar('Cerrar la ronda 1 el', '2030-01-10T08:00')
-    expect((await fila('Cerrar la ronda 1 el').findByRole('alert')).textContent).toBe('La apertura debe quedar antes del cierre.')
-    expect(campo('Cerrar la ronda 1 el').getAttribute('aria-invalid')).toBe('true')
+    programar('Ronda 1', 'Cerrar el', '2030-01-10T08:00')
+    expect((await fila('Ronda 1', 'Cerrar el').findByRole('alert')).textContent).toBe('La apertura de la ronda 1 debe ser antes que el cierre de la ronda 1.')
+    expect(campo('Ronda 1', 'Cerrar el').getAttribute('aria-invalid')).toBe('true')
 
-    programar('Cerrar la sala el', '2020-01-10T08:00')
-    expect((await fila('Cerrar la sala el').findByRole('alert')).textContent).toBe('Esa hora ya pasó. Elige una hora futura.')
+    programar('Sala', 'Cerrar la sala el', '2020-01-10T08:00')
+    expect((await fila('Sala', 'Cerrar la sala el').findByRole('alert')).textContent).toMatch(/^Esa hora ya pasó\. En el servidor son las \d\d:\d\d:\d\d; elige una hora posterior\.$/)
 
-    programar('Abrir la ronda 2 el', '2030-01-10')
-    expect((await fila('Abrir la ronda 2 el').findByRole('alert')).textContent).toBe('Elige fecha y hora completas.')
+    programar('Ronda 2', 'Abrir el', '2030-01-10')
+    expect((await fila('Ronda 2', 'Abrir el').findByRole('alert')).textContent).toBe('Elige fecha y hora completas.')
 
     // Sala en vivo lista lo programado con su cuenta regresiva.
     fireEvent.click(nav().getByText('Sala en vivo'))
@@ -506,49 +523,46 @@ describe('cambios del 19-oct en el panel', () => {
     expect(lista.textContent).toMatch(/^Abre la ronda 1: .*2030.* · faltan /)
 
     fireEvent.click(nav().getByText('Configuración'))
-    await waitFor(() => expect(campo('Abrir la ronda 1 el').value).toBe('2030-01-10T09:00'))
-    fireEvent.click(fila('Abrir la ronda 1 el').getByRole('button', { name: 'Quitar' }))
-    expect((await fila('Abrir la ronda 1 el').findByRole('status')).textContent).toBe('Quitamos la apertura programada de la ronda 1.')
-    await waitFor(() => expect(campo('Abrir la ronda 1 el').value).toBe(''))
+    await waitFor(() => expect(campo('Ronda 1', 'Abrir el').value).toBe('2030-01-10T09:00'))
+    fireEvent.click(fila('Ronda 1', 'Abrir el').getByRole('button', { name: 'Quitar' }))
+    expect((await fila('Ronda 1', 'Abrir el').findByRole('status')).textContent).toBe('Quitamos la apertura programada de la ronda 1.')
+    await waitFor(() => expect(campo('Ronda 1', 'Abrir el').value).toBe(''))
   })
 
   it('bloquea lo que ya pasó en la sala y explica por qué', async () => {
     await abrirDemo()
     fireEvent.click(nav().getByText('Configuración'))
-    await screen.findByLabelText('Abrir la inscripción el')
+    await screen.findByRole('heading', { name: 'Apertura y cierre programados' })
     // Demo en ronda 1 abierta: la inscripción y la ronda 1 ya se abrieron; lo demás sigue programable.
-    expect(campo('Abrir la inscripción el').disabled).toBe(true)
-    expect(screen.getByText('La inscripción ya se abrió.')).toBeTruthy()
-    expect(campo('Abrir la ronda 1 el').disabled).toBe(true)
-    expect(screen.getByText('La ronda 1 ya se abrió.')).toBeTruthy()
-    for (const e of ['Cerrar la ronda 1 el', 'Abrir la ronda 2 el', 'Cerrar la ronda 2 el', 'Cerrar la sala el']) expect(campo(e).disabled).toBe(false)
+    expect(campo('Sala', 'Abrir inscripción el').disabled).toBe(true)
+    expect(fila('Sala', 'Abrir inscripción el').getByText('La inscripción ya se abrió.')).toBeTruthy()
+    expect(campo('Ronda 1', 'Abrir el').disabled).toBe(true)
+    expect(fila('Ronda 1', 'Abrir el').getByText('La ronda 1 ya se abrió.')).toBeTruthy()
+    for (const [g, e] of [
+      ['Ronda 1', 'Cerrar el'],
+      ['Ronda 2', 'Abrir el'],
+      ['Ronda 2', 'Cerrar el'],
+      ['Sala', 'Cerrar la sala el'],
+    ])
+      expect(campo(g, e).disabled).toBe(false)
     // El cierre de sala que trae el demo se muestra en la hora de la sala.
-    expect(campo('Cerrar la sala el').value).toBe('2026-10-20T18:00')
+    expect(campo('Sala', 'Cerrar la sala el').value).toBe('2026-10-20T18:00')
   })
 
   // A4 (C19-5)
   it('modo guiado: Anterior, Siguiente y salto a cualquier pregunta desde Sala en vivo', async () => {
+    // La sala demo del simulador está en modo guiado, con INSUMEX · Regulación en pantalla.
     await abrirDemo('jorge')
-    expect(screen.queryByRole('heading', { name: 'Pregunta en pantalla' })).toBeNull()
-    fireEvent.click(nav().getByText('Configuración'))
-    expect(((await screen.findByLabelText(/^Automático/)) as HTMLInputElement).checked).toBe(true)
-    fireEvent.click(screen.getByLabelText(/^Guiado/))
-    expect(await screen.findByText('Modo guiado: todos ven la pregunta que elijas en Sala en vivo.')).toBeTruthy()
-
-    fireEvent.click(nav().getByText('Sala en vivo'))
     const seccion = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
-    expect(seccion.getByText(/Aún no hay pregunta en pantalla/)).toBeTruthy()
     const b = (n: string) => seccion.getByRole('button', { name: n }) as HTMLButtonElement
-    expect(b('Anterior').disabled).toBe(true)
-    fireEvent.click(b('Siguiente'))
-    expect(await seccion.findByText('Pregunta 1 de 12 · ronda 1')).toBeTruthy()
-    expect(seccion.getByText('INSUMEX · Nivel de Alistamiento Técnico')).toBeTruthy()
+    expect(seccion.getByText('Pregunta 3 de 12 · ronda 1')).toBeTruthy()
+    expect(seccion.getByText('INSUMEX · Regulación')).toBeTruthy()
+    fireEvent.click(b('Anterior'))
+    expect(await seccion.findByText('Pregunta 2 de 12 · ronda 1')).toBeTruthy()
+    expect(seccion.getByText('INSUMEX · Nivel de Conocimiento del Cliente/Mercado')).toBeTruthy()
     await waitFor(() => expect(b('Siguiente').disabled).toBe(false))
     fireEvent.click(b('Siguiente'))
-    expect(await seccion.findByText('Pregunta 2 de 12 · ronda 1')).toBeTruthy()
-    await waitFor(() => expect(b('Anterior').disabled).toBe(false))
-    fireEvent.click(b('Anterior'))
-    expect(await seccion.findByText('Pregunta 1 de 12 · ronda 1')).toBeTruthy()
+    expect(await seccion.findByText('Pregunta 3 de 12 · ronda 1')).toBeTruthy()
 
     fireEvent.change(seccion.getByLabelText('Proyecto'), { target: { value: 'nutriwhat' } })
     fireEvent.change(seccion.getByLabelText('Pregunta'), { target: { value: 'inversion_requerida' } })
@@ -559,12 +573,30 @@ describe('cambios del 19-oct en el panel', () => {
     expect(b('Mostrar esta pregunta').disabled).toBe(true)
     // Queda en la bitácora.
     expect(screen.getAllByText(/Pregunta guiada cambiada · jorge/).length).toBeGreaterThan(0)
+
+    // En automático no hay control; al volver a guiado la pregunta empieza de cero (el servidor la borra al cambiar el modo).
+    fireEvent.click(nav().getByText('Configuración'))
+    fireEvent.click(await screen.findByLabelText(/^Automático/))
+    expect(await screen.findByText('Cada persona avanza sola: al responder pasa a la siguiente pregunta.')).toBeTruthy()
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    await screen.findByRole('heading', { name: 'Control de la sala' })
+    expect(screen.queryByRole('heading', { name: 'Pregunta en pantalla' })).toBeNull()
+    fireEvent.click(nav().getByText('Configuración'))
+    fireEvent.click(await screen.findByLabelText(/^Guiado/))
+    expect(await screen.findByText('Modo guiado: todos ven la pregunta que elijas en Sala en vivo.')).toBeTruthy()
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    const otra = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
+    expect(otra.getByText(/Aún no hay pregunta en pantalla/)).toBeTruthy()
+    expect((otra.getByRole('button', { name: 'Anterior' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(otra.getByRole('button', { name: 'Siguiente' }))
+    expect(await otra.findByText('Pregunta 1 de 12 · ronda 1')).toBeTruthy()
+    expect(otra.getByText('INSUMEX · Nivel de Alistamiento Técnico')).toBeTruthy()
   })
 
   it('modo guiado: sin ronda abierta lo explica y un rechazo del servidor sale tal cual', async () => {
     usarTransporte(async (metodo, ruta, cuerpo, etag) =>
       metodo === 'PUT' && ruta.endsWith('/pregunta-guiada')
-        ? { status: 409, body: { error: { codigo: 'RONDA_CERRADA', mensaje: 'La ronda se cerró. Mensaje del servidor.' } } }
+        ? { status: 409, body: { error: { codigo: 'RONDA_CERRADA', mensaje: 'No hay una ronda abierta: abre una ronda para guiar las preguntas.' } } }
         : responderMock(metodo, ruta, cuerpo, etag),
     )
     await salaNueva('Guiada')
@@ -583,34 +615,25 @@ describe('cambios del 19-oct en el panel', () => {
       await screen.findByText(e, { selector: '.estado' })
     }
     fireEvent.click(seccion.getByRole('button', { name: 'Siguiente' }))
-    expect((await seccion.findByRole('alert')).textContent).toBe('La ronda se cerró. Mensaje del servidor.')
+    expect((await seccion.findByRole('alert')).textContent).toBe('No hay una ronda abierta: abre una ronda para guiar las preguntas.')
   })
 
-  // A5 (C19-1)
+  // A5 (C19-1): base_url viene en el detalle de la sala.
   it('avisa en rojo si BASE_URL no es el dominio desde el que se abre el panel', async () => {
     await abrirDemo()
-    expect(screen.queryByText(/Los QR apuntan a/)).toBeNull()
+    expect(screen.queryByText(/Los QR apuntan a/)).toBeNull() // el simulador usa el mismo origen
     cleanup()
-    usarTransporte(async (metodo, ruta, cuerpo, etag) =>
-      ruta === '/api/admin/salud'
-        ? { status: 200, body: { ok: true, base_url: 'https://staging-horizontes.estratek.com.co' } }
-        : responderMock(metodo, ruta, cuerpo, etag),
-    )
+    usarTransporte(async (metodo, ruta, cuerpo, etag) => {
+      const r = await responderMock(metodo, ruta, cuerpo, etag)
+      return /^\/api\/admin\/salas\/[^/]+$/.test(ruta) && r.status === 200 ? { ...r, body: { ...(r.body as object), base_url: 'https://staging-horizontes.estratek.com.co' } } : r
+    })
+    // En Salas, sin sala abierta ni recordada en este navegador, se lee la primera sala de la lista.
+    localStorage.removeItem('hz_admin_sala')
     montar('/admin/salas')
     const aviso = await screen.findByText(/^Los QR apuntan a/)
     expect(aviso.getAttribute('role')).toBe('alert')
     expect(aviso.textContent).toBe(
       `Los QR apuntan a https://staging-horizontes.estratek.com.co, pero estás en ${window.location.origin}. Corrige BASE_URL en Coolify.`,
     )
-  })
-
-  it('sin /api/admin/salud toma base_url del detalle de la sala', async () => {
-    usarTransporte(async (metodo, ruta, cuerpo, etag) => {
-      if (ruta === '/api/admin/salud') return { status: 404, body: { error: { codigo: 'RUTA_NO_EXISTE', mensaje: 'No existe.' } } }
-      const r = await responderMock(metodo, ruta, cuerpo, etag)
-      return ruta === '/api/admin/salas/s_demo' && r.status === 200 ? { ...r, body: { ...(r.body as object), base_url: 'https://horizontes.com.co' } } : r
-    })
-    await abrirDemo()
-    expect((await screen.findByText(/^Los QR apuntan a/)).textContent).toMatch(/^Los QR apuntan a https:\/\/horizontes\.com\.co, pero estás en /)
   })
 })

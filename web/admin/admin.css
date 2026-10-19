@@ -20,6 +20,7 @@
   --a-fondo: var(--hz-fondo, #fff);
   --a-sup-1: var(--hz-superficie-1, #fff);
   --a-sup-2: var(--hz-superficie-2, #fff);
+  --a-borde: var(--hz-borde-suave, #c5d8ef);
   --a-borde-control: var(--hz-borde-control, #5b6b84);
   --a-sobre-acento: var(--hz-sobre-acento, #fff);
   --a-grad: var(--hz-grad-marca, #1c4587);
@@ -107,7 +108,7 @@
 
 /* Superficies */
 .hz-admin .panel {
-  border: 1px solid var(--a-h3);
+  border: 1px solid var(--a-borde);
   border-radius: var(--a-r-l);
   padding: 20px;
   margin-bottom: 20px;
@@ -375,8 +376,6 @@
 .hz-admin .tabla-resultado th,
 .hz-admin .tabla-resultado td { padding: 8px 6px; }
 .hz-admin .tabla-resultado .num { white-space: nowrap; }
-.hz-admin .tabla-resultado .fila-total th,
-.hz-admin .tabla-resultado .fila-total td { font-weight: 800; color: var(--a-azul); border-top: 2px solid var(--a-azul); border-bottom: 0; }
 
 /* Elegir sala: una fila por sala, el nombre como botón */
 .hz-admin .lista-elegir { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
@@ -405,3 +404,4 @@
   .hz-admin .tabla-respuestas td { padding: 8px 6px; }
   .hz-admin .tabla-respuestas thead th.num { max-width: 9ch; white-space: normal; hyphens: auto; }
 }
+.hz-admin .tabla-respuestas tbody th .etiqueta { margin-left: 8px; }
