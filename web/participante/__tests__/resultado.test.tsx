@@ -71,6 +71,34 @@ describe('resultado del alcance', () => {
     expect(screen.queryByRole('columnheader', { name: 'R2' })).toBeNull()
   })
 
+  it('«Tu calificación» por criterio y ronda junto al promedio, solo con tus votos (C19-3, P3)', () => {
+    const r = conTotal()
+    const misVotos = [
+      { proyecto_id: 'insumex', ronda: 1, respuestas: Object.fromEntries(yo.criterios.map((c, i) => [c.id, [1, 3, 5, 7, 9, 9][i]])) },
+      { proyecto_id: 'insumex', ronda: 2, respuestas: Object.fromEntries(yo.criterios.map((c) => [c.id, 5])) },
+    ]
+    render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" misVotos={misVotos} />)
+    const [insumex, nutriwhat] = screen.getAllByRole('table')
+    const fila = within(insumex).getByRole('rowheader', { name: yo.criterios[2].nombre }).closest('tr')!
+    const celdas = [...fila.querySelectorAll('td')]
+    // R1: el promedio del servidor con 2 decimales y debajo tu 5; R2: tu 5 también.
+    expect(celdas.map((td) => td.querySelector('.hzp-tabla__promedio')!.textContent)).toEqual(
+      r.proyectos_vivos[0].rondas.map((x) => cifra(x.promedios![yo.criterios[2].id])),
+    )
+    expect(celdas.map((td) => td.querySelector('.hzp-tabla__mia')?.textContent)).toEqual(['Tu calificación: Tú 5', 'Tu calificación: Tú 5'])
+    expect(within(insumex).getAllByText('Tu calificación:', { exact: false })).toHaveLength(12)
+    expect(screen.getByText('Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.')).toBeTruthy()
+    // El Total no suma tu calificación (el celular no calcula) y en NUTRIWHAT no votaste: nada tuyo.
+    expect(insumex.querySelector('.hzp-tabla__total .hzp-tabla__mia')).toBeNull()
+    expect(within(nutriwhat).queryByText(/Tu calificación/)).toBeNull()
+  })
+
+  it('sin votos propios la tabla queda igual: solo promedios', () => {
+    render(<ResultadoAlcance resultados={conTotal()} criterios={yo.criterios} alcance="mesa" misVotos={[]} />)
+    expect(screen.queryByText(/Tu calificación/)).toBeNull()
+    for (const td of screen.getAllByRole('cell')) expect(td.textContent).toMatch(/^\d+,\d{2}$/)
+  })
+
   it('respeta bajo_minimo y minimo_votos del servidor', () => {
     const r = conTotal()
     r.minimo_votos = 5
