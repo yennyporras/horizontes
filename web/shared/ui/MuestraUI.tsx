@@ -7,6 +7,7 @@ import { Boton } from './Boton'
 import { Campo } from './Campo'
 import { Casilla } from './Casilla'
 import { EncabezadoHorizonte } from './EncabezadoHorizonte'
+import { EncabezadoProducto } from './EncabezadoProducto'
 import { Hoja } from './Hoja'
 import { Insignia } from './Insignia'
 import { Pestanas } from './Pestanas'
@@ -26,6 +27,7 @@ export function MuestraUI() {
 
   return (
     <div className="hz hz-pagina" lang="es-CO">
+      <EncabezadoProducto />
       <EncabezadoHorizonte sala={yo.sala.nombre} meta={`${yo.participante.mesa.nombre} · Perfil ${yo.participante.perfil.nombre}`} />
       <main className="hz-contenido">
         <h1 className="hz-titulo">Componentes base</h1>
@@ -38,6 +40,7 @@ export function MuestraUI() {
             Editar mis calificaciones
           </Boton>
           <Boton variante="fantasma">Volver al caso</Boton>
+          <Boton variante="destructivo">Retirar de la mesa</Boton>
           <Boton bloque deshabilitado>
             Inscribirme
           </Boton>
@@ -129,6 +132,7 @@ export function MuestraUI() {
             <Insignia tono="ok">Guardado</Insignia>
             <Insignia>Pendiente</Insignia>
             <Insignia tono="alerta">Preliminar</Insignia>
+            <Insignia tono="error">Sin señal</Insignia>
             <Insignia tono="r1">R1</Insignia>
             <Insignia tono="r2">R2</Insignia>
           </p>
@@ -147,6 +151,17 @@ export function MuestraUI() {
           <Aviso tono="error" titulo="Algo falló de nuestro lado" accion={{ texto: 'Reintentar', onClick: () => undefined }}>
             Vuelve a intentarlo en unos segundos.
           </Aviso>
+        </section>
+
+        <section className="hz-contenido hz-muestra-carbon" data-tema="carbon" aria-labelledby="s-carbon">
+          <h2 id="s-carbon" className="hz-subtitulo">Tema carbón (landing y tablero)</h2>
+          <Boton variante="secundario">Ver cómo funciona</Boton>
+          <p style={{ display: 'flex', gap: 'var(--hz-sp-2)', flexWrap: 'wrap' }}>
+            <Insignia tono="ok">Guardado</Insignia>
+            <Insignia tono="r1">R1</Insignia>
+            <Insignia tono="r2">R2</Insignia>
+          </p>
+          <Aviso tono="info">El tablero se proyecta en carbón.</Aviso>
         </section>
       </main>
       <BarraAccion nota="Llevas 1 de 2 proyectos">
