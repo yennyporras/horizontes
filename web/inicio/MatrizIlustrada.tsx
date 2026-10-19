@@ -31,12 +31,12 @@ export function MatrizIlustrada() {
           </clipPath>
         </defs>
         <g clipPath="url(#in-plano)">
-          <rect x={X0} y={0} width={100 - X0} height={Y0} fill="var(--hz-h1)" />
+          <rect x={X0} y={0} width={100 - X0} height={Y0} fill="var(--hz-superficie-1)" />
           {grafico.horizontes
             .filter((h) => h.radio)
             .reverse()
             .map((h, i) => (
-              <circle key={h.id} cx={X0} cy={Y0} r={h.radio! * K} fill={i === 0 ? 'var(--hz-h2)' : 'var(--hz-h3)'} />
+              <circle key={h.id} className="in-matriz__horizonte" cx={X0} cy={Y0} r={h.radio! * K} fill={i === 0 ? 'var(--hz-superficie-2)' : 'var(--hz-superficie-3)'} />
             ))}
         </g>
         {Object.entries(grafico.etiquetas_horizonte).map(([id, [x, y]]) => (
