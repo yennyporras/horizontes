@@ -10,7 +10,12 @@ function enCampo(e: KeyboardEvent): boolean {
 }
 
 /** Atajo de teclado del tablero → acción. Puro para poder probarlo. */
-export type AccionTecla = { tipo: 'pantalla' } | { tipo: 'detalle' } | { tipo: 'vista'; vista: Vista } | { tipo: 'zoom'; zoom: AccionZoom }
+export type AccionTecla =
+  | { tipo: 'pantalla' }
+  | { tipo: 'detalle' }
+  | { tipo: 'vista'; vista: Vista }
+  | { tipo: 'zoom'; zoom: AccionZoom }
+  | { tipo: 'matriz'; sola: boolean | null }
 
 const TECLAS_ZOOM: Record<string, AccionZoom> = {
   '+': 'acercar',
@@ -31,6 +36,10 @@ export function accionDeTecla(tecla: string): AccionTecla | null {
       return { tipo: 'pantalla' }
     case 'd':
       return { tipo: 'detalle' }
+    case 'm':
+      return { tipo: 'matriz', sola: null }
+    case 'escape':
+      return { tipo: 'matriz', sola: false }
     case '1':
       return { tipo: 'vista', vista: 1 }
     case '2':
@@ -42,13 +51,22 @@ export function accionDeTecla(tecla: string): AccionTecla | null {
   }
 }
 
+export interface AtajosTablero {
+  onVista: (v: Vista) => void
+  onDetalle: () => void
+  /** Devuelve false si no cambió nada: así una flecha sin zoom sigue desplazando la página. */
+  onZoom: (a: AccionZoom) => boolean
+  /** M alterna la matriz sola y la vista con datos (null); Esc vuelve a los datos (false). */
+  onMatriz: (sola: boolean | null) => void
+}
+
 /**
  * Modo proyector: F alterna pantalla completa; 1, 2 y C cambian de vista; D alterna promedios y «Cómo votó»;
- * +, − y 0 acercan, alejan y vuelven a ver toda la matriz, y las flechas la mueven con zoom.
+ * M muestra la matriz sola o con datos y Esc vuelve a los datos; +, − y 0 acercan, alejan y vuelven a
+ * ver toda la matriz, y las flechas la mueven con zoom.
  * Si el navegador no permite la API de pantalla completa, F igual oculta los controles.
- * `onZoom` devuelve false si no cambió nada: así una flecha sin zoom sigue desplazando la página.
  */
-export function usePantallaCompleta(onVista: (v: Vista) => void, onDetalle: () => void, onZoom: (a: AccionZoom) => boolean = () => false) {
+export function usePantallaCompleta({ onVista, onDetalle, onZoom, onMatriz }: AtajosTablero) {
   const [activa, setActiva] = useState(false)
 
   const alternar = useCallback(() => {
@@ -83,11 +101,12 @@ export function usePantallaCompleta(onVista: (v: Vista) => void, onDetalle: () =
       e.preventDefault()
       if (a.tipo === 'pantalla') alternar()
       else if (a.tipo === 'detalle') onDetalle()
+      else if (a.tipo === 'matriz') onMatriz(a.sola)
       else onVista(a.vista)
     }
     window.addEventListener('keydown', tecla)
     return () => window.removeEventListener('keydown', tecla)
-  }, [alternar, onVista, onDetalle, onZoom])
+  }, [alternar, onVista, onDetalle, onZoom, onMatriz])
 
   return { activa, alternar }
 }
