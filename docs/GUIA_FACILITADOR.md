@@ -11,7 +11,7 @@ Una página. Lo que tienes que hacer, en orden, para que el taller corra sin sus
 6. Ensayo de 5 minutos: en **Salas** usa *Duplicar para ensayo*, escanea un QR de la copia, inscríbete, vota y mira el tablero. La sala real queda limpia.
 
 ## En el salón
-- Proyector: abre el tablero desde **Sala en vivo** (*Abrir tablero de la sala*, ya trae su token). Tecla **F** para pantalla completa; **1**, **2** y **C** cambian entre ronda 1, ronda 2 y comparación.
+- Proyector: abre el tablero desde **Sala en vivo** (*Abrir tablero de la sala*, ya trae su token). Tecla **F** para pantalla completa; **1**, **2** y **C** cambian entre ronda 1, ronda 2 y comparación; **D** cambia el panel de la derecha entre *Promedios* y *Cómo votó*.
 - Wi-Fi: confirma que el celular de alguien de la sala abre el QR antes de empezar.
 
 ## Durante el taller
@@ -28,7 +28,12 @@ Una página. Lo que tienes que hacer, en orden, para que el taller corra sin sus
 
 **Cómo leer los resultados.** La tabla trae los 6 criterios y una fila **Total** (eje X + eje Y). La matriz sigue ubicando cada proyecto con sus dos ejes. Con **menos de 3 votos** en una mesa o ronda no se muestran promedios ("Hace falta al menos 3 votos..."): así nadie deduce el voto de otro.
 
-La conversación buena está en la dispersión: si una mesa tiene votos en 1 y en 9 para el mismo criterio, ahí hay carnita. Pregunta qué sabía cada perfil que los demás no, y qué cambió entre el verde y el rojo.
+La conversación buena está en la dispersión, y para eso está **Cómo votó la sala** (tecla **D** en el tablero, o el bloque del mismo nombre en **Sala en vivo**): cuántos votos tuvo cada valor 1, 3, 5, 7 y 9 en cada criterio, R1 en verde hueco y R2 en rojo sólido. La matriz sigue a la vista.
+
+Cuándo usarlo en la plenaria:
+- **Al cerrar la ronda 1**, después de mirar la matriz: busca el criterio con votos en los dos extremos (1 y 9) y pregunta qué sabía cada perfil que los demás no. Si quieres ver la información de un perfil, ábrela en **Hojas** del panel (las 6 hojas de cada proyecto, aunque los celulares todavía no las muestren).
+- **Al cerrar la ronda 2**, en Comparación: muestra si la mesa se juntó (los votos se agrupan en uno o dos valores) o si sigue partida, y qué cambió entre el verde y el rojo.
+- Con alcance de una mesa, cada empresa ve su propia dispersión. Con menos de 3 votos no aparece ("Hace falta al menos 3 votos..."): nadie deduce el voto de otro.
 
 ## Si algo pasa
 - **Alguien cambió de celular o borró la sesión:** que vuelva a escanear el QR y use *Ya me inscribí: recuperar mi sesión* con el mismo correo. Conserva su mesa, perfil y votos.

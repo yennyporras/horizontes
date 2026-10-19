@@ -1,0 +1,156 @@
+/*
+ * «Cómo votó la sala»: lo usan el tablero y el panel. Tamaños en em: crece con la letra de quien lo aloja
+ * (≈ 20 px en el proyector de 1920, 16 px en el panel). R1 barra hueca verde, R2 barra sólida roja,
+ * siempre con «R1»/«R2» y el conteo en texto.
+ */
+.hz-cv {
+  --cv-r1: var(--hz-r1, #1f7a3a);
+  --cv-r2: var(--hz-r2, #c62828);
+  --cv-tinta: var(--hz-tinta, #0f2340);
+  --cv-tinta-2: var(--hz-tinta-2, #3a4d6b);
+  --cv-tinta-3: var(--hz-tinta-3, #5b6b84);
+  --cv-azul: var(--hz-azul, #1c4587);
+  --cv-h1: var(--hz-h1, #eef4fb);
+  --cv-h3: var(--hz-h3, #c5d8ef);
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.hz-cv-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4em 1em;
+  margin-bottom: 0.4em;
+}
+/* El título toma el estilo de subtítulo de quien lo aloja (hz-sub en el tablero, h2 del panel). */
+.hz-cv .hz-cv-titulo {
+  margin: 0;
+}
+.hz-cv .hz-cv-aviso {
+  margin: 0 0 0.5em;
+  padding: 0.5em 0.8em;
+  font-weight: 700;
+  color: var(--cv-azul);
+  background: var(--cv-h1);
+  border-left: 4px solid var(--hz-azul-medio, #3f7cc8);
+  border-radius: 6px;
+}
+.hz-cv-proyectos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15em), 1fr));
+  gap: 0.6em 1.4em;
+}
+.hz-cv-proy {
+  min-width: 0;
+}
+.hz-cv .hz-cv-nombre {
+  margin: 0 0 0.2em;
+  font-size: 1.1em;
+  font-weight: 800;
+  color: var(--cv-azul);
+  border-bottom: 2px solid var(--cv-h3);
+}
+.hz-cv-rejilla {
+  display: grid;
+  column-gap: 0.9em;
+  align-items: end;
+}
+.hz-cv .hz-cv-ronda p {
+  margin: 0;
+}
+.hz-cv .hz-cv-ronda-t {
+  font-size: 0.85em;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.hz-cv-r1 {
+  color: var(--cv-r1);
+}
+.hz-cv-r2 {
+  color: var(--cv-r2);
+}
+.hz-cv-n {
+  font-weight: 600;
+  color: var(--cv-tinta-2);
+}
+.hz-cv-marca {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.3em;
+  vertical-align: -0.08em;
+  border-radius: 50%;
+}
+.hz-cv-marca-r1 {
+  border: 0.16em solid var(--cv-r1);
+}
+.hz-cv-marca-r2 {
+  background: var(--cv-r2);
+}
+/* La escala y las barras comparten las 5 columnas: cada número queda sobre su barra. */
+.hz-cv .hz-cv-escala,
+.hz-cv-barras {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.2em;
+}
+.hz-cv .hz-cv-escala {
+  font-size: 0.75em;
+  font-weight: 700;
+  text-align: center;
+  color: var(--cv-tinta-2);
+  border-bottom: 1px solid var(--cv-h3);
+}
+.hz-cv .hz-cv-crit {
+  margin: 0.35em 0 0;
+  font-size: 0.8em;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--cv-tinta);
+}
+.hz-cv-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  text-align: center;
+}
+.hz-cv-cuenta {
+  font-size: 0.8em;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--cv-tinta);
+}
+.hz-cv-cero {
+  font-weight: 600;
+  color: var(--cv-tinta-3);
+}
+.hz-cv-pista {
+  display: flex;
+  align-items: flex-end;
+  height: 1.5em;
+  border-bottom: 1px solid var(--cv-tinta-3);
+}
+.hz-cv-barra {
+  display: block;
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+}
+.hz-cv-barras-r1 .hz-cv-barra {
+  min-height: 0.25em;
+  background: #fff;
+  border: 0.14em solid var(--cv-r1);
+  border-bottom: 0;
+}
+.hz-cv-barras-r2 .hz-cv-barra {
+  min-height: 0.2em;
+  background: var(--cv-r2);
+}
+.hz-cv .hz-cv-falta {
+  margin: 0;
+  padding: 0.3em 0;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--cv-tinta-2);
+}

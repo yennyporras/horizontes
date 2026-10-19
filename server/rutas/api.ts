@@ -19,7 +19,7 @@ import {
 import { LimitadorPeticiones } from '../dominio/mantenimiento.js'
 import { aplicarAccion, cambiarConfig } from '../dominio/estados.js'
 import { detalleSala, editarParticipante, eventosPaginados, exportInscritos, exportVotos, listarSalas, mesasAdmin, salaResumen, urls } from '../dominio/gestion.js'
-import { autenticarParticipante, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
+import { autenticarParticipante, hojasDeSala, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
 import { type CambioRubrica, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
 import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala } from '../dominio/salas.js'
@@ -232,6 +232,9 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   app.put<{ Params: { id: string; criterio: string }; Body: CambioRubrica }>('/api/admin/salas/:id/rubricas/:criterio', async (req) =>
     editarRubrica(db, req.params.id, req.params.criterio, req.body ?? {}, ahora(), por(req)),
   )
+
+  // Solo lectura: el facilitador lee las 6 hojas de cada proyecto vivo, aunque la sala aún no las revele.
+  app.get<{ Params: { id: string } }>('/api/admin/salas/:id/hojas', async (req) => ({ hojas: hojasDeSala(db, cargarSala(db, req.params.id).id) }))
 
   app.get<{ Params: { mesaId: string } }>('/api/admin/mesas/:mesaId/qr.svg', async (req, reply) => {
     const m = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ? OR codigo = ?', req.params.mesaId, req.params.mesaId.toUpperCase())

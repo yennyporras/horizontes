@@ -45,6 +45,13 @@ describe('servidor de mocks', () => {
     expect(p.json().error.codigo).toBe('RUBRICA_CON_VOTOS')
   })
 
+  it('hojas: las 6 de cada proyecto vivo con su perfil', async () => {
+    const hojas = (await app.inject('/api/admin/salas/s_demo/hojas')).json().hojas as { proyecto: string; perfil: string }[]
+    expect(hojas).toHaveLength(12)
+    expect(new Set(hojas.map((h) => h.proyecto))).toEqual(new Set(['INSUMEX', 'NUTRIWHAT']))
+    expect(new Set(hojas.map((h) => h.perfil)).size).toBe(6)
+  })
+
   it('mesa inexistente responde 404 MESA_NO_EXISTE', async () => {
     const r = await app.inject('/api/mesas/NOEXISTE')
     expect(r.statusCode).toBe(404)

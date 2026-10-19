@@ -13,6 +13,7 @@ import { Administradores } from './paginas/Administradores'
 import { ElegirSala } from './paginas/ElegirSala'
 import { MesasQR } from './paginas/MesasQR'
 import { Salud } from './paginas/Salud'
+import { Hojas } from './paginas/Hojas'
 
 function RequiereSesion({ children }: { children: ReactNode }) {
   const { admin, cargando } = useSesion()
@@ -62,6 +63,7 @@ export function Rutas() {
         <Route path="salas/:salaId/vivo" element={<SalaEnVivo />} />
         <Route path="salas/:salaId/mesas" element={<MesasQR />} />
         <Route path="salas/:salaId/participantes" element={<Participantes />} />
+        <Route path="salas/:salaId/hojas" element={<Hojas />} />
         <Route path="salas/:salaId/configuracion" element={<Configuracion />} />
         <Route path="salas/:salaId/export" element={<Exportar />} />
         <Route

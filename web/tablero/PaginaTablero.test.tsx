@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import mockJson from '../../mocks/GET_api_tablero.json'
 import PaginaTablero from './PaginaTablero'
@@ -105,6 +105,28 @@ describe('PaginaTablero', () => {
     await waitFor(() => expect(document.querySelector('main')?.className).toContain('hz-pantalla-completa'))
     fireEvent.keyDown(window, { key: 'F' })
     await waitFor(() => expect(document.querySelector('main')?.className).not.toContain('hz-pantalla-completa'))
+  })
+
+  test('«Cómo votó»: el botón o la tecla D cambian la tabla por el conteo 1-3-5-7-9, sin tapar la matriz', async () => {
+    montar('/tablero/s_demo?t=tok')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    const detalle = screen.getByRole('group', { name: 'Detalle del panel' })
+    expect(within(detalle).getByRole('button', { name: 'Promedios' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByRole('heading', { name: 'Cómo votó la mesa' })).toBeNull()
+    fireEvent.click(within(detalle).getByRole('button', { name: 'Cómo votó' }))
+    expect(screen.getByRole('heading', { name: 'Cómo votó la mesa' })).toBeTruthy()
+    expect(document.querySelector('svg.hz-matriz')).toBeTruthy()
+    expect(document.querySelector('.hz-comparada')).toBeNull()
+    // Vista Ronda 2 (la de R2 abierta): solo barras R2; en Comparación, R1 y R2.
+    expect(document.querySelectorAll('.hz-cv-barras-r1')).toHaveLength(0)
+    expect(document.querySelectorAll('.hz-cv-barras-r2')).toHaveLength(mock.proyectos_vivos.length * mock.criterios.length)
+    fireEvent.keyDown(window, { key: 'c' })
+    await waitFor(() => expect(document.querySelectorAll('.hz-cv-barras-r1')).toHaveLength(mock.proyectos_vivos.length * mock.criterios.length))
+    fireEvent.keyDown(window, { key: 'd' })
+    await waitFor(() => expect(document.querySelector('.hz-cv')).toBeNull())
+    expect(document.querySelector('.hz-comparada')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'D' })
+    await waitFor(() => expect(document.querySelector('.hz-cv')).toBeTruthy())
   })
 
   test('cambiar de alcance no desmonta la página ni pierde la vista elegida', async () => {

@@ -1,5 +1,5 @@
 // Prueba del tablero en un navegador real (Chromium headless) contra la API real con BD en memoria.
-// Corre dentro de tools/test.sh. Si no hay Chromium instalado se omite con un aviso
+// Corre dentro de tools/test.sh. Si no hay Chromium instalado se omite con un aviso (en CI falla)
 // (instálalo con `npx playwright-core install chromium-headless-shell` o define PW_EXE).
 //
 // 1. Sala con la prueba sintética del golden cerrada en R2: los puntos dibujados (leídos del SVG y
@@ -16,6 +16,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Browser, Page } from 'playwright-core'
 import type { ViteDevServer } from 'vite'
 import { CRITERIOS } from '../../../shared/motor/motor'
+import { nombreCorto } from '../logica'
+import { sinNavegador } from '../../../tests/navegador'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, votar } from '../../../tests/server/ayuda'
 
 const RAIZ = resolve(__dirname, '../../..')
@@ -70,7 +72,7 @@ async function chromiumUsable(): Promise<string | null> {
 }
 
 const CHROMIUM = await chromiumUsable()
-if (!CHROMIUM) console.warn('[tablero e2e] Sin Chromium usable (o HZ_E2E=0): se omite la prueba en navegador.')
+if (!CHROMIUM) sinNavegador('[tablero e2e]', 'Sin Chromium usable.')
 
 const normal = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '')
 
@@ -248,6 +250,53 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
       expect(fallasRondas, fallasRondas.join('\n')).toEqual([])
 
       if (capturas) await page.screenshot({ path: join(capturas, `tablero-${w}.png`), fullPage: w < 1100 })
+
+      // «Cómo votó la sala» (tecla D): conteos de la API por criterio, R1 y R2, sin desborde, legible y AA.
+      await page.keyboard.press('d')
+      await page.waitForSelector('.hz-cv-barras-r2')
+      const api = (await e.app.inject(`/api/tablero/${golden1.id}?alcance=sala&t=${golden1.token}`)).json()
+      const cv = await page.evaluate(() => {
+        const l = document.querySelector('.hz-lateral')!
+        const matriz = document.querySelector('svg.hz-matriz')!.getBoundingClientRect()
+        const bloque = document.querySelector('.hz-cv')!.getBoundingClientRect()
+        return {
+          titulo: document.querySelector('.hz-cv-titulo')?.textContent,
+          barras: [...document.querySelectorAll('.hz-cv [role="img"]')].map((b) => ({
+            etiqueta: b.getAttribute('aria-label') ?? '',
+            cuentas: [...b.querySelectorAll('.hz-cv-cuenta')].map((s) => Number(s.textContent)),
+          })),
+          desbordeX: document.documentElement.scrollWidth - innerWidth,
+          lateralOculto: l.scrollHeight - l.clientHeight,
+          // El bloque va al lado de la matriz en el proyector y debajo en el celular, nunca encima.
+          tapaMatriz: bloque.left < matriz.right - 0.5 && bloque.top < matriz.bottom - 0.5,
+          letraMin: Math.min(
+            ...[...document.querySelectorAll('.hz-cv *')]
+              .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim()))
+              .map((el) => parseFloat(getComputedStyle(el).fontSize)),
+          ),
+        }
+      })
+      expect(cv.titulo).toBe('Cómo votó la sala')
+      expect(cv.barras).toHaveLength(api.proyectos_vivos.length * api.criterios.length * 2)
+      for (const p of api.proyectos_vivos) {
+        for (const r of p.rondas) {
+          for (const c of api.criterios) {
+            const b = cv.barras.find((x) => x.etiqueta.startsWith(`${p.nombre}, ${nombreCorto(c.id, c.nombre)}, ronda ${r.ronda}:`))
+            expect(b, `${p.nombre} ${c.id} R${r.ronda}`).toBeTruthy()
+            expect(b!.cuentas).toEqual(['1', '3', '5', '7', '9'].map((k) => r.distribucion[c.id][k]))
+          }
+        }
+      }
+      console.info(`[tablero e2e] ${w}px «Cómo votó»: letra mínima ${cv.letraMin} px, panel lateral oculto ${cv.lateralOculto} px`)
+      expect(cv.desbordeX, '«Cómo votó»: desborde horizontal').toBeLessThanOrEqual(0)
+      expect(cv.tapaMatriz, '«Cómo votó» tapa la matriz').toBe(false)
+      if (w >= 1280) expect(cv.lateralOculto, '«Cómo votó»: panel lateral con contenido oculto').toBeLessThanOrEqual(0)
+      if (w >= 1900) expect(cv.letraMin, '«Cómo votó»: letra mínima en proyector').toBeGreaterThanOrEqual(14)
+      const fallasCv = await page.evaluate(contrasteAA)
+      expect(fallasCv, fallasCv.join('\n')).toEqual([])
+      if (capturas) await page.screenshot({ path: join(capturas, `tablero-${w}-como-voto.png`), fullPage: w < 1100 })
+      await page.keyboard.press('d')
+      await page.waitForSelector('.hz-cv', { state: 'detached' })
 
       if (w === 1920) {
         // Tecla F: pantalla completa (o, si el navegador no deja, igual oculta los controles).

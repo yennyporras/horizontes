@@ -5,7 +5,7 @@ import { RAIZ } from './config.js'
 import { cuerpoError, responderConVersion } from './http.js'
 import { consentimientoVigente } from './dominio/consentimiento.js'
 import { MOTIVO_CON_VOTOS } from './dominio/rubricas.js'
-import { semilla } from './dominio/semilla.js'
+import { nombrePerfil, semilla } from './dominio/semilla.js'
 
 // Servidor de mocks (USE_MOCKS=1 o --mocks): sirve mocks/*.json en las rutas del contrato.
 // Se relee el archivo en cada petición: editar un mock se ve sin reiniciar.
@@ -95,6 +95,16 @@ export async function rutasMocks(app: FastifyInstance) {
     motivo_no_editable: MOTIVO_CON_VOTOS,
   }))
   app.put('/api/admin/salas/:id/rubricas/:criterio', async (_req, reply) => reply.code(409).send(cuerpoError('RUBRICA_CON_VOTOS', MOTIVO_CON_VOTOS)))
+  // Las 12 hojas de la semilla (6 perfiles por proyecto vivo), en el orden del catálogo de perfiles.
+  app.get('/api/admin/salas/:id/hojas', async () => {
+    const { perfiles, plantilla } = semilla()
+    const proyecto = (id: string) => plantilla.proyectos.find((p) => p.id === id)?.nombre ?? id
+    return {
+      hojas: perfiles.flatMap((pf) =>
+        plantilla.hojas.filter((h) => h.perfil_id === pf.id).map((h) => ({ ...h, proyecto: proyecto(h.proyecto_id), perfil: nombrePerfil(h.perfil_id) })),
+      ),
+    }
+  })
   app.post('/api/admin/salas/:id/mesas', async () => ({ mesas: admin().mesas }))
   app.patch('/api/admin/participantes/:id', async (req) => ({ ...admin().participantes[0], ...(req.body as object) }))
   app.get('/api/admin/admins', async () => ({ admins: [admin().admin_actual] }))

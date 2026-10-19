@@ -7,10 +7,11 @@ Ruta: `/tablero/:sala?mesa=&t=`. Con `t` (token de tablero) aparece el selector 
 | `PaginaTablero.tsx` | Página del proyector: encabezado, matriz, progreso y detalle por criterio |
 | `MatrizHorizontes.tsx` | Matriz embebible (solo props, sin fetch) |
 | `matriz/matriz.js` | Dibujo SVG puro, sin dependencias (`matrizSVG`, `calcularLayout`) |
-| `TablaComparada.tsx` · `PanelProyecto.tsx` | Promedios R1 y R2 y distribución 1-3-5-7-9 (proyector · móvil) |
+| `TablaComparada.tsx` · `PanelProyecto.tsx` | Promedios R1 y R2 por criterio y fila «Total», sin fila de votos (proyector · móvil) |
+| `ComoVoto.tsx` | «Cómo votó la sala»: conteo 1-3-5-7-9 por criterio, R1 y R2, con la `distribucion` del servidor. Lo usa también el panel (Sala en vivo) |
 | `Progreso.tsx` | Inscritos, completos, mesas y avisos de precierre |
 | `usePollingTablero.ts` · `logica.ts` | Polling 2,5 s con ETag y reglas de presentación |
-| `usePantallaCompleta.ts` | Tecla F (pantalla completa sin controles), 1, 2 y C (vistas) |
+| `usePantallaCompleta.ts` | Tecla F (pantalla completa sin controles), 1, 2 y C (vistas), D (Promedios o Cómo votó) |
 
 ## `MatrizHorizontes` para otras pantallas
 

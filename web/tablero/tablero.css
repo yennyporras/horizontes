@@ -125,13 +125,15 @@ body:has(> #root > .hz-tablero) {
   border: 1px solid var(--t-azul-medio);
   border-radius: 10px;
 }
-.hz-segmento {
+.hz-segmento,
+.hz-detalle {
   display: inline-flex;
   padding: 0.2em;
   background: var(--t-h1);
   border-radius: 999px;
 }
-.hz-segmento button {
+.hz-segmento button,
+.hz-detalle button {
   min-height: 2.4em;
   padding: 0.3em 1em;
   font: inherit;
@@ -142,7 +144,8 @@ body:has(> #root > .hz-tablero) {
   border-radius: 999px;
   cursor: pointer;
 }
-.hz-segmento button[aria-pressed='true'] {
+.hz-segmento button[aria-pressed='true'],
+.hz-detalle button[aria-pressed='true'] {
   color: var(--t-azul);
   font-weight: 800;
   background: #fff;
@@ -262,6 +265,10 @@ body:has(> #root > .hz-tablero) {
   flex-direction: column;
   gap: 1em;
   min-width: 0;
+}
+/* Promedios o «Cómo votó»: mismo control que el de la vista, en el panel lateral. */
+.hz-detalle {
+  align-self: flex-start;
 }
 
 /* Progreso */
@@ -524,6 +531,9 @@ body:has(> #root > .hz-tablero) {
   .hz-comparada .hz-tabla {
     font-size: 1.08em;
   }
+  .hz-lateral .hz-cv-pista {
+    height: 2em;
+  }
 }
 
 /* Proyector de 1280×720 o 1366×768: poco alto. El panel se compacta para que nada quede oculto. */
@@ -553,6 +563,12 @@ body:has(> #root > .hz-tablero) {
     margin-top: 0.4em;
     font-size: 1.15em;
   }
+  .hz-lateral .hz-cv-pista {
+    height: 1.15em;
+  }
+  .hz-lateral .hz-cv .hz-cv-crit {
+    margin-top: 0.15em;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -562,7 +578,8 @@ body:has(> #root > .hz-tablero) {
 }
 
 /* Móvil (360 px): sin desborde horizontal. */
-.hz-segmento button {
+.hz-segmento button,
+.hz-detalle button {
   white-space: nowrap;
 }
 @media (max-width: 599px) {
@@ -570,10 +587,12 @@ body:has(> #root > .hz-tablero) {
     padding: 0.6em 0.75em 1em;
   }
   .hz-cab-controles,
-  .hz-segmento {
+  .hz-segmento,
+  .hz-detalle {
     width: 100%;
   }
-  .hz-segmento button {
+  .hz-segmento button,
+  .hz-detalle button {
     flex: 1 1 auto;
     padding: 0.3em 0.5em;
   }
