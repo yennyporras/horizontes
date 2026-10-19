@@ -25,8 +25,9 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 - Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.1`. Sin autorización no hay inscripción.
 - Votación 1-3-5-7-9 en 6 criterios, 2 rondas, precierre cuando todos votan, cierres programados en la hora del país de la sala.
 - Resultados anónimos: tablas con los 6 criterios y la fila «Total» (eje X + eje Y, del servidor); mínimo de 3 votos para mostrar un alcance; por defecto toda la sala ve el consolidado apenas vota.
+- «Cómo votó la sala» (o la mesa): cuántos votos tuvo cada valor 1, 3, 5, 7 y 9 por criterio, en R1 y R2, en el tablero (botón *Cómo votó* o tecla **D**) y en **Sala en vivo** del panel. Es lo que alimenta la conversación de la plenaria.
 - Registro interno solo para el admin: país e IP de cada inscripción y voto en el panel y en `inscritos.csv` / `votos.csv`.
-- Panel: salas, duplicar para ensayo, mesas y QR (hoja A4 imprimible), participantes, configuración (visibilidad, país, zona horaria, cierres), exportar, administradores, salud.
+- Panel: salas, duplicar para ensayo, mesas y QR (hoja A4 imprimible), participantes, **hojas de los 6 perfiles** (solo lectura), configuración (visibilidad, país, zona horaria, cierres, rúbricas), exportar, administradores, salud.
 - Plan B en papel y Excel (`docs/PLAN_B.md`), guía del facilitador de una página (`docs/GUIA_FACILITADOR.md`).
 
 ## 5. Lo que hace Paola, en orden
@@ -66,7 +67,8 @@ Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado desde aquí
 ### 5.3 Después (cuando se pueda)
 12. **Dominio `horizontes.com.co`:** `docs/DESPLIEGUE.md` §6 (compra, DNS, dominio en Coolify, `BASE_URL`, `HZ_DOMINIO_PROD` y reimpresión de QR).
 13. **GitHub corporativo:** `docs/MIGRACION_GITHUB.md` (transferir o espejar, `git remote set-url`, GitHub App de Coolify, accesos y protección de `main`).
-14. **Preguntas abiertas para Sebastian** (`docs/BLOQUEOS.md`): solapes de los rangos de inversión del deck (P5) y confirmar que el diseño usa 6 perfiles (P1).
+14. **Pendiente para Sebastian:** decidir si la narrativa del caso Foodsume se adapta a Perú o a textos neutros. Hoy va el documento 2026 tal cual (Colombia), por decisión de Paola del 19-oct.
+15. **Ya confirmado por Paola (19-oct), sin preguntas abiertas:** los 6 perfiles con sus 12 hojas, la fila «Total» (eje X + eje Y), los rangos de inversión de la semilla, el mapeo de los 8 proyectos fijos y las rúbricas editables por cualquier admin.
 
 ## 6. Lista de verificación del día del taller
 **La víspera**
