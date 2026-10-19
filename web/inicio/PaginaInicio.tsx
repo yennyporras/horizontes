@@ -37,9 +37,9 @@ function useTitulo() {
 function Arcos({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-      <circle cx="0" cy="100" r="100" fill="var(--hz-h1)" />
-      <circle cx="0" cy="100" r="66" fill="var(--hz-h2)" />
-      <circle cx="0" cy="100" r="33" fill="var(--hz-h3)" />
+      <circle cx="0" cy="100" r="100" fill="var(--hz-azul-medio)" />
+      <circle cx="0" cy="100" r="66" fill="var(--hz-cielo)" />
+      <circle cx="0" cy="100" r="33" fill="var(--hz-acento)" />
     </svg>
   )
 }
@@ -105,7 +105,7 @@ export default function PaginaInicio() {
             <li><a href="#privacidad">Tus datos</a></li>
           </ul>
         </nav>
-        <Link className="hz-boton hz-boton--primario in-nav__panel" to="/admin">
+        <Link className="hz-boton hz-boton--secundario in-nav__panel" to="/admin">
           Ingresar al panel
         </Link>
       </header>
@@ -222,7 +222,7 @@ export default function PaginaInicio() {
                 pídeselo a quien coordina el taller en Estratek.
               </p>
               <p>El tablero para el proyector se abre desde el panel con su propio enlace. Lo comparte el facilitador; no se busca desde esta página.</p>
-              <Link className="hz-boton in-boton-claro" to="/admin">
+              <Link className="hz-boton hz-boton--secundario in-boton-claro" to="/admin">
                 Ingresar al panel
               </Link>
             </div>
