@@ -98,11 +98,26 @@ export interface Resultados {
   minimo_votos?: number
 }
 
+/** C19-5 (CAMBIOS_19OCT_CONTRATO S4): automático pasa sola a la siguiente pregunta; guiado muestra la que elige el facilitador. */
+export type ModoPreguntas = 'automatico' | 'guiado'
+
+/** Pregunta que el facilitador muestra a toda la sala en modo guiado (S4). null: aún no elige ninguna. */
+export interface PreguntaGuiada {
+  proyecto_id: string
+  criterio_id: string
+}
+
 export interface Yo {
   version: string
   participante: ParticipanteYo
-  sala: { id: string; nombre: string; estado: EstadoSala; ronda_actual: number }
-  config: { vista_participante: 'registrado' | 'en_vivo'; alcance_resultados: 'mesa' | 'sala'; revelar_hojas: boolean }
+  sala: { id: string; nombre: string; estado: EstadoSala; ronda_actual: number; pregunta_guiada?: PreguntaGuiada | null }
+  config: {
+    vista_participante: 'registrado' | 'en_vivo'
+    alcance_resultados: 'mesa' | 'sala'
+    revelar_hojas: boolean
+    /** Sin dato, automático. */
+    modo_preguntas?: ModoPreguntas
+  }
   contenido: {
     caso: { titulo: string; descripcion_md: string; situacion_md: string }
     portafolio: ProyectoPortafolio[]
