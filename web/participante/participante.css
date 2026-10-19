@@ -5,6 +5,8 @@
 .hzp-acciones { display: grid; gap: var(--hz-sp-2); justify-items: center; }
 .hzp-seccion { display: grid; gap: var(--hz-sp-4); padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-h3); }
 .hzp-volver { justify-self: start; min-height: 44px; padding: 0; }
+/* Fase de la ronda (acta A7): insignia R1/R2 y su texto en una línea. */
+.hzp-fase { display: flex; align-items: center; flex-wrap: wrap; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: 600; color: var(--hz-tinta-2); }
 
 /* Consentimiento (patrón del IRMI: bloque con título y casilla obligatoria) */
 .hzp-consentimiento { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); }
