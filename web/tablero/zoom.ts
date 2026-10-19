@@ -72,13 +72,15 @@ export function aplicarAccion(e: Encuadre, a: AccionZoom): Encuadre {
 }
 
 /**
- * Rueda, pellizco, arrastre y doble clic sobre `el` (el lienzo de la matriz; null mientras no está montado).
- * Los botones que estén dentro no inician arrastre.
+ * Rueda, pellizco y arrastre sobre `el` (el lienzo de la matriz; null mientras no está montado).
+ * Un toque o clic sin arrastre llama a `onClic` (la matriz sola o con datos).
  */
-export function useZoomMatriz(el: HTMLElement | null) {
+export function useZoomMatriz(el: HTMLElement | null, onClic?: () => void) {
   const [encuadre, setEncuadre] = useState<Encuadre>(VISTA_COMPLETA)
   const actual = useRef(encuadre)
   actual.current = encuadre
+  const clic = useRef(onClic)
+  clic.current = onClic
 
   const accion = useCallback((a: AccionZoom) => {
     const nuevo = aplicarAccion(actual.current, a)
@@ -105,8 +107,12 @@ export function useZoomMatriz(el: HTMLElement | null) {
     }
 
     const punteros = new Map<number, { x: number; y: number }>()
+    // Gesto en curso: dónde empezó y si ya es arrastre o pellizco (entonces no cuenta como clic).
+    let gesto = { x: 0, y: 0, movido: false }
     const bajar = (ev: PointerEvent) => {
-      if ((ev.target as Element).closest('button, a, input, select, summary')) return
+      if (ev.button > 0 || (ev.target as Element).closest('button, a, input, select')) return
+      if (!punteros.size) gesto = { x: ev.clientX, y: ev.clientY, movido: false }
+      else gesto.movido = true
       punteros.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
       el.setPointerCapture?.(ev.pointerId)
       if (actual.current.k > ZOOM_MIN || punteros.size > 1) el.classList.add('hz-arrastrando')
@@ -114,6 +120,7 @@ export function useZoomMatriz(el: HTMLElement | null) {
     const moverPuntero = (ev: PointerEvent) => {
       const antes = punteros.get(ev.pointerId)
       if (!antes) return
+      if (Math.hypot(ev.clientX - gesto.x, ev.clientY - gesto.y) > 6) gesto.movido = true
       const b = area()
       if (!b.width || !b.height) return
       if (punteros.size === 1) {
@@ -133,13 +140,10 @@ export function useZoomMatriz(el: HTMLElement | null) {
       }
     }
     const soltar = (ev: PointerEvent) => {
-      punteros.delete(ev.pointerId)
-      if (!punteros.size) el.classList.remove('hz-arrastrando')
-    }
-    const dobleClic = (ev: MouseEvent) => {
-      if ((ev.target as Element).closest('button, a, input, select, summary')) return
-      const { px, py } = relativo(ev.clientX, ev.clientY)
-      setEncuadre((e) => acercarEn(e, 2, px, py))
+      if (!punteros.delete(ev.pointerId)) return
+      if (punteros.size) return
+      el.classList.remove('hz-arrastrando')
+      if (ev.type === 'pointerup' && !gesto.movido) clic.current?.()
     }
 
     el.addEventListener('wheel', rueda, { passive: false })
@@ -147,14 +151,12 @@ export function useZoomMatriz(el: HTMLElement | null) {
     el.addEventListener('pointermove', moverPuntero)
     el.addEventListener('pointerup', soltar)
     el.addEventListener('pointercancel', soltar)
-    el.addEventListener('dblclick', dobleClic)
     return () => {
       el.removeEventListener('wheel', rueda)
       el.removeEventListener('pointerdown', bajar)
       el.removeEventListener('pointermove', moverPuntero)
       el.removeEventListener('pointerup', soltar)
       el.removeEventListener('pointercancel', soltar)
-      el.removeEventListener('dblclick', dobleClic)
     }
   }, [el])
 
