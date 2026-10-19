@@ -50,7 +50,7 @@ export function Marco({ sala, meta, arriba, barra, notaBarra, claveFoco, childre
     document.documentElement.scrollTop = 0
   }, [claveFoco])
   return (
-    <div className="hz hz-pagina" lang="es-CO">
+    <div className="hz hz-pagina" data-tema="claro" lang="es-CO">
       <EncabezadoHorizonte sala={sala} meta={meta} />
       <main ref={ref} className="hz-contenido">
         {arriba}
