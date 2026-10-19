@@ -558,7 +558,8 @@ function contrasteAA(): string[] {
 /**
  * Corre en el navegador sobre la matriz en Comparación: cada burbuja viva lleva su etiqueta «R1»/«R2»;
  * R1 es un aro hueco y R2 sólida (se distinguen sin color); el color de cada ronda contrasta 3:1 con
- * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo blanco.
+ * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo. Colores
+ * calculados (los de los tokens del lienzo oscuro), no los atributos.
  */
 function rondasLegibles(): string[] {
   const rgb = (s: string) => (s.startsWith('#') ? [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16)) : (s.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number))
@@ -571,8 +572,9 @@ function rondasLegibles(): string[] {
     return (x + 0.05) / (y + 0.05)
   }
   const svg = document.querySelector('svg.hz-matriz')!
-  const fondos = [...svg.querySelectorAll('g[clip-path] > rect, g[clip-path] > path')].map((f) => rgb(f.getAttribute('fill')!))
   const fallas: string[] = []
+  const fondos = [...svg.querySelectorAll('g[clip-path] > rect, g[clip-path] > path')].map((f) => rgb(getComputedStyle(f).fill))
+  if (fondos.length < 3) fallas.push(`${fondos.length} fondos de horizonte`)
   const colorRonda: Record<number, string> = {}
   for (const n of [1, 2]) {
     const circulos = [...svg.querySelectorAll<SVGCircleElement>(`circle.hz-r${n}`)]
@@ -588,8 +590,9 @@ function rondasLegibles(): string[] {
       for (const f of fondos) if (contraste(color, f) < 3) fallas.push(`R${n} ${contraste(color, f).toFixed(2)}:1 sobre rgb(${f})`)
     }
     for (const t of etiquetas) {
-      const r = contraste(rgb(getComputedStyle(t).fill), [255, 255, 255])
-      if (r < 4.5) fallas.push(`texto «R${n}» ${r.toFixed(2)}:1 sobre su halo`)
+      const halo = rgb(getComputedStyle(t.parentElement!).stroke)
+      const r = contraste(rgb(getComputedStyle(t).fill), halo)
+      if (r < 4.5) fallas.push(`texto «R${n}» ${r.toFixed(2)}:1 sobre su halo rgb(${halo})`)
     }
   }
   if (colorRonda[1] === colorRonda[2]) fallas.push('R1 y R2 del mismo color')

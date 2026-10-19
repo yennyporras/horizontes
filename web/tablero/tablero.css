@@ -1,28 +1,36 @@
 /*
- * Tablero (T3). Usa los tokens --hz-* de docs/DISENO.md; los valores de respaldo son los mismos
- * de web/shared/ui/tokens.css para que la vista funcione aunque ese archivo no esté cargado.
+ * Tablero (T3). Usa los tokens --hz-* de docs/DISENO.md (lienzo oscuro del IRMI); los valores de respaldo son
+ * los mismos de web/shared/ui/tokens.css para que la vista funcione aunque ese archivo no esté cargado.
  * Escala tipográfica fluida: ~15 px en 360, ~17 px en 1366 y ~20 px en 1920 (lectura a 6 m).
  */
 .hz-tablero {
-  --t-azul: var(--hz-azul, #1c4587);
-  --t-azul-medio: var(--hz-azul-medio, #3f7cc8);
-  --t-cielo: var(--hz-cielo, #00a3ff);
-  --t-tinta: var(--hz-tinta, #0f2340);
-  --t-tinta-2: var(--hz-tinta-2, #3a4d6b);
-  --t-tinta-3: var(--hz-tinta-3, #5b6b84);
-  --t-h1: var(--hz-h1, #eef4fb);
-  --t-h2: var(--hz-h2, #dce8f6);
-  --t-h3: var(--hz-h3, #c5d8ef);
-  --t-ok: var(--hz-ok, #1d6b4f);
-  --t-ok-fondo: var(--hz-ok-fondo, #e6f4ee);
-  --t-alerta: var(--hz-alerta, #7a4b00);
-  --t-alerta-fondo: var(--hz-alerta-fondo, #fff4dc);
-  --t-error: var(--hz-error, #a3261b);
-  --t-error-fondo: var(--hz-error-fondo, #fdecea);
-  --t-foco: var(--hz-foco, 0 0 0 2px #fff, 0 0 0 5px #1c4587, 0 0 0 7px #00a3ff);
-  /* Rondas (R4_CONTRATO): R1 verde, R2 rojo; siempre con su texto y forma (R1 hueco, R2 sólido). */
-  --t-r1: var(--hz-r1, #1f7a3a);
-  --t-r2: var(--hz-r2, #c62828);
+  --t-azul: var(--hz-azul, #47ebc2);
+  --t-azul-medio: var(--hz-azul-medio, #1a73b8);
+  --t-cielo: var(--hz-cielo, #1699db);
+  --t-tinta: var(--hz-tinta, #edf2ee);
+  --t-tinta-2: var(--hz-tinta-2, #c8d4ce);
+  --t-tinta-3: var(--hz-tinta-3, #8a9e96);
+  --t-fondo: var(--hz-fondo, #0e0e0e);
+  --t-sup-1: var(--hz-superficie-1, #131313);
+  --t-sup-2: var(--hz-superficie-2, #1a1a1a);
+  --t-sup-4: var(--hz-superficie-4, #2a2a2a);
+  --t-h1: var(--hz-h1, #1a1a1a);
+  --t-h2: var(--hz-h2, #242424);
+  --t-h3: var(--hz-h3, #2a2a2a);
+  --t-ok: var(--hz-ok, #47ebc2);
+  --t-ok-fondo: var(--hz-ok-fondo, #192d28);
+  --t-alerta: var(--hz-alerta, #ffbb44);
+  --t-alerta-fondo: var(--hz-alerta-fondo, #2b2418);
+  --t-error: var(--hz-error, #ff8585);
+  --t-error-fondo: var(--hz-error-fondo, #331818);
+  --t-foco: var(--hz-foco, 0 0 0 2px #0e0e0e, 0 0 0 4px #47ebc2);
+  /* Rondas: R1 verde, R2 rojo; siempre con su texto y forma (R1 hueco, R2 sólido). Texto sobre el color: --hz-sobre-r*. */
+  --t-r1: var(--hz-r1, #3fb25a);
+  --t-r2: var(--hz-r2, #f25c5c);
+  --t-sobre-r1: var(--hz-sobre-r1, #0e0e0e);
+  --t-sobre-r2: var(--hz-sobre-r2, #0e0e0e);
+  /* Gris azulado de los proyectos fijos (el mismo de la matriz). */
+  --t-fijo: #7d8fa9;
 
   box-sizing: border-box;
   min-height: 100vh;
@@ -33,7 +41,7 @@
   font-size: clamp(15px, 0.55rem + 0.6vw, 22px);
   line-height: 1.4;
   color: var(--t-tinta);
-  background: #fff;
+  background: var(--t-fondo);
   font-variant-numeric: tabular-nums;
 }
 body:has(> #root > .hz-tablero) {
@@ -121,7 +129,7 @@ body:has(> #root > .hz-tablero) {
   font: inherit;
   font-weight: 600;
   color: var(--t-azul);
-  background: #fff;
+  background: var(--t-sup-2);
   border: 1px solid var(--t-azul-medio);
   border-radius: 10px;
 }
@@ -148,8 +156,7 @@ body:has(> #root > .hz-tablero) {
 .hz-detalle button[aria-pressed='true'] {
   color: var(--t-azul);
   font-weight: 800;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 35, 64, 0.12);
+  background: var(--t-sup-4);
 }
 
 /* Cuerpo */
@@ -201,7 +208,7 @@ body:has(> #root > .hz-tablero) {
   border-radius: 50%;
 }
 .hz-ley-fijo {
-  background: #7d8fa9;
+  background: var(--t-fijo);
 }
 
 /* Marcas de ronda (leyenda, tablas y franja): R1 aro hueco verde, R2 punto sólido rojo. */
@@ -235,7 +242,7 @@ body:has(> #root > .hz-tablero) {
   white-space: nowrap;
 }
 
-/* Franja de fase: qué se hace en la ronda abierta (blanco sobre el color de la ronda, AA). */
+/* Franja de fase: qué se hace en la ronda abierta (texto --hz-sobre-r* sobre el color de la ronda, AA). */
 .hz-franja {
   display: flex;
   align-items: center;
@@ -245,20 +252,21 @@ body:has(> #root > .hz-tablero) {
   font-size: 1.3em;
   font-weight: 800;
   line-height: 1.25;
-  color: #fff;
   border-radius: 10px;
 }
 .hz-franja-r1 {
+  color: var(--t-sobre-r1);
   background: var(--t-r1);
 }
 .hz-franja-r2 {
+  color: var(--t-sobre-r2);
   background: var(--t-r2);
 }
 .hz-franja .hz-marca-r1 {
-  border-color: #fff;
+  border-color: currentColor;
 }
 .hz-franja .hz-marca-r2 {
-  background: #fff;
+  background: currentColor;
 }
 .hz-lateral {
   display: flex;
@@ -615,7 +623,7 @@ body:has(> #root > .hz-tablero) {
   font: inherit;
   font-weight: 600;
   color: var(--t-azul);
-  background: #fff;
+  background: var(--t-sup-2);
   border: 1px solid var(--t-azul-medio);
   border-radius: 10px;
   cursor: pointer;
