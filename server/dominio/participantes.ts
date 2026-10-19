@@ -3,7 +3,7 @@ import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { CRITERIOS, type Entradas } from '../../shared/motor/motor.js'
 import { VERSION_CONSENTIMIENTO, consentimientoVigente, hashTextoConsentimiento } from './consentimiento.js'
-import { construirTablero, contenido, progreso, proyectos, rondaAbierta, rondaCerrada, vivos } from './resultados.js'
+import { construirTablero, contenido, preguntaGuiada, progreso, proyectos, rondaAbierta, rondaCerrada, vivos } from './resultados.js'
 import { type MesaFila, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
 import { nombrePerfil, perfiles } from './semilla.js'
 import { type ZonaHoraria, idAleatorio, isoEnZona, isoUtc, sha256, tokenAleatorio } from './util.js'
@@ -327,13 +327,14 @@ export function vistaYo(db: Db, p: ParticipanteFila) {
   return {
     version: `v-${sala.version}-${p.id}`,
     participante: { ...participantePublico(p, mesa), activo: Boolean(p.activo) },
-    sala: { id: sala.id, nombre: sala.nombre, estado: sala.estado, ronda_actual: sala.ronda_actual },
+    sala: { id: sala.id, nombre: sala.nombre, estado: sala.estado, ronda_actual: sala.ronda_actual, pregunta_guiada: preguntaGuiada(sala) },
     config: {
       vista_participante: sala.vista_participante,
       alcance_resultados: sala.alcance_resultados,
       revelar_hojas: Boolean(sala.revelar_hojas),
       pais: sala.pais,
       zona_horaria: sala.zona_horaria,
+      modo_preguntas: sala.modo_preguntas,
     },
     contenido: {
       caso: c.caso,
