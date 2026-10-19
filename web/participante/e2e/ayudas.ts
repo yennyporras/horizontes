@@ -27,12 +27,15 @@ export async function calificar(p: Page, valor: number, criterios = [0, 1, 2, 3,
   }
 }
 
-/** Color calculado de un token de web/shared/ui/tokens.css (p. ej. --hz-r1), como lo pinta el navegador. */
+/**
+ * Color calculado de un token de web/shared/ui/tokens.css (p. ej. --hz-r1), como lo pinta el navegador dentro de la
+ * página (`.hz`, que fija el tema claro del celular, docs/marca/FAMILIA_ESTRATEK.md §3).
+ */
 export async function colorToken(p: Page, token: string): Promise<string> {
   return p.evaluate((t) => {
     const el = document.createElement('span')
     el.style.color = `var(${t})`
-    document.body.append(el)
+    ;(document.querySelector('.hz') ?? document.body).append(el)
     const c = getComputedStyle(el).color
     el.remove()
     return c
@@ -93,10 +96,12 @@ export async function tactiles(p: Page) {
 
 /**
  * Foco visible: recorre con Tab y cada elemento enfocado (o su opción de rúbrica) muestra el anillo de --hz-foco
- * (color --hz-acento, leído del navegador) o un contorno. El anillo tiene 3:1 o más sobre el fondo de la página.
+ * (color --hz-foco-color, leído del navegador) o un contorno. El anillo tiene 3:1 o más sobre el fondo de la página.
  */
 export async function focoVisible(p: Page, pasos: number) {
-  const anilloColor = await colorToken(p, '--hz-acento')
+  // El celular va en el tema claro de Estratek (§3): los contrastes se miden sobre él.
+  expect(await p.locator('.hz').first().evaluate((el) => getComputedStyle(el).colorScheme), 'tema del celular').toBe('light')
+  const anilloColor = await colorToken(p, '--hz-foco-color')
   expect(contraste(anilloColor, await fondoDe(p, 'main')), 'contraste del anillo de foco').toBeGreaterThanOrEqual(3)
   await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
   for (let i = 0; i < pasos; i++) {
