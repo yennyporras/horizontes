@@ -39,6 +39,17 @@ describe('cabeceras de seguridad', () => {
     expect(r.headers.etag).toBeTruthy()
   })
 
+  it('solo la landing se indexa: el resto lleva noindex y robots.txt lo dice', async () => {
+    for (const url of ['/', '/?utm=qr']) expect((await e.app.inject(url)).headers['x-robots-tag']).toBeUndefined()
+    for (const url of ['/m/' + s.mesas[0].codigo, '/admin', '/tablero/x', '/api/mesas/' + s.mesas[0].codigo]) {
+      expect((await e.app.inject(url)).headers['x-robots-tag']).toBe('noindex, nofollow')
+    }
+    expect((await e.app.inject({ method: 'POST', url: '/' })).headers['x-robots-tag']).toBe('noindex, nofollow')
+    const robots = await e.app.inject('/robots.txt')
+    expect(robots.statusCode).toBe(200)
+    expect(robots.body).toBe('User-agent: *\nAllow: /$\nDisallow: /\n')
+  })
+
   it('HSTS solo detrás de HTTPS', async () => {
     const http = await e.app.inject('/api/mesas/' + s.mesas[0].codigo)
     expect(http.headers['strict-transport-security']).toBeUndefined()

@@ -32,9 +32,17 @@ export const CABECERAS: Record<string, string> = {
   'Cross-Origin-Resource-Policy': 'same-origin',
 }
 
+export const ROBOTS_TXT = 'User-agent: *\nAllow: /$\nDisallow: /\n'
+
+export function esLanding(metodo: string, url: string): boolean {
+  return (metodo === 'GET' || metodo === 'HEAD') && url.split('?')[0] === '/'
+}
+
 export function cabecerasSeguridad(app: FastifyInstance) {
   app.addHook('onSend', async (req, reply, payload) => {
     for (const [k, v] of Object.entries(CABECERAS)) if (!reply.hasHeader(k)) reply.header(k, v)
+    // Solo la landing (GET o HEAD de `/`) se indexa; mesas, tablero, panel y API no (igual que D-123 del IRMI).
+    if (!esLanding(req.method, req.url)) reply.header('X-Robots-Tag', 'noindex, nofollow')
     // HSTS solo detrás de HTTPS (Traefik manda X-Forwarded-Proto); en desarrollo por http no aplica.
     if (req.protocol === 'https') reply.header('Strict-Transport-Security', 'max-age=15552000; includeSubDomains')
     // Respuestas de la API: nada en cachés compartidas. Las de polling ya traen no-cache (revalidan con ETag).
