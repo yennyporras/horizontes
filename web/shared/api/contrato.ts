@@ -1,5 +1,5 @@
 // Tipos del contrato de API v1 (docs/CONTRATO_API.md). Dueño: T1. Solo lectura para T2, T3 y T4.
-// Los campos marcados como opcionales se agregaron en R1 (ver docs/DECISIONES.md, prefijo CONTRATO:).
+// Los campos opcionales se agregaron después de R0 (ver docs/DECISIONES.md, prefijo CONTRATO:).
 
 export type CriterioId =
   | 'alistamiento_tecnico'
@@ -12,6 +12,8 @@ export type Valor = 1 | 3 | 5 | 7 | 9
 export type Respuestas = Record<CriterioId, Valor>
 export type EstadoSala = 'preparada' | 'inscripcion' | 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cerrada' | 'cerrada'
 export type PerfilId = 'cliente' | 'regulacion' | 'financiero' | 'tecnica_operaciones' | 'estrategica' | 'produccion'
+export type Pais = 'CO' | 'PE' | 'GT'
+export type ZonaHoraria = 'America/Bogota' | 'America/Lima' | 'America/Guatemala'
 
 export interface ErrorCuerpo {
   error: { codigo: string; mensaje: string }
@@ -23,12 +25,16 @@ export interface Config {
   revelar_hojas: boolean
   cierre_programado_ronda_at: string | null
   cierre_programado_sala_at: string | null
+  /** País de la sala (por defecto CO). Define el texto del aviso de datos. */
+  pais?: Pais
+  /** Zona horaria de la sala (por defecto la del país). Las horas de la sala salen con su desfase. */
+  zona_horaria?: ZonaHoraria
 }
 
 // --- Participante -------------------------------------------------------------
 
 export interface InfoMesa {
-  sala: { id: string; nombre: string; estado: EstadoSala }
+  sala: { id: string; nombre: string; estado: EstadoSala; pais?: Pais }
   mesa: { id: string; nombre: string }
   inscripcion_abierta: boolean
   consentimiento: { version: string; texto_autorizacion: string; politica_url: string }
@@ -82,7 +88,7 @@ export interface Yo {
   version: string
   participante: ParticipantePublico
   sala: { id: string; nombre: string; estado: EstadoSala; ronda_actual: 0 | 1 | 2 }
-  config: Pick<Config, 'vista_participante' | 'alcance_resultados' | 'revelar_hojas'>
+  config: Pick<Config, 'vista_participante' | 'alcance_resultados' | 'revelar_hojas' | 'pais' | 'zona_horaria'>
   contenido: {
     caso: { titulo: string; descripcion_md: string; situacion_md: string }
     portafolio: { id: string; nombre: string; tipo: string; sector: string; descripcion: string; modo: 'fijo' | 'vivo' }[]
@@ -119,6 +125,8 @@ export interface RondaVivo {
   t2m: number | null
   eje_x: number | null
   eje_y: number | null
+  /** eje_x + eje_y, calculado en el servidor (fila «Total»). null sin votos o con `bajo_minimo`. */
+  total?: number | null
   /** true si hay votos pero menos que `Tablero.minimo_votos`: promedios, distribución y punto van en null por privacidad. */
   bajo_minimo?: boolean
 }
@@ -138,10 +146,10 @@ export interface Tablero {
   ejes: Record<'x' | 'y', { titulo: string; subtitulo: string; min: number; max: number }>
   grafico: { titulo: string; horizontes: { id: string; radio: number | null }[]; etiquetas_horizonte?: Record<string, [number, number]>; nota_horizontes?: string; tam_a_radio?: string }
   criterios: { id: CriterioId; nombre: string }[]
-  proyectos_fijos: (ProyectoTablero & { t2m: number; eje_x: number; eje_y: number })[]
+  proyectos_fijos: (ProyectoTablero & { t2m: number; eje_x: number; eje_y: number; total?: number })[]
   proyectos_vivos: (ProyectoTablero & { rondas: RondaVivo[] })[]
   preliminar: boolean
-  /** Votos mínimos por proyecto y ronda para mostrar resultados de un alcance (hoy 2). */
+  /** Votos mínimos por proyecto y ronda para mostrar resultados de un alcance (hoy 3). */
   minimo_votos?: number
 }
 
@@ -194,6 +202,9 @@ export interface ParticipanteAdmin {
   activo: boolean
   completo_ronda: boolean
   consentimiento_at: string | null
+  /** IP de la inscripción. Solo en el panel admin y el export interno. */
+  ip?: string | null
+  pais?: string
 }
 export interface Evento {
   at: string
