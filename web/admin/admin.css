@@ -403,5 +403,7 @@
   .hz-admin .tabla-respuestas th,
   .hz-admin .tabla-respuestas td { padding: 8px 6px; }
   .hz-admin .tabla-respuestas thead th.num { max-width: 9ch; white-space: normal; hyphens: auto; }
+  .hz-admin .tabla-respuestas tbody th { min-width: 14ch; }
+  .hz-admin .tabla-respuestas .td-corto { white-space: nowrap; }
 }
 .hz-admin .tabla-respuestas tbody th .etiqueta { margin-left: 8px; }
