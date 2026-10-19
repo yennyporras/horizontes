@@ -26,7 +26,7 @@
   --t-foco: var(--hz-foco, 0 0 0 2px #0e0e0e, 0 0 0 4px #47ebc2);
   /* Rondas: R1 verde, R2 rojo; siempre con su texto y forma (R1 hueco, R2 sólido). Texto sobre el color: --hz-sobre-r*. */
   --t-r1: var(--hz-r1, #3fb25a);
-  --t-r2: var(--hz-r2, #f25c5c);
+  --t-r2: var(--hz-r2, #f36363);
   --t-sobre-r1: var(--hz-sobre-r1, #0e0e0e);
   --t-sobre-r2: var(--hz-sobre-r2, #0e0e0e);
   /* Gris azulado de los proyectos fijos (el mismo de la matriz). */

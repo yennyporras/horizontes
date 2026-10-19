@@ -22,7 +22,7 @@ test('dibuja 8 fijos, 2 vivos con R1, R2 y flecha', () => {
   const svg = matrizSVG(mock, { ancho: 1280, idPrefijo: 't' });
   for (const p of mock.proyectos_fijos) assert.ok(svg.includes(`>${p.nombre}</text>`), p.nombre);
   for (const p of mock.proyectos_vivos) {
-    assert.ok(svg.includes(`>${p.nombre} <tspan class="hz-etq-ronda" style="fill:var(--hz-r2, #F25C5C)">R2</tspan></text>`), `${p.nombre} R2`);
+    assert.ok(svg.includes(`>${p.nombre} <tspan class="hz-etq-ronda" style="fill:var(--hz-r2, #F36363)">R2</tspan></text>`), `${p.nombre} R2`);
     assert.ok(svg.includes(`>${p.nombre} <tspan class="hz-etq-ronda" style="fill:var(--hz-r1, #3FB25A)">R1</tspan></text>`), `${p.nombre} R1`);
   }
   assert.equal((svg.match(/class="hz-r1"/g) || []).length, 2);
@@ -82,9 +82,9 @@ test('ronda por color y forma: R1 hueco verde, R2 sólido rojo; los fijos sin ve
   const r1 = svg.match(/<circle class="hz-r1"[^>]*>/g)!;
   const r2 = svg.match(/<circle class="hz-r2"[^>]*>/g)!;
   for (const c of r1) assert.match(c, /style="fill:var\(--hz-r1, #3FB25A\);fill-opacity:0\.14;stroke:var\(--hz-r1, #3FB25A\)"/);
-  for (const c of r2) assert.match(c, /style="fill:var\(--hz-r2, #F25C5C\)"/);
+  for (const c of r2) assert.match(c, /style="fill:var\(--hz-r2, #F36363\)"/);
   const fijos = svg.match(/<circle class="hz-fijo"[^>]*>/g)!;
-  for (const c of fijos) assert.ok(!/hz-r1|hz-r2|3FB25A|F25C5C/i.test(c));
+  for (const c of fijos) assert.ok(!/hz-r1|hz-r2|3FB25A|F36363/i.test(c));
 });
 
 test('datos vacíos no rompen', () => {

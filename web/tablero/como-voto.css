@@ -5,7 +5,7 @@
  */
 .hz-cv {
   --cv-r1: var(--hz-r1, #3fb25a);
-  --cv-r2: var(--hz-r2, #f25c5c);
+  --cv-r2: var(--hz-r2, #f36363);
   --cv-tinta: var(--hz-tinta, #edf2ee);
   --cv-tinta-2: var(--hz-tinta-2, #c8d4ce);
   --cv-tinta-3: var(--hz-tinta-3, #8a9e96);
