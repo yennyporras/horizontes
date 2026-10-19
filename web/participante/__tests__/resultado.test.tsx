@@ -27,14 +27,15 @@ describe('resultado del alcance', () => {
     return r
   }
 
-  it('tabla con los 6 criterios y la fila Total del servidor, sin ejes, T2M ni votos (acta A3, A4)', () => {
+  it('tabla con solo los 6 criterios: sin fila Total (preentrega 19-oct), ejes, T2M ni votos (acta A3, A4)', () => {
+    // Aunque el servidor envíe `total`, el celular ya no lo muestra.
     const { container } = render(<ResultadoAlcance resultados={conTotal()} criterios={yo.criterios} alcance="mesa" />)
     const tabla = screen.getAllByRole('table')[0]
     const filas = within(tabla).getAllByRole('rowheader').map((th) => th.textContent)
-    expect(filas).toEqual([...yo.criterios.map((c) => c.nombre), 'Total'])
-    // Total = el campo del servidor con 2 decimales, nunca recalculado en el celular.
-    const total = within(tabla).getByRole('rowheader', { name: 'Total' }).closest('tr')!
-    expect([...total.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['10,13', '10,25'])
+    expect(filas).toEqual(yo.criterios.map((c) => c.nombre))
+    expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
+    expect(container.textContent).not.toMatch(/Total|10,13|10,25/)
+    expect(screen.getAllByRole('cell')).toHaveLength(screen.getAllByRole('table').length * yo.criterios.length * 2)
     for (const td of screen.getAllByRole('cell')) expect(td.textContent).toMatch(/^\d+,\d{2}$/)
     // La matriz sigue con sus ejes; la tabla y el pie de cada proyecto ya no los nombran.
     for (const a of container.querySelectorAll('.hzp-resultado__proyecto'))
@@ -88,8 +89,7 @@ describe('resultado del alcance', () => {
     expect(celdas.map((td) => td.querySelector('.hzp-tabla__mia')?.textContent)).toEqual(['Tu calificación: Tú 5', 'Tu calificación: Tú 5'])
     expect(within(insumex).getAllByText('Tu calificación:', { exact: false })).toHaveLength(12)
     expect(screen.getByText('Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.')).toBeTruthy()
-    // El Total no suma tu calificación (el celular no calcula) y en NUTRIWHAT no votaste: nada tuyo.
-    expect(insumex.querySelector('.hzp-tabla__total .hzp-tabla__mia')).toBeNull()
+    // En NUTRIWHAT no votaste: nada tuyo.
     expect(within(nutriwhat).queryByText(/Tu calificación/)).toBeNull()
   })
 

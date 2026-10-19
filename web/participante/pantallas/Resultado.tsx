@@ -116,9 +116,9 @@ export function ResultadoAlcance({
           <article key={p.id} className="hzp-resultado__proyecto">
             <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
             {conMias && <p className="hzp-resultado__pie">Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.</p>}
-            {/* Acta A3 y A4: solo los 6 criterios y el Total (eje X + eje Y) que entrega el servidor. */}
+            {/* Acta A3 y A4: solo los 6 criterios. Preentrega 19-oct: sin la fila Total («esa fila de total no dice nada»). */}
             <table className="hzp-tabla">
-              <caption className="hz-visual-oculto">Promedio por criterio y total de {p.nombre}</caption>
+              <caption className="hz-visual-oculto">Promedio por criterio de {p.nombre}</caption>
               <thead>
                 <tr>
                   <th scope="col">Promedio por criterio</th>
@@ -150,16 +150,6 @@ export function ResultadoAlcance({
                     })}
                   </tr>
                 ))}
-              </tbody>
-              <tbody className="hzp-tabla__total">
-                <tr>
-                  <th scope="row">Total</th>
-                  {visibles.map((r) => (
-                    <td key={r.ronda} className="hz-cifra">
-                      {cifra(r.total)}
-                    </td>
-                  ))}
-                </tr>
               </tbody>
             </table>
             {ocultas.length > 0 && (
