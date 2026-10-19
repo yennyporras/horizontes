@@ -1,5 +1,6 @@
 // Cambios del acta del 16-oct (R4): visibilidad por defecto, país y zona horaria por sala, aviso de datos por país,
 // IP de inscripción y voto (solo para el admin) y migración aditiva sobre una BD de R3.
+import { readFileSync } from 'node:fs'
 import { Writable } from 'node:stream'
 import { DatabaseSync } from 'node:sqlite'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -191,5 +192,17 @@ describe('IP real de inscripción y voto (C7, C8)', () => {
     } finally {
       await app.close()
     }
+  })
+})
+
+describe('aviso de datos hz-1.1', () => {
+  it('el texto que sirve el servidor es el de docs/CONSENTIMIENTO.md §5.1, por país', () => {
+    const doc = readFileSync(new URL('../../docs/CONSENTIMIENTO.md', import.meta.url), 'utf8')
+    for (const texto of Object.values(TEXTOS_AUTORIZACION)) {
+      expect(doc).toContain(texto)
+      expect(texto).toContain('mayor de edad')
+      expect(texto).toContain('info@estratek.com.co')
+    }
+    expect(TEXTOS_AUTORIZACION.PE).toContain('acceso, rectificación, cancelación y oposición')
   })
 })

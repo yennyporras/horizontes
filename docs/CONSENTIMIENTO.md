@@ -78,12 +78,12 @@ Cómo se arma la pantalla de inscripción:
 
 ### 5.1 Texto de la casilla (`texto_autorizacion`)
 
-> Tras la integración con T1 (19-oct), el texto vigente es el de `server/dominio/consentimiento.ts` (`TEXTOS_AUTORIZACION`) y **manda ese**. El de abajo es la propuesta de T2 para la revisión de Paola; diferencias en `docs/DECISIONES.md` (19-oct, [T2] Texto legal `hz-1.1`).
+> Estos son los textos vigentes que sirve el servidor (`server/dominio/consentimiento.ts`, `TEXTOS_AUTORIZACION`, versión `hz-1.1`). Una prueba verifica que coinciden. Pendientes de revisión de Paola antes de producción.
 
 **Colombia (`CO`)**
 
 ```text
-Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Ley 1581 de 2012 de Colombia y a su Política de Tratamiento de Datos Personales. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
+Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Ley 1581 de 2012 de Colombia y a la Política de Tratamiento de Datos Personales de Estratek. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
 ```
 
 **Perú (`PE`)**
@@ -95,7 +95,7 @@ Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y 
 **Guatemala (`GT`)**
 
 ```text
-Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Política de Tratamiento de Datos Personales de Estratek. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
+Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Política de Tratamiento de Datos Personales de Estratek, que se aplica a los participantes en Guatemala. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
 ```
 
 ### 5.2 Aviso corto (lo muestra el celular)
