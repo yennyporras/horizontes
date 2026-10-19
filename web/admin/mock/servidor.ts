@@ -6,6 +6,7 @@ import seed from '../../../data/seed_foodsume.json'
 import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Participante, RubricasSala, SalaDetalle, SalaResumen } from '../tipos'
 import { ACCIONES_POR_ESTADO, CRITERIOS, PERFILES, PROYECTOS_VIVOS, nombrePerfil, rondaAbierta } from '../textos'
 import type { Respuesta } from '../api'
+import type { CriterioId } from '../../shared/api/contrato'
 
 const CLAVE_DEMO = 'demo1234'
 const LLAVE_SESION = 'hz_admin_mock'
@@ -20,26 +21,33 @@ const CONFIG_19OCT = {
   modo_preguntas: 'automatico',
 } as const
 
-/** Pares apertura y cierre que el servidor valida en orden. */
-const PARES_PROGRAMADOS: [keyof ConfigSala, keyof ConfigSala][] = [
-  ['apertura_programada_sala_at', 'cierre_programado_sala_at'],
-  ['apertura_programada_r1_at', 'cierre_programado_r1_at'],
-  ['apertura_programada_r2_at', 'cierre_programado_r2_at'],
+/** Orden del taller que valida el servidor (S2): cada hora no antes que la anterior; apertura y cierre de una etapa, estrictos. */
+const ORDEN_PROGRAMADO: { campo: keyof ConfigSala; etapa: string; nombre: string }[] = [
+  { campo: 'apertura_programada_sala_at', etapa: 'sala', nombre: 'la apertura de la sala' },
+  { campo: 'apertura_programada_r1_at', etapa: 'r1', nombre: 'la apertura de la ronda 1' },
+  { campo: 'cierre_programado_r1_at', etapa: 'r1', nombre: 'el cierre de la ronda 1' },
+  { campo: 'apertura_programada_r2_at', etapa: 'r2', nombre: 'la apertura de la ronda 2' },
+  { campo: 'cierre_programado_r2_at', etapa: 'r2', nombre: 'el cierre de la ronda 2' },
+  { campo: 'cierre_programado_sala_at', etapa: 'sala', nombre: 'el cierre de la sala' },
 ]
 
-/** Como el servidor (S2): 422 HORA_PASADA y la apertura antes del cierre. */
+/** Como el servidor (S2): 422 HORA_PASADA y 422 ORDEN_INVALIDO, con sus mensajes. */
 function validarConfig(actual: ConfigSala, cambio: Record<string, unknown>): Respuesta | null {
   for (const [campo, v] of Object.entries(cambio)) {
     if (/_at$/.test(campo) && typeof v === 'string' && Date.parse(v) <= Date.now()) {
-      return error(422, 'HORA_PASADA', 'Esa hora ya pasó. Elige una hora futura.')
+      const hora = new Date().toLocaleTimeString('es-CO', { timeZone: actual.zona_horaria ?? 'America/Bogota', hour12: false })
+      return error(422, 'HORA_PASADA', `Esa hora ya pasó. En el servidor son las ${hora}; elige una hora posterior.`)
     }
   }
   const nueva = { ...actual, ...cambio } as ConfigSala
-  for (const [abre, cierra] of PARES_PROGRAMADOS) {
-    const a = nueva[abre]
-    const c = nueva[cierra]
-    if (typeof a === 'string' && typeof c === 'string' && Date.parse(a) >= Date.parse(c)) {
-      return error(422, 'CONFIG_INVALIDA', 'La apertura debe quedar antes del cierre.')
+  const definidas = ORDEN_PROGRAMADO.filter((o) => typeof nueva[o.campo] === 'string')
+  for (const [k, a] of definidas.entries()) {
+    for (const b of definidas.slice(k + 1)) {
+      const ta = Date.parse(nueva[a.campo] as string)
+      const tb = Date.parse(nueva[b.campo] as string)
+      if (ta > tb || (ta === tb && a.etapa === b.etapa)) {
+        return error(422, 'ORDEN_INVALIDO', `${a.nombre[0].toUpperCase()}${a.nombre.slice(1)} debe ser antes que ${b.nombre}.`)
+      }
     }
   }
   return null
@@ -363,7 +371,6 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
   const por = `admin:${a.usuario}`
 
   if (metodo === 'GET' && camino === '/api/admin/yo') return ok(yo(a))
-  if (metodo === 'GET' && camino === '/api/admin/salud') return ok({ ok: true, base_url: window.location.origin })
 
   if (metodo === 'POST' && camino === '/api/admin/cambiar-clave') {
     if (b.actual !== a.clave) return error(422, 'CLAVE_ACTUAL_INVALIDA', 'La clave actual no coincide.')
@@ -388,7 +395,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (metodo === 'GET' && resto === '') {
       simularVoto(s)
       if (etag && etag === s.version) return { status: 304, body: null, etag }
-      return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a), servidor_at: new Date().toISOString() }, etag: s.version }
+      return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin }, etag: s.version }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
       const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
@@ -405,15 +412,17 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       const rechazo = validarConfig(s.sala.config, b)
       if (rechazo) return rechazo
       Object.assign(s.sala.config, b)
+      // Como el servidor: cambiar el modo borra la pregunta guiada.
+      if ('modo_preguntas' in b) s.sala.pregunta_guiada = null
       tocar(s, 'config', por, b)
       return ok(s.sala.config)
     }
     if (metodo === 'PUT' && resto === '/pregunta-guiada') {
       if (!rondaAbierta(s.sala.estado)) return error(409, 'RONDA_CERRADA', 'La pregunta guiada solo se cambia con una ronda abierta.')
-      const pregunta = cuerpo && typeof b.proyecto_id === 'string' && typeof b.criterio_id === 'string' ? { proyecto_id: b.proyecto_id, criterio_id: b.criterio_id } : null
+      const pregunta = cuerpo && typeof b.proyecto_id === 'string' && typeof b.criterio_id === 'string' ? { proyecto_id: b.proyecto_id, criterio_id: b.criterio_id as CriterioId } : null
       s.sala.pregunta_guiada = pregunta
       tocar(s, 'pregunta_guiada', por, pregunta ?? {})
-      return ok({ pregunta_guiada: pregunta })
+      return ok({ pregunta_guiada: pregunta, version: s.version })
     }
     if (metodo === 'POST' && resto === '/mesas') {
       const n = Number(b.cantidad)
@@ -429,6 +438,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       const destino = aplicarAccion(s, accion)
       if (!destino) return error(409, 'TRANSICION_INVALIDA', 'Esa acción no aplica en el estado actual de la sala.')
       s.sala.estado = destino
+      s.sala.pregunta_guiada = null
       // Ronda nueva o votos reiniciados: nadie ha completado la ronda.
       if (accion === 'abrir_ronda_1' || accion === 'abrir_ronda_2' || accion === 'reiniciar_ronda') s.participantes.forEach((p) => (p.completo_ronda = false))
       if (destino === 'r1_abierta') s.sala.ronda_actual = 1
