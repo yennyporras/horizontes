@@ -1,91 +1,108 @@
-/* Estilos propios de las pantallas del participante. Solo tokens de web/shared/ui/tokens.css. Prefijo hzp-. */
+/* Estilos propios de las pantallas del participante. Solo tokens de web/shared/ui/tokens.css. Prefijo hzp-.
+   Línea gráfica: docs/marca/FAMILIA_ESTRATEK.md (tema claro, retícula de 8 px, tarjetas por superficie y borde). */
 
-.hzp-form { display: grid; gap: var(--hz-sp-5); }
+/* Sala y mesa debajo del encabezado de producto */
+.hzp-contexto { max-width: var(--hz-medida); margin: 0 auto; padding: var(--hz-sp-4) 0 var(--hz-sp-2); display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
+.hzp-contexto__sala { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
+.hzp-contexto__meta { color: var(--hz-tinta-2); }
+
+.hzp-form { display: grid; gap: var(--hz-sp-6); }
 .hzp-avisos { display: grid; gap: var(--hz-sp-2); }
 .hzp-acciones { display: grid; gap: var(--hz-sp-2); justify-items: center; }
-.hzp-seccion { display: grid; gap: var(--hz-sp-4); padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-h3); }
-.hzp-volver { justify-self: start; min-height: 44px; padding: 0; }
+.hzp-seccion { display: grid; gap: var(--hz-sp-4); padding-top: var(--hz-sp-6); border-top: 1px solid var(--hz-borde); }
+.hzp-volver { justify-self: start; min-height: var(--hz-tactil); padding: 0; }
 /* Fase de la ronda (acta A7): insignia R1/R2 y su texto en una línea. */
-.hzp-fase { display: flex; align-items: center; flex-wrap: wrap; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: 600; color: var(--hz-tinta-2); }
+.hzp-fase { display: flex; align-items: center; flex-wrap: wrap; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+
+/* Tarjeta: superficie 1 con borde de 1 px (§5 y §6). */
+.hzp-consentimiento, .hzp-proyecto, .hzp-elegir__fila, .hzp-resumen__lista, .hzp-hoja-plegable__texto, .hzp-resultado__proyecto {
+  background: var(--hz-superficie-1);
+  border: 1px solid var(--hz-borde);
+  border-radius: var(--hz-r-l);
+}
 
 /* Consentimiento (patrón del IRMI: bloque con título y casilla obligatoria) */
-.hzp-consentimiento { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); }
-.hzp-aviso-datos { margin: var(--hz-sp-2) 0 0; display: grid; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
-.hzp-aviso-datos dt { font-weight: 700; color: var(--hz-tinta); }
+.hzp-consentimiento { display: grid; gap: var(--hz-sp-2); padding: var(--hz-sp-4); }
+.hzp-aviso-datos { margin: 0; display: grid; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
+.hzp-aviso-datos dt { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 .hzp-aviso-datos dd { margin: 0; }
-.hzp-aviso-datos a { color: var(--hz-azul); font-weight: 600; text-underline-offset: 3px; }
-.hzp-consentimiento__titulo { font-size: var(--hz-fs-16); font-weight: 700; color: var(--hz-azul); }
+.hzp-aviso-datos a { color: var(--hz-azul); font-weight: var(--hz-fw-etiqueta); text-underline-offset: 3px; }
+.hzp-consentimiento__titulo { font-size: var(--hz-fs-16); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 
 /* Esqueleto de carga */
 .hzp-esqueleto { display: grid; gap: var(--hz-sp-4); padding-top: var(--hz-sp-4); }
-.hzp-esqueleto__bloque { border-radius: var(--hz-r-m); background: var(--hz-h1); animation: hzp-pulso 1.4s ease-in-out infinite; }
+.hzp-esqueleto__bloque { border-radius: var(--hz-r-l); background: var(--hz-superficie-2); animation: hzp-pulso 1.4s ease-in-out infinite; }
 @keyframes hzp-pulso { 50% { opacity: 0.55; } }
 
 /* Lectura */
-.hzp-lectura { display: grid; gap: var(--hz-sp-5); }
+.hzp-lectura { display: grid; gap: var(--hz-sp-6); }
 .hzp-md { display: grid; gap: var(--hz-sp-3); max-width: var(--hz-medida); }
-.hzp-md ul { margin: 0; padding-left: var(--hz-sp-5); display: grid; gap: var(--hz-sp-1); }
-.hzp-md strong { font-weight: 700; color: var(--hz-tinta); }
+.hzp-md ul { margin: 0; padding-left: var(--hz-sp-6); display: grid; gap: var(--hz-sp-1); }
+.hzp-md strong { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 
-.hzp-proyectos { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--hz-h3); }
-.hzp-proyecto { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4) 0; border-bottom: 1px solid var(--hz-h3); }
-.hzp-proyecto--vivo { padding-inline: var(--hz-sp-3); margin-inline: calc(var(--hz-sp-3) * -1); background: var(--hz-h1); border-radius: var(--hz-r-m); border-bottom-color: transparent; }
-.hzp-proyecto__nombre { display: flex; align-items: center; gap: var(--hz-sp-2); flex-wrap: wrap; font-weight: 800; color: var(--hz-azul); }
+.hzp-proyectos { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--hz-sp-2); }
+.hzp-proyecto { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); }
+/* Los 2 que se califican suben un escalón de superficie y llevan la insignia «Se califica». */
+.hzp-proyecto--vivo { background: var(--hz-superficie-2); border-color: var(--hz-borde-control); }
+.hzp-proyecto__nombre { display: flex; align-items: center; gap: var(--hz-sp-2); flex-wrap: wrap; font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 .hzp-proyecto__desc { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 .hzp-grupo-hojas { display: grid; gap: var(--hz-sp-3); }
 
-/* Elegir proyecto */
-.hzp-elegir { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--hz-h3); }
-.hzp-elegir__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-4) 0; border-bottom: 1px solid var(--hz-h3); }
+/* Elegir proyecto: una tarjeta por proyecto */
+.hzp-elegir { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--hz-sp-3); }
+.hzp-elegir__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-4); }
 .hzp-elegir__info { display: grid; gap: var(--hz-sp-1); justify-items: start; }
 
-/* Calificar: una pregunta por pantalla (C19-5, P1) */
-.hzp-pregunta { display: grid; gap: var(--hz-sp-5); min-width: 0; }
+/* Calificar: una pregunta por pantalla (C19-5, P1) con las opciones como tarjetas táctiles a todo el ancho. */
+.hzp-pregunta { display: grid; gap: var(--hz-sp-6); min-width: 0; }
+.hzp-pregunta .hz-rubrica__opciones { gap: var(--hz-sp-2); border-top: 0; }
+.hzp-pregunta .hz-opcion { min-height: var(--hz-sp-16); background: var(--hz-fondo); border: 1px solid var(--hz-borde-control); border-radius: var(--hz-r-l); }
+.hzp-pregunta .hz-opcion:has(.hz-opcion__input:checked) { border-color: transparent; }
 @media (prefers-reduced-motion: no-preference) {
   .hzp-pregunta .hz-rubrica { animation: hzp-entra var(--hz-t-medio) var(--hz-curva, ease-out); }
 }
 @keyframes hzp-entra { from { opacity: 0; transform: translateX(var(--hz-sp-4)); } }
-/* Anterior y Siguiente lado a lado en la barra del pulgar (cada uno de 44 px o más). */
+/* Anterior y Siguiente lado a lado en la barra del pulgar. */
 .hzp-navegacion { display: grid; grid-template-columns: 1fr 1fr; gap: var(--hz-sp-3); }
-.hzp-navegacion > .hz-boton { width: 100%; min-height: 44px; }
-/* Resumen antes de guardar */
+.hzp-navegacion > .hz-boton { width: 100%; min-height: var(--hz-tactil); }
+/* Resumen antes de guardar: una tarjeta con una fila por pregunta */
 .hzp-resumen { display: grid; gap: var(--hz-sp-4); }
-.hzp-resumen__lista { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--hz-h3); }
-.hzp-resumen__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-3) 0; border-bottom: 1px solid var(--hz-h3); }
+.hzp-resumen__lista { list-style: none; margin: 0; padding: 0 var(--hz-sp-4); display: grid; }
+.hzp-resumen__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-3) 0; border-bottom: 1px solid var(--hz-borde); }
+.hzp-resumen__fila:last-child { border-bottom: 0; }
 .hzp-resumen__dato { display: grid; gap: var(--hz-sp-1); min-width: 0; }
-.hzp-resumen__criterio { font-size: var(--hz-fs-14); font-weight: 700; color: var(--hz-tinta); }
+.hzp-resumen__criterio { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 .hzp-resumen__valor { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
-.hzp-resumen__cifra { font-size: var(--hz-fs-18); font-weight: 800; color: var(--hz-azul); margin-right: var(--hz-sp-1); font-variant-numeric: tabular-nums; }
-.hzp-resumen__valor--falta { font-weight: 700; color: var(--hz-error); }
-.hzp-resumen__fila > .hz-boton { flex: none; min-height: 44px; min-width: 44px; }
+.hzp-resumen__cifra { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-cifra); color: var(--hz-tinta); margin-right: var(--hz-sp-1); font-variant-numeric: tabular-nums; }
+.hzp-resumen__valor--falta { font-weight: var(--hz-fw-etiqueta); color: var(--hz-error); }
+.hzp-resumen__fila > .hz-boton { flex: none; min-height: var(--hz-tactil); min-width: var(--hz-tactil); }
 .hzp-hoja-plegable { display: grid; gap: var(--hz-sp-2); }
 .hzp-hoja-plegable > .hz-boton { justify-self: start; padding: 0; }
-.hzp-hoja-plegable__texto { padding: var(--hz-sp-4); border-radius: var(--hz-r-m); background: var(--hz-h1); font-size: var(--hz-fs-14); }
+.hzp-hoja-plegable__texto { padding: var(--hz-sp-4); font-size: var(--hz-fs-14); }
 
 /* Resultado del alcance */
-.hzp-resultado { display: grid; gap: var(--hz-sp-5); }
-.hzp-resultado__proyecto { display: grid; gap: var(--hz-sp-3); padding: var(--hz-sp-4); border: 1px solid var(--hz-h3); border-radius: var(--hz-r-l); }
+.hzp-resultado { display: grid; gap: var(--hz-sp-6); }
+.hzp-resultado__proyecto { display: grid; gap: var(--hz-sp-3); padding: var(--hz-sp-4); }
 .hzp-tabla { width: 100%; border-collapse: collapse; font-size: var(--hz-fs-14); }
-.hzp-tabla th, .hzp-tabla td { padding: var(--hz-sp-2) 0; border-bottom: 1px solid var(--hz-h3); text-align: left; vertical-align: top; }
-.hzp-tabla thead { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); }
-.hzp-tabla thead th { font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.hzp-tabla th, .hzp-tabla td { padding: var(--hz-sp-2) 0; border-bottom: 1px solid var(--hz-borde); text-align: left; vertical-align: top; }
+.hzp-tabla thead { font-size: var(--hz-fs-12); color: var(--hz-tinta-2); }
+.hzp-tabla thead th { font-weight: var(--hz-fw-etiqueta); }
 .hzp-tabla tbody tr:last-child > * { border-bottom: 0; }
-.hzp-resultado__pie { font-size: var(--hz-fs-12); color: var(--hz-tinta-3); }
-.hzp-tabla tbody th { font-weight: 500; padding-right: var(--hz-sp-3); }
+.hzp-resultado__pie { font-size: var(--hz-fs-12); color: var(--hz-tinta-2); }
+.hzp-tabla tbody th { font-weight: var(--hz-fw-texto); padding-right: var(--hz-sp-3); }
 /* Columnas de cifras justas ("7,00"): el nombre del criterio se queda con el resto del ancho (triage #23). */
 /* Sin nowrap: si falta un promedio, "sin dato" baja de línea y no le roba ancho al criterio. */
 .hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 3.25rem; padding-left: var(--hz-sp-2); }
-.hzp-tabla td { font-weight: 700; }
 /* P3: tu calificación debajo del promedio, más chica y en otro tono para no confundirla con él. */
 .hzp-tabla__promedio, .hzp-tabla__mia { display: block; }
-.hz .hzp-tabla__mia { font-size: var(--hz-fs-12); font-weight: 600; color: var(--hz-tinta-2); white-space: nowrap; }
+.hz .hzp-tabla__mia { font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); white-space: nowrap; }
 
 /* Matriz de T3 dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
    (min-width: auto): sin min-width 0, el SVG inicial de 360 px ensancha la página. */
 .hzp-resultado > *, .hzp-matriz { min-width: 0; }
 .hzp-matriz { min-height: 320px; overflow: hidden; }
-/* Las cifras de la tabla siguen en negrita pese al blindaje de .hz-cifra (componentes.css). */
-.hz .hzp-tabla td { font-weight: 700; }
+/* Las cifras de la tabla siguen en negrita y tabulares pese al blindaje de .hz-cifra (componentes.css). */
+.hz .hzp-tabla td { font-weight: var(--hz-fw-etiqueta); font-variant-numeric: tabular-nums; }
 
 /* Celular abierto en escritorio (triage #25): la matriz sale de la columna de lectura y crece. */
 @media (min-width: 64rem) {

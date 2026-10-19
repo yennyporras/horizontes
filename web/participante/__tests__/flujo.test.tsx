@@ -220,7 +220,10 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
     expect((llamadas[0].init.headers as Record<string, string>)['X-Participante-Token']).toBe('tok-1')
 
     for (const nombre of ['INSUMEX', 'NUTRIWHAT']) {
-      fireEvent.click(await screen.findByRole('button', { name: `Calificar ${nombre}` }))
+      const calificar = await screen.findByRole('button', { name: `Calificar ${nombre}` })
+      // Una sola acción principal por vista: el primer proyecto pendiente.
+      expect([...document.querySelectorAll('.hz-boton--primario')]).toEqual([calificar])
+      fireEvent.click(calificar)
       await screen.findByRole('heading', { name: nombre, level: 1 })
       for (let n = 1; n <= 6; n++) {
         // Una sola pregunta, con su encabezado, su grupo de radios y la barra «Pregunta n de 6 · proyecto».
