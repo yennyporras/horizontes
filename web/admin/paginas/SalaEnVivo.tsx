@@ -184,28 +184,31 @@ function Precierre({ d }: { d: SalaDetalle }) {
   if (enPrecierre.length === 0) return null
   const salaCompleta = enPrecierre.length === conInscritos.length
 
+  // El resultado va fuera del aviso: más ancho en el celular y el lector de pantalla no lo repite en cada actualización.
   return (
-    <section className="alerta alerta--exito" role="status" aria-labelledby="t-precierre">
-      <strong id="t-precierre">
-        {salaCompleta
-          ? `Todos votaron en la sala. Puedes cerrar la ronda ${ronda}.`
-          : `Todos votaron en ${enPrecierre.map((m) => m.nombre).join(', ')}. Puedes cerrar la ronda ${ronda} cuando las demás mesas terminen.`}
-      </strong>
-      <p>La ronda sigue abierta: los votos se pueden editar hasta que la cierres. El resultado se muestra como preliminar.</p>
-      <div className="acciones">
-        {salaCompleta && (
-          <button className="btn btn--chico" aria-expanded={ver === 'sala'} onClick={() => setVer(ver === 'sala' ? null : 'sala')}>
-            Ver resultado preliminar de la sala
-          </button>
-        )}
-        {enPrecierre.map((m) => (
-          <button key={m.id} className="btn btn--chico" aria-expanded={ver === m.id} onClick={() => setVer(ver === m.id ? null : m.id)}>
-            Ver resultado de {m.nombre}
-          </button>
-        ))}
-      </div>
+    <>
+      <section className="alerta alerta--exito" role="status" aria-labelledby="t-precierre">
+        <strong id="t-precierre">
+          {salaCompleta
+            ? `Todos votaron en la sala. Puedes cerrar la ronda ${ronda}.`
+            : `Todos votaron en ${enPrecierre.map((m) => m.nombre).join(', ')}. Puedes cerrar la ronda ${ronda} cuando las demás mesas terminen.`}
+        </strong>
+        <p>La ronda sigue abierta: los votos se pueden editar hasta que la cierres. El resultado se muestra como preliminar.</p>
+        <div className="acciones">
+          {salaCompleta && (
+            <button className="btn btn--chico" aria-expanded={ver === 'sala'} onClick={() => setVer(ver === 'sala' ? null : 'sala')}>
+              Ver resultado preliminar de la sala
+            </button>
+          )}
+          {enPrecierre.map((m) => (
+            <button key={m.id} className="btn btn--chico" aria-expanded={ver === m.id} onClick={() => setVer(ver === m.id ? null : m.id)}>
+              Ver resultado de {m.nombre}
+            </button>
+          ))}
+        </div>
+      </section>
       {ver && <ResultadoPreliminar d={d} mesaId={ver === 'sala' ? undefined : ver} ronda={ronda} />}
-    </section>
+    </>
   )
 }
 

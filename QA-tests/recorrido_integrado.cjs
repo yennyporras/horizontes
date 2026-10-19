@@ -130,8 +130,9 @@ async function votarUI(p, ancho, ronda, valores) {
       await p.getByRole('heading', { level: 1, name: 'Ronda 1: califica los 2 proyectos' }).waitFor({ timeout: T })
       await revisar(p, ancho, 'part-r1-elegir')
       await votarUI(p, ancho, 1, [['INSUMEX', 7], ['NUTRIWHAT', 3]])
-      await p.getByRole('heading', { level: 1, name: 'Voto registrado' }).waitFor({ timeout: T })
-      await revisar(p, ancho, 'part-r1-registrado')
+      // Acta A2: por defecto se ven los resultados de la sala en vivo apenas se vota.
+      await p.getByRole('heading', { level: 1, name: /^(Voto registrado|Resultados en vivo de )/ }).waitFor({ timeout: T })
+      await revisar(p, ancho, 'part-r1-tras-votar')
     })
     await votarOtros(1, [otros[0], otros[2]])
     await paso('tablero R1 en curso', async () => { await t.waitForTimeout(3500); await revisar(t, ancho, 'tablero-r1-parcial') })
@@ -155,7 +156,7 @@ async function votarUI(p, ancho, ronda, valores) {
     })
     await paso('R2 votar UI', async () => {
       await votarUI(p, ancho, 2, [['INSUMEX', 9], ['NUTRIWHAT', 5]])
-      await p.getByRole('heading', { level: 1, name: 'Voto registrado' }).waitFor({ timeout: T })
+      await p.getByRole('heading', { level: 1, name: /^(Voto registrado|Resultados en vivo de )/ }).waitFor({ timeout: T })
     })
     await votarOtros(2, otros, { regulacion: 9, alineacion_core: 9 })
     await paso('R2 precierre sala', async () => { await a.getByText('4 de 4', { exact: true }).first().waitFor({ timeout: T }); await a.locator('.etiqueta', { hasText: 'Precierre' }).nth(1).waitFor({ timeout: T }); await revisar(a, ancho, 'admin-vivo-precierre-r2') })
