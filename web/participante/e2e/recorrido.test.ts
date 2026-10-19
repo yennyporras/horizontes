@@ -5,7 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ESPERA, calificar, capturar, focoVisible, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
 import { sinNavegador } from '../../../tests/navegador'
-import { accion, celular, configurar, crearSala, hayChromium, iniciar, inscribirApi, votarApi, type Entorno } from './entorno'
+import { accion, celular, configurar, crearSala, fijarPregunta, hayChromium, iniciar, inscribirApi, votarApi, type Entorno } from './entorno'
 
 const conNavegador = hayChromium()
 if (!conNavegador) sinNavegador('[e2e participante]', 'No hay Chromium de Playwright para el recorrido.')
@@ -303,6 +303,64 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await revisarTabla(p, sala.mesas[0].codigo)
     await ver(p, 'Hace falta al menos 3 votos para mostrar este proyecto.')
     await sinDesborde(p)
+    await ctx.close()
+  }, 120_000)
+
+  it('modo guiado (C19-5, P1): ve solo la pregunta del facilitador, envía al completar el proyecto y corrige', async () => {
+    const sala = await crearSala(e, 'Guiado e2e T2')
+    // La pregunta guiada se borra con cada cambio de estado o de modo: primero el modo y la ronda, después la pregunta.
+    await configurar(e, sala.id, { modo_preguntas: 'guiado' })
+    await accion(e, sala.id, 'abrir_ronda_1')
+    const ctx = await celular(e)
+    const p = await ctx.newPage()
+    const errores: string[] = []
+    p.on('pageerror', (err) => errores.push(err.message))
+    const codigo = sala.mesas[0].codigo
+    await p.goto(`${e.web}/m/${codigo}`)
+    await p.getByLabel('Tu nombre').fill('Fer Lara', { timeout: 60_000 })
+    await p.getByLabel('Tu correo').fill('fer.e2e@empresa.com')
+    await p.getByRole('checkbox').check()
+    await p.getByRole('button', { name: 'Inscribirme' }).click()
+    await p.getByRole('button', { name: 'Leer el caso' }).click()
+    await p.getByRole('button', { name: 'Ir a la pregunta' }).click()
+    await titulo(p, 'Espera la pregunta del facilitador')
+    await sinDesborde(p)
+
+    const misRespuestas = () =>
+      p.evaluate(async (c) => {
+        const r = await fetch('/api/yo', { headers: { 'X-Participante-Token': localStorage.getItem(`hz_token:${c.toUpperCase()}`) ?? '' } })
+        const yo = (await r.json()) as { mis_votos: { proyecto_id: string; ronda: number; respuestas: Record<string, number> }[] }
+        return yo.mis_votos.find((v) => v.proyecto_id === 'insumex' && v.ronda === 1)?.respuestas ?? null
+      }, codigo)
+    const elegir = (valor: number) => p.locator('label.hz-opcion', { has: p.locator(`input[value="${valor}"]`) }).click()
+    const criterios = ['alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida']
+
+    for (const [i, criterio_id] of criterios.entries()) {
+      await fijarPregunta(e, sala.id, { proyecto_id: 'insumex', criterio_id })
+      await ver(p, `Pregunta ${i + 1} de 6 · INSUMEX`)
+      expect(await p.locator('fieldset.hz-rubrica').count()).toBe(1)
+      expect(await p.getByRole('button', { name: /^(Siguiente|Anterior)$/ }).count()).toBe(0)
+      if (i === 0) {
+        await titulo(p, 'INSUMEX')
+        await sinDesborde(p)
+        await tactiles(p)
+        await capturar(p, '07-guiado')
+      }
+      await elegir(7)
+      await ver(p, 'Espera la siguiente pregunta del facilitador')
+      // Hasta completar las 6 del proyecto la respuesta queda en el celular: el servidor no tiene voto.
+      if (i < 5) expect(await misRespuestas()).toBeNull()
+    }
+    await ver(p, 'Tus 6 respuestas de INSUMEX quedaron guardadas. Puedes cambiar esta mientras la ronda siga abierta.')
+    expect(await misRespuestas()).toEqual(Object.fromEntries(criterios.map((c) => [c, 7])))
+
+    // El facilitador vuelve a Regulación: aparece con la respuesta marcada y el cambio se reenvía completo.
+    await fijarPregunta(e, sala.id, { proyecto_id: 'insumex', criterio_id: 'regulacion' })
+    await ver(p, 'Pregunta 3 de 6 · INSUMEX')
+    expect(await p.locator('fieldset.hz-rubrica input[value="7"]').isChecked()).toBe(true)
+    await elegir(3)
+    await expect.poll(async () => (await misRespuestas())?.regulacion, { timeout: ESPERA }).toBe(3)
+    expect(errores).toEqual([])
     await ctx.close()
   }, 120_000)
 })
