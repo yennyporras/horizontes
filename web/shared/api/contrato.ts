@@ -222,6 +222,20 @@ export interface DetalleSala {
   eventos: Evento[]
   admin_actual: AdminYo
 }
+/** GET /api/admin/salas/{id}/rubricas (y respuesta del PUT). */
+export interface RubricasSala {
+  criterios: { id: CriterioId; nombre: string; pregunta: string; rubrica: Rubrica[] }[]
+  /** false si la sala ya tiene votos (en cualquier ronda). */
+  editable: boolean
+  /** Solo cuando `editable` es false: por qué no se puede editar. */
+  motivo_no_editable?: string
+}
+/** PUT /api/admin/salas/{id}/rubricas/{criterio_id}: los 5 niveles (1, 3, 5, 7, 9), solo cambian los textos. */
+export interface CuerpoRubrica {
+  rubrica: Rubrica[]
+  /** true: también será la rúbrica de las salas nuevas de la plantilla. */
+  usar_en_salas_nuevas?: boolean
+}
 export type AccionSala =
   | 'abrir_inscripcion'
   | 'abrir_ronda_1'
