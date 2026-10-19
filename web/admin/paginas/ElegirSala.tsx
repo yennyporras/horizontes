@@ -36,7 +36,7 @@ export function ElegirSala() {
         <ul className="lista-elegir">
           {salas.map((s) => (
             <li key={s.id}>
-              <Link className="btn" to={`/admin/salas/${s.id}/${seccion}`}>
+              <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${s.id}/${seccion}`}>
                 {s.nombre}
               </Link>
               <span className="pista">

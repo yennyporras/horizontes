@@ -134,7 +134,7 @@ export function Participantes() {
                           <td data-label="País · IP">{p.ip ? `${p.pais ?? ''} ${p.ip}`.trim() : 'Sin registro'}</td>
                           <td data-label="Acción">
                             <button
-                              className={p.activo ? 'btn btn--peligro btn--chico' : 'btn btn--chico'}
+                              className="hz-boton hz-boton--secundario hz-boton--chico"
                               disabled={guardando === p.id}
                               onClick={() =>
                                 editar(
