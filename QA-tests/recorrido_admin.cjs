@@ -2,6 +2,7 @@
 // Crea una sala desde el panel a 360 px y a 1920 px, inscribe y vota por API, recorre R1 -> precierre -> R2 -> sala cerrada,
 // revisa desborde horizontal, contraste AA del texto visible y errores de consola, y guarda capturas.
 // Después entra con un admin de rol admin (lo crea si no existe) y recorre cada sección de la misma sala (C19-2).
+// Marca Estratek: también el login, Salud y Administradores, y que el foco con teclado se vea en la barra y en el contenido.
 // Uso: PWCORE=<ruta a playwright-core> [CHROME=<ejecutable>] node QA-tests/recorrido_admin.cjs <url> <usuario> <clave> <carpeta-capturas>
 const { chromium } = require(process.env.PWCORE)
 const BASE = process.argv[2] || 'http://localhost:3999'
@@ -51,6 +52,15 @@ async function revisar(p, nombre, ancho, errores) {
   await p.screenshot({ path: `${OUT}/${nombre}-${ancho}.png`, fullPage: true })
 }
 
+/** Recorre con Tab los primeros controles y anota los que reciben el foco sin contorno visible. */
+async function focoVisible(p, nombre, ancho, errores) {
+  for (let i = 0; i < 6; i++) {
+    await p.keyboard.press('Tab')
+    const f = await p.evaluate(() => { const e = document.activeElement, s = getComputedStyle(e); return { t: (e.textContent || e.tagName).trim().slice(0, 30), ok: s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2 } })
+    if (!f.ok) errores.push(`${ancho}: foco sin contorno en ${nombre}: ${f.t}`)
+  }
+}
+
 async function entrar(p, usuario, clave) {
   await p.goto(BASE + '/admin/login')
   await p.getByLabel('Usuario').fill(usuario); await p.getByLabel('Clave', { exact: true }).fill(clave)
@@ -64,10 +74,14 @@ async function entrar(p, usuario, clave) {
   for (const [ancho, alto] of [[360, 780], [1920, 1080]]) {
     const ctx = await b.newContext({ viewport: { width: ancho, height: alto } })
     const p = await ctx.newPage()
+    await p.goto(BASE + '/admin/login')
+    await revisar(p, 'login', ancho, errores)
+    await focoVisible(p, 'login', ancho, errores)
     // Después de entrar: antes, el 401 de /api/admin/yo es lo esperado (aún no hay sesión).
     await entrar(p, USUARIO, CLAVE)
     p.on('console', (m) => m.type() === 'error' && errores.push(`${ancho}: ${m.text()}`))
     await revisar(p, 'salas', ancho, errores)
+    await focoVisible(p, 'salas', ancho, errores)
     const nombre = `Recorrido ${ancho}px ${Date.now() % 100000}`
     await p.getByLabel('Nombre del taller').fill(nombre); await p.getByLabel('Mesas').fill('2')
     await p.getByRole('button', { name: 'Crear sala' }).click()
@@ -103,6 +117,11 @@ async function entrar(p, usuario, clave) {
     await p.getByRole('button', { name: 'Cerrar sala' }).click()
     await p.getByRole('button', { name: 'Sí, cerrar la sala' }).click()
     await estado('Sala cerrada')
+    for (const s of ['salud', 'administradores']) {
+      await p.goto(`${BASE}/admin/${s}`)
+      await p.getByRole('heading', { level: 1 }).waitFor()
+      await revisar(p, s, ancho, errores)
+    }
 
     // Rol admin (C19-2): crea la cuenta si falta y recorre la misma sala desde un navegador sin sala recordada.
     const cuentas = await p.evaluate(async () => (await (await fetch('/api/admin/admins')).json()).admins)
