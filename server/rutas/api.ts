@@ -23,7 +23,7 @@ import { autenticarParticipante, infoMesa, inscribir, resultadosParticipante, vi
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
 import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
-import { isoBogota, sha256 } from '../dominio/util.js'
+import { isoEnZona, sha256 } from '../dominio/util.js'
 import { uno } from '../db/index.js'
 
 export interface OpcionesApi {
@@ -101,7 +101,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     if (!votosPorParticipante.permitir(p.id, ahora())) {
       throw new ErrorApi(429, 'DEMASIADAS_PETICIONES', 'Estás enviando demasiados votos seguidos. Espera un minuto e intenta de nuevo.')
     }
-    return votar(db, p, (req.body ?? {}) as never, ahora())
+    return votar(db, p, (req.body ?? {}) as never, { ip: req.ip }, ahora())
   })
 
   app.get<{ Querystring: { ronda?: string } }>('/api/resultados', async (req, reply) => {
@@ -197,9 +197,10 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   app.get<{ Params: { id: string } }>('/api/admin/salas/:id', async (req, reply) => {
     const d = detalleSala(db, req.params.id, op.baseUrl)
+    const zona = d.sala.config.zona_horaria
     const a = req.admin!
     // servidor_at: hora del servidor, para que el panel programe cierres aunque el reloj del computador esté corrido.
-    return responderConVersion(req, reply, { ...d, admin_actual: { id: a.id, usuario: a.usuario, nombre: a.nombre, rol: a.rol }, servidor_at: isoBogota(ahora()) })
+    return responderConVersion(req, reply, { ...d, admin_actual: { id: a.id, usuario: a.usuario, nombre: a.nombre, rol: a.rol }, servidor_at: isoEnZona(ahora(), zona) })
   })
 
   app.patch<{ Params: { id: string } }>('/api/admin/salas/:id/config', async (req) => {
@@ -234,7 +235,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   })
 
   app.get<{ Params: { id: string }; Querystring: { antes?: string; limite?: string } }>('/api/admin/salas/:id/eventos', async (req) =>
-    eventosPaginados(db, cargarSala(db, req.params.id).id, Number(req.query.antes) || undefined, Number(req.query.limite) || 50),
+    eventosPaginados(db, cargarSala(db, req.params.id), Number(req.query.antes) || undefined, Number(req.query.limite) || 50),
   )
 
   app.patch<{ Params: { id: string } }>('/api/admin/participantes/:id', async (req) =>

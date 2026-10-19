@@ -327,6 +327,8 @@ describe('salas y mesas', () => {
       revelar_hojas: true,
       cierre_programado_ronda_at: '2026-10-20T15:30:00-05:00',
       cierre_programado_sala_at: '2026-10-20T17:00:00-05:00',
+      pais: 'CO',
+      zona_horaria: 'America/Bogota',
     })
   })
 
@@ -414,10 +416,11 @@ describe('participantes desde el admin', () => {
     expect(r.headers['content-disposition']).toContain('inscritos.csv')
     expect(r.body.startsWith('﻿')).toBe(true)
     const lineas = r.body.slice(1).trim().split('\r\n')
-    expect(lineas[0].split(';')).toEqual(['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'politica_url'])
+    expect(lineas[0].split(';')).toEqual(['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'politica_url', 'ip', 'pais'])
     expect(lineas).toHaveLength(2)
     expect(lineas[1]).toContain('Ana Gómez;ana@correo.co;Mesa 1')
-    expect(lineas[1]).toContain('estratek-v1')
+    expect(lineas[1]).toContain('hz-1.1')
+    expect(lineas[1].endsWith(';127.0.0.1;CO')).toBe(true)
   })
 
   it('export votos.csv trae BOM, separador ; y no contiene nombres ni correos', async () => {
@@ -431,7 +434,9 @@ describe('participantes desde el admin', () => {
     expect(lineas[0].split(';')[0]).toBe('id_hash')
     expect(lineas[0]).toContain(';')
     expect(lineas).toHaveLength(2)
-    expect(lineas[1].split(';')).toHaveLength(12)
+    expect(lineas[0].split(';').slice(-3)).toEqual(['activo', 'ip', 'pais'])
+    expect(lineas[1].split(';')).toHaveLength(14)
+    expect(lineas[1].split(';').slice(-2)).toEqual(['127.0.0.1', 'CO'])
     expect(r.body).not.toContain('Ana')
     expect(r.body).not.toContain('ana@correo.co')
     expect(r.body).not.toContain('@')

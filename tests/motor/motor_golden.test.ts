@@ -20,6 +20,12 @@ describe('motor · golden', () => {
     expect(Math.abs(p.eje_y - caso.esperado.eje_y)).toBeLessThan(EXACTA)
   })
 
+  type CasoTotal = { nombre: string; esperado_total: number }
+  it.each(golden.caso_total.casos as CasoTotal[])('total = eje_x + eje_y de $nombre (tolerancia 1e-9)', (caso) => {
+    const fijo = (golden.casos_proyecto as CasoFijo[]).find((c) => c.nombre === caso.nombre)!
+    expect(Math.abs(calcularPunto(fijo.inputs, semilla.motor.pesos).total - caso.esperado_total)).toBeLessThan(EXACTA)
+  })
+
   it('caso Nicolai: solo T2M (tolerancia 1e-9)', () => {
     const c = golden.caso_nicolai
     expect(Math.abs(calcularT2m(c.inputs, semilla.motor.pesos) - c.esperado_t2m)).toBeLessThan(EXACTA)
@@ -38,6 +44,8 @@ describe('motor · golden', () => {
         expect(Math.abs(a.t2m - (esp.t2m as number))).toBeLessThan(golden.tolerancia)
         expect(Math.abs(a.eje_x - (esp.eje_x as number))).toBeLessThan(golden.tolerancia)
         expect(Math.abs(a.eje_y - (esp.eje_y as number))).toBeLessThan(golden.tolerancia)
+        // Los esperados vienen redondeados a 3 decimales: la suma de dos redondeos admite el doble de tolerancia.
+        expect(Math.abs(a.total - ((esp.eje_x as number) + (esp.eje_y as number)))).toBeLessThan(2 * golden.tolerancia)
       }
     }
   })

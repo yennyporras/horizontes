@@ -21,7 +21,9 @@
   "config": {
     "vista_participante": "registrado",
     "alcance_resultados": "mesa",
-    "revelar_hojas": false
+    "revelar_hojas": false,
+    "pais": "CO",
+    "zona_horaria": "America/Bogota"
   },
   "contenido": {
     "caso": {
