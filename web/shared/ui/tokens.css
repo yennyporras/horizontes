@@ -92,10 +92,10 @@
 
   /* Rondas (acta A7, P3): R1 verde, individual; R2 rojo, con discusión. Siempre con el texto «R1»/«R2» y forma
      distinta: R1 hueco, R2 sólido. Ajustados al lienzo oscuro, lejos del teal de acento:
-     R1 #3FB25A da 7,1 sobre el lienzo y 5,7 sobre --hz-superficie-3; R2 #F25C5C da 5,9 y 4,8.
-     Sobre su relleno sólido el texto va en --hz-sobre-r1 / --hz-sobre-r2 (7,1 / 5,9); el blanco ya no llega a AA. */
+     R1 #3FB25A da 7,1 sobre el lienzo y 5,7 sobre --hz-superficie-3; R2 #F36363 da 6,2 y 5,0 (4,6 sobre --hz-superficie-4).
+     Sobre su relleno sólido el texto va en --hz-sobre-r1 / --hz-sobre-r2 (7,1 / 6,2); el blanco ya no llega a AA. */
   --hz-r1: #3FB25A;
-  --hz-r2: #F25C5C;
+  --hz-r2: #F36363;
   --hz-sobre-r1: #0E0E0E;
   --hz-sobre-r2: #0E0E0E;
   --hz-r1-tinte: rgba(63, 178, 90, 0.14);
