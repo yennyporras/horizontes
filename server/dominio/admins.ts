@@ -3,7 +3,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
-import { isoBogota, isoUtc, sha256, tokenAleatorio } from './util.js'
+import { isoEnZona, isoUtc, sha256, tokenAleatorio } from './util.js'
 
 export interface AdminFila {
   id: number
@@ -43,7 +43,7 @@ export const adminPublico = (a: AdminFila) => ({
   rol: a.rol,
   activo: Boolean(a.activo),
   debe_cambiar_clave: Boolean(a.debe_cambiar_clave),
-  creado_at: isoBogota(a.creado_at),
+  creado_at: isoEnZona(a.creado_at),
 })
 
 const RE_USUARIO = /^[a-z0-9._-]{3,60}$/

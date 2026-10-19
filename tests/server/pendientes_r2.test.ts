@@ -37,9 +37,10 @@ describe('textos sin rayas', () => {
 })
 
 describe('POST /api/admin/salas/:id/duplicar', () => {
-  it('crea una sala nueva con las mismas mesas y configuración, sin inscritos', async () => {
+  it('crea una sala nueva con las mismas mesas y el mismo país, visibilidad por defecto y sin inscritos', async () => {
     const orig = await crearSala(e, 3, 'Taller real')
-    await e.app.inject({ method: 'PATCH', url: `/api/admin/salas/${orig.id}/config`, headers: { cookie: e.cookie }, payload: { alcance_resultados: 'sala', vista_participante: 'en_vivo' } })
+    const cfg = { alcance_resultados: 'mesa', vista_participante: 'registrado', pais: 'PE' }
+    await e.app.inject({ method: 'PATCH', url: `/api/admin/salas/${orig.id}/config`, headers: { cookie: e.cookie }, payload: cfg })
     await accion(e, orig.id, 'abrir_inscripcion')
     await inscribir(e, orig.mesas[0].codigo, 'orig@prueba.co')
 
@@ -50,7 +51,7 @@ describe('POST /api/admin/salas/:id/duplicar', () => {
     expect(copia.nombre).toBe('Taller real (copia)')
     expect(copia.estado).toBe('preparada')
     expect(copia.mesas).toHaveLength(3)
-    expect(copia.config).toMatchObject({ alcance_resultados: 'sala', vista_participante: 'en_vivo' })
+    expect(copia.config).toMatchObject({ alcance_resultados: 'sala', vista_participante: 'en_vivo', pais: 'PE', zona_horaria: 'America/Lima' })
     const d = (await e.app.inject({ url: `/api/admin/salas/${copia.id}`, headers: { cookie: e.cookie } })).json()
     expect(d.participantes).toHaveLength(0)
   })
