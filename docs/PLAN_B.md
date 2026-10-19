@@ -19,6 +19,11 @@ Se genera desde `data/seed_foodsume.json` con `python deploy/plan_b/generar_plan
 - **Matriz**: gráfico de burbujas con los 8 fijos en gris y los 2 vivos en **R1 verde y hueco** y **R2 rojo y sólido** (acta P3), ejes de 0 a 9,5. Proyéctalo.
 - Verificado (R3): con votos de prueba, la plantilla da los mismos T2M, eje X y eje Y que el motor de la app. Total es la suma de esas dos celdas.
 
+**Si editaste las rúbricas en el panel:** la papeleta y la plantilla son estáticas y salen de la semilla, así que no se enteran. Antes de imprimir, regenéralas con las rúbricas de la sala:
+1. Con la sesión de admin abierta, abre en el navegador `/api/admin/salas/{id de la sala}/rubricas` y guarda la respuesta como `rubricas.json`.
+2. Corre `python deploy/plan_b/generar_plantilla.py --rubricas rubricas.json`. Reemplaza `papeleta.html` (los textos de cada nivel) y la plantilla Excel (que no lleva textos de rúbrica, pero queda del mismo día).
+3. Imprime la papeleta nueva. Sin `--rubricas` vuelven los textos de la semilla.
+
 **Confirmado el 19-oct (R4):** la papeleta y la plantilla siguen con los 6 criterios de la semilla y solo aceptan 1, 3, 5, 7 o 9 (la celda de la hoja Votos rechaza otros valores). La papeleta no lleva fila «Total»: el participante no calcula, solo califica; el Total sale en la plantilla.
 
 ## Cómo se corre el taller en plan B
