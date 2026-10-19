@@ -214,10 +214,10 @@ export async function simularTaller(op: OpcionesSimulacion): Promise<Informe> {
     const detalle: string[] = []
     for (const pv of t.proyectos_vivos) {
       for (const r of pv.rondas) {
-        // Con menos de 2 votos el servidor oculta promedios y punto (privacidad, SPEC §7).
-        if (grupo.length < 2) {
-          if (!(r.bajo_minimo === true && r.n_votos === grupo.length && r.promedios === null && r.eje_x === null)) mal++
-          detalle.push(`${pv.nombre} R${r.ronda} (oculto, ${r.n_votos} voto)`)
+        // Con menos de `minimo_votos` el servidor oculta promedios, punto y total (privacidad, SPEC §7).
+        if (grupo.length < t.minimo_votos) {
+          if (!(r.bajo_minimo === true && r.n_votos === grupo.length && r.promedios === null && r.eje_x === null && r.total === null)) mal++
+          detalle.push(`${pv.nombre} R${r.ronda} (oculto, ${r.n_votos} votos)`)
           continue
         }
         const e = calcular(grupo, r.ronda, pv.id)
@@ -226,6 +226,7 @@ export async function simularTaller(op: OpcionesSimulacion): Promise<Informe> {
           Math.abs(r.t2m - e.t2m) < 1e-9 &&
           Math.abs(r.eje_x - e.x) < 1e-9 &&
           Math.abs(r.eje_y - e.y) < 1e-9 &&
+          Math.abs(r.total - (e.x + e.y)) < 1e-9 &&
           CRITERIOS.every((k) => Math.abs(r.promedios[k] - e.prom[k]) < 1e-9)
         if (!ok) mal++
         detalle.push(`${pv.nombre} R${r.ronda} (${r.eje_x.toFixed(2)}, ${r.eje_y.toFixed(2)})`)

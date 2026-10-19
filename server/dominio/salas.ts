@@ -1,7 +1,7 @@
 import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { semilla } from './semilla.js'
-import { codigoSala, idAleatorio, isoUtc, sha256, tokenAleatorio } from './util.js'
+import { type Pais, type ZonaHoraria, codigoSala, idAleatorio, isoUtc, sha256, tokenAleatorio } from './util.js'
 
 export type EstadoSala = 'preparada' | 'inscripcion' | 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cerrada' | 'cerrada'
 
@@ -17,6 +17,8 @@ export interface SalaFila {
   revelar_hojas: number
   cierre_programado_ronda_at: string | null
   cierre_programado_sala_at: string | null
+  pais: Pais
+  zona_horaria: ZonaHoraria
   token_tablero_hash: string
   token_tablero: string
   version: number
@@ -32,6 +34,9 @@ export interface MesaFila {
 }
 
 export const MAX_MESAS = 30
+
+/** Visibilidad con que nace, se duplica o se reinicia una sala (acta A2: consolidado de toda la sala tras votar). */
+export const CONFIG_POR_DEFECTO = { alcance_resultados: 'sala', vista_participante: 'en_vivo' } as const
 
 export function cargarSala(db: Db, idOCodigo: string): SalaFila {
   const s = uno<SalaFila>(db, 'SELECT * FROM salas WHERE id = ? OR codigo = ?', idOCodigo, idOCodigo.toUpperCase())
@@ -97,12 +102,14 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
     const token = tokenAleatorio()
     ejecutar(
       db,
-      `INSERT INTO salas (id, codigo, nombre, plantilla, estado, token_tablero_hash, token_tablero, creada_at)
-       VALUES (?, ?, ?, ?, 'preparada', ?, ?, ?)`,
+      `INSERT INTO salas (id, codigo, nombre, plantilla, estado, alcance_resultados, vista_participante, token_tablero_hash, token_tablero, creada_at)
+       VALUES (?, ?, ?, ?, 'preparada', ?, ?, ?, ?, ?)`,
       id,
       codigo,
       nombre,
       sem.plantilla.id,
+      CONFIG_POR_DEFECTO.alcance_resultados,
+      CONFIG_POR_DEFECTO.vista_participante,
       sha256(token),
       token,
       isoUtc(ahora),
@@ -141,7 +148,7 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
   })
 }
 
-/** Sala nueva para ensayos: misma plantilla, mismas mesas y misma configuración de visibilidad; sin inscritos ni votos. */
+/** Sala nueva para ensayos: misma plantilla, mismas mesas y mismo país; visibilidad por defecto; sin inscritos ni votos. */
 export function duplicarSala(db: Db, idOCodigo: string, nombre: unknown, ahora: number, por: string) {
   const orig = cargarSala(db, idOCodigo)
   const nMesas = mesasDeSala(db, orig.id).length
@@ -149,7 +156,7 @@ export function duplicarSala(db: Db, idOCodigo: string, nombre: unknown, ahora: 
   const nuevoNombre = (nombre ?? '').trim() || `${orig.nombre.slice(0, 110)} (copia)`
   return transaccion(db, () => {
     const s = crearSalaDesdePlantilla(db, { nombre: nuevoNombre, plantilla: orig.plantilla, mesas: Math.max(1, nMesas) }, ahora, por)
-    ejecutar(db, 'UPDATE salas SET alcance_resultados = ?, vista_participante = ? WHERE id = ?', orig.alcance_resultados, orig.vista_participante, s.id)
+    ejecutar(db, 'UPDATE salas SET pais = ?, zona_horaria = ? WHERE id = ?', orig.pais, orig.zona_horaria, s.id)
     registrarEvento(db, s.id, ahora, 'sala_duplicada', por, { desde: orig.id })
     return cargarSala(db, s.id)
   })
