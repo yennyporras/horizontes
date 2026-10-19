@@ -3,7 +3,7 @@
 import { type Db, ejecutar, todos, transaccion } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { type EstadoSala, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
-import { isoBogota, isoUtc } from './util.js'
+import { DESFASES, PAISES, type ZonaHoraria, ZONA_POR_PAIS, isoEnZona, isoUtc } from './util.js'
 
 export const ACCIONES = [
   'abrir_inscripcion',
@@ -107,19 +107,21 @@ export interface CambiosConfig {
   revelar_hojas?: unknown
   cierre_programado_ronda_at?: unknown
   cierre_programado_sala_at?: unknown
+  pais?: unknown
+  zona_horaria?: unknown
 }
 
 /**
  * Valida una hora de cierre programado. Manda la hora del servidor, no la del navegador del admin:
  * una hora que ya pasó se rechaza (si se aceptara, la ronda se cerraría de golpe en la siguiente petición).
  */
-function fechaOpcional(campo: string, v: unknown, ahora: number): string | null {
+function fechaOpcional(campo: string, v: unknown, ahora: number, zona: ZonaHoraria): string | null {
   if (v === null || v === '') return null
   if (typeof v !== 'string' || Number.isNaN(Date.parse(v))) {
     throw new ErrorApi(422, 'CONFIG_INVALIDA', `${campo} debe ser una fecha ISO-8601 con zona o null.`)
   }
   if (Date.parse(v) <= ahora) {
-    const hora = (isoBogota(ahora) ?? '').slice(11, 19)
+    const hora = (isoEnZona(ahora, zona) ?? '').slice(11, 19)
     throw new ErrorApi(422, 'HORA_PASADA', `Esa hora ya pasó. En el servidor son las ${hora}; elige una hora posterior.`)
   }
   return isoUtc(Date.parse(v))
@@ -146,8 +148,21 @@ export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ah
     if (typeof cambios.revelar_hojas !== 'boolean') throw new ErrorApi(422, 'CONFIG_INVALIDA', 'revelar_hojas debe ser true o false.')
     poner('revelar_hojas', cambios.revelar_hojas ? 1 : 0)
   }
-  if (cambios.cierre_programado_ronda_at !== undefined) poner('cierre_programado_ronda_at', fechaOpcional('cierre_programado_ronda_at', cambios.cierre_programado_ronda_at, ahora))
-  if (cambios.cierre_programado_sala_at !== undefined) poner('cierre_programado_sala_at', fechaOpcional('cierre_programado_sala_at', cambios.cierre_programado_sala_at, ahora))
+  // Cambiar el país sin zona pone la zona del país.
+  let zona = cargarSala(db, salaId).zona_horaria
+  if (cambios.pais !== undefined) {
+    if (!(PAISES as readonly unknown[]).includes(cambios.pais)) throw new ErrorApi(422, 'CONFIG_INVALIDA', 'pais debe ser "CO", "PE" o "GT".')
+    poner('pais', cambios.pais)
+    if (cambios.zona_horaria === undefined) poner('zona_horaria', (zona = ZONA_POR_PAIS[cambios.pais as keyof typeof ZONA_POR_PAIS]))
+  }
+  if (cambios.zona_horaria !== undefined) {
+    if (!Object.hasOwn(DESFASES, cambios.zona_horaria as string)) {
+      throw new ErrorApi(422, 'CONFIG_INVALIDA', `zona_horaria debe ser una de: ${Object.keys(DESFASES).join(', ')}.`)
+    }
+    poner('zona_horaria', (zona = cambios.zona_horaria as ZonaHoraria))
+  }
+  if (cambios.cierre_programado_ronda_at !== undefined) poner('cierre_programado_ronda_at', fechaOpcional('cierre_programado_ronda_at', cambios.cierre_programado_ronda_at, ahora, zona))
+  if (cambios.cierre_programado_sala_at !== undefined) poner('cierre_programado_sala_at', fechaOpcional('cierre_programado_sala_at', cambios.cierre_programado_sala_at, ahora, zona))
   if (sets.length === 0) throw new ErrorApi(422, 'CONFIG_INVALIDA', 'No llegó ningún cambio de configuración.')
 
   return transaccion(db, () => {

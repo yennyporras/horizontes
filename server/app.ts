@@ -11,6 +11,7 @@ import { type Db, abrirDb } from './db/index.js'
 import { asegurarSuperadmin } from './dominio/admins.js'
 import { aplicarCierresProgramados } from './dominio/estados.js'
 import { respaldarBd } from './dominio/mantenimiento.js'
+import { cargarSala } from './dominio/salas.js'
 import type { Reloj } from './dominio/util.js'
 import { rutasApi } from './rutas/api.js'
 import { LIMITE_CUERPO, cabecerasSeguridad, errorDeFastify, opcionesLogger } from './seguridad.js'
@@ -34,10 +35,11 @@ export interface OpcionesApp {
 export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstance> {
   // Sin log por petición: 40 celulares con polling son ~16 peticiones/s de ruido y escribir a stdout es síncrono
   // (en Windows, con el lector lento, frenaba el event loop segundos). Se registran solo las lentas y los 5xx.
-  // trustProxy: solo el primer salto (Traefik de Coolify) (Coolify); un X-Forwarded-For inventado por el cliente no cambia req.ip.
+  // trustProxy: solo los TRUST_PROXY_HOPS saltos de proxy propios (Traefik de Coolify = 1); un X-Forwarded-For inventado
+  // por el cliente no cambia req.ip. Esa IP se guarda en cada inscripción y voto, y nunca se loguea.
   const app = Fastify({
     logger: op.logger || op.logStream ? opcionesLogger(op.logStream) : false,
-    trustProxy: (_ip: string, salto: number) => salto < 1,
+    trustProxy: (_ip: string, salto: number) => salto < config.trustProxyHops,
     logController: new LogController({ disableRequestLogging: true }),
     bodyLimit: LIMITE_CUERPO,
   })
@@ -79,7 +81,7 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
     // (a mano o programado). Un fallo no rompe la petición.
     const respaldar = (salaId: string, momento: string) => {
       try {
-        const r = respaldarBd(db, dbPath, `${salaId}_${momento}`, ahora())
+        const r = respaldarBd(db, dbPath, `${salaId}_${momento}`, ahora(), cargarSala(db, salaId).zona_horaria)
         if (r) app.log.info(`Respaldo de la BD (${momento}) de ${salaId}: ${r}`)
       } catch (e) {
         app.log.error({ err: e }, 'No se pudo respaldar la BD')

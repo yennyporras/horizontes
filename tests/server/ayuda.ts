@@ -40,9 +40,16 @@ export async function loginCookie(app: FastifyInstance, usuario: string, clave: 
   return `hz_admin=${c.value}`
 }
 
-export async function crearSala(e: Entorno, mesas = 2, nombre = 'Sala de prueba') {
+/** Visibilidad por defecto antes del acta del 16-oct: la fijan a propósito las pruebas de las reglas de alcance mesa y vista registrado. */
+export const VISTA_MESA_REGISTRADO = { alcance_resultados: 'mesa', vista_participante: 'registrado' }
+
+export async function crearSala(e: Entorno, mesas = 2, nombre = 'Sala de prueba', config?: object) {
   const r = await e.app.inject({ method: 'POST', url: '/api/admin/salas', headers: { cookie: e.cookie }, payload: { nombre, plantilla: 'foodsume_2026', mesas } })
   if (r.statusCode !== 201) throw new Error(`crear sala falló: ${r.body}`)
+  if (config) {
+    const c = await e.app.inject({ method: 'PATCH', url: `/api/admin/salas/${r.json().id}/config`, headers: { cookie: e.cookie }, payload: config })
+    if (c.statusCode !== 200) throw new Error(`config falló: ${c.body}`)
+  }
   return r.json() as { id: string; codigo: string; token_tablero: string; mesas: { id: string; codigo: string }[] }
 }
 
