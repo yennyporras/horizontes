@@ -23,8 +23,6 @@
 }
 body:has(> #root > .hz-tablero) {
   margin: 0;
-  /* Sin franja clara al rebotar el desplazamiento en el celular. */
-  background: var(--et-carbon);
 }
 .hz-tablero *,
 .hz-tablero *::before,
@@ -83,15 +81,17 @@ body:has(> #root > .hz-tablero) {
   letter-spacing: -0.01em;
   color: var(--hz-tinta);
 }
+/* Firma con el estilo de EncabezadoProducto (web/shared/ui): etiqueta en tinta 2 y la » en el azul de acción.
+   El tablero no usa el componente: aquí la protagonista es la sala y la escala va en em (proyector a 6 m). */
 .hz-firma {
   margin: 0;
   font-size: 0.8em;
-  font-weight: 700;
+  font-weight: var(--hz-fw-etiqueta);
   color: var(--hz-tinta-2);
   white-space: nowrap;
 }
 .hz-firma-flecha {
-  font-weight: 900;
+  font-weight: var(--hz-fw-display);
   color: var(--hz-accion);
 }
 .hz-cab-meta {
