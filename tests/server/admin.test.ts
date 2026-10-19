@@ -329,6 +329,13 @@ describe('salas y mesas', () => {
       cierre_programado_sala_at: '2026-10-20T17:00:00-05:00',
       pais: 'CO',
       zona_horaria: 'America/Bogota',
+      // 19-oct: el alias de ronda escribe el cierre de la ronda 1 (la siguiente en una sala preparada).
+      apertura_programada_sala_at: null,
+      apertura_programada_r1_at: null,
+      cierre_programado_r1_at: '2026-10-20T15:30:00-05:00',
+      apertura_programada_r2_at: null,
+      cierre_programado_r2_at: null,
+      modo_preguntas: 'automatico',
     })
   })
 
