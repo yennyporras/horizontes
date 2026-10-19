@@ -6,12 +6,15 @@ import type {
   AdminYo,
   Config,
   CuerpoInscripcion,
+  CuerpoPreguntaGuiada,
   CuerpoRubrica,
   CuerpoVoto,
   DetalleSala,
   HojasSala,
   InfoMesa,
   RespuestaInscripcion,
+  RespuestaPreguntaGuiada,
+  RespuestasSala,
   RespuestaVoto,
   RubricasSala,
   SalaResumen,
@@ -116,6 +119,10 @@ export const api = {
   rubricas: (id: string) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas`)),
   editarRubrica: (id: string, criterio: string, c: CuerpoRubrica) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas/${criterio}`, { metodo: 'PUT', cuerpo: c })),
   hojas: (id: string) => datos(pedir<HojasSala>(`/api/admin/salas/${id}/hojas`)),
+  /** Respuestas por persona (solo admin, no se proyecta). */
+  respuestas: (id: string) => datos(pedir<RespuestasSala>(`/api/admin/salas/${id}/respuestas`)),
+  /** Modo guiado: fija la pregunta que ven los celulares y el tablero (`null` la quita). 409 RONDA_CERRADA sin ronda abierta. */
+  preguntaGuiada: (id: string, p: CuerpoPreguntaGuiada) => datos(pedir<RespuestaPreguntaGuiada>(`/api/admin/salas/${id}/pregunta-guiada`, { metodo: 'PUT', cuerpo: p })),
   urlQr: (mesaId: string) => `/api/admin/mesas/${mesaId}/qr.svg`,
   urlExport: (salaId: string, archivo: 'inscritos.csv' | 'votos.csv') => `/api/admin/salas/${salaId}/export/${archivo}`,
 }
