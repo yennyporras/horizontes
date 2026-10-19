@@ -105,8 +105,10 @@
 }
 /* En celular la marca y la cuenta caben en una fila: el nombre se omite, quedan el rol y Salir. */
 @media (max-width: 480px) {
-  .hz-admin .cabecera .hz-producto__fila { column-gap: var(--hz-sp-3); }
+  .hz-admin .cabecera .hz-producto__fila { column-gap: var(--hz-sp-2); }
   .hz-admin .usuario__nombre { display: none; }
+  .hz-admin .usuario { column-gap: var(--hz-sp-1); }
+  .hz-admin .usuario .hz-boton { padding-inline: var(--hz-sp-2); }
 }
 @media (min-width: 1440px) {
   .hz-admin .nav { order: 2; flex: 1; flex-basis: auto; }
