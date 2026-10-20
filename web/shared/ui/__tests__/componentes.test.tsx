@@ -144,7 +144,7 @@ describe('Colores de ronda', () => {
 })
 
 describe('EncabezadoProducto', () => {
-  it('muestra el glifo, el nombre y la firma «por Estratek» con la » decorativa', () => {
+  it('muestra el logo, el nombre y la firma «por Estratek» con la » decorativa', () => {
     render(
       <EncabezadoProducto href="#inicio">
         <span>Mesa 2</span>
@@ -152,15 +152,26 @@ describe('EncabezadoProducto', () => {
     )
     const marca = screen.getByRole('link')
     expect(marca.getAttribute('href')).toBe('#inicio')
-    expect(marca.textContent).toBe('HHorizontespor Estratek »')
+    expect(marca.textContent).toBe('Horizontespor Estratek »')
+    // El logo es decorativo: el nombre va en texto al lado.
+    const logo = marca.querySelector('svg')!
+    expect(logo.getAttribute('aria-hidden')).toBe('true')
+    expect(logo.getAttribute('class')).toContain('hz-producto__glifo')
     expect(screen.getByText('»').getAttribute('aria-hidden')).toBe('true')
     expect(screen.getByRole('banner').textContent).toContain('Mesa 2')
   })
 
   it('sin href la marca no es enlace', () => {
-    render(<EncabezadoProducto nombre="IRMI" glifo="I" />)
+    render(<EncabezadoProducto nombre="IRMI" />)
     expect(screen.queryByRole('link')).toBeNull()
     expect(screen.getByRole('banner').textContent).toContain('IRMI')
+  })
+
+  it('con onIr el clic en la marca lo maneja la vista (navegar sin recargar)', () => {
+    const onIr = vi.fn((e: { preventDefault: () => void }) => e.preventDefault())
+    render(<EncabezadoProducto href="/admin/salas" onIr={onIr} />)
+    fireEvent.click(screen.getByRole('link'))
+    expect(onIr).toHaveBeenCalledTimes(1)
   })
 })
 

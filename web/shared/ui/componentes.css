@@ -301,7 +301,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-hoja__texto { color: var(--hz-tinta); }
 
 /* ── Encabezado de producto (familia Estratek) ──────────
-   Glifo en el acento de la herramienta, nombre, «por Estratek »» y la línea del degradado debajo. */
+   Logo de Horizontes, nombre, «por Estratek »» y la línea del degradado debajo. La marca enlaza al inicio o, en el panel, a Salas. */
 .hz-producto { position: relative; background: var(--hz-fondo); }
 .hz-producto::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--hz-grad-marca); }
 /* La fila es el contenedor de página: el fondo y la línea van de borde a borde, el contenido se alinea con la página. */
@@ -310,12 +310,9 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
   padding-block: var(--hz-sp-3) calc(var(--hz-sp-3) + 4px);
 }
 .hz-producto__marca { display: inline-flex; align-items: center; gap: var(--hz-sp-3); min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
-.hz-producto__glifo {
-  flex: none; display: grid; place-items: center;
-  width: 2.5rem; height: 2.5rem; border-radius: var(--hz-r-campo);
-  background: var(--hz-acento-producto); color: var(--et-carbon);
-  font-size: var(--hz-fs-24); font-weight: var(--hz-fw-display); line-height: 1;
-}
+.hz-producto__glifo { flex: none; width: 2.5rem; height: 2.5rem; }
+.hz-producto__marca[href] { border-radius: var(--hz-r-campo); }
+.hz-producto__marca[href]:hover .hz-producto__nombre { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
 .hz-producto__textos { display: grid; line-height: 1.1; }
 .hz-producto__nombre { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-display); letter-spacing: var(--hz-ls-titulo); }
 .hz-producto__firma { font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
