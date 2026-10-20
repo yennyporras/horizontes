@@ -264,6 +264,7 @@ export const fechaHora = (iso: string | null, zona: ZonaHoraria = 'America/Bogot
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, dateStyle: 'medium', timeStyle: 'short' }) : 'Sin definir'
 
 const TEXTO_EVENTO: Record<string, string> = {
+  token_tablero_regenerado: 'Enlace del tablero cambiado: los anteriores dejaron de funcionar',
   sala_creada: 'Sala creada',
   sala_duplicada: 'Sala creada como copia para ensayo',
   sala_reiniciada: 'Sala reiniciada',

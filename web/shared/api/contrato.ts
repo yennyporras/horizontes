@@ -355,3 +355,5 @@ export type AccionSala =
   | 'reiniciar_ronda'
   | 'cerrar_sala'
   | 'reabrir_sala'
+  /** B-2 (20-oct): token nuevo para el tablero; los enlaces anteriores dejan de funcionar. Válida en cualquier estado. */
+  | 'regenerar_token_tablero'

@@ -67,7 +67,7 @@ export function SalaEnVivo() {
           {verResultado && rondaAbierta(d.sala.estado) && (
             <ResultadoPreliminar key={verResultado} d={d} mesaId={verResultado === 'sala' ? undefined : verResultado} ronda={rondaAbierta(d.sala.estado)!} />
           )}
-          <VerEnVivo d={d} />
+          <VerEnVivo d={d} refrescar={refrescar} />
           {d.sala.ronda_actual ? <ComoVotoSala d={d} /> : null}
           <Mesas d={d} />
           <Eventos d={d} />
@@ -490,8 +490,32 @@ function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResu
  * (el del proyector), «Tablero de Mesa N» y «Vista previa del celular». QA-A-04: la vista previa abre el celular en
  * modo de solo lectura (`?vista=previa`) y avisa que no hay que inscribirse ahí.
  */
-function VerEnVivo({ d }: { d: SalaDetalle }) {
+function VerEnVivo({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<unknown> | void }) {
   const [mesaId, setMesaId] = useState(d.mesas[0]?.id ?? '')
+  const [dialogo, confirmar] = useConfirmar()
+  const [cambiando, setCambiando] = useState(false)
+  const [avisoEnlace, setAvisoEnlace] = useState<{ ok: boolean; texto: string } | null>(null)
+  // B-2: si un enlace del tablero se compartió o se vio en un ensayo, uno nuevo deja sin acceso a los anteriores.
+  const cambiarEnlace = async () => {
+    const ok = await confirmar(
+      'Cambiar el enlace del tablero',
+      'Los enlaces del tablero que ya se abrieron o compartieron, de la sala y de cada mesa, dejan de funcionar. Tendrás que abrir el tablero de nuevo desde aquí.',
+      'Cambiar el enlace',
+      { tono: 'primario' },
+    )
+    if (!ok) return
+    setCambiando(true)
+    setAvisoEnlace(null)
+    try {
+      await api.post(`/api/admin/salas/${d.sala.id}/acciones`, { accion: 'regenerar_token_tablero' })
+      await refrescar()
+      setAvisoEnlace({ ok: true, texto: 'Listo: el tablero tiene un enlace nuevo y los anteriores ya no funcionan.' })
+    } catch (e) {
+      setAvisoEnlace({ ok: false, texto: `No pudimos cambiar el enlace. ${e instanceof Error ? e.message : ''}`.trim() })
+    } finally {
+      setCambiando(false)
+    }
+  }
   const mesa = d.mesas.find((m) => m.id === mesaId) ?? d.mesas[0]
   const tableroSala = enEsteServidor(urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero))
   return (
@@ -547,6 +571,20 @@ function VerEnVivo({ d }: { d: SalaDetalle }) {
           </li>
         )}
       </ul>
+      <div className="en-vivo__enlace">
+        <button type="button" className="hz-boton hz-boton--secundario" disabled={cambiando} aria-busy={cambiando} aria-describedby="ayuda-cambiar-enlace" onClick={() => void cambiarEnlace()}>
+          Cambiar el enlace del tablero
+        </button>
+        <p id="ayuda-cambiar-enlace" className="pista">
+          Si el enlace del tablero se compartió o se vio en un ensayo, crea uno nuevo: los anteriores dejan de funcionar.
+        </p>
+        {avisoEnlace && (
+          <p className={avisoEnlace.ok ? 'alerta alerta--exito' : 'alerta alerta--error'} role={avisoEnlace.ok ? 'status' : 'alert'}>
+            {avisoEnlace.texto}
+          </p>
+        )}
+      </div>
+      {dialogo}
     </section>
   )
 }
