@@ -734,7 +734,8 @@ body:has(> #root > .hz-tablero) {
     gap: 0.3em 0.9em;
   }
   /* Leyenda en una línea y en letra de proyector. */
-  .hz-zona-matriz .hz-leyenda {
+  .hz-zona-matriz .hz-leyenda,
+  .hz-pie-mesas .hz-leyenda {
     font-size: max(20px, 1.2em);
   }
   .hz-leyenda .hz-ley-largo {
