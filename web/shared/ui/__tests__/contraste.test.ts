@@ -1,4 +1,5 @@
-// Contraste WCAG 2.2 de los pares de docs/marca/FAMILIA_ESTRATEK.md §3 y §7, medido en los dos temas de tokens.css.
+// Contraste WCAG 2.2 de los pares de docs/marca/FAMILIA_ESTRATEK.md §3 y §7, medido en los dos temas de tokens.css:
+// el claro de todas las páginas y el carbón de la barra superior (que es un juego completo: lo que va en la barra se lee).
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -116,11 +117,8 @@ describe('valores de la línea gráfica', () => {
       for (const [n, v] of Object.entries(esperado[tema])) expect(hex(tema, n), `${n} en ${tema}`).toBe(v)
   })
 
-  it('los nombres anteriores apuntan a la acción de Estratek', () => {
-    for (const tema of ['claro', 'carbon'] as Tema[]) {
-      for (const n of ['azul', 'acento', 'cielo']) expect(hex(tema, n)).toBe(hex(tema, 'accion'))
-      expect(hex(tema, 'sobre-acento')).toBe(hex(tema, 'sobre-accion'))
-    }
+  it('el nombre anterior que sigue en uso (--hz-azul) apunta a la acción de Estratek', () => {
+    for (const tema of ['claro', 'carbon'] as Tema[]) expect(hex(tema, 'azul')).toBe(hex(tema, 'accion'))
     expect(base['--hz-grad-marca']).toBe('var(--et-grad)')
     expect(base['--et-grad']).toBe('linear-gradient(90deg, #442AAF 0%, #3487FF 30%, #00CDA1 100%)')
   })
