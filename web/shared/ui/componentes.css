@@ -331,7 +331,9 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-producto__menu :is(a, button):not(.hz-boton):hover { background: var(--hz-superficie-2); }
 .hz-producto__menu .hz-boton { padding-inline: var(--hz-sp-5); font-size: var(--hz-fs-14); white-space: nowrap; }
 /* «Menú»: abre lo del área (y, en el panel, las secciones) debajo de la barra. Solo bajo 1024 px. */
-.hz-producto__menu-boton { flex: none; padding-inline: var(--hz-sp-5); white-space: nowrap; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
+/* Cede ancho antes que la marca: «Menú · Configuración» termina en «…» en 320 px en vez de desbordar la barra. */
+.hz-producto__menu-boton { display: block; flex: 0 1 auto; min-width: 0; padding-inline: var(--hz-sp-5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hz-producto__marca { flex: none; }
 .hz-producto__desplegable {
   position: absolute; top: var(--hz-alto-barra); left: 0; right: 0;
   max-height: calc(100dvh - var(--hz-alto-barra)); overflow-y: auto;

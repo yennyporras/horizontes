@@ -26,7 +26,7 @@ export interface EncabezadoProductoProps {
   /** Bajo 1024 px la franja va dentro del menú plegable (panel). Si no, queda como fila deslizable (tablero). */
   franjaEnMenu?: boolean
   /** Texto del botón del menú (por defecto «Menú»; el panel le suma la sección actual). */
-  etiquetaMenu?: string
+  etiquetaMenu?: ReactNode
   /** Estado controlado del menú plegable (el panel lo cierra al cambiar de sección). */
   menuAbierto?: boolean
   onMenu?: (abierto: boolean) => void
