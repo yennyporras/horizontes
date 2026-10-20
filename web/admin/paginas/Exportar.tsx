@@ -1,12 +1,12 @@
-import { useState, type ReactNode } from 'react'
-import { useParams } from 'react-router-dom'
-import { consultar, usaMocks } from '../api'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { api, consultar, lista, usaMocks } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import { svgMatriz, vistaPorDefecto } from '../../tablero'
-import type { SalaDetalle } from '../tipos'
-import { rutaApiTablero, urlTableroSala } from '../textos'
+import type { SalaDetalle, SalaResumen } from '../tipos'
+import { ESTADOS, rutaApiTablero, urlTableroSala } from '../textos'
 
 interface Archivo {
   archivo: string
@@ -51,6 +51,64 @@ function descargar(contenido: string, tipo: string, nombre: string) {
   a.download = nombre
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Pedido de Paola (21-oct): elegir aquí la sala de la que se exporta. Al cambiarla, el panel va a Exportar de esa sala
+ * (y la recuerda, como al abrir cualquier sección de sala). Con una sola sala se ve, deshabilitado.
+ */
+export function SelectorSalaExportar({ salaId }: { salaId: string | undefined }) {
+  const [salas, setSalas] = useState<SalaResumen[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const navegar = useNavigate()
+
+  useEffect(() => {
+    let vigente = true
+    api
+      .get<unknown>('/api/admin/salas')
+      .then((r) => vigente && setSalas(lista<SalaResumen>(r, 'salas')))
+      .catch((e: Error) => vigente && setError(e.message))
+    return () => {
+      vigente = false
+    }
+  }, [])
+
+  if (error)
+    return (
+      <p className="alerta alerta--aviso" role="status">
+        No pudimos cargar la lista de salas. {error}
+      </p>
+    )
+  if (!salas) return <p role="status">Cargando salas…</p>
+  if (salas.length === 0)
+    return (
+      <p className="vacio">
+        Aún no hay salas para exportar. Crea la primera en <Link to="/admin/salas">Salas</Link>.
+      </p>
+    )
+  const conocida = salas.some((s) => s.id === salaId)
+  return (
+    <div className="campo selector-sala">
+      <label htmlFor="sala-exportar">Sala de la que exportas</label>
+      <select
+        id="sala-exportar"
+        value={conocida ? salaId : ''}
+        disabled={salas.length === 1 && conocida}
+        aria-describedby="ayuda-sala-exportar"
+        onChange={(e) => e.target.value && navegar(`/admin/salas/${encodeURIComponent(e.target.value)}/export`)}
+      >
+        {!conocida && <option value="">Elige una sala</option>}
+        {salas.map((s) => (
+          <option key={s.id} value={s.id}>
+            {[s.nombre, s.codigo, ESTADOS[s.estado], s.tipo === 'ensayo' ? 'Ensayo' : null].filter(Boolean).join(' · ')}
+          </option>
+        ))}
+      </select>
+      <small id="ayuda-sala-exportar" className="pista">
+        {salas.length === 1 ? 'Solo hay una sala.' : 'Al cambiarla, los archivos de abajo son los de la sala que elijas.'}
+      </small>
+    </div>
+  )
 }
 
 export function Exportar() {
@@ -110,6 +168,7 @@ export function Exportar() {
     <ConSala titulo="Exportar datos" datos={datos} error={error}>
       {(d) => (
         <>
+          <SelectorSalaExportar salaId={d.sala.id} />
           <p className="pista">Archivos CSV en UTF-8 que abren bien en Excel. Se generan con los datos del momento.</p>
           {errorDescarga && (
             <p className="alerta alerta--error" role="alert">

@@ -247,7 +247,7 @@ describe('panel admin contra el simulador', () => {
     const ayuda = document.getElementById('ayuda-tablero-sala')!.textContent ?? ''
     for (const t of ['Gráfica muestra solo la matriz moviéndose', 'Detallado muestra la matriz con el progreso y los promedios']) expect(ayuda).toContain(t)
     // Las teclas van en una lista visual con <kbd> (QA por roles, Nicolai).
-    expect([...enVivo.querySelectorAll('.teclas__lista kbd')].map((k) => k.textContent)).toEqual(['F', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
+    expect([...enVivo.querySelectorAll('.teclas__lista kbd')].map((k) => k.textContent)).toEqual(['F', '0', 'Rueda del mouse', 'Pellizco', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
   })
 
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {

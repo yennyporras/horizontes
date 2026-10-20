@@ -86,9 +86,13 @@ interface Estado {
 
 const NOMBRES = ['Ana Pérez', 'Luis Gómez', 'Marta Ríos', 'Carlos Díaz', 'Sofía Mejía', 'Andrés Rojas', 'Laura Vélez', 'Diego Castro', 'Paula Henao', 'Jorge Arango', 'Camila Ortiz', 'Felipe Duque']
 
-function mesa(codigo: string, i: number): Mesa {
+/**
+ * La sala de ejemplo usa m1, m2…; las salas nuevas llevan su id delante (`s_abc_m1`), así `DELETE /api/admin/mesas/{id}`
+ * encuentra una sola mesa.
+ */
+function mesa(codigo: string, i: number, prefijo = ''): Mesa {
   return {
-    id: `m${i}`,
+    id: `${prefijo}m${i}`,
     nombre: `Mesa ${i}`,
     codigo: `${codigo}-${i}`,
     url_participante: `https://horizontes.estratek.com.co/m/${codigo}-${i}`,
@@ -99,6 +103,9 @@ function mesa(codigo: string, i: number): Mesa {
     perfiles: {},
   }
 }
+
+const numeroMesa = (m: Mesa) => Number(/m(\d+)$/.exec(m.id)?.[1] ?? 0)
+const prefijoMesas = (s: SalaDetalle) => s.mesas[0]?.id.replace(/m\d+$/, '') ?? `${s.sala.id}_`
 
 /** Recalcula conteos y precierre por mesa como lo haría el servidor (SPEC §4). */
 function derivar(s: SalaDetalle) {
@@ -364,7 +371,8 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
   const cliente = datosCliente(b)
   if ('error' in cliente) return cliente.error
   const codigo = Math.random().toString(36).slice(2, 7).toUpperCase()
-  const nueva = structuredClone(estado.salas[0])
+  // Si se eliminaron todas las salas, la base vuelve a ser la de ejemplo.
+  const nueva = structuredClone(estado.salas[0] ?? inicial().salas[0])
   nueva.sala = {
     ...nueva.sala,
     id: `s_${codigo.toLowerCase()}`,
@@ -389,7 +397,7 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
       ...CONFIG_19OCT,
     },
   }
-  nueva.mesas = Array.from({ length: n }, (_, i) => mesa(codigo, i + 1))
+  nueva.mesas = Array.from({ length: n }, (_, i) => mesa(codigo, i + 1, `${nueva.sala.id}_`))
   estado.rubricas[nueva.sala.id] = rubricasIniciales()
   nueva.participantes = []
   nueva.eventos = []
@@ -422,6 +430,13 @@ function admins(metodo: string, camino: string, b: Record<string, unknown>, a: A
     return ok(filaPublica(nuevo), 201)
   }
   const objetivo = estado.admins.find((x) => x.id === Number(camino.split('/').pop()))
+  // Como el servidor: ni la propia cuenta ni otra superadministradora; borra sus sesiones (aquí, la del simulador si era la suya).
+  if (metodo === 'DELETE' && objetivo) {
+    if (objetivo.id === a.id) return error(409, 'OPERACION_INVALIDA', 'No puedes eliminar tu propia cuenta.')
+    if (objetivo.rol === 'superadmin') return error(409, 'OPERACION_INVALIDA', 'La cuenta superadministradora no se elimina desde aquí.')
+    estado.admins = estado.admins.filter((x) => x.id !== objetivo.id)
+    return { status: 204, body: null }
+  }
   if (metodo === 'PATCH' && objetivo) {
     if (objetivo.rol === 'superadmin') return error(409, 'NO_EDITABLE', 'El superadmin se administra desde el servidor.')
     if (typeof b.activo === 'boolean') objetivo.activo = b.activo
@@ -611,6 +626,17 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     const s = salaPorId(m[1])
     if (!s) return error(404, 'SALA_NO_EXISTE', 'Esa sala no existe.')
     const resto = m[2] ?? ''
+    // Como el servidor: solo superadmin, con el nombre exacto; el simulador no guarda respaldos. 204.
+    if (metodo === 'DELETE' && resto === '') {
+      if (a.rol !== 'superadmin') return error(403, 'SOLO_SUPERADMIN', 'Solo la cuenta superadministradora puede eliminar salas.')
+      if (typeof b.confirmar !== 'string' || b.confirmar.trim() !== s.sala.nombre) {
+        return error(422, 'CONFIRMACION_INVALIDA', `Para eliminar la sala escribe su nombre exacto: «${s.sala.nombre}».`)
+      }
+      estado.salas = estado.salas.filter((x) => x !== s)
+      delete estado.rubricas[s.sala.id]
+      if (estado.demo?.salaId === s.sala.id) estado.demo = null
+      return { status: 204, body: null }
+    }
     if (metodo === 'GET' && resto === '') {
       simularVoto(s)
       // ETag fuerte entre comillas, como el servidor (RFC 9110): el navegador lo devuelve tal cual en If-None-Match.
@@ -663,8 +689,9 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (metodo === 'POST' && resto === '/mesas') {
       const n = Number(b.cantidad)
       if (!(n >= 1 && n <= 20)) return error(422, 'DATOS_INVALIDOS', 'Agrega entre 1 y 20 mesas.')
-      const inicio = s.mesas.length
-      for (let i = 1; i <= n; i++) s.mesas.push(mesa(s.sala.codigo, inicio + i))
+      // Como el servidor: sigue después de la mayor (si se eliminó una mesa, no repite su número).
+      const inicio = Math.max(0, ...s.mesas.map(numeroMesa))
+      for (let i = 1; i <= n; i++) s.mesas.push(mesa(s.sala.codigo, inicio + i, prefijoMesas(s)))
       derivar(s)
       tocar(s, 'mesas_agregadas', por, { cantidad: n })
       return ok({ mesas: s.mesas }, 201)
@@ -696,6 +723,25 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       tocar(s, ev.tipo, por, { accion, ...(ev.ronda ? { ronda: ev.ronda === 'actual' ? s.sala.ronda_actual : ev.ronda } : {}) })
       return ok({ estado: destino })
     }
+  }
+
+  // Como el servidor: solo sin inscritos (activos o inactivos) y nunca la última mesa. Evento mesa_eliminada.
+  const mesaBorrar = /^\/api\/admin\/mesas\/([^/]+)$/.exec(camino)
+  if (metodo === 'DELETE' && mesaBorrar) {
+    const id = decodeURIComponent(mesaBorrar[1])
+    const s = estado.salas.find((x) => x.mesas.some((m) => m.id === id))
+    const m = s?.mesas.find((x) => x.id === id)
+    if (!s || !m) return error(404, 'MESA_NO_EXISTE', 'Esa mesa no existe.')
+    const n = s.participantes.filter((p) => p.mesa_id === m.id).length
+    if (n > 0) {
+      const quienes = n === 1 ? '1 persona inscrita' : `${n} personas inscritas`
+      return error(409, 'MESA_CON_INSCRITOS', `${m.nombre} tiene ${quienes}. Muévelas a otra mesa en Participantes antes de eliminarla.`)
+    }
+    if (s.mesas.length <= 1) return error(409, 'ULTIMA_MESA', `${m.nombre} es la única mesa de la sala. Una sala necesita al menos una mesa.`)
+    s.mesas = s.mesas.filter((x) => x !== m)
+    derivar(s)
+    tocar(s, 'mesa_eliminada', por, { mesa_id: m.id, nombre: m.nombre, codigo: m.codigo })
+    return ok({ mesas: s.mesas })
   }
 
   // D1: enlace personal de un solo uso que vence en 15 minutos (el servidor real lo implementa en POST .../acceso).

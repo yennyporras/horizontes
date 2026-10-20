@@ -121,6 +121,16 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
         app.log.error({ err: e }, 'No se pudo respaldar la BD')
       }
     }
+    // Antes de eliminar una sala el respaldo es obligatorio: si falla, la sala no se borra (500 RESPALDO_FALLIDO).
+    const respaldarAntesDeEliminar = (salaId: string) => {
+      try {
+        const r = respaldarBd(db, dbPath, salaId, 'antes_eliminar', ahora(), cargarSala(db, salaId).zona_horaria)
+        if (r) app.log.info(`Respaldo de la BD (antes_eliminar) de ${salaId}: ${r}`)
+      } catch (e) {
+        app.log.error({ err: e }, 'No se pudo respaldar la BD antes de eliminar la sala')
+        throw new ErrorApi(500, 'RESPALDO_FALLIDO', 'No pudimos guardar el respaldo de la sala, así que no se borró nada. Intenta de nuevo; si sigue, revisa Salud.')
+      }
+    }
     const alCerrarSala = (salaId: string) => respaldar(salaId, 'cierre')
     // Aperturas y cierres programados. Una sala que arranca sola se respalda como al abrirla a mano (sin datos aún).
     const revisarCierres = () => {
@@ -129,7 +139,7 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
       for (const id of r.salasCerradas) alCerrarSala(id)
     }
 
-    await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala, respaldar, demo: op.demo })
+    await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala, respaldar, respaldarAntesDeEliminar, demo: op.demo })
     const intervalo = op.intervaloCierresMs ?? 15_000
     if (intervalo > 0) {
       const t = setInterval(() => {

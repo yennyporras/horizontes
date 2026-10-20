@@ -58,7 +58,8 @@ export const PASOS_GUIA: PasoGuia[] = [
     espera: (
       <p>
         Los cambios se aplican de inmediato. Las horas programadas se cumplen solas y las rúbricas se bloquean con el primer
-        voto. Siempre puedes abrir o cerrar a mano desde Sala en vivo.
+        voto. Siempre puedes abrir o cerrar a mano desde Sala en vivo. Si eres superadmin, al final está «Eliminar sala»: pide
+        escribir su nombre, no se puede deshacer y deja un respaldo en el servidor.
       </p>
     ),
   },
@@ -74,7 +75,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     hace: (
       <p>
         Pulsa «Imprimir los QR», cuatro mesas por página, y pon cada QR en su mesa. Si llega más gente de la esperada, agrega
-        mesas al final de la sección.
+        mesas al final de la sección. «Eliminar mesa», en cada tarjeta, quita una mesa sin inscritos; la última no se borra.
       </p>
     ),
     espera: <p>Cuando abres la inscripción, quien escanea el QR de su mesa se inscribe con su nombre y correo, y recibe su perfil.</p>,
@@ -121,7 +122,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     hace: (
       <p>
         Al terminar el taller, descarga resultados.csv y la matriz en SVG: es lo que se entrega al cliente, sin nombres ni IP.
-        Inscritos y votos son registro interno.
+        Inscritos y votos son registro interno. Arriba eliges de qué sala exportas, sin salir de la sección.
       </p>
     ),
     espera: <p>Inscritos y votos llevan país e IP y no se entregan al cliente. Guárdalos solo donde lo permita la política de datos de Estratek.</p>,
@@ -136,7 +137,12 @@ export const PASOS_GUIA: PasoGuia[] = [
     titulo: 'Administradores',
     seccion: 'Administradores',
     soloSuperadmin: true,
-    hace: <p>Crea las cuentas de los demás facilitadores, restablece su clave o desactiva a quien ya no deba entrar.</p>,
+    hace: (
+      <p>
+        Crea las cuentas de los demás facilitadores, restablece su clave o desactiva a quien ya no deba entrar. «Eliminar»
+        borra la cuenta para siempre; sus salas se quedan.
+      </p>
+    ),
     espera: <p>Solo tú, como superadmin, ves esta sección. Las cuentas nuevas manejan salas, pero no crean otros administradores.</p>,
   },
 ]

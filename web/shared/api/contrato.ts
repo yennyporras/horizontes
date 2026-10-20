@@ -358,6 +358,23 @@ export interface RubricaPlantillaBorrada {
   /** La rúbrica que usarán desde ahora las salas nuevas (la de la semilla). */
   rubrica: Rubrica[]
 }
+/**
+ * `DELETE /api/admin/salas/{id}` (solo superadmin; 21-oct): cuerpo con el nombre exacto de la sala. 204 sin cuerpo.
+ * 403 SOLO_SUPERADMIN, 404 SALA_NO_EXISTE, 422 CONFIRMACION_INVALIDA, 500 RESPALDO_FALLIDO (no se borró nada).
+ */
+export interface CuerpoEliminarSala {
+  confirmar: string
+}
+/**
+ * `DELETE /api/admin/mesas/{id}` (cualquier admin; 21-oct): las mesas que quedan en la sala. 404 MESA_NO_EXISTE,
+ * 409 MESA_CON_INSCRITOS (inscritos activos o inactivos), 409 ULTIMA_MESA. Evento `mesa_eliminada` con
+ * `{mesa_id, numero, nombre, codigo}`. `DELETE /api/admin/admins/{id}` (solo superadmin) responde 204 sin cuerpo.
+ */
+export interface RespuestaEliminarMesa {
+  mesas: MesaAdmin[]
+}
+/** Códigos de error de las rutas de eliminar (21-oct). */
+export type CodigoErrorEliminar = 'CONFIRMACION_INVALIDA' | 'RESPALDO_FALLIDO' | 'MESA_CON_INSCRITOS' | 'ULTIMA_MESA' | 'OPERACION_INVALIDA' | 'SOLO_SUPERADMIN'
 export interface Evento {
   at: string
   tipo: string
