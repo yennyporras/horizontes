@@ -476,9 +476,14 @@
   .hz-admin .tabla-tarjetas td.td-largo { display: block; text-align: left; }
   .hz-admin .tabla-tarjetas td.td-largo::before { display: block; max-width: none; }
   .hz-admin .tabla-tarjetas td .acciones--fila { justify-content: flex-end; }
-  /* QA-A-28: en Respuestas los 6 criterios van de a tres por fila (rótulo encima del número), no uno por fila */
-  .hz-admin .tabla-respuestas td.crit { display: inline-flex; flex-direction: column; align-items: flex-start; width: 33.33%; text-align: left; gap: 0; }
-  .hz-admin .tabla-respuestas td.crit::before { max-width: none; }
+  /* QA-A-28: en Respuestas los 6 criterios van de a dos por fila (rótulo encima del número, sin partir palabras), no uno por fila */
+  .hz-admin .tabla-respuestas tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--hz-sp-4); }
+  .hz-admin .tabla-respuestas tbody th,
+  .hz-admin .tabla-respuestas td:not(.crit) { grid-column: 1 / -1; }
+  /* El rótulo del criterio puede ir en dos líneas; el número queda abajo, alineado con los de su fila. */
+  .hz-admin .tabla-respuestas td.crit { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; gap: 0; white-space: normal; }
+  .hz-admin .tabla-respuestas td.crit::before { max-width: none; overflow-wrap: normal; }
+  .hz-admin .tabla-respuestas td.crit { overflow-wrap: normal; }
   /* QA-A-23: en el celular el menú se abre con «Menú · sección actual»; abierto, cada sección es una fila de 48 px. */
   .hz-admin .usuario { order: 2; margin-left: auto; }
   .hz-admin .menu-boton { display: inline-flex; order: 3; flex-basis: 100%; justify-content: flex-start; }

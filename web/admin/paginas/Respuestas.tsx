@@ -144,14 +144,16 @@ export function Respuestas() {
                           ))}
                           {/* Día y hora pueden ir en dos líneas, nunca partidos por dentro: la tabla cabe en 1280 px. */}
                           <td data-label="Fecha">
-                            {fechaCorta(f.actualizado_at, zona)
-                              .split(/(?<=,)\s+/)
-                              .map((parte, i) => (
-                                <span key={i} className="sin-corte">
-                                  {i > 0 && ' '}
-                                  {parte}
-                                </span>
-                              ))}
+                            <span>
+                              {fechaCorta(f.actualizado_at, zona)
+                                .split(/(?<=,)\s+/)
+                                .map((parte, i) => (
+                                  <span key={i} className="sin-corte">
+                                    {i > 0 && ' '}
+                                    {parte}
+                                  </span>
+                                ))}
+                            </span>
                           </td>
                         </tr>
                       ))}
