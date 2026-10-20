@@ -428,7 +428,7 @@ describe('participantes desde el admin', () => {
     expect(lineas[0].split(';')).toEqual(['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'politica_url', 'ip', 'pais'])
     expect(lineas).toHaveLength(2)
     expect(lineas[1]).toContain('Ana Gómez;ana@correo.co;Mesa 1')
-    expect(lineas[1]).toContain('hz-1.1')
+    expect(lineas[1]).toContain('hz-1.2')
     expect(lineas[1].endsWith(';127.0.0.1;CO')).toBe(true)
   })
 
