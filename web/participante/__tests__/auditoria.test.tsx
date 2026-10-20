@@ -271,6 +271,28 @@ describe('resultado', () => {
     expect(screen.getByText('Debajo de cada promedio de la ronda 2 va tu calificación (Tú). Solo la ves en tu celular.')).toBeTruthy()
   })
 
+  it('con mis_votos_anteriores, la comparación R1→R2 muestra «Tú» en las dos rondas', async () => {
+    const r1 = { proyecto_id: 'insumex', ronda: 1, respuestas: TODAS, actualizado_at: '' } as unknown as Voto
+    const r2 = { proyecto_id: 'insumex', ronda: 2, respuestas: { ...TODAS, regulacion: 9 }, actualizado_at: '' } as unknown as Voto
+    servidor(
+      conYo(() =>
+        yoCon((y) => {
+          y.sala.estado = 'r2_cerrada'
+          y.sala.ronda_actual = 2
+          y.mis_votos = [r2]
+          y.mis_votos_anteriores = [r1]
+          y.resultados = clonar(tablero) as unknown as Resultados
+        }),
+      ),
+    )
+    conToken()
+    montar()
+    const tabla = (await screen.findAllByRole('table'))[0]
+    const fila = [...tabla.querySelectorAll('tr')].find((tr) => tr.querySelector('th')?.textContent?.startsWith('Regulación'))!
+    expect([...fila.querySelectorAll('.hzp-tabla__mia')].map((s) => s.textContent)).toEqual(['Tu calificación: Tú 3', 'Tu calificación: Tú 9'])
+    expect(screen.getAllByText('Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.').length).toBeGreaterThan(0)
+  })
+
   it('el resumen pone la respuesta a todo el ancho, debajo del criterio y su botón', () => {
     const c = css()
     expect(c).toMatch(/\.hzp-resumen__dato \{ display: contents; \}/)

@@ -119,7 +119,7 @@ export function ResultadoAlcance({
           )
         }
         const mia = (ronda: number, criterio: string) => misVotos.find((v) => v.proyecto_id === p.id && v.ronda === ronda)?.respuestas[criterio as keyof Voto['respuestas']]
-        // `mis_votos` trae solo la ronda actual: en la comparación, «Tú» va solo en la ronda 2 y el texto lo dice.
+        // Con `mis_votos_anteriores` llega también la ronda 1; si alguna ronda no trae voto propio, el texto lo dice.
         const rondasMias = visibles.filter((r) => criterios.some((c) => mia(r.ronda, c.id) !== undefined)).map((r) => r.ronda)
         const conMias = rondasMias.length > 0
         const textoMias =

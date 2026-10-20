@@ -132,6 +132,8 @@ export interface Yo {
   criterios: Criterio[]
   escala: Valor[]
   mis_votos: Voto[]
+  /** Aditivo (20-oct): votos propios de las rondas anteriores a la actual (la ronda 1 cuando la actual es la 2). */
+  mis_votos_anteriores?: Voto[]
   pendientes: string[]
   completo_ronda: boolean
   progreso_mesa: ProgresoMesa

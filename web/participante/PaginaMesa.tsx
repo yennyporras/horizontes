@@ -606,7 +606,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   )
   const resultado = (preliminar: boolean) =>
     yo.resultados ? (
-      <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} misVotos={yo.mis_votos} preliminar={preliminar} />
+      <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} misVotos={[...yo.mis_votos, ...(yo.mis_votos_anteriores ?? [])]} preliminar={preliminar} />
     ) : null
   // 8.11 Precierre: va al final de la pantalla para no empujar lo que se está leyendo cuando llega.
   const quienes = alcance === 'sala' ? 'la sala' : yo.participante.mesa.nombre
