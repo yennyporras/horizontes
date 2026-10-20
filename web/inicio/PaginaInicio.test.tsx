@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import PaginaInicio from './PaginaInicio'
 import { codigoDeMesa } from './EntradaMesa'
-import { NOMBRE_CORTO } from '../shared/criterios'
+import { HORIZONTES, LECTURA_EJES, LECTURA_ESCALA, NOMBRE_CORTO } from '../shared/criterios'
 
 function Mesa() {
   return <p>Mesa destino {useParams().codigo}</p>
@@ -314,7 +314,6 @@ describe('auditoría final de la landing (20-oct)', () => {
     const { container } = montar()
     expect(container.querySelector('.in-matriz__ejes')).toBeTruthy()
     expect(css).toMatch(/\.in-matriz__ejes \{[^}]*stroke: var\(--hz-borde-control\)/)
-    expect(css).toMatch(/\.in-paso__horizonte \{[^}]*stroke: var\(--hz-borde-control\)/)
     const r1 = [...container.querySelectorAll('.in-matriz__etiqueta')].filter((t) => t.textContent === 'R1')
     expect(r1.map((t) => t.getAttribute('text-anchor'))).toEqual(['start', 'end'])
   })
@@ -322,5 +321,80 @@ describe('auditoría final de la landing (20-oct)', () => {
   it('la landing no fuerza el carbón ni define colores propios', () => {
     expect(readFileSync('web/inicio/PaginaInicio.tsx', 'utf8')).not.toMatch(/useTemaDocumento\('carbon'\)|data-tema="carbon"/)
     expect(css.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i)
+  })
+})
+
+describe('QA por roles de la landing (20-oct)', () => {
+  const css = readFileSync('web/inicio/inicio.css', 'utf8')
+
+  it('Horizontes es la herramienta; el taller es donde se usa', () => {
+    const { container } = montar()
+    expect(container.textContent).toContain('Horizontes es la herramienta de Estratek para priorizar el portafolio por horizontes.')
+    expect(container.textContent).toContain('Una herramienta de Estratek S.A.S.')
+    expect(container.textContent).not.toMatch(/Horizontes es el taller|Un taller de Estratek/)
+    expect(document.title).toBe('Horizontes · Priorización de portafolio por horizontes · Estratek')
+  })
+
+  it('la ronda 1 se califica por tu cuenta, no «solo»', () => {
+    const { container } = montar()
+    expect(container.textContent).toContain('Calificas por tu cuenta, con lo que sabes, los dos proyectos en seis criterios.')
+    expect(container.textContent).not.toContain('Calificas solo')
+  })
+
+  it('la escala, los ejes y los horizontes usan los textos compartidos', () => {
+    const { container } = montar()
+    const evalua = document.getElementById('que-se-evalua')!
+    expect(evalua.textContent).toContain(`En todos los criterios, ${LECTURA_ESCALA}`)
+    expect(evalua.querySelector('.in-lectura')!.textContent).toBe(LECTURA_EJES)
+    expect(container.querySelector('.in-matriz figcaption')!.textContent).toContain(LECTURA_EJES)
+    expect([...container.querySelectorAll('.in-matriz__extremo')].map((t) => t.textContent)).toEqual(['lejos del mercado', 'lejos del core'])
+    const bloque = within(evalua).getByRole('heading', { level: 3, name: 'Los tres horizontes' }).parentElement!
+    const items = [...bloque.querySelectorAll('.in-horizontes li')].map((li) => li.textContent)
+    expect(items).toEqual(HORIZONTES.map((h) => `${h.id}${h.nombre}: ${h.texto}.`))
+  })
+
+  it('«Tus datos» dice lo que de verdad se guarda y quién lo ve (aviso hz-1.2)', () => {
+    montar()
+    const datos = document.getElementById('privacidad')!.textContent!.replace(/\s+/g, ' ')
+    expect(datos).toContain('Tu nombre, tu correo y tus calificaciones. Por seguridad, también la IP, el país y el navegador desde donde entras.')
+    expect(datos).toContain('identificarte en tu mesa, evitar inscripciones dobles y devolverte el acceso si cambias de celular')
+    expect(datos).toContain('En el tablero y en los celulares nadie ve tu nombre ni tus calificaciones: solo promedios de al menos 3 personas.')
+    expect(datos).toContain('El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo.')
+    expect(datos).toContain('los datos se guardan en servidores fuera del Perú')
+    // La promesa vieja era falsa: el facilitador sí ve las respuestas con el nombre.
+    expect(datos).not.toMatch(/Resultados anónimos|Solo tu nombre y tu correo/)
+  })
+
+  it('cierra con el bloque comercial y el correo de Estratek', () => {
+    montar()
+    const contacto = document.getElementById('contacto')!
+    expect(within(contacto).getByRole('heading', { level: 2 }).textContent).toBe('¿Quieres este taller para tu equipo directivo?')
+    expect(contacto.textContent).toContain('Escríbenos a info@estratek.com.co')
+    expect(within(contacto).getByRole('link', { name: 'info@estratek.com.co' }).getAttribute('href')).toBe('mailto:info@estratek.com.co')
+    expect(contacto.querySelector('.hz-pagina')).toBeTruthy()
+    // Es lo último de la página antes del pie.
+    expect(document.querySelector('main')!.lastElementChild).toBe(contacto)
+  })
+
+  it('«Cómo funciona»: seis pasos con su número en grande y un pictograma propio cada uno', () => {
+    const { container } = montar()
+    const pasos = [...container.querySelectorAll('#como-funciona .in-paso')]
+    expect(pasos).toHaveLength(6)
+    expect(pasos.map((p) => p.querySelector('.in-paso__numero')!.textContent)).toEqual(['1', '2', '3', '4', '5', '6'])
+    const pict = pasos.map((p) => p.querySelector('svg.in-pict')!)
+    expect(new Set(pict.map((s) => s.getAttribute('data-paso'))).size).toBe(6)
+    for (const s of pict) {
+      expect(s.getAttribute('aria-hidden')).toBe('true')
+      expect(s.getAttribute('viewBox')).toBe('0 0 48 48')
+      expect(s.querySelectorAll('path, circle, rect').length).toBeGreaterThanOrEqual(3)
+    }
+    // Las rondas llevan sus formas: R1 hueca en el paso 4, R2 sólida en el 5 y las dos en la matriz.
+    expect(pict[3].querySelector('.in-r1-forma')).toBeTruthy()
+    expect(pict[4].querySelector('.in-r2-forma')).toBeTruthy()
+    expect(pict[5].querySelector('.in-r1-forma') && pict[5].querySelector('.in-r2-forma')).toBeTruthy()
+    // Ya no quedan los arcos vacíos de antes.
+    expect(container.querySelector('.in-paso__arco, .in-paso__lamina')).toBeNull()
+    expect(css).toMatch(/\.in-paso__numero \{[^}]*font-weight: var\(--hz-fw-display\)/)
+    expect(css).toMatch(/\.in-pict__trazo \{[^}]*stroke: var\(--hz-tinta\); stroke-width: 3; stroke-linecap: round/)
   })
 })

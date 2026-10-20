@@ -26,20 +26,10 @@ const criterio = ({ id, pregunta }: { id: string; pregunta: string }): CriterioI
   pregunta,
 })
 
-/** Los 6 criterios agrupados por el eje al que alimentan (sin mostrar pesos ni fórmulas). */
+/** Los 6 criterios agrupados por el eje al que alimentan (sin mostrar pesos ni fórmulas). La lectura de los ejes es `LECTURA_EJES`. */
 export const EJES = [
-  {
-    id: 'x',
-    nombre: 'Time 2 Market',
-    lectura: 'El eje horizontal: qué tan lejos está el proyecto de llegar al mercado con lo que la empresa tiene hoy.',
-    criterios: semilla.ejes.x.map(criterio),
-  },
-  {
-    id: 'y',
-    nombre: 'Value Generation Capacity',
-    lectura: 'El eje vertical: qué tan lejos está el proyecto del core del negocio y cuánto cuesta probarlo.',
-    criterios: semilla.ejes.y.map(criterio),
-  },
+  { id: 'x', nombre: 'Time 2 Market', criterios: semilla.ejes.x.map(criterio) },
+  { id: 'y', nombre: 'Value Generation Capacity', criterios: semilla.ejes.y.map(criterio) },
 ]
 
 /** Criterio de ejemplo para probar la escala: textos cortos, se lee bien en 360 px. */

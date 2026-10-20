@@ -81,6 +81,7 @@
    (FAMILIA_ESTRATEK §3, «Gráficos junto a R1/R2»). Sobre las superficies 2 y 3 del claro pasa 4,5:1. */
 .in-matriz__h { font-size: 4.2px; font-weight: var(--hz-fw-display); fill: var(--hz-borde-control); }
 .in-matriz__eje { font-size: 3.4px; font-weight: var(--hz-fw-etiqueta); fill: var(--hz-tinta-2); }
+.in-matriz__extremo { font-size: 3px; font-weight: var(--hz-fw-texto); fill: var(--hz-tinta-2); }
 .in-matriz__fijo { fill: var(--hz-tinta-3); }
 .in-matriz__horizonte { stroke: var(--hz-borde-control); stroke-width: 0.4; }
 .in-matriz__ejes { fill: none; stroke: var(--hz-borde-control); stroke-width: 0.5; }
@@ -125,28 +126,38 @@
   border: 1px solid var(--hz-alerta); border-left-width: 4px;
 }
 
-/* Cómo funciona: el arco crece paso a paso */
-.in-pasos { display: grid; gap: var(--hz-sp-8); margin-top: var(--hz-sp-10); }
-.in-paso { display: grid; grid-template-columns: 5rem minmax(0, 1fr); column-gap: var(--hz-sp-4); row-gap: var(--hz-sp-2); align-content: start; }
-.in-paso__lamina {
-  grid-row: span 2; width: 5rem; height: 5rem;
-  background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-tarjeta);
-  clip-path: inset(0 round var(--hz-r-tarjeta));
+/* Cómo funciona: seis pasos, cada uno con su número en grande y su pictograma en la línea del glifo de Horizontes. */
+.in-pasos { display: grid; gap: var(--hz-sp-10); margin-top: var(--hz-sp-10); }
+.in-paso { display: grid; gap: var(--hz-sp-3); align-content: start; padding-top: var(--hz-sp-5); border-top: 1px solid var(--hz-borde); }
+.in-paso__cabeza { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--hz-sp-4); margin-bottom: var(--hz-sp-2); }
+.in-paso__numero {
+  font-size: clamp(3.5rem, 7vw, 5rem); font-weight: var(--hz-fw-display); line-height: 0.8; letter-spacing: var(--hz-ls-display);
+  color: var(--hz-tinta); font-variant-numeric: tabular-nums;
 }
-/* El horizonte de cada paso, como en la matriz: superficie 3 con el borde de control (3:1 sobre la superficie 1). */
-.in-paso__arco { fill: var(--hz-superficie-3); }
-.in-paso__horizonte { fill: none; stroke: var(--hz-borde-control); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-.in-paso__flecha { fill: none; stroke: var(--hz-tinta); stroke-width: 3; }
 .in-paso p { color: var(--hz-tinta-2); }
+/* El lienzo del glifo (48 con esquinas de 12) sobre la superficie 1, con el trazo carbón del glifo. */
+.in-pict {
+  flex: none; width: 4.5rem; height: 4.5rem;
+  background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-radius: 25%;
+}
+.in-pict__trazo { fill: none; stroke: var(--hz-tinta); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.in-pict__hoja { fill: var(--hz-superficie-1); }
+.in-pict__relleno { fill: var(--hz-tinta); }
 @media (min-width: 40rem) { .in-pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--hz-sp-8); } }
 @media (min-width: 64rem) {
-  .in-pasos { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--hz-sp-12); }
-  .in-paso { grid-template-columns: minmax(0, 1fr); }
-  .in-paso__lamina { grid-row: auto; width: 100%; height: auto; aspect-ratio: 1; max-width: 14rem; margin-bottom: var(--hz-sp-3); }
+  .in-pasos { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: clamp(2rem, 4vw, 4rem); row-gap: var(--hz-sp-12); }
+  .in-pict { width: 5rem; height: 5rem; }
 }
 
 /* Qué se evalúa */
 .in-eje { display: grid; gap: var(--hz-sp-2); margin-top: var(--hz-sp-4); }
+.in-eje__id { font-weight: var(--hz-fw-texto); color: var(--hz-tinta-2); white-space: nowrap; }
+/* La lectura de los ejes (LECTURA_EJES): la misma línea del tablero y del celular. */
+.in-lectura { padding-left: var(--hz-sp-4); border-left: 4px solid var(--hz-acento-producto); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
+/* Los tres horizontes: la sigla en el borde de control neutro, como H1, H2 y H3 en la ilustración. */
+.in-horizontes { display: grid; gap: var(--hz-sp-2); }
+.in-horizontes li { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); align-items: baseline; gap: var(--hz-sp-3); }
+.in-horizontes__id { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-display); color: var(--hz-borde-control); }
 .in-lista { display: grid; gap: var(--hz-sp-3); }
 .in-lista li { position: relative; padding-left: 1.5rem; }
 /* Viñeta: el cuarto de círculo de los horizontes, en el acento de Horizontes. */
@@ -166,6 +177,16 @@
 .in-enlaces { display: grid; margin-top: calc(var(--hz-sp-2) * -1); }
 /* La bajada de la columna del título: sin el margen de la bajada de sección, la separación la da la rejilla. */
 .in-texto > .in-bajada { margin-top: 0; font-size: var(--hz-fs-18); }
+
+/* Bloque comercial: una sola línea de cierre antes del pie. */
+.in-comercial { display: grid; gap: var(--hz-sp-4); }
+.in-comercial .in-h2 { max-width: 30ch; }
+.in-comercial__texto { font-size: var(--hz-fs-20); color: var(--hz-tinta-2); }
+.in-comercial__texto .in-enlace { font-size: inherit; }
+/* Desde 56 rem, la pregunta a la izquierda y el correo a la derecha, en la línea de base del titular. */
+@media (min-width: 56rem) {
+  .in-comercial { grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: clamp(3rem, 6vw, 6rem); }
+}
 
 /* ── Pie: la línea del degradado, el nombre con la firma y el logo de Estratek ── */
 .in-pie { position: relative; padding-block: clamp(3rem, 7vw, 6rem) calc(var(--hz-sp-8) + env(safe-area-inset-bottom)); }
