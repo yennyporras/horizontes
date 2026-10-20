@@ -20,7 +20,7 @@ test('solo los 6 criterios con 2 decimales; sin «Total» (preentrega 19-oct), T
   expect(filas(container)).toEqual(datos.criterios.map((c) => expect.any(String)))
   expect(filas(container)).toHaveLength(6)
   expect(container.textContent).not.toMatch(/Total|11,26|T2M|Eje X|Eje Y|Votos/)
-  const regulacion = within(container).getByRole('rowheader', { name: 'Regulación' }).parentElement!
+  const regulacion = within(container).getByRole('rowheader', { name: /^Regulación/ }).parentElement!
   expect(regulacion.querySelector('td')!.textContent).toBe('5,26')
   // R1 y R2 se leen sin color: texto y marca de forma distinta.
   expect(encabezados(container).filter((t) => t === 'R2')).toHaveLength(mock.proyectos_vivos.length)
@@ -36,4 +36,13 @@ test('antes de la ronda 2 no muestra la columna R2 (solo diría "Sin votos")', (
   expect(encabezados(container)).not.toContain('R2')
   expect(container.textContent).not.toContain('Sin votos')
   expect(encabezados(container).filter((t) => t === 'R1')).toHaveLength(datos.proyectos_vivos.length)
+})
+
+test('cada criterio lleva su descripción corta bajo el nombre (máximo 100 caracteres)', () => {
+  const { container } = render(<TablaComparada datos={mock} vista="comparacion" />)
+  const fila = within(container).getByRole('rowheader', { name: /^Alineación con el core/ })
+  expect(fila.querySelector('.hz-crit-nombre')!.textContent).toBe('Alineación con el core')
+  expect(fila.querySelector('.hz-crit-desc')!.textContent).toBe('Qué tan cerca está el nuevo negocio del core actual de la organización.')
+  for (const d of container.querySelectorAll('.hz-crit-desc')) expect(d.textContent!.length).toBeLessThanOrEqual(100)
+  expect(container.querySelectorAll('.hz-crit-desc')).toHaveLength(6)
 })
