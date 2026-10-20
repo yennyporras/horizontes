@@ -3,11 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, ErrorApi } from '../shared/api/cliente'
 import { Boton, Campo } from '../shared/ui'
 
-// Código de mesa = código de la sala (HZ + 3) y número de mesa, como HZ7K2-1 (server/dominio/salas.ts).
+// Código de mesa = código de la sala (HZ + 3), 3 caracteres al azar desde el 20-oct (S-5) y el número de la mesa,
+// como HZ7K2QX4-1; las mesas anteriores no traen los 3 al azar: HZ7K2-1 (server/dominio/util.ts).
 const FORMATO = /^[A-Z0-9]{3,10}-\d{1,3}$/
 
-/** Código de la sala pegado al número de la mesa, sin guion: HZ7K21 = HZ7K2 y mesa 1 (el código de sala es HZ y 3). */
-const SIN_GUION = /^(HZ[A-Z0-9]{3})(\d{1,3})$/
+/** Código sin guion antes del número de la mesa: HZ7K2QX41 = HZ7K2QX4 y mesa 1; HZ7K21 = HZ7K2 y mesa 1. */
+const SIN_GUION = /^(HZ[A-Z0-9]{3}(?:[A-Z0-9]{3})?)(\d{1,3})$/
 
 /**
  * Acepta el código solo o el enlace completo del QR (…/m/HZ7K2-1), y lo que se teclea en el celular: minúsculas,

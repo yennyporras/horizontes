@@ -139,6 +139,11 @@ describe('correcciones de la QA de la landing', () => {
     expect(codigoDeMesa('hz5mg1')).toBe('HZ5MG-1')
     expect(codigoDeMesa('HZ5MG–1')).toBe('HZ5MG-1')
     expect(codigoDeMesa(' HZ5MG-12 ')).toBe('HZ5MG-12')
+    // Formato de mesa con 3 caracteres al azar (S-5): HZ7K2QX4-1.
+    expect(codigoDeMesa('hz7k2qx4 - 1')).toBe('HZ7K2QX4-1')
+    expect(codigoDeMesa('HZ7K2QX41')).toBe('HZ7K2QX4-1')
+    expect(codigoDeMesa('HZ7K2Q12123')).toBe('HZ7K2Q12-123')
+    expect(codigoDeMesa('HZ7K2123')).toBe('HZ7K2-123')
     expect(codigoDeMesa('HZ5MG')).toBeNull()
     expect(codigoDeMesa('hola mundo')).toBeNull()
   })
