@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { accionDeTecla } from './usePantallaCompleta'
 import type { DatosTablero } from './tipos'
 import {
   EN_VIVO,
@@ -20,6 +22,14 @@ import {
   pedirTablero,
   urlApiTablero,
   vistaPorDefecto,
+  vistaVecina,
+  rondaOculta,
+  avanceCortina,
+  titularConvergencia,
+  conSigno,
+  movimientoEje,
+  mayorCambioEn,
+  hayConvergencia,
 } from './logica'
 
 const mock: DatosTablero = JSON.parse(readFileSync(new URL('../../mocks/GET_api_tablero.json', import.meta.url), 'utf8'))
@@ -58,8 +68,8 @@ describe('estados vacíos', () => {
     d.sala.estado = 'r2_abierta'
     expect(mensajeVacio(d, 2)).toBe('Aún no hay resultados en la ronda 2. Se actualizan cada 3 votos nuevos')
     expect(mensajeVacio(d, 1)).toBe('Aún no hay votos en la ronda 1')
-    expect(EN_VIVO.texto).toBe('En vivo, cada 3 votos')
-    expect(EN_VIVO.titulo).toMatch(/cada 3 votos nuevos y queda exacto al cerrarla/)
+    expect(EN_VIVO.texto).toBe('En vivo: se actualiza cada 3 votos')
+    expect(EN_VIVO.titulo).toMatch(/cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final./)
     expect(rondaEnCurso('r1_abierta')).toBe(1)
     expect(rondaEnCurso('r1_cerrada')).toBeNull()
   })
@@ -108,11 +118,35 @@ describe('estados vacíos', () => {
 })
 
 describe('modos de proyección y votos recibidos', () => {
-  test('?modo=vivo|tabla; cualquier otro valor es en vivo', () => {
-    expect(modoDeUrl('tabla')).toBe('tabla')
-    expect(modoDeUrl('vivo')).toBe('vivo')
-    expect(modoDeUrl(null)).toBe('vivo')
-    expect(modoDeUrl('otro')).toBe('vivo')
+  test('?modo=grafica|detallado, con los valores anteriores vivo|tabla como alias; cualquier otro valor es Gráfica', () => {
+    expect(modoDeUrl('detallado')).toBe('detallado')
+    expect(modoDeUrl('grafica')).toBe('grafica')
+    // Enlaces ya compartidos (antes del 20-oct): tabla es Detallado y vivo es Gráfica.
+    expect(modoDeUrl('tabla')).toBe('detallado')
+    expect(modoDeUrl('vivo')).toBe('grafica')
+    expect(modoDeUrl(null)).toBe('grafica')
+    expect(modoDeUrl('otro')).toBe('grafica')
+  })
+  test('teclas del proyector: G Gráfica, D Detallado, M alterna, V «Cómo votó», F pantalla completa, 1, 2 y C la vista', () => {
+    expect(accionDeTecla('g')).toEqual({ tipo: 'matriz', sola: true })
+    expect(accionDeTecla('G')).toEqual({ tipo: 'matriz', sola: true })
+    expect(accionDeTecla('d')).toEqual({ tipo: 'matriz', sola: false })
+    // Nicolai: Esc fuera de la pantalla completa no cambia de modo (solo cierra la ayuda o sale de la pantalla completa).
+    expect(accionDeTecla('Escape')).toEqual({ tipo: 'escape' })
+    // Control de presentaciones: → y Página siguiente avanzan; ← y Página anterior retroceden. ? abre la ayuda.
+    expect(accionDeTecla('ArrowRight')).toEqual({ tipo: 'avanzar', paso: 1 })
+    expect(accionDeTecla('PageDown')).toEqual({ tipo: 'avanzar', paso: 1 })
+    expect(accionDeTecla('ArrowLeft')).toEqual({ tipo: 'avanzar', paso: -1 })
+    expect(accionDeTecla('PageUp')).toEqual({ tipo: 'avanzar', paso: -1 })
+    expect(accionDeTecla('?')).toEqual({ tipo: 'ayuda' })
+    expect(accionDeTecla('m')).toEqual({ tipo: 'matriz', sola: null })
+    expect(accionDeTecla('v')).toEqual({ tipo: 'detalle' })
+    expect(accionDeTecla('f')).toEqual({ tipo: 'pantalla' })
+    expect(accionDeTecla('1')).toEqual({ tipo: 'vista', vista: 1 })
+    expect(accionDeTecla('2')).toEqual({ tipo: 'vista', vista: 2 })
+    expect(accionDeTecla('c')).toEqual({ tipo: 'vista', vista: 'comparacion' })
+    // T era «Con tabla»: ya no es un atajo.
+    expect(accionDeTecla('t')).toBeNull()
   })
   test('indicador discreto: los de la sala o, con alcance mesa, los de esa mesa', () => {
     const d = structuredClone(mock)
@@ -181,7 +215,11 @@ describe('formato', () => {
   })
   test('sin rayas en los textos', () => {
     const textos = [mensajeVacio(sinVotos(mock, 2), 'comparacion'), ...avisosPrecierre(mock).map((a) => a.texto)]
-    for (const t of textos) expect(t).not.toContain('—')
+    for (const t of textos) expect(t).not.toMatch(/[—–]/)
+    // Ni en el código del tablero (textos visibles, ayudas y comentarios).
+    const fuentes = [...readdirSync(__dirname), 'matriz/matriz.js'].filter((n) => /\.(tsx?|css|js)$/.test(n) && !n.includes('.test.'))
+    expect(fuentes).toContain('PaginaTablero.tsx')
+    for (const f of fuentes) expect(readFileSync(join(__dirname, f), 'utf8'), f).not.toMatch(/[—–]/)
   })
 })
 
@@ -219,7 +257,7 @@ describe('polling con ETag', () => {
     const f403 = (async () => respuesta(403, { error: { codigo: 'TOKEN_INVALIDO', mensaje: 'x' } })) as typeof fetch
     const r = await pedirTablero('/x', null, f403)
     expect(r).toMatchObject({ tipo: 'error', status: 403, codigo: 'TOKEN_INVALIDO' })
-    if (r.tipo === 'error') expect(r.mensaje).toBe('Este enlace del tablero no tiene permiso. Pide al facilitador el enlace completo del tablero.')
+    if (r.tipo === 'error') expect(r.mensaje).toBe('Este enlace del tablero no tiene permiso. Pídele al facilitador el enlace completo del tablero.')
     expect([401, 403].map(esSinPermiso)).toEqual([true, true])
     expect([0, 404, 500].map(esSinPermiso)).toEqual([false, false, false])
 
@@ -240,5 +278,81 @@ describe('polling con ETag', () => {
     // proxy que devuelve el index.html del SPA con 200
     const html = (async () => new Response('<!doctype html><html></html>', { status: 200 })) as typeof fetch
     expect(await pedirTablero('/x', null, html)).toMatchObject({ tipo: 'error', codigo: 'RESPUESTA_INVALIDA' })
+  })
+})
+
+// ── QA por roles (20-oct) ──
+
+/** La forma del servidor con la ronda 1 abierta para el público: n_votos sí; promedios, distribución y ejes en null. */
+function conR1Oculta(datos: DatosTablero): DatosTablero {
+  const d = structuredClone(datos)
+  d.sala.estado = 'r1_abierta'
+  d.sala.ronda_actual = 1
+  d.alcance = { tipo: 'sala', mesa_id: null, mesa_nombre: null }
+  d.progreso.precierre = false
+  d.progreso.por_mesa.forEach((m) => (m.precierre = false))
+  for (const v of d.proyectos_vivos)
+    v.rondas = [{ ronda: 1, n_votos: 9, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null, oculta: true }]
+  return d
+}
+
+describe('ronda 1 oculta', () => {
+  test('se reconoce, no deja aviso de vacío ni insignia «En vivo» y la cortina lista cuántos votaron por mesa', () => {
+    const d = conR1Oculta(mock)
+    expect(rondaOculta(d, 1)).toBe(true)
+    expect(rondaOculta(mock, 1)).toBe(false)
+    expect(mensajeVacio(d, 1)).toBeNull()
+    expect(mensajeVacio(d, 'comparacion')).toBeNull()
+    expect(insigniaResultado(d)).toBeNull()
+    expect(avanceCortina(d)).toEqual([
+      { id: 'm1', nombre: 'Mesa 1', votaron: 7, inscritos: 7 },
+      { id: 'm2', nombre: 'Mesa 2', votaron: 4, inscritos: 7 },
+      { id: 'm3', nombre: 'Mesa 3', votaron: 3, inscritos: 6 },
+    ])
+    // Alcance de una mesa: solo esa.
+    const m = { ...d, alcance: { tipo: 'mesa' as const, mesa_id: 'm2', mesa_nombre: 'Mesa 2' } }
+    expect(avanceCortina(m)).toEqual([{ id: 'm2', nombre: 'Mesa 2', votaron: 4, inscritos: 7 }])
+    // Sin el detalle por mesa (enlace público), el total.
+    const s = structuredClone(d)
+    s.progreso.por_mesa = []
+    expect(avanceCortina(s)).toEqual([{ id: 'sala', nombre: 'Toda la sala', votaron: 14, inscritos: 20 }])
+  })
+})
+
+describe('vista por defecto y control de presentaciones', () => {
+  test('con la ronda 2 abierta y sin resultados de R2, la ronda 1 (no una matriz vacía); con resultados, la 2', () => {
+    expect(vistaPorDefecto('r2_abierta', 2, sinVotos(mock, 2))).toBe(1)
+    expect(vistaPorDefecto('r2_abierta', 2, mock)).toBe(2)
+  })
+  test('→ avanza Ronda 1 → Ronda 2 → Comparación y ← retrocede, sin pasarse', () => {
+    expect(vistaVecina(1, 1)).toBe(2)
+    expect(vistaVecina(2, 1)).toBe('comparacion')
+    expect(vistaVecina('comparacion', 1)).toBe('comparacion')
+    expect(vistaVecina('comparacion', -1)).toBe(2)
+    expect(vistaVecina(1, -1)).toBe(1)
+  })
+})
+
+describe('convergencia en palabras', () => {
+  test('titular, cambios con signo y el movimiento de cada eje', () => {
+    expect(titularConvergencia(35)).toBe('La discusión redujo la dispersión un 35 %')
+    expect(titularConvergencia(-12)).toBe('La discusión aumentó la dispersión un 12 %')
+    expect(titularConvergencia(0)).toBe('La discusión no cambió la dispersión')
+    expect(conSigno(-0.85)).toBe('−0,85')
+    expect(conSigno(0.4)).toBe('+0,40')
+    expect(conSigno(0.001)).toBe('0,00')
+    expect(movimientoEje('x', -0.85)).toBe('se acercó al mercado')
+    expect(movimientoEje('x', 0.3)).toBe('se alejó del mercado')
+    expect(movimientoEje('y', -0.2)).toBe('se acercó al core')
+    expect(movimientoEje('y', 0.4)).toBe('se alejó del core')
+    expect(movimientoEje('y', 0)).toBe('no cambió su distancia al core')
+  })
+  test('mayor cambio por criterio y presencia de convergencia', () => {
+    const d = structuredClone(mock)
+    expect(hayConvergencia(d)).toBe(false)
+    d.proyectos_vivos[0].convergencia = { dispersion_r1: 2, dispersion_r2: 1, reduccion_pct: 50, criterio_mayor_cambio: 'regulacion', delta_x: -0.3, delta_y: 0.1 }
+    expect(hayConvergencia(d)).toBe(true)
+    expect(mayorCambioEn(d, 'regulacion')).toEqual([d.proyectos_vivos[0].nombre])
+    expect(mayorCambioEn(d, 'alineacion_core')).toEqual([])
   })
 })

@@ -3,7 +3,7 @@ import { Insignia } from '../../shared/ui'
 import { MatrizHorizontes, type DatosTablero, type Vista } from '../../tablero'
 import type { Criterio, Resultados, RondaVivo, Voto } from '../api'
 import { cifra } from '../Comun'
-import { descripcionCriterio } from '../../shared/criterios'
+import { LECTURA_BURBUJA, LECTURA_EJES, descripcionCriterio, nombreCortoCriterio } from '../../shared/criterios'
 
 export const textoAlcance = (r: Resultados | null, alcance: 'mesa' | 'sala') => ((r?.alcance?.tipo ?? alcance) === 'sala' ? 'la sala' : 'tu mesa')
 
@@ -14,8 +14,26 @@ export const textoAlcance = (r: Resultados | null, alcance: 'mesa' | 'sala') => 
  */
 export const MIN_VOTOS = 3
 const minimoDe = (r: Resultados) => r.minimo_votos ?? MIN_VOTOS
-const conVotos = (x: RondaVivo | undefined, min: number) => Boolean(x && !x.bajo_minimo && x.n_votos >= min && x.promedios)
-const pocosVotos = (x: RondaVivo | undefined, min: number) => Boolean(x && x.n_votos > 0 && !conVotos(x, min))
+const conVotos = (x: RondaVivo | undefined, min: number) => Boolean(x && !x.bajo_minimo && !esOculta(x) && x.n_votos >= min && x.promedios)
+// Una ronda oculta (R1 abierta, decisión 1 de Paola del 20-oct) no está bajo el mínimo: espera a que todos voten.
+const pocosVotos = (x: RondaVivo | undefined, min: number) => Boolean(x && !esOculta(x) && x.n_votos > 0 && !conVotos(x, min))
+
+/**
+ * Contrato del 20-oct (aditivo): `oculta: true` cuando la ronda 1 está abierta, su alcance no está en precierre y quien
+ * pide no es admin. Llega sin promedios, distribución ni ejes; `n_votos` sí.
+ */
+export const esOculta = (x: RondaVivo | undefined) => Boolean((x as (RondaVivo & { oculta?: true }) | undefined)?.oculta)
+
+/** Alguna ronda `ronda` de los vivos viene oculta. */
+export function rondaOculta(r: Resultados | null | undefined, ronda: number): boolean {
+  return (r?.proyectos_vivos ?? []).some((p) => p.rondas.some((x) => x.ronda === ronda && esOculta(x)))
+}
+
+/** Lo que ve quien ya votó mientras la ronda 1 sigue abierta (decisión 1 de Paola del 20-oct). */
+export const TEXTO_R1_OCULTA = 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.'
+
+/** Insignia del resultado que todavía puede cambiar: informa, no alarma (QA por roles del 20-oct). */
+export const TEXTO_PARCIAL = 'Parcial: cambia cuando lleguen más votos'
 
 /** Copia para la matriz sin las rondas bajo el mínimo de votos (sin punto). */
 function sinIndividuales(r: Resultados, min: number): Resultados {
@@ -88,24 +106,29 @@ export function ResultadoAlcance({
   if (!hayVotos) {
     return (
       <p className="hz-texto-2">
-        {hayPocos
+        {rondaOculta(resultados, 1)
+          ? TEXTO_R1_OCULTA
+          : hayPocos
           ? `Hacen falta al menos ${min} votos para mostrar estos resultados. Así nadie ve las respuestas de otra persona.`
           : `Todavía no hay votos en ${donde}. Los resultados aparecen con los primeros ${min}.`}
       </p>
     )
   }
   const datosMatriz = sinIndividuales(resultados, min)
+  const vista = vistaMatriz(datosMatriz)
 
   return (
     <section className="hzp-resultado" aria-label={`Resultado de ${donde}`}>
       {marcarPreliminar && (
         <p>
-          <Insignia tono="alerta">Preliminar</Insignia>
+          <Insignia>{TEXTO_PARCIAL}</Insignia>
         </p>
       )}
       <div className="hzp-matriz">
-        <MatrizHorizontes datos={datosMatriz as unknown as DatosTablero} vista={vistaMatriz(datosMatriz)} escalaTexto={escalaTexto} />
+        {/* Letra de 12 px como mínimo en la matriz del celular (QA por roles del 20-oct: bajaba a 10 px). */}
+        <MatrizHorizontes datos={datosMatriz as unknown as DatosTablero} vista={vista} escalaTexto={escalaTexto} letraMin={12} />
       </div>
+      <LeyendaMatriz vista={vista} />
       {vivos.map((p) => {
         const rondas = [1, 2].map((n) => p.rondas.find((x) => x.ronda === n))
         const visibles = rondas.filter((x): x is RondaVivo => conVotos(x, min))
@@ -119,17 +142,29 @@ export function ResultadoAlcance({
           )
         }
         const mia = (ronda: number, criterio: string) => misVotos.find((v) => v.proyecto_id === p.id && v.ronda === ronda)?.respuestas[criterio as keyof Voto['respuestas']]
-        const conMias = visibles.some((r) => criterios.some((c) => mia(r.ronda, c.id) !== undefined))
+        // Con `mis_votos_anteriores` llega también la ronda 1; si alguna ronda no trae voto propio, el texto lo dice.
+        const rondasMias = visibles.filter((r) => criterios.some((c) => mia(r.ronda, c.id) !== undefined)).map((r) => r.ronda)
+        const votos = [...new Set(visibles.map((r) => r.n_votos))]
+        const conMias = rondasMias.length > 0
+        const textoMias =
+          rondasMias.length === visibles.length
+            ? 'Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.'
+            : `Debajo de cada promedio de la ronda ${rondasMias.join(' y ')} va tu calificación (Tú). Solo la ves en tu celular.`
         return (
           <article key={p.id} className="hzp-resultado__proyecto">
             <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
-            {conMias && <p className="hzp-resultado__pie">Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.</p>}
+            {conMias && <p className="hzp-resultado__pie">{textoMias}</p>}
             {/* Acta A3 y A4: solo los 6 criterios. Preentrega 19-oct: sin la fila Total («esa fila de total no dice nada»). */}
             <table className="hzp-tabla">
               <caption className="hz-visual-oculto">Promedio por criterio de {p.nombre}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Promedio por criterio</th>
+                  {/* «Promedio de N votos» (QA por roles del 20-oct): cuántas personas hay detrás de cada cifra. */}
+                  <th scope="col">
+                    {votos.length === 1
+                      ? `Promedio de ${votos[0]} votos`
+                      : `Promedio de ${visibles.map((r) => `${r.n_votos} votos en R${r.ronda}`).join(' y ')}`}
+                  </th>
                   {visibles.map((r) => (
                     <th key={r.ronda} scope="col">
                       <Insignia tono={r.ronda === 1 ? 'r1' : 'r2'}>R{r.ronda}</Insignia>
@@ -140,9 +175,10 @@ export function ResultadoAlcance({
               <tbody>
                 {criterios.map((c) => (
                   <tr key={c.id}>
-                    {/* abbr: el lector de pantalla anuncia cada celda con el nombre corto, sin repetir la descripción. */}
-                    <th scope="row" abbr={c.nombre}>
-                      {c.nombre}
+                    {/* Nombre corto, el mismo del tablero (el largo solo va como antetítulo de la pregunta). abbr: el
+                        lector de pantalla anuncia cada celda con el nombre corto, sin repetir la descripción. */}
+                    <th scope="row" abbr={nombreCortoCriterio(c.id, c.nombre)}>
+                      {nombreCortoCriterio(c.id, c.nombre)}
                       {descripcionCriterio(c.id) && <span className="hzp-tabla__desc">{descripcionCriterio(c.id)}</span>}
                     </th>
                     {visibles.map((r) => {
@@ -172,6 +208,64 @@ export function ResultadoAlcance({
           </article>
         )
       })}
+    </section>
+  )
+}
+
+/**
+ * Leyenda bajo la matriz del celular (QA por roles del 20-oct: sin ella no se sabía qué era cada burbuja ni cómo se
+ * leen los ejes): R1 hueco y R2 sólido con su texto, el tamaño de la burbuja y la lectura de los ejes.
+ */
+function LeyendaMatriz({ vista }: { vista: Vista }) {
+  const rondas = vista === 'comparacion' ? [1, 2] : [vista === 2 ? 2 : 1]
+  return (
+    <div className="hzp-leyenda">
+      <ul className="hzp-leyenda__rondas" aria-label="Rondas en la matriz">
+        {rondas.map((n) => (
+          <li key={n}>
+            <Insignia tono={n === 1 ? 'r1' : 'r2'}>R{n}</Insignia> Ronda {n}
+          </li>
+        ))}
+      </ul>
+      <p>{LECTURA_BURBUJA}</p>
+      <p>{LECTURA_EJES}</p>
+    </div>
+  )
+}
+
+/**
+ * Cuántas de tus respuestas cambiaron de la ronda 1 a la 2: compara tus votos de `mis_votos` y `mis_votos_anteriores`
+ * criterio por criterio, en los proyectos que calificaste en las dos rondas. Cuenta, no recalcula el motor.
+ */
+export function cambiosEntreRondas(misVotos: Voto[], criterios: Pick<Criterio, 'id'>[]): { cambios: number; total: number } {
+  let cambios = 0
+  let total = 0
+  for (const r2 of misVotos.filter((v) => v.ronda === 2)) {
+    const r1 = misVotos.find((v) => v.ronda === 1 && v.proyecto_id === r2.proyecto_id)
+    if (!r1) continue
+    for (const c of criterios) {
+      const a = r1.respuestas[c.id as keyof Voto['respuestas']]
+      const b = r2.respuestas[c.id as keyof Voto['respuestas']]
+      if (a === undefined || b === undefined) continue
+      total++
+      if (a !== b) cambios++
+    }
+  }
+  return { cambios, total }
+}
+
+/** Cierre personal al cerrar la ronda 2 (QA por roles del 20-oct): cuánto cambiaste y una pregunta para la mesa. */
+export function CierrePersonal({ misVotos, criterios }: { misVotos: Voto[]; criterios: Pick<Criterio, 'id'>[] }) {
+  const { cambios, total } = cambiosEntreRondas(misVotos, criterios)
+  if (total === 0) return null
+  return (
+    <section className="hzp-cierre" aria-label="Tu cambio entre rondas">
+      <p className="hzp-cierre__dato">
+        {cambios === 0
+          ? `No cambiaste ninguna de tus ${total} respuestas entre la ronda 1 y la 2.`
+          : `Cambiaste ${cambios} de tus ${total} respuestas entre la ronda 1 y la 2.`}
+      </p>
+      <p className="hz-texto-2">{cambios === 0 ? '¿Qué dato de otra hoja confirmó lo que pensabas?' : '¿Qué dato de otra hoja te hizo cambiar?'}</p>
     </section>
   )
 }

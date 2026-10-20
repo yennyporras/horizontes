@@ -4,7 +4,7 @@ Responsable del documento: equipo del panel. Lo consumen el servidor (guardar y 
 
 ## 1. Componente que se reutiliza del IRMI
 
-Repo IRMI: `C:\Users\ypaol\irmi` (monorepo pnpm, web React 18 + Vite, servidor Fastify + Drizzle + Postgres).
+Repo IRMI: https://github.com/yennyporras/IRMI (monorepo pnpm, web React 18 + Vite, servidor Fastify + Drizzle + Postgres).
 
 | Pieza | Ruta en el IRMI | Qué hace |
 |---|---|---|
@@ -67,35 +67,37 @@ Reglas:
 - El export de inscritos (admin) incluye `consentimiento` (versión y fecha). Ninguna respuesta fuera de `/api/admin/*` trae nombre ni correo.
 - Supresión: a solicitud del titular, el admin desactiva y el servidor anonimiza nombre y correo (pendiente para v1.1 si no alcanza; el canal es info@estratek.com.co).
 
-## 5. Versión `hz-1.1` por país (acta del 16-oct, P4 y C6)
+## 5. Versión `hz-1.2` por país (decisión 2 de Paola, 20-oct)
 
-> **Pendiente de revisión de Paola.** Texto propuesto por el equipo del celular el 19-oct. No subir a producción sin su visto bueno. Si Paola cambia una coma, el servidor sirve el texto nuevo con la misma versión `hz-1.1` mientras no haya aceptaciones en producción; después, `hz-1.2`.
+Antes, `hz-1.1` (acta del 16-oct, P4 y C6) decía que solo se trataban «nombre y correo» con «fines informativos». El QA por roles del 20-oct mostró que no era fiel: el servidor también guarda las calificaciones con el nombre, y por seguridad la IP, el país del aviso y el navegador (user agent) de la inscripción y de cada voto; el facilitador ve las calificaciones de cada persona en el panel (Respuestas); y el servidor (VPS de Hostinger) no está en Perú. Paola decidió un aviso fiel a lo que pasa (`hz-1.2`). Las aceptaciones de `hz-1.1` quedan con su versión y su hash; desde `hz-1.2` el servidor rechaza la versión anterior con `422 CONSENTIMIENTO_REQUERIDO` («El aviso de datos cambió. Recarga la página y vuelve a aceptarlo.»).
+
+Sin plazo de conservación todavía: prometerlo requiere B-5 (borrado o anonimización automática de los datos de una sala vieja), que no está construido.
 
 Cómo se arma la pantalla de inscripción:
-- **Casilla obligatoria:** `texto_autorizacion` lo sirve el servidor según `sala.pais` (`GET /api/mesas/{codigo}` → `consentimiento.texto_autorizacion`, versión `hz-1.1`). Es texto plano de un párrafo; el celular le agrega al final el enlace «Lee la Política de Tratamiento de Datos Personales de Estratek» (`politica_url`). El hash que guarda el servidor es el de este texto.
-- **Aviso corto encima de la casilla:** lo arma el celular (`web/participante/pantallas/Inscripcion.tsx`, `LEY_DATOS`) con `sala.pais`: quién trata los datos, qué datos, para qué, **qué norma aplica** y los derechos con el canal `info@estratek.com.co`. La autoridad ante la que se puede acudir cambia por país.
+- **Casilla obligatoria:** `texto_autorizacion` lo sirve el servidor según `sala.pais` (`GET /api/mesas/{codigo}` → `consentimiento.texto_autorizacion`, versión `hz-1.2`). Es texto plano de un párrafo; el celular le agrega al final el enlace «Lee la Política de Tratamiento de Datos Personales de Estratek» (`politica_url`). El hash que guarda el servidor es el de este texto.
+- **Aviso corto encima de la casilla:** lo arma el celular (`web/participante/pantallas/Inscripcion.tsx`) con `sala.pais`, con los textos de §5.2. El servidor no los sirve.
 - Sin `pais` en la respuesta, el celular asume Colombia.
 
 ### 5.1 Texto de la casilla (`texto_autorizacion`)
 
-> Estos son los textos vigentes que sirve el servidor (`server/dominio/consentimiento.ts`, `TEXTOS_AUTORIZACION`, versión `hz-1.1`). Una prueba verifica que coinciden. Pendientes de revisión de Paola antes de producción.
+> Estos son los textos vigentes que sirve el servidor (`server/dominio/consentimiento.ts`, `TEXTOS_AUTORIZACION`, versión `hz-1.2`). Una prueba verifica que coinciden.
 
 **Colombia (`CO`)**
 
 ```text
-Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Ley 1581 de 2012 de Colombia y a la Política de Tratamiento de Datos Personales de Estratek. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
+Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre, mi correo y mis calificaciones, y por seguridad la IP, el país y el navegador de mi conexión, para identificarme en mi mesa, evitar inscripciones dobles y devolverme el acceso si cambio de celular durante este taller. No se usan para publicidad ni se entregan a terceros. En el tablero y en los celulares solo se muestran promedios de 3 o más personas; el equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre para conducirlo. Esta autorización se rige por la Ley 1581 de 2012 de Colombia y por la Política de Tratamiento de Datos Personales de Estratek. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
 ```
 
 **Perú (`PE`)**
 
 ```text
-Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Ley 29733, Ley de Protección de Datos Personales del Perú, y a la Política de Tratamiento de Datos Personales de Estratek. Puedo ejercer mis derechos de acceso, rectificación, cancelación y oposición, y revocar esta autorización, escribiendo a info@estratek.com.co.
+Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre, mi correo y mis calificaciones, y por seguridad la IP, el país y el navegador de mi conexión, para identificarme en mi mesa, evitar inscripciones dobles y devolverme el acceso si cambio de celular durante este taller. No se usan para publicidad ni se entregan a terceros. En el tablero y en los celulares solo se muestran promedios de 3 o más personas; el equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre para conducirlo. Esta autorización se rige por la Ley 29733, Ley de Protección de Datos Personales del Perú, y por la Política de Tratamiento de Datos Personales de Estratek. Mis datos se guardan en servidores fuera del Perú. Puedo ejercer mis derechos de acceso, rectificación, cancelación y oposición, y revocar esta autorización, escribiendo a info@estratek.com.co.
 ```
 
 **Guatemala (`GT`)**
 
 ```text
-Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a la Política de Tratamiento de Datos Personales de Estratek, que se aplica a los participantes en Guatemala. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
+Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre, mi correo y mis calificaciones, y por seguridad la IP, el país y el navegador de mi conexión, para identificarme en mi mesa, evitar inscripciones dobles y devolverme el acceso si cambio de celular durante este taller. No se usan para publicidad ni se entregan a terceros. En el tablero y en los celulares solo se muestran promedios de 3 o más personas; el equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre para conducirlo. Esta autorización se rige por la Política de Tratamiento de Datos Personales de Estratek, que se aplica a los participantes en Guatemala. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.
 ```
 
 ### 5.2 Aviso corto (lo muestra el celular)
@@ -103,12 +105,17 @@ Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y 
 | Dato | CO | PE | GT |
 |---|---|---|---|
 | Quién trata tus datos | Estratek S.A.S., Medellín, Colombia. | igual | igual |
-| Qué datos | Tu nombre y tu correo. Tus calificaciones solo se ven en promedios, sin nombres. | igual | igual |
-| Para qué | Fines informativos de este taller. | igual | igual |
+| Qué datos | Tu nombre, tu correo y tus calificaciones. Por seguridad también guardamos la dirección IP, el país y el navegador desde los que te conectas. | igual | igual |
+| Para qué | Identificarte en tu mesa, evitar inscripciones dobles y devolverte el acceso si cambias de celular. No los usamos para publicidad ni los compartimos con terceros. | igual | igual |
+| Quién ve qué | En el tablero y en los celulares solo se ven promedios de 3 o más personas, sin nombres. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo. | igual | igual |
+| Dónde se guardan | (no se muestra) | En servidores ubicados fuera del Perú. | (no se muestra) |
 | Qué norma aplica | La Ley 1581 de 2012 de Colombia y la política de Estratek. | La Ley 29733 de Perú y la política de Estratek. | La Política de Tratamiento de Datos Personales de Estratek. |
-| Tus derechos | Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización. Escribe a info@estratek.com.co: respondemos en máximo 10 días hábiles. También puedes acudir a la Superintendencia de Industria y Comercio. | igual, pero «… a la Autoridad Nacional de Protección de Datos Personales.» | igual, sin autoridad (Guatemala no tiene ley general de datos personales). |
+| Tus derechos | Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización. Escribe a info@estratek.com.co: respondemos en un plazo máximo de 10 días hábiles. También puedes acudir a la Superintendencia de Industria y Comercio. | «Acceso, rectificación, cancelación y oposición sobre tus datos, y revocar esta autorización.», el mismo correo y plazo, y «… a la Autoridad Nacional de Protección de Datos Personales.» | igual que Colombia, sin autoridad (Guatemala no tiene ley general de datos personales). |
 
-### 5.3 Preguntas para Paola antes de producción
-1. **Perú, flujo transfronterizo:** la Ley 29733 y su reglamento piden informar si los datos salen del país. El VPS de Hostinger no está en Perú. ¿Agregamos «Mis datos se guardan en servidores fuera del Perú» a la casilla de `PE`? (Misma pregunta abierta para Colombia en `docs/ENTREGA.md` §5.1 si el VPS está fuera de Colombia.)
-2. **Plazo de respuesta:** «máximo 10 días hábiles» sale de la política de Estratek. En Perú la ley da 20 días para acceso y 10 para rectificación o cancelación. ¿Dejamos 10 para los tres países?
-3. **IP:** desde el 19-oct el servidor guarda la IP de cada inscripción y de cada voto (C7). ¿La nombramos en «Qué datos» («y la dirección IP de tu conexión, para seguridad»)? Hoy el aviso solo nombra nombre y correo.
+Los textos de esta tabla son los de `AVISO_DATOS` y `LEY_DATOS` en `web/participante/pantallas/Inscripcion.tsx`; una prueba (`web/participante/__tests__/aviso_datos.test.ts`) verifica que coincidan.
+
+### 5.3 Preguntas de la versión `hz-1.1`, ya resueltas
+1. **Perú, flujo transfronterizo:** sí. La casilla de `PE` dice «Mis datos se guardan en servidores fuera del Perú.» y el aviso corto lo repite.
+2. **Plazo de respuesta:** se quedan los 10 días hábiles de la política de Estratek para los tres países.
+3. **IP:** sí. «Qué datos» nombra la IP, el país y el navegador, por seguridad.
+4. **Pendiente:** plazo de conservación de los datos (requiere B-5) y la misma pregunta del flujo transfronterizo para Colombia si el VPS está fuera del país (`docs/ENTREGA.md` §5.1).

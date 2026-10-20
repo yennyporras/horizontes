@@ -13,6 +13,7 @@ import { type Db, abrirDb } from './db/index.js'
 import { asegurarSuperadmin } from './dominio/admins.js'
 import { aplicarCierresProgramados } from './dominio/estados.js'
 import { respaldarBd } from './dominio/mantenimiento.js'
+import type { TiemposDemo } from './dominio/demo.js'
 import { cargarSala } from './dominio/salas.js'
 import type { Reloj } from './dominio/util.js'
 import { rutasApi } from './rutas/api.js'
@@ -34,6 +35,8 @@ export interface OpcionesApp {
   baseUrl?: string
   /** Carpeta del build de la web (por defecto dist/web). Las pruebas de estáticos usan una propia. */
   webDir?: string
+  /** Tiempos del modo demo (`POST /api/admin/demo`); las pruebas los acortan. Por defecto, cerca de un minuto. */
+  demo?: Partial<TiemposDemo>
 }
 
 /** Archivos con hash en el nombre (Vite los deja en /assets): no cambian nunca, se cachean un año. */
@@ -126,7 +129,7 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
       for (const id of r.salasCerradas) alCerrarSala(id)
     }
 
-    await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala, respaldar })
+    await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala, respaldar, demo: op.demo })
     const intervalo = op.intervaloCierresMs ?? 15_000
     if (intervalo > 0) {
       const t = setInterval(() => {

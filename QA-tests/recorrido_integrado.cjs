@@ -159,7 +159,7 @@ async function votarUI(p, ancho, ronda, valores) {
       await p.getByRole('heading', { level: 1, name: /^(Voto registrado|Resultados en vivo de )/ }).waitFor({ timeout: T })
     })
     await votarOtros(2, otros, { regulacion: 9, alineacion_core: 9 })
-    await paso('R2 precierre sala', async () => { await a.getByText('4 de 4', { exact: true }).first().waitFor({ timeout: T }); await a.locator('.etiqueta', { hasText: 'Precierre' }).nth(1).waitFor({ timeout: T }); await revisar(a, ancho, 'admin-vivo-precierre-r2') })
+    await paso('R2 precierre sala', async () => { await a.getByText('4 de 4', { exact: true }).first().waitFor({ timeout: T }); await a.locator('.etiqueta', { hasText: 'Todos votaron' }).nth(1).waitFor({ timeout: T }); await revisar(a, ancho, 'admin-vivo-precierre-r2') })
     await paso('resultado preliminar admin R2', async () => { await a.getByRole('button', { name: 'Ver resultado preliminar de la sala' }).click(); await a.getByRole('columnheader', { name: 'R2' }).first().waitFor({ timeout: T }); await revisar(a, ancho, 'admin-vivo-resultado-r2') })
     await pulsar('Cerrar ronda 2', 'Ronda 2 cerrada')
     await paso('R2 comparación participante', async () => { await p.getByRole('heading', { level: 1, name: 'Ronda 2 cerrada' }).waitFor({ timeout: T }); await p.locator('svg.hz-matriz .hz-r1').first().waitFor({ timeout: T }); await revisar(p, ancho, 'part-r2-comparacion') })

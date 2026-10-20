@@ -43,7 +43,7 @@ Coolify construye desde GitHub con la GitHub App `coolify-estratek`.
 4. **Deploy** en staging y revisa el log del build: debe clonar desde `<org>/horizontes`.
 
 ## 5. Secretos y accesos
-- Variables de Coolify (`SESSION_SECRET`, `SUPERADMIN_CLAVE`, `BASE_URL`…): no cambian, no están en GitHub.
+- Variables de Coolify (`SUPERADMIN_CLAVE`, `BASE_URL`…): no cambian, no están en GitHub.
 - `deploy/.env.deploy` en tu equipo: no cambia (habla con Coolify, no con GitHub).
 - GitHub Actions: el repo no usa (no hay carpeta `.github`). Si más adelante se agregan, sus secretos se crean en `<org>` → **Settings** → **Secrets and variables** → **Actions**.
 - Repo nuevo → **Settings** → **Collaborators and teams**: da acceso por equipos de la organización, no por personas sueltas.

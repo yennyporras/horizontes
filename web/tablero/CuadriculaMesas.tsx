@@ -7,6 +7,19 @@ import type { DatosTablero, ProgresoMesa, Vista } from './tipos'
 // Con muchas mesas cada una hace su propio polling: más lento que el tablero principal para no cargar el servidor.
 const INTERVALO_MESAS_MS = 5000
 
+/** Cada mesa por separado: de 4 en 4 (Nicolai); con más, se pasa de página con ← y →. */
+export const MESAS_POR_PAGINA = 4
+
+/** Mesas con inscritos (una mesa vacía es ruido en el proyector). */
+export function mesasConInscritos(datos: DatosTablero | null | undefined): ProgresoMesa[] {
+  return (datos?.progreso?.por_mesa ?? []).filter((m) => m.inscritos > 0)
+}
+
+/** Páginas de mesas (al menos 1). */
+export function paginasMesas(datos: DatosTablero | null | undefined): number {
+  return Math.max(1, Math.ceil(mesasConInscritos(datos).length / MESAS_POR_PAGINA))
+}
+
 function CeldaMesa({
   sala,
   token,
@@ -40,7 +53,7 @@ function CeldaMesa({
           {conteoMesa(datos, propia, vista)}
           {lista ? ', todos votaron' : ''}
         </span>
-        {datos && esPreliminar(datos) && <span className="hz-insignia hz-insignia-alerta">Preliminar</span>}
+        {datos && esPreliminar(datos) && <span className="hz-tb-insignia hz-tb-insignia-alerta">Preliminar</span>}
       </header>
       {error && !datos && (
         <p className="hz-aviso-error" role="alert">
@@ -49,13 +62,14 @@ function CeldaMesa({
       )}
       {vacio && <p className="hz-vacio">{vacio}</p>}
       <div className="hz-celda-lienzo">
-        <MatrizHorizontes datos={datos} vista={vista} escalaTexto={escalaTexto} letraMin={letraMin} llenar={llenar} animarComparacion={false} />
+        {/* Matriz compacta: los fijos como puntos de referencia sin nombre y los ejes sin subtítulo. */}
+        <MatrizHorizontes datos={datos} vista={vista} escalaTexto={escalaTexto} letraMin={letraMin} llenar={llenar} animarComparacion={false} compacta />
       </div>
     </section>
   )
 }
 
-/** Vista "todas las mesas": una matriz por mesa para comparar equipos. Solo con token de tablero. */
+/** Vista «Cada mesa por separado»: una matriz por mesa para comparar equipos, de 4 en 4. Solo con token de tablero. */
 export function CuadriculaMesas({
   sala,
   token,
@@ -63,6 +77,7 @@ export function CuadriculaMesas({
   vista,
   escalaTexto,
   letraMin = 0,
+  pagina = 0,
 }: {
   sala: string
   token: string | null
@@ -71,8 +86,12 @@ export function CuadriculaMesas({
   escalaTexto: number
   /** Proyector: letra mínima de cada matriz (con muchas mesas la limita el tamaño de la celda). */
   letraMin?: number
+  /** Página de mesas (desde 0), de 4 en 4. */
+  pagina?: number
 }) {
-  const mesas = (datos.progreso?.por_mesa ?? []).filter((m) => m.inscritos > 0)
+  const todas = mesasConInscritos(datos)
+  const p = Math.min(Math.max(0, pagina), paginasMesas(datos) - 1)
+  const mesas = todas.slice(p * MESAS_POR_PAGINA, (p + 1) * MESAS_POR_PAGINA)
   if (!mesas.length) {
     return (
       <p className="hz-vacio" role="status">
@@ -80,9 +99,9 @@ export function CuadriculaMesas({
       </p>
     )
   }
-  // Proyector: las mesas llenan la pantalla (hasta 3 columnas con 2 o 3 mesas; 2 filas con hasta 8).
+  // Proyector: las mesas de la página llenan la pantalla (1 a 3 en una fila; 4 en dos filas de 2).
   const n = mesas.length
-  const columnas = n <= 3 ? n : Math.min(4, Math.ceil(n / 2))
+  const columnas = n <= 3 ? n : 2
   const filas = Math.ceil(n / columnas)
   const proyector = escalaTexto > 1
   return (

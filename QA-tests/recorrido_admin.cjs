@@ -7,6 +7,10 @@
 // botones, áreas táctiles de 48 px, «Dar acceso de nuevo» (D1), menú plegable en el celular y, a 360, 768, 1280, 1440 y
 // 1920 px, que la barra superior, el contenido y el pie compartan exactamente los mismos bordes, y cada sección sin
 // desborde también a 768 y 1280 px.
+// Auditoría final del 20-oct: secciones en el orden del menú (preparar, conducir, después), la guía de uso con un paso
+// por sección en ese mismo orden, y en cada fila de formulario las etiquetas y las cajas a la misma altura.
+// QA por roles del 20-oct: cifras de los talleres y tipo de sala en Salas, «Ver quién falta» y teclas con <kbd> en
+// «Proyectar el tablero», «Resumen del taller» con la ronda 2 cerrada y resultados.csv y la matriz en Exportar.
 // Uso: PWCORE=<ruta a playwright-core> [CHROME=<ejecutable>] node QA-tests/recorrido_admin.cjs <url> <usuario> <clave> <carpeta-capturas>
 const { chromium } = require(process.env.PWCORE)
 const BASE = process.argv[2] || 'http://localhost:3999'
@@ -14,7 +18,7 @@ const USUARIO = process.argv[3] || 'paola', CLAVE = process.argv[4] || 'ensayo-l
 const OUT = process.argv[5] || '.'
 const ADMIN = { usuario: 'recorrido.admin', nombre: 'Admin de recorrido', clave: 'recorrido-admin-123' }
 const R = { alistamiento_tecnico: 7, conocimiento_cliente: 5, regulacion: 3, capacidades_organizacionales: 9, alineacion_core: 7, inversion_requerida: 5 }
-const SECCIONES = ['vivo', 'mesas', 'participantes', 'respuestas', 'hojas', 'configuracion', 'export']
+const SECCIONES = ['configuracion', 'hojas', 'mesas', 'vivo', 'participantes', 'respuestas', 'export']
 const ANCHOS_BORDES = [360, 768, 1280, 1440, 1920]
 async function api(m, ruta, cuerpo, h = {}) {
   const r = await fetch(BASE + ruta, { method: m, headers: { 'content-type': 'application/json', 'user-agent': 'recorrido', ...h }, body: cuerpo && JSON.stringify(cuerpo) })
@@ -73,11 +77,32 @@ function bordes() {
   return { barra: caja('.hz-producto__fila'), contenido: caja('#contenido') || caja('.login__cuerpo'), pie: caja('.pie') }
 }
 
+/** Pedido del 20-oct: en una fila de formulario, los campos que comparten fila tienen la etiqueta y la caja a la misma altura. */
+function filasDesalineadas() {
+  const malas = []
+  for (const fila of document.querySelectorAll('.hz-admin .fila-form')) {
+    const campos = [...fila.children].filter((c) => c.classList.contains('campo') && c.getBoundingClientRect().height > 0)
+    const filas = new Map()
+    for (const c of campos) {
+      const y = Math.round(c.getBoundingClientRect().top)
+      filas.set(y, [...(filas.get(y) || []), c])
+    }
+    for (const grupo of filas.values()) {
+      if (grupo.length < 2) continue
+      const tops = (sel) => grupo.map((c) => Math.round(c.querySelector(sel)?.getBoundingClientRect().top ?? -1))
+      for (const [que, ts] of [['etiqueta', tops('label, span')], ['caja', tops('input, select, textarea')]])
+        if (Math.max(...ts) - Math.min(...ts) > 1) malas.push(`${que} desalineada en «${grupo.map((c) => (c.textContent || '').trim().slice(0, 15)).join(' | ')}»`)
+    }
+  }
+  return malas
+}
+
 async function revisar(p, nombre, ancho, errores) {
   await p.waitForLoadState('networkidle')
   if (await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) errores.push(`${ancho}: desborde horizontal en ${nombre}`)
   for (const m of await p.evaluate(contrasteBajo)) errores.push(`${ancho}: contraste bajo en ${nombre}: ${m}`)
   for (const m of await p.evaluate(botonesYAreas)) errores.push(`${ancho}: ${nombre}: ${m}`)
+  for (const m of await p.evaluate(filasDesalineadas)) errores.push(`${ancho}: ${nombre}: ${m}`)
   if (await p.getByRole('heading', { name: 'Sin permiso' }).count()) errores.push(`${ancho}: "Sin permiso" en ${nombre}`)
   await p.screenshot({ path: `${OUT}/${nombre}-${ancho}.png`, fullPage: true })
 }
@@ -96,6 +121,29 @@ async function entrar(p, usuario, clave) {
   await p.getByLabel('Usuario').fill(usuario); await p.getByLabel('Clave', { exact: true }).fill(clave)
   await p.getByRole('button', { name: 'Entrar' }).click()
   await p.getByRole('heading', { level: 1, name: 'Salas' }).waitFor()
+  // La guía de uso se abre sola la primera vez de cada admin en un navegador nuevo: se cierra para seguir.
+  const guia = p.getByRole('dialog')
+  await guia.waitFor({ timeout: 1500 }).catch(() => undefined)
+  if (await guia.isVisible().catch(() => false)) await guia.getByRole('button', { name: 'Saltar la guía' }).click()
+}
+
+/** La guía de uso tiene un paso por sección, en el orden exacto del menú (también en el celular, donde dice «Menú · …»). */
+async function guiaEnOrden(p, ancho, errores) {
+  const menu = await p.evaluate(() => [...document.querySelectorAll('#menu-panel a')].map((a) => a.textContent.trim()))
+  const boton = p.getByRole('button', { name: /^Menú/ })
+  if (await boton.isVisible()) await boton.click()
+  await p.getByRole('button', { name: 'Guía de uso' }).click()
+  const dialogo = p.getByRole('dialog')
+  const pasos = []
+  for (;;) {
+    const etiqueta = await dialogo.locator('.guia-uso__paso .etiqueta').textContent().catch(() => null)
+    if (etiqueta) pasos.push(etiqueta.replace(/^Menú · /, '').trim())
+    const siguiente = dialogo.getByRole('button', { name: 'Siguiente' })
+    if (!(await siguiente.count())) break
+    await siguiente.click()
+  }
+  await dialogo.getByRole('button', { name: 'Empezar' }).click()
+  if (JSON.stringify(pasos) !== JSON.stringify(menu)) errores.push(`${ancho}: la guía de uso va en ${JSON.stringify(pasos)} y el menú en ${JSON.stringify(menu)}`)
 }
 
 /** En el celular el menú está plegado (QA-A-23): se abre antes de elegir una sección. */
@@ -120,13 +168,20 @@ async function irA(p, seccion) {
     p.on('console', (m) => m.type() === 'error' && errores.push(`${ancho}: ${m.text()}`))
     await revisar(p, 'salas', ancho, errores)
     await focoVisible(p, 'salas', ancho, errores)
+    await guiaEnOrden(p, ancho, errores)
     const nombre = `Recorrido ${ancho}px ${Date.now() % 100000}`
+    if (!(await p.getByRole('region', { name: 'Cifras de los talleres' }).count())) errores.push(`${ancho}: Salas sin las cifras de los talleres`)
     await p.getByLabel('Nombre del taller').fill(nombre); await p.getByLabel('Mesas').fill('2')
+    // El recorrido es un ensayo: no debe sumar en las cifras del negocio.
+    await p.getByLabel('Tipo').selectOption('ensayo')
     await p.getByRole('button', { name: 'Crear sala' }).click()
     await p.getByRole('heading', { name: 'Sala en vivo' }).waitFor()
+    // Sala preparada: el panel recuerda preparar la sala en el orden del menú antes de abrir la inscripción.
+    if (!(await p.getByText(/^Antes de abrir, revisa Configuración, Hojas y Mesas y QR/).count())) errores.push(`${ancho}: la sala preparada no recuerda revisar Configuración, Hojas y Mesas y QR`)
     const salaId = p.url().match(/salas\/([^/]+)\/vivo/)[1]
     ultimaSala = salaId
-    const estado = (t) => p.locator('.estado', { hasText: t }).first().waitFor({ timeout: 10000 })
+    // Cerrar la sala hace un respaldo de la base: en una máquina cargada tarda más de 10 s.
+    const estado = (t) => p.locator('.estado', { hasText: t }).first().waitFor({ timeout: 30000 })
     /** QA-A-01: lo que se pulsa es siempre el único botón principal. Si pide confirmación, el foco debe estar en Cancelar (QA-A-02). */
     const pulsar = async (n, t, confirmar) => {
       await p.getByRole('button', { name: n, exact: true }).waitFor()
@@ -153,6 +208,13 @@ async function irA(p, seccion) {
     await pulsar('Abrir ronda 1', 'Ronda 1 abierta')
     for (const t of toks.slice(0, 3)) for (const pr of ['insumex', 'nutriwhat']) await api('PUT', '/api/votos', { proyecto_id: pr, ronda: 1, respuestas: R }, { 'x-participante-token': t })
     await p.locator('#t-precierre', { hasText: 'Todos votaron en Mesa 1' }).waitFor({ timeout: 10000 })
+    // Ronda abierta: Mesas justo después del control, «Ver quién falta» en la Mesa 2 y el aviso de la ronda 1 oculta en el tablero.
+    const orden = await p.evaluate(() => [...document.querySelectorAll('#contenido section[aria-labelledby] > h2')].map((h) => h.textContent))
+    if (orden[0] !== 'Control de la sala' || orden[1] !== 'Mesas') errores.push(`${ancho}: con la ronda abierta las secciones van ${JSON.stringify(orden.slice(0, 3))}`)
+    if (!(await p.getByRole('link', { name: 'Ver quién falta en Mesa 2' }).count())) errores.push(`${ancho}: falta «Ver quién falta» en la Mesa 2`)
+    if (!(await p.getByText(/^Con la ronda 1 abierta, el tablero muestra cuántos votaron/).count())) errores.push(`${ancho}: sin el aviso de la ronda 1 en Proyectar el tablero`)
+    const teclas = await p.locator('.teclas__lista kbd').allTextContents()
+    if (teclas.join(' ') !== 'F G D M V 1 2 C → ← ?') errores.push(`${ancho}: teclas del tablero ${JSON.stringify(teclas)}`)
     await p.getByRole('button', { name: 'Ver resultado de Mesa 1' }).click()
     await p.getByRole('heading', { name: /Resultado preliminar · Mesa 1/ }).waitFor()
     await revisar(p, 'vivo-precierre', ancho, errores)
@@ -179,6 +241,8 @@ async function irA(p, seccion) {
     }
     await p.goto(`${BASE}/admin/salas/${salaId}/vivo`)
     await pulsar('Cerrar ronda 2', 'Ronda 2 cerrada')
+    await p.getByRole('region', { name: 'Resumen del taller' }).waitFor({ timeout: 10000 }).catch(() => errores.push(`${ancho}: sin «Resumen del taller» con la ronda 2 cerrada`))
+    await revisar(p, 'vivo-resumen', ancho, errores)
     // QA-A-01: con la ronda 2 cerrada, el paso que sigue es cerrar la sala.
     await pulsar('Cerrar sala', 'Sala cerrada', 'Sí, cerrar la sala')
     for (const s of ['salud', 'administradores']) {
@@ -186,6 +250,12 @@ async function irA(p, seccion) {
       await p.getByRole('heading', { level: 1 }).waitFor()
       await revisar(p, s, ancho, errores)
     }
+    // Exportar: lo del cliente (resultados.csv sin datos personales) y la matriz en SVG.
+    await p.goto(`${BASE}/admin/salas/${salaId}/export`)
+    const res = await p.evaluate(async (id) => { const r = await fetch(`/api/admin/salas/${id}/export/resultados.csv`); return { status: r.status, texto: await r.text() } }, salaId)
+    if (res.status !== 200 || /@|ejemplo\.co/.test(res.texto)) errores.push(`${ancho}: resultados.csv respondió ${res.status} o trae datos personales`)
+    const [descarga] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), p.getByRole('button', { name: 'Descargar matriz (SVG)' }).click()])
+    if (!descarga || !/-matriz\.svg$/.test(descarga.suggestedFilename())) errores.push(`${ancho}: «Descargar matriz (SVG)» no descargó la matriz`)
 
     // Rol admin (C19-2): crea la cuenta si falta y recorre la misma sala desde un navegador sin sala recordada.
     const cuentas = await p.evaluate(async () => (await (await fetch('/api/admin/admins')).json()).admins)

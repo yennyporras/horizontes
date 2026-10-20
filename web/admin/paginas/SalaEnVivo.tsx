@@ -8,15 +8,15 @@ import { ComoVoto } from '../../tablero'
 import type { CriterioId } from '../../shared/api/contrato'
 import { descripcionCriterio } from '../../shared/criterios'
 import type { Accion, PreguntaGuiada, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
+import { nombreCriterio, nombreProyecto, numeroPregunta, ordenPreguntas, useContenidoSala, type ContenidoSala } from '../contenido'
 import {
   ACCIONES,
   CONFIRMACIONES,
-  CRITERIOS,
   ES_DESTRUCTIVA,
-  ORDEN_PREGUNTAS,
+  MODOS_TABLERO,
   PASO_SIGUIENTE,
-  PROYECTOS_VIVOS,
   QUE_PASA,
+  TECLAS_TABLERO,
   ZONAS,
   accionesParaCorregir,
   bitacora,
@@ -26,8 +26,6 @@ import {
   faltan,
   fechaHora,
   estadoMesa,
-  nombreProyecto,
-  numeroPregunta,
   programaciones,
   rondaAbierta,
   rutaApiTablero,
@@ -49,13 +47,16 @@ function useAhora() {
 
 /**
  * Orden de la vista (QA-A-05): primero las cifras y el control (el paso que sigue queda arriba aunque se abra un
- * resultado), luego la pregunta guiada y el resultado preliminar, y después «Ver en vivo», el único lugar con los
- * accesos al tablero y a la vista previa del celular (QA-A-03).
+ * resultado), luego la pregunta guiada y el resultado preliminar, y después «Proyectar el tablero», el único lugar con
+ * los accesos al tablero y a la vista previa del celular (QA-A-03). QA por roles del 20-oct (Nicolai): con la ronda
+ * abierta, Mesas va justo después del control, con «Ver quién falta» en cada mesa. Con la ronda 2 cerrada, el
+ * «Resumen del taller» va sobre la bitácora (inversionista).
  */
 export function SalaEnVivo() {
   const { salaId } = useParams()
   const { datos, error, refrescar } = useSala(salaId)
   const [verResultado, setVerResultado] = useState<string | null>(null)
+  const contenido = useContenidoSala(datos)
 
   return (
     <ConSala titulo="Sala en vivo" datos={datos} error={error}>
@@ -63,14 +64,16 @@ export function SalaEnVivo() {
         <>
           <Cifras d={d} />
           <Control d={d} salaId={d.sala.id} refrescar={refrescar} verResultado={verResultado} setVerResultado={setVerResultado} />
-          {d.sala.config.modo_preguntas === 'guiado' && <PreguntaEnPantalla d={d} refrescar={refrescar} />}
+          {rondaAbierta(d.sala.estado) && <Mesas d={d} />}
+          {d.sala.config.modo_preguntas === 'guiado' && <PreguntaEnPantalla d={d} contenido={contenido} refrescar={refrescar} />}
           {verResultado && rondaAbierta(d.sala.estado) && (
             <ResultadoPreliminar key={verResultado} d={d} mesaId={verResultado === 'sala' ? undefined : verResultado} ronda={rondaAbierta(d.sala.estado)!} />
           )}
-          <VerEnVivo d={d} refrescar={refrescar} />
+          <ProyectarTablero d={d} refrescar={refrescar} />
           {d.sala.ronda_actual ? <ComoVotoSala d={d} /> : null}
-          <Mesas d={d} />
-          <Eventos d={d} />
+          {!rondaAbierta(d.sala.estado) && <Mesas d={d} />}
+          {(d.sala.estado === 'r2_cerrada' || d.sala.estado === 'cerrada') && d.resumen && <ResumenTaller d={d} />}
+          <Eventos d={d} contenido={contenido} />
         </>
       )}
     </ConSala>
@@ -151,6 +154,13 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
             <p id={`que-pasa-${siguiente}`} className="pista">
               {QUE_PASA[siguiente]}
             </p>
+            {/* Orden del taller (menú): antes de abrir la inscripción se prepara la sala. */}
+            {estado === 'preparada' && (
+              <p className="pista">
+                Antes de abrir, revisa <Link to={`/admin/salas/${d.sala.id}/configuracion`}>Configuración</Link>,{' '}
+                <Link to={`/admin/salas/${d.sala.id}/hojas`}>Hojas</Link> y <Link to={`/admin/salas/${d.sala.id}/mesas`}>Mesas y QR</Link>.
+              </p>
+            )}
           </>
         ) : (
           <>
@@ -241,7 +251,6 @@ function Programado({ d }: { d: SalaDetalle }) {
   )
 }
 
-const nombreCriterio = (id: string) => CRITERIOS.find((c) => c.id === id)?.nombre ?? id
 const mismaPregunta = (a: PreguntaGuiada, b: PreguntaGuiada) => a.proyecto_id === b.proyecto_id && a.criterio_id === b.criterio_id
 
 /**
@@ -249,11 +258,13 @@ const mismaPregunta = (a: PreguntaGuiada, b: PreguntaGuiada) => a.proyecto_id ==
  * los proyectos vivos y, en cada uno, los 6 criterios; la lista salta a cualquiera. QA-A-07: «Quitar la pregunta»
  * vuelve a mostrar la matriz en el tablero. QA-A-08: la numeración es la del tablero, «Pregunta N de 6» por proyecto.
  */
-function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<void> }) {
+function PreguntaEnPantalla({ d, contenido, refrescar }: { d: SalaDetalle; contenido: ContenidoSala; refrescar: () => Promise<void> }) {
   const ronda = rondaAbierta(d.sala.estado)
   const actual = d.sala.pregunta_guiada ?? null
-  const indice = actual ? ORDEN_PREGUNTAS.findIndex((q) => mismaPregunta(q, actual)) : -1
-  const [elegida, setElegida] = useState<PreguntaGuiada>(actual ?? ORDEN_PREGUNTAS[0])
+  const orden = ordenPreguntas(contenido)
+  const indice = actual ? orden.findIndex((q) => mismaPregunta(q, actual)) : -1
+  const [elegida, setElegida] = useState<PreguntaGuiada | null>(actual)
+  const vista = elegida ?? orden[0] ?? null
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
@@ -284,26 +295,26 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
             {actual ? (
               <>
                 <p className="pista">
-                  {numeroPregunta(actual).texto} · {nombreProyecto(actual.proyecto_id)} · ronda {ronda}
+                  {numeroPregunta(actual, contenido.criterios).texto} · {nombreProyecto(contenido, actual.proyecto_id)} · ronda {ronda}
                 </p>
                 <p className="pregunta-actual__titulo">
-                  {nombreProyecto(actual.proyecto_id)} · {nombreCriterio(actual.criterio_id)}
+                  {nombreProyecto(contenido, actual.proyecto_id)} · {nombreCriterio(contenido, actual.criterio_id)}
                 </p>
-                <p>{CRITERIOS.find((c) => c.id === actual.criterio_id)?.pregunta}</p>
+                <p>{contenido.criterios.find((c) => c.id === actual.criterio_id)?.pregunta}</p>
               </>
             ) : (
               <p>Sin pregunta en pantalla: el tablero muestra la matriz y los celulares esperan. Usa Siguiente para empezar.</p>
             )}
           </div>
           <div className="acciones">
-            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || indice <= 0} onClick={() => void mostrar(ORDEN_PREGUNTAS[indice - 1])}>
+            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || indice <= 0} onClick={() => void mostrar(orden[indice - 1])}>
               Anterior
             </button>
             <button
               className="hz-boton hz-boton--secundario"
               type="button"
-              disabled={enviando || indice === ORDEN_PREGUNTAS.length - 1}
-              onClick={() => void mostrar(ORDEN_PREGUNTAS[indice + 1])}
+              disabled={enviando || orden.length === 0 || indice === orden.length - 1}
+              onClick={() => void mostrar(orden[indice + 1])}
             >
               Siguiente
             </button>
@@ -314,11 +325,12 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
           <p id="quitar-pregunta" className="pista">
             Quitar la pregunta vuelve a mostrar la matriz en el tablero. Los votos no cambian.
           </p>
+          {vista && (
           <div className="fila-form">
             <label className="campo">
               <span>Proyecto</span>
-              <select value={elegida.proyecto_id} onChange={(e) => setElegida({ ...elegida, proyecto_id: e.target.value })}>
-                {PROYECTOS_VIVOS.map((p) => (
+              <select value={vista.proyecto_id} onChange={(e) => setElegida({ ...vista, proyecto_id: e.target.value })}>
+                {contenido.proyectosVivos.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nombre}
                   </option>
@@ -327,18 +339,19 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
             </label>
             <label className="campo">
               <span>Pregunta</span>
-              <select value={elegida.criterio_id} onChange={(e) => setElegida({ ...elegida, criterio_id: e.target.value as CriterioId })}>
-                {CRITERIOS.map((c, i) => (
+              <select value={vista.criterio_id} onChange={(e) => setElegida({ ...vista, criterio_id: e.target.value as CriterioId })}>
+                {contenido.criterios.map((c, i) => (
                   <option key={c.id} value={c.id}>
                     {i + 1}. {c.nombre}
                   </option>
                 ))}
               </select>
             </label>
-            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || (actual !== null && mismaPregunta(elegida, actual))} onClick={() => void mostrar(elegida)}>
+            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || (actual !== null && mismaPregunta(vista, actual))} onClick={() => void mostrar(vista)}>
               Mostrar esta pregunta
             </button>
           </div>
+          )}
           {error && (
             <p className="alerta alerta--error" role="alert">
               {error}
@@ -367,8 +380,8 @@ function AvisoPrecierre({ d, ver, setVer }: { d: SalaDetalle; ver: string | null
           ? `Todos votaron en la sala. Puedes cerrar la ronda ${ronda}.`
           : `Todos votaron en ${enPrecierre.map((m) => m.nombre).join(', ')}. Puedes cerrar la ronda ${ronda} cuando las demás mesas terminen.`}
       </strong>
-      {/* D2: el resultado en vivo es una foto que se renueva de 3 en 3 votos; al cerrar la ronda queda el exacto. */}
-      <p>La ronda sigue abierta y los votos se pueden editar hasta que la cierres. El resultado preliminar se renueva cada 3 votos nuevos; al cerrar la ronda queda el exacto.</p>
+      {/* D2: el resultado en vivo es una foto que se renueva de 3 en 3 votos; al cerrar la ronda queda el resultado final. */}
+      <p>La ronda sigue abierta y los votos se pueden editar hasta que la cierres. El resultado preliminar se renueva cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final.</p>
       <div className="acciones">
         {salaCompleta && (
           <button type="button" className="hz-boton hz-boton--secundario hz-boton--chico" aria-expanded={ver === 'sala'} onClick={() => alternar('sala')}>
@@ -426,7 +439,7 @@ function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: st
       <h2 id="t-preliminar" className="titulo-3">
         {titulo}
       </h2>
-      <p className="pista">Se renueva cada 3 votos nuevos. Para verlo en la matriz, usa Ver en vivo.</p>
+      <p className="pista">Se renueva cada 3 votos nuevos. Para verlo en la matriz, usa Proyectar el tablero.</p>
       {error && <p className="alerta alerta--aviso">No pudimos actualizarlo. Mostramos la última lectura. {error}</p>}
       {bajoMinimo && (
         <p className="alerta alerta--info">
@@ -488,9 +501,11 @@ function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResu
 /**
  * QA-A-03: el único lugar con los accesos para ver la sala en vivo, cada uno con un solo nombre: «Tablero de la sala»
  * (el del proyector), «Tablero de Mesa N» y «Vista previa del celular». QA-A-04: la vista previa abre el celular en
- * modo de solo lectura (`?vista=previa`) y avisa que no hay que inscribirse ahí.
+ * modo de solo lectura (`?vista=previa`) y avisa que no hay que inscribirse ahí. QA por roles (Paula y Nicolai): se
+ * llama «Proyectar el tablero» y las teclas van en una lista con <kbd>; con la ronda 1 abierta, explica que el
+ * tablero no muestra sus resultados hasta que todos voten o se cierre la ronda (decisión de Paola del 20-oct).
  */
-function VerEnVivo({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<unknown> | void }) {
+function ProyectarTablero({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<unknown> | void }) {
   const [mesaId, setMesaId] = useState(d.mesas[0]?.id ?? '')
   const [dialogo, confirmar] = useConfirmar()
   const [cambiando, setCambiando] = useState(false)
@@ -520,28 +535,50 @@ function VerEnVivo({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<
   const tableroSala = enEsteServidor(urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero))
   return (
     <section className="panel" aria-labelledby="t-en-vivo">
-      <h2 id="t-en-vivo">Ver en vivo</h2>
+      <h2 id="t-en-vivo">Proyectar el tablero</h2>
       <p className="pista">Cada enlace se abre en otra pestaña y se actualiza solo.</p>
+      {d.sala.estado === 'r1_abierta' && (
+        <p className="alerta alerta--info" id="aviso-r1-oculta">
+          Con la ronda 1 abierta, el tablero muestra cuántos votaron, pero no los resultados: aparecen cuando todos hayan votado o al cerrar la ronda. Así nadie se ancla en lo
+          que votaron los demás. Aquí, en el panel, sí ves el resultado preliminar.
+        </p>
+      )}
       <ul className="en-vivo">
         {tableroSala && (
           <li>
-            <p className="en-vivo__titulo">Tablero de la sala</p>
-            <div className="acciones">
-              <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'vivo') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
-                En vivo, solo la gráfica
-              </a>
-              <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'tabla') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
-                Con tabla
-              </a>
+            <p className="en-vivo__titulo" id="t-tablero-sala">
+              Tablero de la sala
+            </p>
+            <div className="acciones" role="group" aria-labelledby="t-tablero-sala">
+              {MODOS_TABLERO.map((m) => (
+                <a
+                  key={m.modo}
+                  className="hz-boton hz-boton--secundario"
+                  href={conModo(tableroSala, m.modo) ?? undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-describedby="ayuda-tablero-sala"
+                >
+                  {m.nombre}
+                </a>
+              ))}
             </div>
             <p id="ayuda-tablero-sala" className="pista">
-              El que se proyecta, con la matriz de toda la sala. Elige el modo según el evento: en vivo muestra solo la matriz moviéndose; con tabla suma el progreso y los promedios. En el
-              tablero, F pone pantalla completa, V y T cambian de modo y 1, 2 y C cambian entre ronda 1, ronda 2 y comparación.
+              El que se proyecta, con la matriz de toda la sala. Elige el modo según el evento:{' '}
+              {MODOS_TABLERO.map((m, i) => (
+                <span key={m.modo}>
+                  {i > 0 && '; '}
+                  <strong>{m.nombre}</strong> muestra {m.ayuda}
+                </span>
+              ))}
+              .
             </p>
+            <TeclasTablero />
           </li>
         )}
         {mesa && (
           <li>
+            <p className="en-vivo__titulo">Una mesa</p>
             <div className="en-vivo__mesa">
               <label className="campo-linea" htmlFor="ver-mesa">
                 Mesa
@@ -586,6 +623,32 @@ function VerEnVivo({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<
       </div>
       {dialogo}
     </section>
+  )
+}
+
+/** Teclas del tablero en una lista visual (pedido de Nicolai): la tecla en <kbd> y qué hace. */
+function TeclasTablero() {
+  return (
+    <div className="teclas">
+      <p className="teclas__titulo" id="t-teclas">
+        Teclas en el tablero
+      </p>
+      <dl className="teclas__lista" aria-labelledby="t-teclas">
+        {TECLAS_TABLERO.map((t) => (
+          <div key={t.texto}>
+            <dt>
+              {t.teclas.map((k, i) => (
+                <span key={k}>
+                  {i > 0 && <span className="teclas__o"> o </span>}
+                  <kbd>{k}</kbd>
+                </span>
+              ))}
+            </dt>
+            <dd>{t.texto}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   )
 }
 
@@ -650,8 +713,13 @@ function EtiquetaMesa({ estado, mesa }: { estado: SalaDetalle['sala']['estado'];
   return <span className={tono ? `etiqueta etiqueta--${tono}` : 'etiqueta'}>{texto}</span>
 }
 
-/** Avance por mesa. Sin enlaces: los tableros están en «Ver en vivo» (QA-A-03 y QA-A-25). */
+/**
+ * Avance por mesa. Sin enlaces al tablero: están en «Proyectar el tablero» (QA-A-03 y QA-A-25). QA por roles (Nicolai):
+ * con la ronda abierta, cada mesa con gente pendiente lleva «Ver quién falta», que abre Participantes filtrado por esa
+ * mesa y solo pendientes.
+ */
 function Mesas({ d }: { d: SalaDetalle }) {
+  const abierta = rondaAbierta(d.sala.estado) !== null
   return (
     <section className="panel" aria-labelledby="t-mesas">
       <h2 id="t-mesas">Mesas</h2>
@@ -669,6 +737,11 @@ function Mesas({ d }: { d: SalaDetalle }) {
                 </th>
                 <th scope="col">Completaron</th>
                 <th scope="col">Estado</th>
+                {abierta && (
+                  <th scope="col">
+                    <span className="sr-solo">Quién falta</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -690,6 +763,19 @@ function Mesas({ d }: { d: SalaDetalle }) {
                   <td data-label="Estado">
                     <EtiquetaMesa estado={d.sala.estado} mesa={m} />
                   </td>
+                  {abierta && (
+                    <td data-label="Quién falta">
+                      {m.completos < m.inscritos && (
+                        <Link
+                          className="hz-boton hz-boton--secundario hz-boton--chico"
+                          to={`/admin/salas/${d.sala.id}/participantes?mesa=${encodeURIComponent(m.id)}&pendientes=1`}
+                          aria-label={`Ver quién falta en ${m.nombre}`}
+                        >
+                          Ver quién falta
+                        </Link>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -700,12 +786,43 @@ function Mesas({ d }: { d: SalaDetalle }) {
   )
 }
 
+/**
+ * «Resumen del taller» con la ronda 2 cerrada (QA por roles, inversionista): lo calcula el servidor desde la bitácora
+ * (campo `resumen` del detalle). Va sobre la bitácora.
+ */
+function ResumenTaller({ d }: { d: SalaDetalle }) {
+  const r = d.resumen!
+  // El servidor manda los minutos con un decimal: «12,5 min»; sin decimal si es entero.
+  const minutos = (m: number | null) => (m === null ? 'Sin cerrar' : `${m.toLocaleString('es-CO', { maximumFractionDigits: 1 })} min`)
+  const cifras = [
+    { rotulo: 'Duración de la ronda 1', valor: minutos(r.minutos_r1) },
+    { rotulo: 'Duración de la ronda 2', valor: minutos(r.minutos_r2) },
+    { rotulo: 'Completaron la ronda 1', valor: `${r.completaron_r1} de ${r.inscritos}` },
+    { rotulo: 'Completaron la ronda 2', valor: `${r.completaron_r2} de ${r.inscritos}` },
+    { rotulo: 'Accesos de nuevo', valor: r.accesos_nuevos },
+  ]
+  return (
+    <section className="panel" aria-labelledby="t-resumen">
+      <h2 id="t-resumen">Resumen del taller</h2>
+      <ul className="kpis kpis--dentro" aria-labelledby="t-resumen">
+        {cifras.map((c) => (
+          <li key={c.rotulo} className="kpi">
+            <span className="kpi__rotulo">{c.rotulo}</span>
+            <span className="cifra">{c.valor}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="pista">Duración: de la apertura al cierre de cada ronda, según la bitácora. Accesos de nuevo: las veces que diste un QR personal en Participantes.</p>
+    </section>
+  )
+}
+
 const PRIMEROS_EVENTOS = 15
 
 /** QA-A-15: bitácora legible, lo más reciente arriba, sin repeticiones; muestra 15 y deja ver el resto. */
-function Eventos({ d }: { d: SalaDetalle }) {
+function Eventos({ d, contenido }: { d: SalaDetalle; contenido: ContenidoSala }) {
   const [todos, setTodos] = useState(false)
-  const lineas = bitacora(d.eventos, { mesas: d.mesas, participantes: d.participantes })
+  const lineas = bitacora(d.eventos, { mesas: d.mesas, participantes: d.participantes, contenido })
   const visibles = todos ? lineas : lineas.slice(0, PRIMEROS_EVENTOS)
   const zona = zonaSala(d.sala.config)
   return (

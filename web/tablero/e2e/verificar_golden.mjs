@@ -19,7 +19,7 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [360, 740]]) {
     const tx = textos.filter((t) => /^\d$/.test(t.textContent) && t.getAttribute('text-anchor') === 'middle').map((t) => [Number(t.textContent), Number(t.getAttribute('x'))])
     const ty = textos.filter((t) => /^\d$/.test(t.textContent) && t.getAttribute('text-anchor') === 'end').map((t) => [Number(t.textContent), Number(t.getAttribute('y'))])
     const circ = [...svg.querySelectorAll('circle.hz-r1, circle.hz-r2')].map((c) => ({ p: c.dataset.proyecto, r: c.classList.contains('hz-r1') ? 1 : 2, cx: Number(c.getAttribute('cx')), cy: Number(c.getAttribute('cy')) }))
-    return { tx, ty, circ, vista: document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent, estado: document.querySelector('.hz-cab-meta span')?.textContent }
+    return { tx, ty, circ, vista: document.querySelector('[aria-label="Vista de la matriz"] [aria-pressed="true"]')?.textContent, estado: document.querySelector('.hz-cab-estado, .hz-franja')?.textContent }
   })
   const lin = (pares) => { const [a, b] = [pares[0], pares[pares.length - 1]]; const m = (b[1] - a[1]) / (b[0] - a[0]); return (px) => a[0] + (px - a[1]) / m }
   const vx = lin(r.tx), vy = lin(r.ty)

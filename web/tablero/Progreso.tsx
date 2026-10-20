@@ -10,35 +10,35 @@ export function Progreso({ datos }: { datos: DatosTablero }) {
   // QA-T-09: una mesa sin inscritos es ruido en el proyector.
   const mesas = (p.por_mesa ?? []).filter((m) => m.inscritos > 0)
   return (
-    <section className="hz-progreso" aria-labelledby="hz-progreso-t">
-      <h2 id="hz-progreso-t" className="hz-sub">
+    <section className="hz-tb-progreso" aria-labelledby="hz-tb-progreso-t">
+      <h2 id="hz-tb-progreso-t" className="hz-sub">
         Progreso{datos.sala?.ronda_actual ? ` de la ronda ${datos.sala.ronda_actual}` : ''}
       </h2>
       <div className="hz-cifras">
         <div>
-          <span className="hz-cifra">{p.inscritos}</span>
-          <span className="hz-cifra-et">inscritos</span>
+          <span className="hz-tb-cifra">{p.inscritos}</span>
+          <span className="hz-tb-cifra-et">inscritos</span>
         </div>
         <div>
-          <span className="hz-cifra">{p.completos}</span>
-          <span className="hz-cifra-et">completaron</span>
+          <span className="hz-tb-cifra">{p.completos}</span>
+          <span className="hz-tb-cifra-et">completaron</span>
         </div>
         <div
-          className="hz-barra"
+          className="hz-tb-barra"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={p.inscritos}
           aria-valuenow={Math.min(p.completos, p.inscritos)}
           aria-valuetext={`${p.completos} de ${p.inscritos} completaron`}
         >
-          <div className="hz-barra-relleno" style={{ width: `${pct}%` }} />
+          <div className="hz-tb-barra-relleno" style={{ width: `${pct}%` }} />
         </div>
       </div>
       {avisos.length > 0 && (
         <ul className="hz-avisos" role="status" aria-live="polite">
           {avisos.map((a) => (
             <li key={a.id}>
-              <span aria-hidden="true" className="hz-check">
+              <span aria-hidden="true">
                 ✓
               </span>
               {a.texto}

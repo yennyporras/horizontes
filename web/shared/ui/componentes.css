@@ -63,19 +63,6 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-texto-3 { color: var(--hz-tinta-3); font-size: var(--hz-fs-14); }
 .hz-cifra { font-variant-numeric: tabular-nums; }
 
-/* ── Encabezado con horizontes ──────────────────────── */
-.hz-encabezado {
-  position: relative;
-  overflow: hidden;
-  margin: 0 0 var(--hz-sp-2);
-  /* De borde a borde, con el texto en los bordes del contenedor de página. */
-  padding: var(--hz-sp-5) max(var(--hz-margen-pagina), calc((100% - var(--hz-ancho-pagina)) / 2 + var(--hz-margen-pagina))) var(--hz-sp-4);
-  border-bottom: 1px solid var(--hz-borde);
-}
-.hz-encabezado__arcos { position: absolute; top: 0; right: 0; width: 132px; height: 100%; pointer-events: none; }
-.hz-encabezado__sala { position: relative; font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); max-width: 75%; }
-.hz-encabezado__meta { position: relative; font-size: var(--hz-fs-14); color: var(--hz-tinta-2); max-width: 75%; }
-
 /* ── Botón (píldora, como estratek.com.co) ─────────── */
 .hz-boton {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--hz-sp-2);
@@ -302,9 +289,11 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-hoja__titulo { display: flex; justify-content: space-between; align-items: center; gap: var(--hz-sp-2); font-size: var(--hz-fs-18); font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 .hz-hoja__texto { color: var(--hz-tinta); }
 
-/* ── Encabezado de producto (familia Estratek) ──────────
-   Logo de Horizontes, nombre, «por Estratek »» y la línea del degradado debajo. La marca enlaza al inicio o, en el panel, a Salas. */
-.hz-producto { position: relative; background: var(--hz-fondo); }
+/* ── Encabezado de producto: la barra superior carbón (familia Estratek, 20-oct) ──
+   Logo de Horizontes, nombre, «por Estratek »» y la línea del degradado debajo. El <header> lleva data-tema="carbon":
+   la barra y lo que va dentro (navegación, botones, menú) toman los tokens del carbón; la página sigue en claro.
+   La marca enlaza al inicio o, en el panel, a Salas. */
+.hz-producto { position: relative; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-producto::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--hz-grad-marca); }
 /* La fila es el contenedor de página: el fondo y la línea van de borde a borde, el contenido se alinea con la página. */
 .hz-producto__fila {
@@ -329,5 +318,15 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz .hz-progreso { padding: 0; background: none; border: 0; border-radius: 0; }
 .hz .hz-insignia { padding: 2px var(--hz-sp-2); border-radius: var(--hz-r-pill); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); }
 
-/* Muestra del tema carbón dentro de /m/_ui. */
-.hz-muestra-carbon { padding: var(--hz-sp-4); border-radius: var(--hz-r-tarjeta); background: var(--hz-fondo); color: var(--hz-tinta); }
+/* ── Logo oficial de Estratek ───────────────────────────
+   El PNG oficial es de un solo color y no hay vector (marca/estratek-logo.png, recortado al borde del dibujo): se usa
+   como máscara y se pinta con la tinta del tema, así se lee en carbón sobre el claro y en hielo dentro de la barra
+   carbón. En alto contraste de Windows toma el color del texto del sistema. */
+.hz-logo-estratek {
+  display: inline-block; flex: none;
+  height: 2rem; aspect-ratio: 507 / 143;
+  background: var(--hz-tinta);
+  -webkit-mask: url('./marca/estratek-logo.png') center / contain no-repeat;
+  mask: url('./marca/estratek-logo.png') center / contain no-repeat;
+}
+@media (forced-colors: active) { .hz-logo-estratek { forced-color-adjust: none; background: CanvasText; } }

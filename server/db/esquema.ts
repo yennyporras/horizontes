@@ -205,4 +205,13 @@ CREATE TABLE fotos_agregado (
   `
 UPDATE salas SET token_tablero_hash = '';
 `,
+  // QA por roles (20-oct): tipo de sala (los ensayos no cuentan en las métricas del negocio), empresa cliente y sector
+  // opcionales. Las salas existentes quedan como `taller`. Índice para buscar el consentimiento de cada participante
+  // (detalle de sala y export de inscritos lo consultan por participante).
+  `
+ALTER TABLE salas ADD COLUMN tipo VARCHAR(7) NOT NULL DEFAULT 'taller' CHECK (tipo IN ('taller','ensayo'));
+ALTER TABLE salas ADD COLUMN empresa VARCHAR(80) NULL;
+ALTER TABLE salas ADD COLUMN sector VARCHAR(12) NULL CHECK (sector IS NULL OR sector IN ('alimentos','energia','financiero','comercio','salud','manufactura','otro'));
+CREATE INDEX ix_consentimientos_participante ON consentimientos (participante_id);
+`,
 ]

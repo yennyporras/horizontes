@@ -1,6 +1,6 @@
 {
   "name": "horizontes",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "test": "vitest run",
     "seed": "tsx server/seed.ts",
     "sala:reiniciar": "tsx server/reiniciar_sala.ts",
+    "admin:restablecer": "tsx server/restablecer_superadmin.ts",
     "simular": "tsx tools/simulador/index.ts",
     "simular:golden": "tsx tools/simulador/index.ts --golden",
     "ensayo": "tsx tools/simulador/index.ts --ensayo",

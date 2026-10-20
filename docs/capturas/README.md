@@ -1,6 +1,6 @@
 # Capturas de referencia del tablero
 
-Para la guía del facilitador. Con los cambios del acta del 16-oct: ronda 1 en verde (aro hueco, «R1»), ronda 2 en rojo (burbuja sólida, «R2»), franja de la fase mientras una ronda está abierta y tabla con los 6 criterios (sin fila «Total» desde el 19-oct). Datos: la prueba sintética del golden (20 personas, 2 mesas) en una sala llamada "Taller Foodsume". Desde el 19-oct, en el tema carbón de la familia Estratek: firma «Horizontes por Estratek »» y línea del degradado bajo el encabezado, horizontes en superficies carbón escalonadas y fijos en gris azulado. Se regeneran con:
+Para la guía del facilitador. Con los cambios del acta del 16-oct: ronda 1 en verde (aro hueco, «R1»), ronda 2 en rojo (burbuja sólida, «R2»), franja de la fase mientras una ronda está abierta y tabla con los 6 criterios (sin fila «Total» desde el 19-oct). Datos: la prueba sintética del golden (20 personas, 2 mesas) en una sala llamada "Taller Foodsume". Desde el 20-oct, en el tema claro de la familia Estratek: barra carbón con el logo de Horizontes, la firma «Horizontes por Estratek »» y la línea del degradado debajo; la matriz sobre fondo claro. Se regeneran con:
 
 ```bash
 HZ_E2E_ESPERA_MS=0 HZ_CAPTURAS_GUIA=docs/capturas npx vitest run web/tablero/e2e -t "capturas de referencia"
@@ -20,11 +20,11 @@ HZ_E2E_ESPERA_MS=0 HZ_CAPTURAS_GUIA=docs/capturas npx vitest run web/tablero/e2e
 | `10-ronda-2-abierta.png` | Ronda 2 abierta: franja roja «Ronda 2 · discusión en la mesa» e insignia «En vivo, cada 3 votos» | Durante la ronda 2 |
 | `11-minimo-de-votos.png` | Mesa con menos de 3 votos: «Hacen falta al menos 3 votos para mostrar esta mesa» | Al empezar una ronda, mientras la mesa vota |
 | `12-celular-360-ronda-2.png` | Celular de 360 px con la ronda 2 abierta (página completa) | Si alguien abre el tablero en el celular |
-| `13-con-tabla.png` | Modo con tabla (`modo=tabla`): matriz, progreso y promedios por criterio con su descripción corta | Para discutir los criterios |
-| `14-con-tabla-1280x720.png` | Modo con tabla en un proyector de 1280×720: todo cabe sin desplazar | Proyectores de baja resolución |
-| `15-como-voto.png` | «Cómo votó la sala» (tecla D): conteos 1-3-5-7-9 en una sola escala para R1 y R2 | Para la plenaria |
-| `16-proyector-1280x720-pantalla-completa.png` | Modo en vivo en pantalla completa a 1280×720 | Proyectores de baja resolución |
+| `13-detallado.png` | Modo Detallado (`modo=detallado`): matriz, progreso y promedios por criterio con su descripción corta | Para discutir los criterios |
+| `14-detallado-1280x720.png` | Modo Detallado en un proyector de 1280×720: todo cabe sin desplazar | Proyectores de baja resolución |
+| `15-como-voto.png` | «Cómo votó la sala» (tecla V): conteos 1-3-5-7-9 en una sola escala para R1 y R2 | Para la plenaria |
+| `16-proyector-1280x720-pantalla-completa.png` | Modo Gráfica en pantalla completa a 1280×720 | Proyectores de baja resolución |
 
-Las capturas 01 a 12 van en el modo en vivo (`modo=vivo`, el de defecto): solo la matriz, a todo el ancho, con la letra de proyector (20 px como mínimo en 1280×720 y 24 px en 1920×1080).
+Las capturas 01 a 12 van en el modo Gráfica (`modo=grafica`, el de defecto): solo la matriz, a todo el ancho, con la letra de proyector (20 px como mínimo en 1280×720 y 24 px en 1920×1080).
 
-Atajos del proyector: F pantalla completa, V en vivo, T con tabla, M alterna los modos, D «Cómo votó», 1 ronda 1, 2 ronda 2, C comparación.
+Atajos del proyector: F pantalla completa, G Gráfica, D Detallado, M alterna los modos, V «Cómo votó», 1 ronda 1, 2 ronda 2, C comparación.

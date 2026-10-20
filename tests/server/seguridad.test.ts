@@ -47,7 +47,7 @@ describe('cabeceras de seguridad', () => {
     expect((await e.app.inject({ method: 'POST', url: '/' })).headers['x-robots-tag']).toBe('noindex, nofollow')
     const robots = await e.app.inject('/robots.txt')
     expect(robots.statusCode).toBe(200)
-    expect(robots.body).toBe('User-agent: *\nAllow: /$\nDisallow: /\n')
+    expect(robots.body).toBe('User-agent: *\nAllow: /$\nAllow: /og-horizontes.png\nAllow: /favicon.svg\nDisallow: /\n')
   })
 
   it('HSTS solo detrás de HTTPS', async () => {

@@ -64,7 +64,7 @@ export function Login() {
       </div>
       <main className="login__cuerpo hz-pagina">
         <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-login">
-          <h1 id="titulo-login">Panel de administración</h1>
+          <h1 id="titulo-login">Panel del facilitador</h1>
           {vencida && (
             <p className="alerta alerta--info" role="status">
               Tu sesión terminó. Vuelve a entrar para seguir donde ibas.

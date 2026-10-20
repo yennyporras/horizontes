@@ -1,10 +1,11 @@
 // Vistas y operaciones del panel admin sobre salas, mesas y participantes (SPEC §9).
 import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
-import { CRITERIOS } from '../../shared/motor/motor.js'
+import { CRITERIOS, agregar } from '../../shared/motor/motor.js'
+import { votosDelAlcance } from './fotos.js'
 import type { ParticipanteFila } from './participantes.js'
 import { registrarCambiosPrecierre } from './participantes.js'
-import { configPublica, preguntaGuiada, progreso, rondaReferencia, vivos } from './resultados.js'
+import { MINIMO_VOTOS, configPublica, contenido, preguntaGuiada, progreso, rondaCerrada, rondaReferencia, vivos } from './resultados.js'
 import { type MesaFila, type SalaFila, cargarSala, mesasDeSala, registrarEvento, tocar } from './salas.js'
 import { nombrePerfil, perfiles } from './semilla.js'
 import { isoEnZona, sha256 } from './util.js'
@@ -32,6 +33,9 @@ export function listarSalas(db: Db) {
     creada_at: isoEnZona(s.creada_at, s.zona_horaria),
     mesas: Number(s.mesas),
     inscritos: Number(s.inscritos),
+    tipo: s.tipo,
+    empresa: s.empresa,
+    sector: s.sector,
   }))
 }
 
@@ -48,6 +52,9 @@ export function salaResumen(sala: SalaFila, baseUrl: string) {
     token_tablero: sala.token_tablero,
     url_tablero: urls(baseUrl, sala).url_tablero,
     pregunta_guiada: preguntaGuiada(sala),
+    tipo: sala.tipo,
+    empresa: sala.empresa,
+    sector: sala.sector,
   }
 }
 
@@ -108,6 +115,69 @@ export function detalleSala(db: Db, idOCodigo: string, baseUrl: string) {
     })),
     perfiles: perfiles(),
     eventos: eventos.map((e) => ({ at: isoEnZona(e.at, sala.zona_horaria), tipo: e.tipo, detalle: e.detalle_json ? JSON.parse(e.detalle_json) : null, por: e.por })),
+    resumen: resumenTaller(db, sala),
+  }
+}
+
+/** Participantes activos de la sala que votaron todos los proyectos vivos en la ronda. */
+function completaron(db: Db, salaId: string, ronda: number): number {
+  return Number(
+    uno<{ n: number }>(
+      db,
+      `SELECT COUNT(*) AS n FROM participantes p
+        WHERE p.sala_id = ? AND p.activo = 1
+          AND (SELECT COUNT(*) FROM votos v JOIN proyectos pr ON pr.sala_id = v.sala_id AND pr.id = v.proyecto_id AND pr.modo = 'vivo'
+                WHERE v.participante_id = p.id AND v.ronda = ?) >= (SELECT COUNT(*) FROM proyectos pr WHERE pr.sala_id = p.sala_id AND pr.modo = 'vivo')`,
+      salaId,
+      ronda,
+    )?.n ?? 0,
+  )
+}
+
+/**
+ * Resumen del taller (QA por roles, 20-oct) para el panel: minutos de cada ronda (de su primera apertura a su último
+ * cierre, según la bitácora; null si la ronda no se ha cerrado), inscritos activos, quiénes completaron cada ronda y
+ * cuántas veces se dio acceso de nuevo. Cerrar la sala con la ronda abierta cuenta como cierre de esa ronda.
+ */
+export function resumenTaller(db: Db, sala: SalaFila) {
+  const ev = todos<{ at: string; tipo: string; detalle_json: string | null }>(
+    db,
+    "SELECT at, tipo, detalle_json FROM eventos WHERE sala_id = ? AND tipo IN ('ronda_abierta', 'ronda_cerrada', 'sala_cerrada') ORDER BY id",
+    sala.id,
+  ).map((e) => ({ ms: Date.parse(e.at), tipo: e.tipo, d: (e.detalle_json ? JSON.parse(e.detalle_json) : {}) as { ronda?: number; desde?: string } }))
+  const minutos = (r: number): number | null => {
+    if (!rondaCerrada(sala, r)) return null
+    const inicio = ev.find((e) => e.tipo === 'ronda_abierta' && e.d.ronda === r)
+    const fin = ev.filter((e) => (e.tipo === 'ronda_cerrada' && e.d.ronda === r) || (e.tipo === 'sala_cerrada' && e.d.desde === `r${r}_abierta`)).at(-1)
+    if (!inicio || !fin || fin.ms < inicio.ms) return null
+    return Math.round((fin.ms - inicio.ms) / 6000) / 10
+  }
+  const accesos = uno<{ n: number }>(db, "SELECT COUNT(*) AS n FROM eventos WHERE sala_id = ? AND tipo = 'acceso_reemitido'", sala.id)?.n ?? 0
+  return {
+    minutos_r1: minutos(1),
+    minutos_r2: minutos(2),
+    inscritos: progreso(db, sala).inscritos,
+    completaron_r1: completaron(db, sala.id, 1),
+    completaron_r2: completaron(db, sala.id, 2),
+    accesos_nuevos: Number(accesos),
+  }
+}
+
+/**
+ * Métricas del negocio (QA por roles, 20-oct): solo salas `taller` (los ensayos y la demostración no cuentan) con al
+ * menos una persona activa. `completaron_r2` = personas activas con los proyectos vivos votados en la ronda 2.
+ */
+export function metricas(db: Db) {
+  const salas = todos<{ id: string; pais: string; personas: number }>(
+    db,
+    `SELECT s.id, s.pais, (SELECT COUNT(*) FROM participantes p WHERE p.sala_id = s.id AND p.activo = 1) AS personas
+       FROM salas s WHERE s.tipo = 'taller'`,
+  ).filter((s) => Number(s.personas) > 0)
+  return {
+    talleres: salas.length,
+    personas: salas.reduce((a, s) => a + Number(s.personas), 0),
+    completaron_r2: salas.reduce((a, s) => a + completaron(db, s.id, 2), 0),
+    paises: [...new Set(salas.map((s) => s.pais))].sort(),
   }
 }
 
@@ -247,6 +317,34 @@ export function exportVotos(db: Db, salaId: string) {
       f.pais,
     ]),
   ])
+}
+
+/** Número con 2 decimales y coma decimal (Excel en español, como el separador `;`). */
+const decimal = (n: number) => (Math.round(n * 100) / 100).toFixed(2).replace('.', ',')
+
+/**
+ * `resultados.csv` (QA por roles, 20-oct): lo que se le puede entregar al cliente, sin datos personales. Una fila por
+ * alcance (la sala y cada mesa), ronda y proyecto vivo con el resultado exacto: votos, los 6 promedios, t2m y ejes. Solo
+ * alcances con MINIMO_VOTOS o más (con menos, el promedio delata respuestas). Solo votos de participantes activos.
+ */
+export function exportResultados(db: Db, salaId: string) {
+  const sala = cargarSala(db, salaId)
+  const pesos = contenido(db, sala.id).pesos
+  const proyectosVivos = vivos(db, sala.id)
+  const alcances = [{ nombre: 'sala', mesaId: undefined as string | undefined }, ...mesasDeSala(db, sala.id).map((m) => ({ nombre: m.nombre, mesaId: m.id }))]
+  const rondas = [1, 2].filter((r) => r <= sala.ronda_actual)
+  const filas: unknown[][] = []
+  for (const a of alcances) {
+    for (const r of rondas) {
+      const porProyecto = votosDelAlcance(db, sala.id, r, a.mesaId)
+      for (const p of proyectosVivos) {
+        const ag = agregar((porProyecto.get(p.id) ?? []).map((v) => v.entradas), pesos)
+        if (!ag || ag.n_votos < MINIMO_VOTOS) continue
+        filas.push([a.nombre, r, p.nombre, ag.n_votos, ...CRITERIOS.map((c) => decimal(ag.promedios[c])), decimal(ag.t2m), decimal(ag.eje_x), decimal(ag.eje_y)])
+      }
+    }
+  }
+  return csv([['alcance', 'ronda', 'proyecto', 'n_votos', ...CRITERIOS, 't2m', 'eje_x', 'eje_y'], ...filas])
 }
 
 /** Eventos de la sala, del más reciente al más antiguo. `antes` = id del último evento recibido. */

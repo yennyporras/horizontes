@@ -2,16 +2,21 @@ import { config } from '../config.js'
 import { type Pais, sha256 } from './util.js'
 
 // Aviso de autorización de Estratek según el país de la sala (docs/CONSENTIMIENTO.md §5.1). Si cambia un texto, sube la versión.
-export const VERSION_CONSENTIMIENTO = 'hz-1.1'
+// hz-1.2 (decisión 2 de Paola, 20-oct): fiel a lo que pasa. Nombra todos los datos que se guardan (también IP, país y
+// navegador, por seguridad), para qué se usan, quién ve qué y, en Perú, que los datos se guardan fuera del país.
+export const VERSION_CONSENTIMIENTO = 'hz-1.2'
 
-const AUTORIZO = 'Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre y mi correo con fines informativos de este taller, conforme a'
+const DATOS =
+  'Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre, mi correo y mis calificaciones, y por seguridad la IP, el país y el navegador de mi conexión, para identificarme en mi mesa, evitar inscripciones dobles y devolverme el acceso si cambio de celular durante este taller.'
+const USO =
+  'No se usan para publicidad ni se entregan a terceros. En el tablero y en los celulares solo se muestran promedios de 3 o más personas; el equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre para conducirlo.'
 const POLITICA = 'la Política de Tratamiento de Datos Personales de Estratek'
-const CONTACTO = 'escribiendo a info@estratek.com.co.'
+const DERECHOS = 'Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.'
 
 export const TEXTOS_AUTORIZACION: Record<Pais, string> = {
-  CO: `${AUTORIZO} la Ley 1581 de 2012 de Colombia y a ${POLITICA}. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización ${CONTACTO}`,
-  PE: `${AUTORIZO} la Ley 29733, Ley de Protección de Datos Personales del Perú, y a ${POLITICA}. Puedo ejercer mis derechos de acceso, rectificación, cancelación y oposición, y revocar esta autorización, ${CONTACTO}`,
-  GT: `${AUTORIZO} ${POLITICA}, que se aplica a los participantes en Guatemala. Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización ${CONTACTO}`,
+  CO: `${DATOS} ${USO} Esta autorización se rige por la Ley 1581 de 2012 de Colombia y por ${POLITICA}. ${DERECHOS}`,
+  PE: `${DATOS} ${USO} Esta autorización se rige por la Ley 29733, Ley de Protección de Datos Personales del Perú, y por ${POLITICA}. Mis datos se guardan en servidores fuera del Perú. Puedo ejercer mis derechos de acceso, rectificación, cancelación y oposición, y revocar esta autorización, escribiendo a info@estratek.com.co.`,
+  GT: `${DATOS} ${USO} Esta autorización se rige por ${POLITICA}, que se aplica a los participantes en Guatemala. ${DERECHOS}`,
 }
 
 export function consentimientoVigente(pais: Pais) {

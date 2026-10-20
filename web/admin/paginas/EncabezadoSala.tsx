@@ -40,6 +40,7 @@ export function ConSala({ titulo, datos, error, children }: { titulo: string; da
         <h1 tabIndex={-1}>{titulo}</h1>
         <p className="encabezado-sala__meta">
           <strong>{datos.sala.nombre}</strong>
+          {datos.sala.tipo === 'ensayo' && <span className="etiqueta etiqueta--ensayo">Ensayo</span>}
           <span className="sin-corte">Código {datos.sala.codigo}</span>
           <span className={`estado estado--${datos.sala.estado}`}>{ESTADOS[datos.sala.estado]}</span>
         </p>

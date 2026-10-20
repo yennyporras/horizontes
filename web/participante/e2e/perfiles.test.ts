@@ -49,7 +49,7 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         await p.getByLabel('Tu correo').fill(`ana.perfil${n}@empresa.com`)
         await p.getByRole('checkbox').check()
         await p.getByRole('button', { name: 'Inscribirme' }).click()
-        await titulo(p, /^Tu perfil es /, espera)
+        await titulo(p, /^Tu perfil: /, espera)
         const tokenB = await inscribirApi(e, mesa, 'Beto Ruiz', `beto.perfil${n}@empresa.com`)
         const tokenC = await inscribirApi(e, mesa, 'Ciro Ríos', `ciro.perfil${n}@empresa.com`)
 
@@ -58,6 +58,8 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         await p.getByRole('button', { name: 'Leer el caso' }).click()
         await titulo(p, 'El caso y tu hoja', espera)
         await sinDesborde(p)
+        // Desde el caso, la hoja; desde la hoja, calificar (QA por roles del 20-oct).
+        await p.getByRole('button', { name: 'Leer mi hoja' }).click()
         await p.getByRole('button', { name: 'Calificar proyectos' }).click()
         await titulo(p, 'Ronda 1: califica los 2 proyectos', espera)
         for (const [proyecto, valor] of [
@@ -65,19 +67,23 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
           ['NUTRIWHAT', 3],
         ] as const) {
           await p.getByRole('button', { name: `Calificar ${proyecto}` }).click()
-          await titulo(p, proyecto, espera)
+          await titulo(p, new RegExp(`^R1 · ${proyecto} · Pregunta 1 de 6$`), espera)
           await calificar(p, valor)
           await sinDesborde(p)
           await p.getByRole('button', { name: 'Guardar calificación' }).click()
         }
-        // Por defecto (acta A2, C5): tras votar, el consolidado parcial de la sala (D2: se renueva de 3 en 3). Con 1 voto, el aviso de mínimo.
-        await titulo(p, 'Resultado parcial de la sala', espera)
-        await ver(p, 'Hacen falta al menos 3 votos para mostrar estos resultados.', espera)
+        // Por defecto (acta A2, C5): tras votar, el consolidado parcial de la sala (D2: se renueva de 3 en 3). Con 1 voto, el
+        // aviso de mínimo. Con la ronda 1 oculta del servidor (decisión 1 de Paola del 20-oct), «Calificación enviada» y
+        // cuándo salen los resultados.
+        await titulo(p, /^(Resultado parcial de la sala|Calificación enviada)$/, espera)
+        if (await p.getByRole('heading', { name: 'Calificación enviada', level: 1 }).count()) await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.', espera)
+        else await ver(p, 'Hacen falta al menos 3 votos para mostrar estos resultados.', espera)
         await votarApi(e, tokenB, 'insumex', 1)
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)
         await votarApi(e, tokenC, 'nutriwhat', 1)
-        await ver(p, /^Todos votaron en Mesa 1/, espera)
+        // Alcance sala (por defecto): el precierre que se anuncia es el de la sala.
+        await ver(p, /^Todos votaron en la sala/, espera)
         await accion(e, sala.id, 'cerrar_ronda_1')
         await titulo(p, 'Ronda 1 cerrada', espera)
         await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
@@ -93,7 +99,7 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         await p.getByRole('button', { name: 'Calificar NUTRIWHAT' }).click()
         await calificar(p, 1)
         await p.getByRole('button', { name: 'Guardar calificación' }).click()
-        await titulo(p, 'Voto registrado', espera)
+        await titulo(p, 'Calificación enviada', espera)
         // Triage #15: guarda y la ronda se cierra enseguida; el "guardada" no pasa a la pantalla de ronda cerrada.
         await ver(p, 'Calificación de NUTRIWHAT guardada.', espera)
         await accion(e, sala.id, 'cerrar_ronda_2')

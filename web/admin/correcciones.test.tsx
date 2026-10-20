@@ -13,8 +13,9 @@ import { recordarSala, salaRecordada, olvidarSala } from './memoria'
 import { useSala } from './useSala'
 import { moverProgramacion } from './paginas/Configuracion'
 import { semaforo } from './paginas/Salud'
-import { conPunto, confirmacionCierreRonda, nombreEnsayo, numeroPregunta, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE } from './textos'
-import { CLAVE_RECORRIDO } from './componentes/Recorrido'
+import { conPunto, confirmacionCierreRonda, nombreEnsayo, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE } from './textos'
+import { numeroPregunta } from './contenido'
+import { CLAVE_GUIA } from './componentes/GuiaUso'
 
 function montar(ruta: string) {
   return render(
@@ -67,8 +68,8 @@ function espiar(interceptar?: (metodo: string, ruta: string) => ReturnType<Trans
 beforeEach(() => {
   reiniciarMock({ simularVotos: false })
   localStorage.removeItem('hz_admin_sala')
-  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
-  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
+  // La guía de uso tiene su propia prueba (guia-uso.test.tsx); aquí ya se dio por vista.
+  localStorage.setItem(CLAVE_GUIA, '1,2,3,4,5')
   usarTransporte(responderMock)
   document.title = ''
 })
@@ -179,8 +180,8 @@ describe('textos y utilidades de las correcciones', () => {
       expect(texto, f).not.toMatch(/Ver como participante|Tablero de toda la sala|Abrir tablero de la sala/)
     }
     const guia = readFileSync(join(__dirname, '../../docs/GUIA_FACILITADOR.md'), 'utf8')
-    for (const t of ['Tablero de la sala', 'En vivo, solo la gráfica', 'Con tabla', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
-    expect(guia).not.toMatch(/Abrir tablero de la sala|recuperar mi sesión|Hace falta al menos/)
+    for (const t of ['Tablero de la sala', 'Gráfica', 'Detallado', 'Guía de uso', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
+    expect(guia).not.toMatch(/Abrir tablero de la sala|recuperar mi sesión|Hace falta al menos|En vivo, solo la gráfica|Con tabla|Recorrido/)
   })
 })
 
@@ -230,11 +231,11 @@ describe('Sala en vivo', () => {
     expect([...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)).toEqual(['Abrir ronda 2'])
   })
 
-  it('QA-A-03, QA-A-04 y QA-A-25: «Ver en vivo» es el único lugar con los accesos, y la vista previa no inscribe', async () => {
+  it('QA-A-03, QA-A-04 y QA-A-25: «Proyectar el tablero» es el único lugar con los accesos, y la vista previa no inscribe', async () => {
     await abrirDemo()
-    const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
+    const enVivo = screen.getByRole('region', { name: 'Proyectar el tablero' })
     const enlacesTablero = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="/tablero/"], a[href^="/m/"]')]
-    // Tablero de la sala en sus dos modos (en vivo y con tabla), tablero de la mesa y vista previa del celular.
+    // Tablero de la sala en sus dos modos (Gráfica y Detallado), tablero de la mesa y vista previa del celular.
     expect(enlacesTablero.length).toBe(4)
     for (const a of enlacesTablero) expect(enVivo.contains(a)).toBe(true)
     const previa = within(enVivo).getByRole('link', { name: 'Vista previa del celular' })
@@ -243,14 +244,16 @@ describe('Sala en vivo', () => {
     fireEvent.change(within(enVivo).getByLabelText('Mesa'), { target: { value: 'm2' } })
     expect(within(enVivo).getByRole('link', { name: 'Vista previa del celular' }).getAttribute('href')).toBe('/m/HZ7K2-2?vista=previa')
     expect(within(enVivo).getByRole('link', { name: 'Tablero de Mesa 2' })).toBeTruthy()
-    // La tabla de mesas ya no repite enlaces (eran de 21 px en el celular).
-    expect(within(screen.getByRole('region', { name: 'Mesas' })).queryAllByRole('link')).toHaveLength(0)
+    // La tabla de mesas ya no repite enlaces al tablero (eran de 21 px en el celular); con la ronda abierta solo lleva
+    // «Ver quién falta» (QA por roles, Nicolai), que se queda en el panel.
+    const deMesas = within(screen.getByRole('region', { name: 'Mesas' })).queryAllByRole('link')
+    expect(deMesas.every((a) => a.textContent === 'Ver quién falta' && a.getAttribute('href')!.startsWith('/admin/'))).toBe(true)
   })
 
   it('B-2: «Cambiar el enlace del tablero» pide confirmar, cambia el token de todos los enlaces y lo anota en la bitácora', async () => {
     await abrirDemo()
-    const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
-    const token = () => new URL(within(enVivo).getByRole('link', { name: 'Con tabla' }).getAttribute('href')!, 'http://x').searchParams.get('t')
+    const enVivo = screen.getByRole('region', { name: 'Proyectar el tablero' })
+    const token = () => new URL(within(enVivo).getByRole('link', { name: 'Detallado' }).getAttribute('href')!, 'http://x').searchParams.get('t')
     const antes = token()
     fireEvent.click(within(enVivo).getByRole('button', { name: 'Cambiar el enlace del tablero' }))
     const dialogo = await screen.findByRole('dialog', { name: 'Cambiar el enlace del tablero' })
@@ -272,7 +275,7 @@ describe('Sala en vivo', () => {
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     const region = await screen.findByRole('region', { name: /Resultado preliminar · Mesa 1/ })
     expect(within(region).getByText(/Se renueva cada 3 votos nuevos/)).toBeTruthy()
-    expect(screen.getByText(/El resultado preliminar se renueva cada 3 votos nuevos; al cerrar la ronda queda el exacto/)).toBeTruthy()
+    expect(screen.getByText(/El resultado preliminar se renueva cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final./)).toBeTruthy()
     lento = true
     // Siguiente (modo guiado) cambia la versión de la sala: el resultado se vuelve a pedir y tarda.
     fireEvent.click(within(screen.getByRole('region', { name: 'Pregunta en pantalla' })).getByRole('button', { name: 'Siguiente' }))
@@ -304,7 +307,7 @@ describe('Sala en vivo', () => {
     await abrirDemo()
     vencida = true
     fireEvent.click(nav().getByText('Participantes'))
-    expect(await screen.findByRole('heading', { name: 'Panel de administración' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Panel del facilitador' })).toBeTruthy()
     expect(screen.getByText('Tu sesión terminó. Vuelve a entrar para seguir donde ibas.')).toBeTruthy()
     expect(screen.queryByText(/Se perdió la conexión/)).toBeNull()
   })
@@ -363,7 +366,7 @@ describe('Participantes', () => {
     fireEvent.click(boton('Desactivar a Ana Pérez'))
     const desactivar = await screen.findByRole('dialog', { name: '¿Desactivar a Ana Pérez?' })
     fireEvent.click(within(desactivar).getByRole('button', { name: 'Sí, desactivar' }))
-    expect(await screen.findByText(/Ana Pérez quedó inactivo/)).toBeTruthy()
+    expect(await screen.findByText('Desactivaste a Ana Pérez: sus calificaciones no cuentan en los promedios.')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Mesa de Luis Gómez'), { target: { value: 'm3' } })
     expect(await screen.findByText('Luis Gómez pasó a Mesa 3.')).toBeTruthy()
@@ -523,11 +526,11 @@ describe('Login, cuenta y navegación', () => {
     await entrar()
     fireEvent.click(nav().getByText('Administradores'))
     const usuario = await screen.findByLabelText('Usuario')
-    expect(document.getElementById('regla-usuario')?.textContent).toBe('Entre 3 y 30 caracteres: minúsculas, números, punto o guion. Sin espacios ni tildes.')
+    expect(document.getElementById('regla-usuario')?.textContent).toBe('Entre 3 y 30 caracteres: minúsculas, números, punto, guion o guion bajo. Sin espacios ni tildes.')
     fireEvent.change(usuario, { target: { value: 'Admin Con Espacio' } })
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Admin' } })
     fireEvent.click(boton('Crear administrador'))
-    expect((await screen.findByRole('alert')).textContent).toBe('Ese usuario no sirve. Entre 3 y 30 caracteres: minúsculas, números, punto o guion. Sin espacios ni tildes.')
+    expect((await screen.findByRole('alert')).textContent).toBe('Ese usuario no sirve. Entre 3 y 30 caracteres: minúsculas, números, punto, guion o guion bajo. Sin espacios ni tildes.')
     expect(usuario.getAttribute('aria-invalid')).toBe('true')
     expect(screen.queryByRole('rowheader', { name: 'Admin' })).toBeNull()
   })
@@ -564,7 +567,7 @@ describe('Login, cuenta y navegación', () => {
 describe('Ancho de página común (pedido del 20-oct)', () => {
   it('la barra, el contenido y el pie usan el mismo contenedor .hz-pagina, también en el login', async () => {
     montar('/admin/login')
-    await screen.findByRole('heading', { name: 'Panel de administración' })
+    await screen.findByRole('heading', { name: 'Panel del facilitador' })
     const login = [document.querySelector('.hz-producto__fila'), screen.getByRole('main'), screen.getByRole('contentinfo')]
     for (const el of login) expect(el?.classList.contains('hz-pagina')).toBe(true)
     await entrar()
@@ -582,8 +585,8 @@ describe('Mesas y QR, Respuestas, Exportar', () => {
     const llamadas = espiar()
     await abrirDemo()
     fireEvent.click(nav().getByText('Mesas y QR'))
-    await screen.findByRole('heading', { name: 'Hoja de QR' })
-    expect([...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)).toEqual(['Imprimir hoja de QR'])
+    await screen.findByRole('heading', { name: 'QR de las mesas' })
+    expect([...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)).toEqual(['Imprimir los QR'])
     expect(boton('Agregar').className).toContain('hz-boton--secundario')
     expect(screen.getAllByText('Escanea para entrar')).toHaveLength(3)
     expect(document.querySelector('.qr-tarjeta code')).toBeNull()

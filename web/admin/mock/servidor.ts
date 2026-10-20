@@ -3,10 +3,17 @@
 import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
-import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Participante, RubricasSala, SalaDetalle, SalaResumen } from '../tipos'
-import { ACCIONES_POR_ESTADO, CRITERIOS, PERFILES, PROYECTOS_VIVOS, nombrePerfil, rondaAbierta } from '../textos'
+import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Metricas, Participante, RubricasSala, SalaDetalle, SalaResumen, Sector, TipoSala } from '../tipos'
+import { ACCIONES_POR_ESTADO, LARGO_MINIMO_CLAVE, rondaAbierta } from '../textos'
+import { REGLA_USUARIO, RE_USUARIO_ADMIN } from '../paginas/Administradores'
 import type { Respuesta } from '../api'
 import type { CriterioId } from '../../shared/api/contrato'
+
+// El simulador hace de servidor: él sí lee la semilla, como el servidor real. El panel no (QA por roles del 20-oct).
+const PERFILES: { id: string; nombre: string }[] = seed.perfiles
+const CRITERIOS = seed.motor.criterios.map((c) => ({ id: c.id as CriterioId, nombre: c.nombre }))
+const PROYECTOS_VIVOS = seed.plantilla.proyectos.filter((p) => p.modo === 'vivo').map((p) => ({ id: p.id, nombre: p.nombre }))
+const nombrePerfil = (id: string) => PERFILES.find((p) => p.id === id)?.nombre ?? id
 
 const CLAVE_DEMO = 'demo1234'
 const LLAVE_SESION = 'hz_admin_mock'
@@ -73,6 +80,8 @@ interface Estado {
   rubricas: Record<string, CriterioRubrica[]>
   /** Las que el admin marcó «Usar también en las salas nuevas», por criterio. */
   rubricasNuevas: Record<string, CriterioRubrica['rubrica']>
+  /** Modo demo: la sala «Demostración» que avanza sola y cuándo empezó (ms). */
+  demo: { salaId: string; inicio: number; terminada: boolean } | null
 }
 
 const NOMBRES = ['Ana Pérez', 'Luis Gómez', 'Marta Ríos', 'Carlos Díaz', 'Sofía Mejía', 'Andrés Rojas', 'Laura Vélez', 'Diego Castro', 'Paula Henao', 'Jorge Arango', 'Camila Ortiz', 'Felipe Duque']
@@ -105,6 +114,7 @@ function derivar(s: SalaDetalle) {
 function inicial(): Estado {
   const base = structuredClone(detalleBase) as SalaDetalle
   base.sala.config = { ...CONFIG_19OCT, ...base.sala.config }
+  base.sala = { ...base.sala, tipo: 'taller', empresa: 'Empresa ABC', sector: 'alimentos' }
   base.mesas = [1, 2, 3].map((i) => mesa(base.sala.codigo, i))
   base.participantes = NOMBRES.map(
     (nombre, i): Participante => ({
@@ -130,6 +140,7 @@ function inicial(): Estado {
     salas: [base],
     rubricas: {},
     rubricasNuevas: {},
+    demo: null,
   }
 }
 
@@ -139,6 +150,7 @@ let estado = inicial()
 let simular = true
 export function reiniciarMock(opciones: { simularVotos?: boolean } = {}) {
   estado = inicial()
+  completaronR1.clear()
   simular = opciones.simularVotos ?? true
   sessionStorage.removeItem(LLAVE_SESION)
 }
@@ -159,8 +171,42 @@ function filaPublica(a: AdminInterno): AdminFila {
 }
 
 function resumen(s: SalaDetalle): SalaResumen {
-  const { config: _config, url_tablero: _u, ...resto } = s.sala
-  return { ...resto, mesas: s.mesas.length }
+  const { config: _config, url_tablero: _u, pregunta_guiada: _p, ...resto } = s.sala
+  return { ...resto, mesas: s.mesas.length, inscritos: s.participantes.filter((p) => p.activo).length }
+}
+
+const TIPOS: TipoSala[] = ['taller', 'ensayo']
+const SECTORES_VALIDOS: Sector[] = ['alimentos', 'energia', 'financiero', 'comercio', 'salud', 'manufactura', 'otro']
+
+/** Como el servidor (migración 8): tipo, empresa (hasta 80 caracteres) y sector de la lista, todos opcionales. */
+function datosCliente(b: Record<string, unknown>): { cambio: Partial<Pick<SalaResumen, 'tipo' | 'empresa' | 'sector'>> } | { error: Respuesta } {
+  const cambio: Partial<Pick<SalaResumen, 'tipo' | 'empresa' | 'sector'>> = {}
+  if (b.tipo !== undefined) {
+    if (!TIPOS.includes(b.tipo as TipoSala)) return { error: error(422, 'DATOS_INVALIDOS', 'El tipo de sala debe ser taller o ensayo.') }
+    cambio.tipo = b.tipo as TipoSala
+  }
+  if (b.empresa !== undefined) {
+    const e = b.empresa === null ? '' : String(b.empresa).trim()
+    if (e.length > 80) return { error: error(422, 'DATOS_INVALIDOS', 'El nombre de la empresa admite hasta 80 caracteres.') }
+    cambio.empresa = e || null
+  }
+  if (b.sector !== undefined) {
+    if (b.sector !== null && !SECTORES_VALIDOS.includes(b.sector as Sector)) return { error: error(422, 'DATOS_INVALIDOS', 'Ese sector no está en la lista.') }
+    cambio.sector = (b.sector as Sector | null) ?? null
+  }
+  return { cambio }
+}
+
+/** GET /api/admin/metricas: solo talleres con cliente con al menos una persona activa; completaron la ronda 2 quienes votaron los 2 vivos en R2. */
+function metricas(): Metricas {
+  const talleres = estado.salas.filter((s) => (s.sala.tipo ?? 'taller') === 'taller' && s.participantes.some((p) => p.activo))
+  const activos = talleres.flatMap((s) => s.participantes.filter((p) => p.activo).map((p) => ({ p, s })))
+  return {
+    talleres: talleres.length,
+    personas: activos.length,
+    completaron_r2: activos.filter(({ p, s }) => (s.sala.ronda_actual ?? 0) === 2 && p.completo_ronda).length,
+    paises: [...new Set(talleres.map((s) => s.sala.config.pais ?? 'CO'))],
+  }
 }
 
 function tocar(s: SalaDetalle, tipo: string, por: string, detalle: Record<string, unknown> = {}) {
@@ -179,6 +225,131 @@ const SIGUIENTE: Partial<Record<Accion, EstadoSala>> = {
   reabrir_sala: 'r2_cerrada',
 }
 
+/** Evento que el servidor anota por cada acción (server/dominio/estados.ts), con su ronda. */
+const EVENTO_ACCION: Record<Accion, { tipo: string; ronda?: 1 | 2 | 'actual' }> = {
+  abrir_inscripcion: { tipo: 'inscripcion_abierta' },
+  abrir_ronda_1: { tipo: 'ronda_abierta', ronda: 1 },
+  cerrar_ronda_1: { tipo: 'ronda_cerrada', ronda: 1 },
+  abrir_ronda_2: { tipo: 'ronda_abierta', ronda: 2 },
+  cerrar_ronda_2: { tipo: 'ronda_cerrada', ronda: 2 },
+  reabrir_ronda: { tipo: 'ronda_reabierta', ronda: 'actual' },
+  reiniciar_ronda: { tipo: 'reinicio', ronda: 'actual' },
+  cerrar_sala: { tipo: 'sala_cerrada' },
+  reabrir_sala: { tipo: 'sala_reabierta' },
+}
+
+/** Quiénes completaron la ronda 1 al cerrarla, por sala (el simulador solo guarda quién completó la ronda en curso). */
+const completaronR1 = new Map<string, number>()
+
+/**
+ * «Resumen del taller» del detalle (QA por roles, inversionista), como el servidor: minutos de la apertura al último
+ * cierre de cada ronda según la bitácora (null si no se cerró), completitud y accesos de nuevo.
+ */
+function resumenTaller(s: SalaDetalle): NonNullable<SalaDetalle['resumen']> {
+  const cronologicos = [...s.eventos].reverse()
+  const minutos = (ronda: number) => {
+    const abre = cronologicos.find((e) => e.tipo === 'ronda_abierta' && e.detalle?.ronda === ronda)
+    const cierra = [...cronologicos].reverse().find((e) => e.tipo === 'ronda_cerrada' && e.detalle?.ronda === ronda)
+    if (!abre || !cierra) return null
+    // Como el servidor: minutos con un decimal.
+    return Math.max(0, Math.round((Date.parse(cierra.at) - Date.parse(abre.at)) / 6000) / 10)
+  }
+  const activos = s.participantes.filter((p) => p.activo)
+  const r = s.sala.ronda_actual ?? 0
+  return {
+    minutos_r1: minutos(1),
+    minutos_r2: minutos(2),
+    inscritos: activos.length,
+    completaron_r1: r === 1 ? activos.filter((p) => p.completo_ronda).length : r === 2 ? (completaronR1.get(s.sala.id) ?? activos.length) : 0,
+    completaron_r2: r === 2 ? activos.filter((p) => p.completo_ronda).length : 0,
+    accesos_nuevos: s.eventos.filter((e) => e.tipo === 'acceso_reemitido').length,
+  }
+}
+
+/** Modo demo (`POST /api/admin/demo`): la sala «Demostración», 4 mesas y 24 personas de ejemplo (@example.com). */
+const DEMO_MS = { inscribir: 1000, abrirR1: 4000, votarR1: 25000, abrirR2: 1000, votarR2: 25000 }
+
+function crearDemo(por: string): Respuesta {
+  if (estado.demo && !estado.demo.terminada) return error(409, 'DEMO_EN_CURSO', 'Ya hay una demostración corriendo. Espera a que termine (dura un minuto) o ábrela desde Salas.')
+  const r = crearSala({ nombre: 'Demostración', mesas: 4, tipo: 'ensayo' }, por)
+  if (r.status !== 201) return r
+  const s = estado.salas[estado.salas.length - 1]
+  estado.demo = { salaId: s.sala.id, inicio: Date.now(), terminada: false }
+  return ok({ sala: resumen(s) }, 201)
+}
+
+/** La demostración avanza con el reloj: cada lectura la pone donde debería ir, como si el servidor la corriera en segundo plano. */
+function avanzarDemo() {
+  const d = estado.demo
+  if (!d || d.terminada) return
+  const s = salaPorId(d.salaId)
+  if (!s) {
+    estado.demo = null
+    return
+  }
+  const t = Date.now() - d.inicio
+  const abreR1 = DEMO_MS.inscribir + DEMO_MS.abrirR1
+  const cierraR1 = abreR1 + DEMO_MS.votarR1
+  const abreR2 = cierraR1 + DEMO_MS.abrirR2
+  const cierraR2 = abreR2 + DEMO_MS.votarR2
+  const accion = (a: Accion) => {
+    const destino = aplicarAccion(s, a)
+    if (!destino) return
+    s.sala.estado = destino
+    if (a === 'abrir_ronda_1' || a === 'abrir_ronda_2') s.participantes.forEach((p) => (p.completo_ronda = false))
+    if (destino === 'r1_abierta') s.sala.ronda_actual = 1
+    if (destino === 'r2_abierta') {
+      s.sala.ronda_actual = 2
+      s.sala.config.revelar_hojas = true
+    }
+    derivar(s)
+    const ev = EVENTO_ACCION[a]
+    tocar(s, ev.tipo, 'sistema', { accion: a, ...(typeof ev.ronda === 'number' ? { ronda: ev.ronda } : {}) })
+  }
+  const votar = (desde: number, dura: number) => {
+    const meta = Math.min(s.participantes.length, Math.floor((s.participantes.length * (t - desde)) / dura))
+    const faltan = meta - s.participantes.filter((p) => p.completo_ronda).length
+    for (const p of s.participantes.filter((x) => !x.completo_ronda).slice(0, Math.max(0, faltan))) {
+      p.completo_ronda = true
+      tocar(s, 'voto', 'participante')
+    }
+    derivar(s)
+  }
+  if (t >= DEMO_MS.inscribir && s.sala.estado === 'preparada') {
+    accion('abrir_inscripcion')
+    for (let i = 0; i < 24; i++) {
+      const m = s.mesas[i % s.mesas.length]
+      const id = `${s.sala.id}_p${i + 1}`
+      s.participantes.push({
+        id,
+        nombre: `Persona ${i + 1}`,
+        correo: `persona${i + 1}@example.com`,
+        mesa_id: m.id,
+        perfil_id: PERFILES[Math.floor(i / s.mesas.length) % PERFILES.length].id,
+        activo: true,
+        completo_ronda: false,
+        consentimiento_at: new Date().toISOString(),
+        ip: '127.0.0.1',
+        pais: 'CO',
+      })
+      tocar(s, 'inscripcion', 'participante', { participante_id: id, mesa_id: m.id })
+    }
+    derivar(s)
+  }
+  if (t >= abreR1 && s.sala.estado === 'inscripcion') accion('abrir_ronda_1')
+  if (s.sala.estado === 'r1_abierta') votar(abreR1, DEMO_MS.votarR1)
+  if (t >= cierraR1 && s.sala.estado === 'r1_abierta') {
+    completaronR1.set(s.sala.id, s.participantes.filter((p) => p.completo_ronda).length)
+    accion('cerrar_ronda_1')
+  }
+  if (t >= abreR2 && s.sala.estado === 'r1_cerrada') accion('abrir_ronda_2')
+  if (s.sala.estado === 'r2_abierta') votar(abreR2, DEMO_MS.votarR2)
+  if (t >= cierraR2 && s.sala.estado === 'r2_abierta') {
+    accion('cerrar_ronda_2')
+    d.terminada = true
+  }
+}
+
 function aplicarAccion(s: SalaDetalle, accion: Accion): EstadoSala | null {
   if (!ACCIONES_POR_ESTADO[s.sala.estado].includes(accion)) return null
   if (accion === 'reiniciar_ronda') return s.sala.estado
@@ -190,6 +361,8 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
   const nombre = String(b.nombre ?? '').trim()
   const n = Number(b.mesas)
   if (!nombre || !(n >= 1 && n <= 20)) return error(422, 'DATOS_INVALIDOS', 'Escribe un nombre y entre 1 y 20 mesas.')
+  const cliente = datosCliente(b)
+  if ('error' in cliente) return cliente.error
   const codigo = Math.random().toString(36).slice(2, 7).toUpperCase()
   const nueva = structuredClone(estado.salas[0])
   nueva.sala = {
@@ -200,6 +373,10 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
     estado: 'preparada',
     ronda_actual: 0,
     creada_at: new Date().toISOString(),
+    tipo: 'taller',
+    empresa: null,
+    sector: null,
+    ...cliente.cambio,
     // Acta del 16-oct, C5: toda sala nueva o duplicada muestra los resultados de la sala tras votar.
     config: {
       alcance_resultados: 'sala',
@@ -227,6 +404,9 @@ function admins(metodo: string, camino: string, b: Record<string, unknown>, a: A
   if (metodo === 'GET') return ok(estado.admins.map(filaPublica))
   if (metodo === 'POST') {
     if (!b.usuario || !b.nombre || !b.clave_temporal) return error(422, 'DATOS_INVALIDOS', 'Usuario, nombre y clave temporal son obligatorios.')
+    // Como el servidor: una sola regla del usuario (3 a 30 caracteres).
+    if (!RE_USUARIO_ADMIN.test(String(b.usuario))) return error(422, 'DATOS_INVALIDOS', `Ese usuario no sirve. ${REGLA_USUARIO}`)
+    if (String(b.clave_temporal).length < LARGO_MINIMO_CLAVE) return error(422, 'CLAVE_INVALIDA', `La clave debe tener al menos ${LARGO_MINIMO_CLAVE} caracteres.`)
     if (estado.admins.some((x) => x.usuario === b.usuario)) return error(409, 'USUARIO_EXISTE', 'Ese usuario ya existe.')
     const nuevo: AdminInterno = {
       id: Math.max(...estado.admins.map((x) => x.id)) + 1,
@@ -266,6 +446,9 @@ function simularVoto(s: SalaDetalle) {
   tocar(s, 'voto', 'participante')
 }
 
+/** Como el servidor en resultados.csv: coma decimal (6,33). */
+const coma = (n: number | null) => (n === null ? '' : String(n).replace('.', ','))
+
 const celda = (v: unknown) => {
   const t = String(v ?? '')
   return /[",;\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
@@ -279,7 +462,17 @@ function csv(s: SalaDetalle, archivo: string): string {
           ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'ip', 'pais'],
           ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.1', p.consentimiento_at, p.ip, p.pais]),
         ]
-      : [['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', 'alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida', 'activo', 'ip', 'pais']]
+      : archivo === 'resultados.csv'
+        ? [
+            // Como el servidor: sin datos personales, solo alcances con 3 votos o más (aquí, los del tablero de ejemplo).
+            ['alcance', 'ronda', 'proyecto', 'n_votos', ...CRITERIOS.map((c) => c.id), 't2m', 'eje_x', 'eje_y'],
+            ...tableroBase.proyectos_vivos.flatMap((p) =>
+              p.rondas
+                .filter((r) => r.n_votos >= 3 && r.promedios)
+                .map((r) => ['sala', r.ronda, p.nombre, r.n_votos, ...[...CRITERIOS.map((c) => (r.promedios as Record<string, number>)[c.id]), r.t2m, r.eje_x, r.eje_y].map(coma)]),
+            ),
+          ]
+        : [['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', 'alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida', 'activo', 'ip', 'pais']]
   return '﻿' + filas.map((f) => f.map(celda).join(',')).join('\n') + '\n'
 }
 
@@ -350,6 +543,7 @@ function salaPorId(id: string) {
 export async function responderMock(metodo: string, ruta: string, cuerpo?: unknown, etag?: string): Promise<Respuesta> {
   const [camino, consulta = ''] = ruta.split('?')
   const b = (cuerpo ?? {}) as Record<string, unknown>
+  avanzarDemo()
 
   if (metodo === 'POST' && camino === '/api/admin/login') {
     const a = estado.admins.find((x) => x.usuario === b.usuario && x.activo)
@@ -382,7 +576,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
 
   if (metodo === 'POST' && camino === '/api/admin/cambiar-clave') {
     if (b.actual !== a.clave) return error(422, 'CLAVE_ACTUAL_INVALIDA', 'La clave actual no coincide.')
-    if (typeof b.nueva !== 'string' || b.nueva.length < 10) return error(422, 'CLAVE_DEBIL', 'La clave nueva debe tener al menos 10 caracteres.')
+    if (typeof b.nueva !== 'string' || b.nueva.length < LARGO_MINIMO_CLAVE) return error(422, 'CLAVE_INVALIDA', `La clave debe tener al menos ${LARGO_MINIMO_CLAVE} caracteres.`)
     a.clave = b.nueva
     a.debe_cambiar_clave = false
     return ok(yo(a))
@@ -405,6 +599,13 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (metodo === 'POST') return crearSala(b, por)
   }
 
+  if (metodo === 'GET' && camino === '/api/admin/metricas') return ok(metricas())
+
+  if (metodo === 'POST' && camino === '/api/admin/demo') {
+    if (a.rol !== 'superadmin') return error(403, 'SOLO_SUPERADMIN', 'Solo el superadmin puede crear una demostración.')
+    return crearDemo(por)
+  }
+
   const m = /^\/api\/admin\/salas\/([^/]+)(\/.*)?$/.exec(camino)
   if (m) {
     const s = salaPorId(m[1])
@@ -415,10 +616,20 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       // ETag fuerte entre comillas, como el servidor (RFC 9110): el navegador lo devuelve tal cual en If-None-Match.
       const etagSala = `"${s.version}"`
       if (etag && etag === etagSala) return { status: 304, body: null, etag: etagSala }
-      return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin }, etag: etagSala }
+      // Como el servidor: el detalle trae el catálogo de perfiles (no trae criterios ni proyectos vivos).
+      const conResumen = s.sala.estado === 'r2_cerrada' || s.sala.estado === 'cerrada' ? { resumen: resumenTaller(s) } : {}
+      return {
+        status: 200,
+        body: { ...structuredClone(s), ...conResumen, perfiles: PERFILES, admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin },
+        etag: etagSala,
+      }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
-      const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
+      // Como el servidor: duplicar para ensayo crea una sala `tipo: 'ensayo'` con la misma empresa y sector.
+      const r = crearSala(
+        { nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1, tipo: 'ensayo', empresa: s.sala.empresa ?? null, sector: s.sala.sector ?? null },
+        por,
+      )
       // Como el servidor: la copia lleva las rúbricas de la original.
       if (r.status === 201) estado.rubricas[estado.salas[estado.salas.length - 1].sala.id] = structuredClone(estado.rubricas[s.sala.id] ?? rubricasIniciales())
       return r
@@ -429,9 +640,14 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (r) return rubricas(metodo, s, r[1], b, por)
     if (metodo === 'GET' && resto.startsWith('/export/')) return ok(csv(s, resto.slice('/export/'.length)))
     if (metodo === 'PATCH' && resto === '/config') {
-      const rechazo = validarConfig(s.sala.config, b)
+      // Tipo, empresa y sector (migración 8) van en la sala, no en la configuración.
+      const { tipo: _t, empresa: _e, sector: _s, ...config } = b
+      const cliente = datosCliente(b)
+      if ('error' in cliente) return cliente.error
+      const rechazo = validarConfig(s.sala.config, config)
       if (rechazo) return rechazo
-      Object.assign(s.sala.config, b)
+      Object.assign(s.sala, cliente.cambio)
+      Object.assign(s.sala.config, config)
       // Como el servidor: cambiar el modo borra la pregunta guiada.
       if ('modo_preguntas' in b) s.sala.pregunta_guiada = null
       tocar(s, 'config', por, b)
@@ -476,7 +692,8 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
         if (accion === 'abrir_ronda_2') s.sala.config.revelar_hojas = true
       }
       derivar(s)
-      tocar(s, accion, por)
+      const ev = EVENTO_ACCION[accion]
+      tocar(s, ev.tipo, por, { accion, ...(ev.ronda ? { ronda: ev.ronda === 'actual' ? s.sala.ronda_actual : ev.ronda } : {}) })
       return ok({ estado: destino })
     }
   }

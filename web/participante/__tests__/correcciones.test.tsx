@@ -15,7 +15,7 @@ const MESA = {
   sala: { id: 's_demo', nombre: 'Taller Horizontes demo', estado: 'inscripcion' },
   mesa: { id: 'm1', nombre: 'Mesa 1' },
   inscripcion_abierta: true,
-  consentimiento: { version: 'estratek-v1', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
+  consentimiento: { version: 'hz-1.2', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
 }
 const TODAS = { alistamiento_tecnico: 3, conocimiento_cliente: 3, regulacion: 3, capacidades_organizacionales: 3, alineacion_core: 3, inversion_requerida: 3 }
 
@@ -107,7 +107,7 @@ describe('D1: acceso nuevo que da el facilitador', () => {
     localStorage.setItem(`hz_datos:${CODIGO}`, JSON.stringify({ nombre: 'Ana', correo: 'ana@empresa.com' }))
     sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:nutriwhat')
     montar(`/m/${CODIGO}?acceso=abc123`)
-    expect(await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: /^R[12] · NUTRIWHAT/, level: 1 })).toBeTruthy()
     expect(cuerpo).toEqual({ acceso: 'abc123' })
     expect(llamadas.filter((l) => l.url === '/api/acceso')).toHaveLength(1)
     expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBe('tok-acceso')
@@ -116,7 +116,7 @@ describe('D1: acceso nuevo que da el facilitador', () => {
     expect(ubicacion.search).toBe('')
     expect(localStorage.getItem(`hz_datos:${CODIGO}`)).toBeNull()
     expect(screen.getByText('Listo, entraste de nuevo. Retomas donde ibas.')).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: /Tu perfil es/ })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /Tu perfil:/ })).toBeNull()
   })
 
   it.each([
@@ -182,13 +182,13 @@ describe('QA-P-02: el botón atrás vuelve a la pantalla anterior', () => {
     montar()
     await screen.findByRole('heading', { name: 'Ronda 1: califica los 2 proyectos' })
     fireEvent.click(screen.getByRole('button', { name: 'Calificar NUTRIWHAT' }))
-    await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })
+    await screen.findByRole('heading', { name: /^R[12] · NUTRIWHAT/, level: 1 })
     expect(ubicacion.pathname).toBe(`/m/${CODIGO}`)
     act(() => navegar(-1))
     expect(await screen.findByRole('heading', { name: 'Ronda 1: califica los 2 proyectos' })).toBeTruthy()
     expect(sessionStorage.getItem(`hz_vista:${CODIGO}`)).toBe('inicio')
     act(() => navegar(1))
-    expect(await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: /^R[12] · NUTRIWHAT/, level: 1 })).toBeTruthy()
   })
 
   it('atrás justo después de cambiar de pantalla: vuelve aunque el router no alcance a ver la entrada nueva', async () => {
@@ -199,7 +199,7 @@ describe('QA-P-02: el botón atrás vuelve a la pantalla anterior', () => {
     montar()
     await screen.findByRole('heading', { name: 'Ronda 1: califica los 2 proyectos' })
     fireEvent.click(screen.getByRole('button', { name: 'Calificar NUTRIWHAT' }))
-    await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })
+    await screen.findByRole('heading', { name: /^R[12] · NUTRIWHAT/, level: 1 })
     act(() => void window.dispatchEvent(new PopStateEvent('popstate', { state: { usr: { hzVista: 'inicio' }, key: 'x', idx: 0 } })))
     expect(await screen.findByRole('heading', { name: 'Ronda 1: califica los 2 proyectos' })).toBeTruthy()
     expect(sessionStorage.getItem(`hz_vista:${CODIGO}`)).toBe('inicio')
@@ -335,7 +335,7 @@ describe('QA-P-08: lo que llega solo no empuja lo que se está leyendo', () => {
     montar()
     const aviso = (await screen.findByText('Todos votaron en Mesa 1')).closest('.hz-aviso')!
     expect(aviso.closest('section.hzp-seccion')).toBeTruthy()
-    const h1 = screen.getByRole('heading', { name: 'Voto registrado' })
+    const h1 = screen.getByRole('heading', { name: 'Calificación enviada' })
     expect(h1.compareDocumentPosition(aviso) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
@@ -349,6 +349,10 @@ describe('QA-P-08: lo que llega solo no empuja lo que se está leyendo', () => {
     conToken()
     montar()
     await screen.findByRole('heading', { name: 'El caso y tu hoja' })
+    // En la pestaña Caso el paso que sigue es la hoja (QA por roles del 20-oct); calificar se ofrece desde la hoja.
+    expect(screen.getByRole('button', { name: 'Leer mi hoja' }).getAttribute('aria-disabled')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Calificar proyectos' })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tu hoja' }))
     const boton = screen.getByRole('button', { name: 'Calificar proyectos' })
     expect(boton.getAttribute('aria-disabled')).toBe('true')
     expect(screen.getByText('La votación se abre cuando el facilitador lo indique.').classList.contains('hzp-nota-barra')).toBe(true)
@@ -442,7 +446,7 @@ describe('QA-P-14: sin señal, la barra de la mesa cuenta el voto propio por env
     )
     conToken()
     montar()
-    expect(await screen.findByRole('heading', { name: 'Voto guardado en este celular' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Calificación guardada en este celular' })).toBeTruthy()
     expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe('1 de 1 completaron en Mesa 1')
   })
 })

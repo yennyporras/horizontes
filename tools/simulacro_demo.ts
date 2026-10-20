@@ -1,4 +1,4 @@
-// Simulacro de demostración: crea una sala con mesas e inscritos de ejemplo y la lleva por las dos rondas
+// Simulacro de demostración: crea una sala de ensayo (no cuenta en las cifras del panel) con mesas e inscritos de ejemplo y la lleva por las dos rondas
 // para mostrar el flujo completo. La deja con la ronda 2 cerrada (la sala sigue abierta para explorarla).
 //
 //   npx tsx tools/simulacro_demo.ts --url https://horizontes.estratek.com.co --usuario pruebas --nombre "Bootcamp España"
@@ -69,7 +69,7 @@ async function main() {
   if ((login.admin as { debe_cambiar_clave?: boolean } | undefined)?.debe_cambiar_clave) {
     throw new Error(`«${usuario}» debe cambiar su clave temporal en el panel antes de usar este script.`)
   }
-  const sala = (await pedir('POST', '/api/admin/salas', { nombre, plantilla: 'foodsume_2026', mesas })) as {
+  const sala = (await pedir('POST', '/api/admin/salas', { nombre, plantilla: 'foodsume_2026', mesas, tipo: 'ensayo' })) as {
     id: string
     codigo: string
     mesas: { id: string; codigo: string; nombre: string }[]

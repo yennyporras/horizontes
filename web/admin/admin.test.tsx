@@ -5,11 +5,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
-import { CLAVE_RECORRIDO } from './componentes/Recorrido'
+import { CLAVE_GUIA } from './componentes/GuiaUso'
 import { DESCRIPCION_CRITERIO } from '../shared/criterios'
+import { contenidoDe, ordenPreguntas } from './contenido'
 import {
   ACCIONES_POR_ESTADO,
-  ORDEN_PREGUNTAS,
   dominioDistinto,
   estadoMesa,
   faltan,
@@ -45,8 +45,8 @@ beforeEach(() => {
   reiniciarMock({ simularVotos: false })
   // Cada prueba empieza como un navegador que nunca abrió una sala.
   localStorage.removeItem('hz_admin_sala')
-  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
-  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
+  // La guía de uso tiene su propia prueba (guia-uso.test.tsx); aquí ya se dio por vista.
+  localStorage.setItem(CLAVE_GUIA, '1,2,3,4,5')
   usarTransporte(responderMock)
 })
 afterEach(cleanup)
@@ -77,8 +77,8 @@ describe('textos del panel', () => {
     const mesa = 'https://horizontes.estratek.com.co/tablero/HZ7K2?mesa=m1&t=TOK'
     expect(urlTableroSala(undefined, mesa)).toBe('https://horizontes.estratek.com.co/tablero/HZ7K2?t=TOK')
     expect(urlTableroSala('/x', mesa)).toBe('/x')
-    expect(rutaApiTablero('s_demo', mesa, 'm1')).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m1&t=TOK')
-    expect(rutaApiTablero('s_demo', mesa)).toBe('/api/tablero/s_demo?alcance=sala&t=TOK')
+    expect(rutaApiTablero('s_demo', mesa, 'm1')).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m1&t=TOK&vista=panel')
+    expect(rutaApiTablero('s_demo', mesa)).toBe('/api/tablero/s_demo?alcance=sala&t=TOK&vista=panel')
   })
 
   it('los enlaces del panel abren en su propio servidor aunque BASE_URL apunte a otro ambiente', () => {
@@ -102,8 +102,11 @@ describe('textos del panel', () => {
     expect(textoEvento({ tipo: 'config', detalle: { pais: 'GT', zona_horaria: 'America/Guatemala' }, por: 'admin:qa' })).toBe('Configuración: país y zona horaria · qa')
     expect(textoEvento({ tipo: 'config', detalle: { cierre_programado_r1_at: null }, por: 'admin:qa' })).toBe('Configuración: cierre programado de la ronda 1 · qa')
     expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', mesa_id: 'm2' }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez pasó a Mesa 2 · paola')
-    expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', activo: false }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez quedó inactivo · paola')
-    expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: 'insumex', criterio_id: 'regulacion' }, por: 'admin:jorge' })).toBe('Pregunta en pantalla: INSUMEX · Pregunta 3 de 6 · jorge')
+    expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', activo: false }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez dejó de contar en los promedios · paola')
+    const contenido = contenidoDe({ proyectos_vivos: [{ id: 'insumex', nombre: 'INSUMEX' }], perfiles: [{ id: 'financiero', nombre: 'Financiero' }] })
+    expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: 'insumex', criterio_id: 'regulacion' }, por: 'admin:jorge' }, { contenido })).toBe('Pregunta en pantalla: INSUMEX · Pregunta 3 de 6 · jorge')
+    expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', perfil_id: 'financiero' }, por: 'admin:paola' }, { ...ctx, contenido })).toBe('Ana Pérez ahora tiene el perfil Financiero · paola')
+    expect(textoEvento({ tipo: 'rubrica_editada', detalle: { criterio_id: 'inversion_requerida' }, por: 'admin:paola' })).toBe('Rúbrica editada: Inversión para probar · paola')
     expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: null, criterio_id: null }, por: 'admin:jorge' })).toBe('Pregunta quitada: vuelve la matriz · jorge')
     expect(textoEvento({ tipo: 'algo_nuevo', detalle: null, por: 'sistema' })).toBe('Algo nuevo')
     // Eventos nuevos del servidor (20-oct).
@@ -135,7 +138,7 @@ describe('textos del panel', () => {
   it('el estado de cada mesa sigue al de la sala: no dice Votando sin ronda abierta', () => {
     const m = { inscritos: 3, precierre: false }
     expect(estadoMesa('r1_abierta', m).texto).toBe('Votando')
-    expect(estadoMesa('r2_abierta', { ...m, precierre: true }).texto).toBe('Precierre')
+    expect(estadoMesa('r2_abierta', { ...m, precierre: true }).texto).toBe('Todos votaron')
     expect(estadoMesa('r1_cerrada', m).texto).toBe('Ronda 1 cerrada')
     expect(estadoMesa('cerrada', m).texto).toBe('Sala cerrada')
     expect(estadoMesa('inscripcion', m).texto).toBe('Esperando la ronda')
@@ -152,7 +155,7 @@ describe('textos del panel', () => {
 describe('panel admin contra el simulador', () => {
   it('sin sesión manda al login', async () => {
     montar('/admin/salas')
-    expect(await screen.findByRole('heading', { name: 'Panel de administración' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Panel del facilitador' })).toBeTruthy()
   })
 
   it('el admin normal no ve Administradores y la ruta le muestra sin permiso', async () => {
@@ -233,14 +236,18 @@ describe('panel admin contra el simulador', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Abrir inscripción' }))
     await screen.findByText('Inscripción abierta', { selector: '.estado' })
     expect(principales()).toEqual(['Abrir ronda 1'])
-    const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
-    for (const nombre of ['En vivo, solo la gráfica', 'Con tabla', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
+    const enVivo = screen.getByRole('region', { name: 'Proyectar el tablero' })
+    for (const nombre of ['Gráfica', 'Detallado', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
       const href = within(enVivo).getByRole('link', { name: nombre }).getAttribute('href') ?? ''
       expect(href.startsWith('/')).toBe(true)
     }
-    // Dos modos de proyección del tablero de la sala, a elegir por evento (pedido de Nicolai, 20-oct).
+    // Dos modos de proyección del tablero de la sala, a elegir por evento: Gráfica y Detallado (20-oct).
     const modo = (n: string) => new URL(within(enVivo).getByRole('link', { name: n }).getAttribute('href')!, 'http://x').searchParams.get('modo')
-    expect([modo('En vivo, solo la gráfica'), modo('Con tabla')]).toEqual(['vivo', 'tabla'])
+    expect([modo('Gráfica'), modo('Detallado')]).toEqual(['grafica', 'detallado'])
+    const ayuda = document.getElementById('ayuda-tablero-sala')!.textContent ?? ''
+    for (const t of ['Gráfica muestra solo la matriz moviéndose', 'Detallado muestra la matriz con el progreso y los promedios']) expect(ayuda).toContain(t)
+    // Las teclas van en una lista visual con <kbd> (QA por roles, Nicolai).
+    expect([...enVivo.querySelectorAll('.teclas__lista kbd')].map((k) => k.textContent)).toEqual(['F', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
   })
 
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {
@@ -261,7 +268,10 @@ describe('panel admin contra el simulador', () => {
     // QA-A-27: semáforo en lenguaje llano, sin jerga (p95, modo).
     expect(await screen.findByText('Todo bien')).toBeTruthy()
     expect(screen.getByText(/^El servidor responde/)).toBeTruthy()
-    expect(screen.getByText(/Versión instalada: simulador\./)).toBeTruthy()
+    // Paula (QA por roles): la versión de /api/health como cifra y qué significa «Todo bien».
+    const version = screen.getByText('Versión instalada').parentElement as HTMLElement
+    expect(within(version).getByText('simulador')).toBeTruthy()
+    expect(screen.getByText('«Todo bien» significa que el servidor responde en menos de medio segundo.')).toBeTruthy()
     expect(screen.queryByText(/p95|Modo:/)).toBeNull()
   })
 
@@ -458,10 +468,12 @@ describe('cambios del 19-oct en el panel', () => {
   }
 
   it('textos: orden de las preguntas guiadas, programación y dominio', () => {
-    expect(ORDEN_PREGUNTAS).toHaveLength(12)
-    expect(ORDEN_PREGUNTAS[0]).toEqual({ proyecto_id: 'insumex', criterio_id: 'alistamiento_tecnico' })
-    expect(ORDEN_PREGUNTAS[6]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'alistamiento_tecnico' })
-    expect(ORDEN_PREGUNTAS[11]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'inversion_requerida' })
+    // Los proyectos vivos salen de la sala (contenido.ts), los criterios en el orden del motor.
+    const orden = ordenPreguntas(contenidoDe(null, { proyectosVivos: [{ id: 'insumex', nombre: 'INSUMEX' }, { id: 'nutriwhat', nombre: 'NUTRIWHAT' }] }))
+    expect(orden).toHaveLength(12)
+    expect(orden[0]).toEqual({ proyecto_id: 'insumex', criterio_id: 'alistamiento_tecnico' })
+    expect(orden[6]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'alistamiento_tecnico' })
+    expect(orden[11]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'inversion_requerida' })
     // Solo lo programado, en el orden del taller (no en el de los campos).
     const lista = programaciones({
       cierre_programado_sala_at: '2030-01-10T18:00:00-05:00',
@@ -485,8 +497,15 @@ describe('cambios del 19-oct en el panel', () => {
   ])('%s recorre cada sección de la sala sin bloqueos', async (usuario, esSuper) => {
     montar('/admin/login')
     await entrar(usuario)
-    const secciones = ['Salas', 'Sala en vivo', 'Mesas y QR', 'Participantes', 'Respuestas', 'Hojas', 'Configuración', 'Exportar', 'Salud']
+    // Orden del taller (pedido de Paola, 20-oct): preparar, conducir, después y sistema, cada grupo con su nombre.
+    const secciones = ['Salas', 'Configuración', 'Hojas', 'Mesas y QR', 'Sala en vivo', 'Participantes', 'Respuestas', 'Exportar', 'Salud']
     expect(nav().getAllByRole('link').map((a) => a.textContent)).toEqual(esSuper ? [...secciones, 'Administradores'] : secciones)
+    expect(nav().getAllByRole('group').map((g) => [g.getAttribute('aria-label'), within(g).getAllByRole('link').map((a) => a.textContent)])).toEqual([
+      ['Preparar el taller', ['Salas', 'Configuración', 'Hojas', 'Mesas y QR']],
+      ['Conducir el taller', ['Sala en vivo', 'Participantes']],
+      ['Después del taller', ['Respuestas', 'Exportar']],
+      ['Sistema', esSuper ? ['Salud', 'Administradores'] : ['Salud']],
+    ])
 
     // Primera vez en este navegador: la sección pide la sala y la deja elegir ahí mismo.
     fireEvent.click(nav().getByText('Sala en vivo'))
@@ -533,7 +552,7 @@ describe('cambios del 19-oct en el panel', () => {
     const mesas = await screen.findByLabelText('Mesas')
     expect(document.getElementById(mesas.getAttribute('aria-describedby')!)?.textContent).toBe('Recomendado: una mesa por cada 6 personas (hay 6 perfiles por mesa).')
     fireEvent.click(nav().getByText('Mesas y QR'))
-    expect(await screen.findByText('Imprime el QR de cada mesa y ponlo en su mesa; no lo proyectes, así cada persona entra a su mesa.')).toBeTruthy()
+    expect(await screen.findByText('Imprime el QR de cada mesa y ponlo en su mesa, así cada persona entra a la suya. Proyecta un QR solo si a una mesa le falta el suyo.')).toBeTruthy()
     fireEvent.click(nav().getByText('Participantes'))
     expect(await screen.findByText('Solo administradores. No se proyecta.')).toBeTruthy()
   })
@@ -557,7 +576,7 @@ describe('cambios del 19-oct en el panel', () => {
       'Regulación',
       'Capacidades organizacionales',
       'Alineación con el core',
-      'Inversión requerida',
+      'Inversión para probar',
       'Fecha',
     ])
     const ana = within(tabla).getAllByRole('rowheader', { name: 'Ana Pérez' })[0].parentElement!
@@ -578,12 +597,12 @@ describe('cambios del 19-oct en el panel', () => {
   it('Respuestas: error del servidor tal cual', async () => {
     usarTransporte(async (metodo, ruta, cuerpo, etag) =>
       ruta === '/api/admin/salas/s_demo/respuestas'
-        ? { status: 403, body: { error: { codigo: 'CAMBIO_CLAVE_REQUERIDO', mensaje: 'Antes de continuar cambia tu clave temporal.' } } }
+        ? { status: 403, body: { error: { codigo: 'CAMBIO_CLAVE_REQUERIDO', mensaje: 'Antes de continuar, cambia tu clave temporal.' } } }
         : responderMock(metodo, ruta, cuerpo, etag),
     )
     await abrirDemo()
     fireEvent.click(nav().getByText('Respuestas'))
-    expect((await screen.findByRole('alert')).textContent).toBe('No pudimos cargar las respuestas. Antes de continuar cambia tu clave temporal.')
+    expect((await screen.findByRole('alert')).textContent).toBe('No pudimos cargar las respuestas. Antes de continuar, cambia tu clave temporal.')
   })
 
   it('Respuestas: sala sin votos', async () => {

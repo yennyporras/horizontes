@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { api, usaMocks } from '../api'
 import { useSala } from '../useSala'
@@ -17,6 +17,21 @@ function srcQR(m: Mesa) {
 
 /** Dominio y ruta sin protocolo, para leer en la hoja impresa. */
 const urlCorta = (u: string) => u.replace(/^https?:\/\//, '')
+
+/** La URL corta con cortes posibles solo después de cada barra (no a mitad del código de la mesa). */
+function UrlPartida({ url }: { url: string }) {
+  const partes = urlCorta(url).split(/(?<=\/)/)
+  return (
+    <span className="url">
+      {partes.map((p, i) => (
+        <Fragment key={i}>
+          {i > 0 && <wbr />}
+          <span className="sin-corte">{p}</span>
+        </Fragment>
+      ))}
+    </span>
+  )
+}
 
 /**
  * QA-A-26: la acción principal es imprimir la hoja de QR (agregar mesas es raro y va al final, en secundario). Cada
@@ -65,13 +80,13 @@ export function MesasQR() {
       {(d) => (
         <>
           <section className="panel no-imprimir" aria-labelledby="t-hoja">
-            <h2 id="t-hoja">Hoja de QR</h2>
+            <h2 id="t-hoja">QR de las mesas</h2>
             <p>
-              <strong>Imprime el QR de cada mesa y ponlo en su mesa; no lo proyectes, así cada persona entra a su mesa.</strong>
+              <strong>Imprime el QR de cada mesa y ponlo en su mesa, así cada persona entra a la suya. Proyecta un QR solo si a una mesa le falta el suyo.</strong>
             </p>
             <div className="acciones">
               <button className="hz-boton hz-boton--primario" type="button" onClick={() => window.print()} disabled={d.mesas.length === 0} aria-describedby="ayuda-hoja">
-                Imprimir hoja de QR
+                Imprimir los QR
               </button>
             </div>
             <p id="ayuda-hoja" className="pista">
@@ -93,7 +108,7 @@ export function MesasQR() {
                     Código <strong>{m.codigo}</strong>
                   </p>
                   <p>
-                    <span className="url">{urlCorta(m.url_participante)}</span>
+                    <UrlPartida url={m.url_participante} />
                   </p>
                   <div className="acciones no-imprimir">
                     <button className="hz-boton hz-boton--secundario hz-boton--chico" type="button" onClick={() => setProyectada(m)}>

@@ -1,18 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { MatrizHorizontes } from './MatrizHorizontes'
 import { PanelProyecto } from './PanelProyecto'
 import { Progreso } from './Progreso'
 import { TablaComparada } from './TablaComparada'
-import { CuadriculaMesas } from './CuadriculaMesas'
+import { CuadriculaMesas, MESAS_POR_PAGINA, mesasConInscritos, paginasMesas } from './CuadriculaMesas'
 import { ComoVoto } from './ComoVoto'
-import { ExplicacionBreve } from './ExplicacionBreve'
+import { ExplicacionBreve, LecturaMatriz } from './ExplicacionBreve'
+import { Cortina } from './Cortina'
+import { QueSeMovio } from './QueSeMovio'
+import { AyudaTeclas } from './AyudaTeclas'
 import { PreguntaGuiada } from './PreguntaGuiada'
 import { usePollingTablero } from './usePollingTablero'
-import { usePantallaCompleta } from './usePantallaCompleta'
+import { accionDeTecla, usePantallaCompleta } from './usePantallaCompleta'
 import {
   EN_VIVO,
-  VOTOS_POR_FOTO,
+  PARAMETRO_MODO,
+  esSinPermiso,
+  hayConvergencia,
   insigniaResultado,
   mensajeVacio,
   modoDeUrl,
@@ -20,25 +25,26 @@ import {
   nombreEstado,
   preguntaGuiadaActual,
   rondaEnCurso,
+  rondaOculta,
   urlApiTablero,
   vistaPorDefecto,
+  vistaVecina,
   votosRecibidos,
   type ModoTablero,
 } from './logica'
-import { useTemaDocumento } from '../shared/ui'
-import { LogoHorizontes } from '../shared/ui/marca/LogoHorizontes'
+import { EncabezadoProducto, LogoEstratek, useTemaDocumento } from '../shared/ui'
 import type { DatosTablero, EstadoSala, Vista } from './tipos'
 import './tablero.css'
 
-const VISTAS: { id: Vista; texto: string }[] = [
-  { id: 1, texto: 'Ronda 1' },
-  { id: 2, texto: 'Ronda 2' },
-  { id: 'comparacion', texto: 'Comparación' },
+const VISTAS: { id: Vista; texto: string; tecla: string }[] = [
+  { id: 1, texto: 'Ronda 1', tecla: '1' },
+  { id: 2, texto: 'Ronda 2', tecla: '2' },
+  { id: 'comparacion', texto: 'Comparación', tecla: 'C' },
 ]
 
 const MODOS: { id: ModoTablero; texto: string; tecla: string }[] = [
-  { id: 'vivo', texto: 'En vivo', tecla: 'V' },
-  { id: 'tabla', texto: 'Con tabla', tecla: 'T' },
+  { id: 'grafica', texto: 'Gráfica', tecla: 'G' },
+  { id: 'detallado', texto: 'Detallado', tecla: 'D' },
 ]
 
 type Detalle = 'promedios' | 'votos'
@@ -47,10 +53,14 @@ const DETALLES: { id: Detalle; texto: string }[] = [
   { id: 'votos', texto: 'Cómo votó' },
 ]
 
+/** Sin conexión, los primeros 20 s solo un punto discreto «Reconectando» en la barra (Nicolai); después, el aviso. */
+export const AVISO_CONEXION_MS = 20_000
+
 /** Rondas del bloque «Cómo votó»: las de la vista; en Comparación, R1 y R2 cuando ya hay ronda 2. */
 const rondasDe = (vista: Vista, conR2: boolean): (1 | 2)[] => (vista === 'comparacion' ? (conR2 ? [1, 2] : [1]) : [vista])
 
-// Tablero: /tablero/:sala?mesa=&t=&modo=vivo|tabla · modo proyector (1920 px) y legible en 1280, 1366 y 360 px.
+// Tablero: /tablero/:sala?mesa=&t=&modo=grafica|detallado (también los valores anteriores vivo|tabla).
+// Proyector de 1920×1080 y 1280×720 sin desplazar en Gráfica y en Detallado; legible en 1366, 768 y 360 px.
 export default function PaginaTablero() {
   const { sala = '' } = useParams()
   const [params, setParams] = useSearchParams()
@@ -60,25 +70,33 @@ export default function PaginaTablero() {
   const verMesas = !!token && params.get('vista') === 'mesas'
   const url = sala ? urlApiTablero(sala, { mesa: verMesas ? null : mesa, t: token }) : null
   const { datos, error, cargando } = usePollingTablero(url)
-  // Tema carbón también en <html>: el rebote del desplazamiento y el theme-color del navegador van en carbón.
-  useTemaDocumento('carbon')
+  // Una sola apariencia en toda la app (Paola, 20-oct): fondo claro y barra carbón arriba. También en <html>.
+  useTemaDocumento('claro')
 
-  // La vista elegida a mano dura hasta que cambie el estado de la sala; entonces vuelve la de defecto.
-  // Se guarda con el estado en que se eligió (sin efecto que la borre: un atajo pulsado justo al
-  // llegar los datos no se pierde).
-  const estado = datos?.sala?.estado
-  const [elegida, setElegidaConEstado] = useState<{ vista: Vista; estado: typeof estado } | null>(null)
-  const estadoRef = useRef(estado)
-  estadoRef.current = estado
-  const setElegida = useCallback((v: Vista) => setElegidaConEstado({ vista: v, estado: estadoRef.current }), [])
-  const vista = elegida && elegida.estado === estado ? elegida.vista : vistaPorDefecto(estado, datos?.sala?.ronda_actual)
+  // La vista elegida a mano dura mientras no cambie la ronda (QA por roles, Nicolai: al cerrar la ronda 2 el tablero
+  // saltaba solo a Comparación aunque el facilitador estuviera en otra vista). Sin elección, la de defecto: al cerrar
+  // la ronda 2, Comparación. Se guarda con la ronda en que se eligió (sin efecto que la borre: un atajo pulsado justo
+  // al llegar los datos no se pierde).
+  const ronda = datos?.sala?.ronda_actual ?? 0
+  const [elegida, setElegidaConRonda] = useState<{ vista: Vista; ronda: number } | null>(null)
+  const vista = elegida && elegida.ronda === ronda ? elegida.vista : vistaPorDefecto(datos?.sala?.estado, datos?.sala?.ronda_actual, datos)
+  const vistaRef = useRef(vista)
+  vistaRef.current = vista
+  const rondaRef = useRef(ronda)
+  rondaRef.current = ronda
+  // C en Comparación repite la animación R1 → R2 (antes no hacía nada).
+  const [repeticion, setRepeticion] = useState(0)
+  const setElegida = useCallback((v: Vista) => {
+    if (v === 'comparacion' && vistaRef.current === 'comparacion') setRepeticion((n) => n + 1)
+    setElegidaConRonda({ vista: v, ronda: rondaRef.current })
+  }, [])
 
-  // Dos modos de proyección (pedido de Nicolai, 20-oct), recordados en la URL (?modo=vivo|tabla) para que el
-  // panel enlace a cada uno: «En vivo» (por defecto, como la preentrega del 19-oct: solo la matriz, que se
-  // mueve con cada foto de votos) y «Con tabla» (la matriz con promedios por criterio y «Cómo votó»).
-  // Selector en el encabezado; teclas V, T y M (alterna); Esc vuelve a la tabla; clic en la matriz alterna.
-  const modo = modoDeUrl(params.get('modo'))
-  const soloMatriz = modo === 'vivo'
+  // Dos modos de proyección, recordados en la URL (?modo=grafica|detallado) para que el panel enlace a cada uno:
+  // «Gráfica» (por defecto: la matriz, que se mueve con cada foto de votos, y su lectura al lado) y «Detallado» (la
+  // matriz con el progreso, los promedios por criterio y «Cómo votó»). Selector en el encabezado; teclas G, D y M
+  // (alterna). Un clic en la matriz ya no cambia de modo (Nicolai: pasaba al dar foco a la ventana del proyector).
+  const modo = modoDeUrl(params.get(PARAMETRO_MODO))
+  const soloMatriz = modo === 'grafica'
   const soloRef = useRef(soloMatriz)
   soloRef.current = soloMatriz
   const setModo = useCallback(
@@ -86,31 +104,44 @@ export default function PaginaTablero() {
       setParams(
         (p) => {
           const n = new URLSearchParams(p)
-          n.set('modo', m)
+          n.set(PARAMETRO_MODO, m)
           return n
         },
         { replace: true },
       ),
     [setParams],
   )
-  // Panel de la tabla: promedios o «Cómo votó la sala» (conteo 1-3-5-7-9). Cambia con el botón o la tecla D,
-  // que en el modo en vivo pasa a la tabla en «Cómo votó» (para el facilitador; no se ve por defecto).
+  // Panel del modo Detallado: promedios o «Cómo votó la sala» (conteo 1-3-5-7-9). Cambia con el botón o la
+  // tecla V (votos), que en Gráfica pasa a Detallado en «Cómo votó» (para el facilitador; no se ve por defecto).
   const [detalle, setDetalle] = useState<Detalle>('promedios')
-  // Clic, M, T, Esc o el selector abren la tabla siempre en «Promedios» (QA-T-07): «Cómo votó» es la tecla D.
+  // M, D o el selector abren Detallado siempre en «Promedios» (QA-T-07): «Cómo votó» es la tecla V.
   const alternarMatriz = useCallback(
     (sola: boolean | null = null) => {
       const nueva = sola ?? !soloRef.current
       if (soloRef.current && !nueva) setDetalle('promedios')
-      if (nueva !== soloRef.current) setModo(nueva ? 'vivo' : 'tabla')
+      if (nueva !== soloRef.current) setModo(nueva ? 'grafica' : 'detallado')
     },
     [setModo],
   )
   const alternarDetalle = useCallback(() => {
     if (soloRef.current) {
-      setModo('tabla')
+      setModo('detallado')
       setDetalle('votos')
     } else setDetalle((d) => (d === 'promedios' ? 'votos' : 'promedios'))
   }, [setModo])
+
+  // Cada mesa por separado: de 4 en 4; con más, ← y → pasan de página en vez de cambiar de vista.
+  const [paginaMesas, setPaginaMesas] = useState(0)
+  const nPaginas = verMesas ? paginasMesas(datos) : 1
+  const paginasRef = useRef(nPaginas)
+  paginasRef.current = nPaginas
+  const avanzar = useCallback(
+    (paso: 1 | -1) => {
+      if (paginasRef.current > 1) setPaginaMesas((p) => Math.min(paginasRef.current - 1, Math.max(0, p + paso)))
+      else setElegida(vistaVecina(vistaRef.current, paso))
+    },
+    [setElegida],
+  )
 
   const escalaTexto = useEscalaProyector()
   const letraMin = useLetraProyector()
@@ -118,140 +149,218 @@ export default function PaginaTablero() {
   // Pantalla completa (F): la página en el modo elegido, sin los controles del encabezado (pedido de Paola,
   // 20-oct; reemplaza el zoom por porcentaje). El elemento se guarda en estado: se monta con los datos.
   const [raiz, setRaiz] = useState<HTMLElement | null>(null)
-  const pantalla = usePantallaCompleta({ elemento: raiz, onVista: setElegida, onDetalle: alternarDetalle, onMatriz: alternarMatriz })
-  // Un clic en la matriz (sin arrastrar, por ejemplo al seleccionar) cambia de modo.
-  const inicioClic = useRef({ x: 0, y: 0 })
+  const pantalla = usePantallaCompleta({ elemento: raiz, onVista: setElegida, onDetalle: alternarDetalle, onMatriz: alternarMatriz, onAvanzar: avanzar })
+  const conexion = useAvisoConexion(error, !!datos)
   const botonPantalla = (
-    <button type="button" className="hz-boton-pantalla" aria-keyshortcuts="F" onClick={pantalla.alternar}>
-      {/* En vivo, la pantalla completa es solo el diagrama; con tabla, lo dice el botón (pedido de Paola, 20-oct). */}
-      {pantalla.activa ? 'Salir de pantalla completa' : modo === 'tabla' ? 'Pantalla completa con tabla' : 'Pantalla completa'} <kbd>F</kbd>
-    </button>
+    <>
+      <button type="button" className="hz-boton-pantalla hz-boton-teclas" aria-keyshortcuts="?" onClick={() => pantalla.setAyuda((x) => !x)}>
+        Teclas <kbd>?</kbd>
+      </button>
+      {/* Con F11 el navegador ya está en pantalla completa: se sale con F11, el botón no haría nada. */}
+      {!pantalla.f11 && (
+        <button type="button" className="hz-boton-pantalla" aria-keyshortcuts="F" onClick={pantalla.alternar}>
+          {/* En Gráfica, la pantalla completa es solo el diagrama; en Detallado, lo dice el botón (pedido de Paola, 20-oct). */}
+          {pantalla.activa ? 'Salir de pantalla completa' : soloMatriz || verMesas ? 'Pantalla completa' : 'Pantalla completa con detalle'} <kbd>F</kbd>
+        </button>
+      )}
+    </>
   )
 
   const cambiarAlcance = (valor: string) => {
     const p = new URLSearchParams(params)
     p.delete('vista')
-    // Todas las mesas no lleva `mesa` en la URL (QA-T-04: quedaba la mesa anterior junto a vista=mesas).
+    // Cada mesa por separado no lleva `mesa` en la URL (QA-T-04: quedaba la mesa anterior junto a vista=mesas).
     if (valor === 'sala' || valor === 'mesas') p.delete('mesa')
     if (valor === 'mesas') p.set('vista', 'mesas')
     else if (valor !== 'sala') p.set('mesa', valor)
-    setParams(p, { replace: true })
+    setPaginaMesas(0)
+    setParams(
+      (actual) => {
+        // Sobre los parámetros del momento (un atajo pudo cambiar el modo justo antes).
+        const n = new URLSearchParams(actual)
+        for (const k of ['vista', 'mesa']) n.delete(k)
+        for (const [k, v] of p) if (k === 'vista' || k === 'mesa') n.set(k, v)
+        return n
+      },
+      { replace: true },
+    )
   }
 
   useEffect(() => {
     document.title = datos?.sala?.nombre ? `Tablero · ${datos.sala.nombre}` : 'Tablero · Horizontes'
   }, [datos?.sala?.nombre])
 
+  // El logo lleva al inicio; con el enlace del facilitador (trae token), a su panel.
+  const inicio = token ? '/admin/salas' : '/'
+
   if (!datos) {
     return (
-      <main className="hz-tablero hz-tablero-solo" data-ruta="tablero" data-tema="carbon">
-        {cargando && !error ? (
-          <p className="hz-cargando" role="status">
-            Cargando el tablero…
-          </p>
-        ) : (
-          <div className="hz-error-grande" role="alert">
-            <h1>No pudimos abrir el tablero</h1>
-            <p>{error?.mensaje ?? 'Revisa el enlace del tablero.'}</p>
-          </div>
-        )}
+      <main className="hz-tablero hz-tablero-solo" data-ruta="tablero" data-tema="claro">
+        <BarraTablero href={inicio} />
+        <div className="hz-area hz-area-centrada">
+          {cargando && !error ? (
+            <p className="hz-cargando" role="status">
+              Cargando el tablero…
+            </p>
+          ) : (
+            <div className="hz-error-grande" role="alert">
+              <h1>No pudimos abrir el tablero</h1>
+              <p>{error?.mensaje ?? 'Revisa el enlace del tablero.'}</p>
+            </div>
+          )}
+        </div>
       </main>
     )
   }
 
+  // Ronda 1 oculta: la cortina (avance por mesa) en lugar de los resultados, salvo en la vista de la ronda 2.
+  const oculta = rondaOculta(datos, 1) && vista !== 2
+  const movio = vista === 'comparacion' && hayConvergencia(datos)
+  const totalMesas = verMesas ? mesasConInscritos(datos).length : 0
+  const pagina = Math.min(paginaMesas, nPaginas - 1)
+
   return (
     <main
       ref={setRaiz}
-      className={['hz-tablero', pantalla.activa && 'hz-pantalla-completa', soloMatriz && !verMesas && 'hz-matriz-sola'].filter(Boolean).join(' ')}
+      className={['hz-tablero', pantalla.activa && 'hz-pantalla-completa', soloMatriz && !verMesas && 'hz-matriz-sola', verMesas && 'hz-tablero-mesas'].filter(Boolean).join(' ')}
       data-ruta="tablero"
-      data-tema="carbon"
+      data-tema="claro"
       data-modo={modo}
+      data-detalle={soloMatriz ? undefined : detalle}
     >
       <Encabezado
+        href={inicio}
         datos={datos}
         vista={vista}
         onVista={setElegida}
-        modo={modo}
-        onModo={(m) => alternarMatriz(m === 'vivo')}
+        modo={verMesas ? null : modo}
+        onModo={(m) => alternarMatriz(m === 'grafica')}
         token={token}
         mesa={verMesas ? 'mesas' : mesa}
         onAlcance={cambiarAlcance}
         pantallaCompleta={pantalla.activa}
+        reconectando={conexion === 'punto'}
       />
-      <FranjaFase estado={datos.sala?.estado} />
-      {error && (
-        <p className="hz-aviso-error" role="alert">
-          {error.mensaje} Mostramos los últimos datos recibidos.
-        </p>
-      )}
-      {verMesas ? (
-        <CuadriculaMesas sala={sala} token={token} datos={datos} vista={vista} escalaTexto={escalaTexto > 1 ? 1.5 : 1} letraMin={letraMin} />
-      ) : (
-        <div className="hz-cuerpo">
-          {pregunta ? (
-            <PreguntaGuiada p={pregunta} />
-          ) : (
-            <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
-              <Vacio datos={datos} vista={vista} />
-              <div
-                className="hz-lienzo"
-                data-version={datos.version}
-                onPointerDown={(e) => {
-                  inicioClic.current = { x: e.clientX, y: e.clientY }
-                }}
-                onClick={(e) => {
-                  if (Math.hypot(e.clientX - inicioClic.current.x, e.clientY - inicioClic.current.y) > 6) return
-                  alternarMatriz()
-                }}
-              >
-                <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} letraMin={letraMin} animarCambios />
-              </div>
-              {/* Pie de la matriz: leyenda en una línea; en vivo, además la explicación breve y la pantalla completa. */}
-              <div className="hz-pie-matriz">
-                <Leyenda vista={vista} />
-                {soloMatriz && <ExplicacionBreve />}
-                {soloMatriz && <div className="hz-pie-controles">{botonPantalla}</div>}
-              </div>
-            </section>
-          )}
-          {!soloMatriz && (
-            <aside className="hz-lateral" aria-label="Detalle por proyecto y progreso">
-              <Progreso datos={datos} />
-              <div className="hz-detalle-fila">
-                <div className="hz-detalle" role="group" aria-label="Detalle del panel">
-                  {DETALLES.map((d) => (
-                    <button key={d.id} type="button" aria-pressed={detalle === d.id} aria-keyshortcuts="D" onClick={() => setDetalle(d.id)}>
-                      {d.texto}
-                    </button>
-                  ))}
+      <div className="hz-area">
+        <FranjaFase estado={datos.sala?.estado} />
+        {conexion === 'aviso' && error && (
+          <p className="hz-aviso-error" role="alert">
+            {error.mensaje} Mostramos los últimos datos recibidos.
+          </p>
+        )}
+        {verMesas ? (
+          <>
+            <CuadriculaMesas sala={sala} token={token} datos={datos} vista={vista} escalaTexto={escalaTexto > 1 ? 1.5 : 1} letraMin={letraMin} pagina={pagina} />
+            {/* Cada mesa por separado también lleva la leyenda de las rondas y la pantalla completa. */}
+            <div className="hz-pie-matriz hz-pie-mesas">
+              <Leyenda vista={vista} />
+              {nPaginas > 1 && (
+                <div className="hz-paginas" role="group" aria-label="Páginas de mesas">
+                  <button type="button" className="hz-boton-pantalla" aria-keyshortcuts="ArrowLeft" disabled={pagina === 0} onClick={() => setPaginaMesas(pagina - 1)}>
+                    <span aria-hidden="true">←</span> Anteriores
+                  </button>
+                  <span className="hz-paginas-n" aria-live="polite">
+                    Mesas {pagina * MESAS_POR_PAGINA + 1} a {Math.min(totalMesas, (pagina + 1) * MESAS_POR_PAGINA)} de {totalMesas}
+                  </span>
+                  <button type="button" className="hz-boton-pantalla" aria-keyshortcuts="ArrowRight" disabled={pagina >= nPaginas - 1} onClick={() => setPaginaMesas(pagina + 1)}>
+                    Siguientes <span aria-hidden="true">→</span>
+                  </button>
                 </div>
-                {/* D2: con la ronda abierta, promedios y conteos son la última foto, no cada voto. */}
-                {rondaEnCurso(datos.sala?.estado) && <p className="hz-nota-foto">Se actualizan cada {VOTOS_POR_FOTO} votos nuevos.</p>}
-                <div className="hz-pie-controles">{botonPantalla}</div>
-              </div>
-              {detalle === 'votos' ? (
-                <ComoVoto datos={datos} rondas={rondasDe(vista, mostrarR2(datos))} />
-              ) : (
-                <>
-                  {/* Proyector (≥ 1100 px): tabla comparada. Móvil y tableta: un panel por proyecto. Solo se ve uno (CSS). */}
-                  <div className="hz-solo-ancho">
-                    <TablaComparada datos={datos} vista={vista} />
-                  </div>
-                  <div className="hz-solo-angosto">
-                    {datos.proyectos_vivos.map((p) => (
-                      <PanelProyecto key={p.id} proyecto={p} datos={datos} vista={vista} />
-                    ))}
-                  </div>
-                </>
               )}
-            </aside>
-          )}
-          {/* Sin matriz (pregunta guiada) el botón sigue a mano. */}
-          {pregunta && soloMatriz && <div className="hz-pie-controles hz-pie-guiada">{botonPantalla}</div>}
-        </div>
-      )}
+              <div className="hz-pie-controles">{botonPantalla}</div>
+            </div>
+          </>
+        ) : (
+          <div className="hz-cuerpo">
+            {pregunta ? (
+              <PreguntaGuiada p={pregunta} />
+            ) : (
+              <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
+                <Vacio datos={datos} vista={vista} />
+                <div className="hz-lienzo" data-version={datos.version}>
+                  <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} letraMin={letraMin} animarCambios repetirAnimacion={repeticion} />
+                </div>
+                {/* Pie de la matriz: leyenda en una línea; en Gráfica, además las teclas y la pantalla completa. */}
+                <div className="hz-pie-matriz">
+                  <Leyenda vista={vista} />
+                  {soloMatriz && <div className="hz-pie-controles">{botonPantalla}</div>}
+                </div>
+                {/* En Detallado, la lectura de los ejes va bajo la matriz (QA por roles: siempre visible). */}
+                {!soloMatriz && <ExplicacionBreve className="hz-explica-detallado" />}
+              </section>
+            )}
+            {/* Gráfica: la columna llena el espacio libre a la derecha de la matriz (abajo en pantallas angostas). */}
+            {soloMatriz && !pregunta && (
+              <aside className="hz-columna" aria-label="Lectura de la matriz">
+                {oculta && <Cortina datos={datos} />}
+                {movio && <QueSeMovio datos={datos} />}
+                <LecturaMatriz />
+              </aside>
+            )}
+            {!soloMatriz && (
+              <aside className="hz-lateral" aria-label="Progreso y detalle por criterio">
+                {!oculta && <Progreso datos={datos} />}
+                <div className="hz-detalle-fila">
+                  {!oculta && (
+                    <div className="hz-detalle" role="group" aria-label="Detalle del panel">
+                      {DETALLES.map((d) => (
+                        <button key={d.id} type="button" aria-pressed={detalle === d.id} aria-keyshortcuts="V" onClick={() => setDetalle(d.id)}>
+                          {d.texto}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="hz-pie-controles">{botonPantalla}</div>
+                </div>
+                {oculta ? (
+                  <Cortina datos={datos} />
+                ) : detalle === 'votos' ? (
+                  <ComoVoto datos={datos} rondas={rondasDe(vista, mostrarR2(datos))} />
+                ) : (
+                  <>
+                    {/* Proyector (≥ 1100 px): tabla comparada. Móvil y tableta: un panel por proyecto. Solo se ve uno (CSS). */}
+                    <div className="hz-solo-ancho">
+                      <TablaComparada datos={datos} vista={vista} />
+                    </div>
+                    <div className="hz-solo-angosto">
+                      {datos.proyectos_vivos.map((p) => (
+                        <PanelProyecto key={p.id} proyecto={p} datos={datos} vista={vista} />
+                      ))}
+                    </div>
+                  </>
+                )}
+                {/* Proyector: la lectura de los ejes va en el panel, bajo la tabla (bajo la matriz le quitaba alto). */}
+                <ExplicacionBreve className="hz-explica-lateral" />
+                {/* Celular y tableta: el tamaño de la burbuja y los horizontes al final del panel (CSS). */}
+                <LecturaMatriz conEjes={false} className="hz-lectura-lateral" />
+              </aside>
+            )}
+            {/* Sin matriz (pregunta guiada) el botón sigue a mano. */}
+            {pregunta && soloMatriz && <div className="hz-pie-controles hz-pie-guiada">{botonPantalla}</div>}
+          </div>
+        )}
+      </div>
+      {pantalla.ayuda && <AyudaTeclas onCerrar={() => pantalla.setAyuda(false)} />}
     </main>
   )
+}
+
+/**
+ * Aviso de conexión (Nicolai: en el proyector asustaba): los primeros 20 s sin respuesta solo un punto discreto
+ * «Reconectando» en la barra; si sigue, el aviso completo. Un enlace sin permiso (401 o 403) avisa de una vez.
+ */
+function useAvisoConexion(error: { status: number } | null, conDatos: boolean): 'punto' | 'aviso' | null {
+  const [largo, setLargo] = useState(false)
+  const hayError = !!error
+  useEffect(() => {
+    setLargo(false)
+    if (!hayError) return
+    const t = setTimeout(() => setLargo(true), AVISO_CONEXION_MS)
+    return () => clearTimeout(t)
+  }, [hayError])
+  if (!error) return null
+  if (!conDatos || esSinPermiso(error.status) || largo) return 'aviso'
+  return 'punto'
 }
 
 /** Letra más grande en la matriz cuando la pantalla es de proyector (≥ 1100 px de ancho). */
@@ -281,7 +390,24 @@ function useAnchoVentana() {
   return ancho
 }
 
+/**
+ * Barra carbón de la familia Estratek, como la del panel y el celular: logo de Horizontes, «por Estratek »» y la
+ * línea del degradado debajo, de borde a borde. A la derecha, la sala, los controles del tablero y el logo de
+ * Estratek en hielo (QA por roles, Paula: la marca de Estratek no se veía en el proyector).
+ */
+function BarraTablero({ href, children }: { href: string; children?: ReactNode }) {
+  return (
+    <div className="hz-cab" data-tema="carbon">
+      <EncabezadoProducto href={href} className="hz-cab-barra">
+        {children}
+        <LogoEstratek className="hz-cab-logo" />
+      </EncabezadoProducto>
+    </div>
+  )
+}
+
 function Encabezado({
+  href,
   datos,
   vista,
   onVista,
@@ -291,64 +417,65 @@ function Encabezado({
   mesa,
   onAlcance,
   pantallaCompleta,
+  reconectando,
 }: {
+  href: string
   datos: DatosTablero
   vista: Vista
   onVista: (v: Vista) => void
-  modo: ModoTablero
+  /** null en Cada mesa por separado: ahí los modos no cambian nada y el selector no se muestra. */
+  modo: ModoTablero | null
   onModo: (m: ModoTablero) => void
   token: string | null
   mesa: string | null
   onAlcance: (v: string) => void
   pantallaCompleta: boolean
+  reconectando: boolean
 }) {
   const insignia = insigniaResultado(datos)
   const votos = votosRecibidos(datos)
   const alcanceTexto =
-    mesa === 'mesas' ? 'Todas las mesas' : datos.alcance?.tipo === 'mesa' ? (datos.alcance.mesa_nombre ?? 'Mesa') : 'Toda la sala'
+    mesa === 'mesas' ? 'Cada mesa por separado' : datos.alcance?.tipo === 'mesa' ? (datos.alcance.mesa_nombre ?? 'Mesa') : 'Toda la sala'
   return (
-    <header className="hz-cab">
+    <BarraTablero href={href}>
       <div className="hz-cab-titulo">
-        <div className="hz-cab-nombre">
-          <h1>{datos.sala?.nombre ?? 'Tablero'}</h1>
-          {/* El logo lleva al inicio; con el enlace del facilitador (trae token), a su panel. */}
-          <p className="hz-firma">
-            <a className="hz-firma-enlace" href={token ? '/admin/salas' : '/'}>
-              <LogoHorizontes className="hz-firma-logo" tamano={20} />
-              Horizontes por Estratek <span className="hz-firma-flecha" aria-hidden="true">»</span>
-            </a>
-          </p>
-        </div>
+        <h1>{datos.sala?.nombre ?? 'Tablero'}</h1>
         <p className="hz-cab-meta">
-          <span>{nombreEstado(datos.sala?.estado)}</span>
-          {/* Con el selector de alcance a la vista no se repite; en pantalla completa (sin selector), sí. */}
-          {(!token || pantallaCompleta) && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>{alcanceTexto}</span>
-            </>
-          )}
-          {pantallaCompleta && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="hz-cab-vista">{VISTAS.find((v) => v.id === vista)?.texto}</span>
-            </>
-          )}
-          {/* Indicador discreto de votos recibidos (progreso en vivo de la ronda). */}
-          {votos && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="hz-cab-votos">{votos}</span>
-            </>
-          )}
+          {conSeparadores([
+            // Con la ronda abierta el estado ya lo dice en grande la franja de la ronda: aquí no se repite.
+            !rondaEnCurso(datos.sala?.estado) && (
+              <span key="estado" className="hz-cab-estado">
+                {nombreEstado(datos.sala?.estado)}
+              </span>
+            ),
+            // Con el selector de alcance a la vista no se repite; en pantalla completa (sin selector), sí.
+            (!token || pantallaCompleta) && <span key="alcance">{alcanceTexto}</span>,
+            pantallaCompleta && (
+              <span key="vista" className="hz-cab-vista">
+                {VISTAS.find((v) => v.id === vista)?.texto}
+              </span>
+            ),
+            // Indicador discreto de votos recibidos (progreso en vivo de la ronda).
+            votos && (
+              <span key="votos" className="hz-cab-votos">
+                {votos}
+              </span>
+            ),
+          ])}
+          {/* Estado de la ronda, no un modo de proyección: insignia sin borde, distinta de los botones del selector. */}
           {insignia === 'preliminar' && (
-            <span className="hz-insignia hz-insignia-alerta" title="Todos votaron. El resultado queda en firme cuando el facilitador cierre la ronda">
+            <span className="hz-tb-insignia hz-tb-insignia-alerta" title="Todos votaron. Al cerrar la ronda se muestra el resultado final.">
               Preliminar
             </span>
           )}
           {insignia === 'en_vivo' && (
-            <span className="hz-insignia hz-insignia-vivo" title={EN_VIVO.titulo}>
+            <span className="hz-tb-insignia hz-tb-insignia-vivo" title={EN_VIVO.titulo}>
               {EN_VIVO.texto}
+            </span>
+          )}
+          {reconectando && (
+            <span className="hz-reconectando" role="status" title="Sin respuesta del servidor. Reintentamos solos cada pocos segundos.">
+              Reconectando
             </span>
           )}
         </p>
@@ -356,10 +483,23 @@ function Encabezado({
       <div className="hz-cab-controles">
         {token && (
           <label className="hz-alcance">
-            <span>Alcance</span>
-            <select value={mesa ?? 'sala'} onChange={(e) => onAlcance(e.target.value)}>
+            {/* El nombre queda para el lector de pantalla: las opciones ya dicen qué es y la barra cabe en una franja. */}
+            <span className="hz-oculto">Alcance</span>
+            {/* Control de la proyección, no un campo (data-atajos): suelta el foco al cambiar y no se come los atajos. */}
+            <select
+              data-atajos=""
+              value={mesa ?? 'sala'}
+              // Un atajo nunca elige una opción (M buscaba «Mesa 1»): se corta aquí; el tablero lo atiende en window.
+              onKeyDown={(e) => {
+                if (accionDeTecla(e.key)) e.preventDefault()
+              }}
+              onChange={(e) => {
+                onAlcance(e.target.value)
+                e.currentTarget.blur()
+              }}
+            >
               <option value="sala">Toda la sala</option>
-              <option value="mesas">Todas las mesas</option>
+              <option value="mesas">Cada mesa por separado</option>
               {(datos.progreso?.por_mesa ?? []).map((m) => (
                 <option key={m.mesa_id} value={m.mesa_id}>
                   {m.nombre}
@@ -368,23 +508,30 @@ function Encabezado({
             </select>
           </label>
         )}
-        <div className="hz-segmento hz-modo" role="group" aria-label="Modo de proyección">
-          {MODOS.map((m) => (
-            <button key={m.id} type="button" aria-pressed={modo === m.id} aria-keyshortcuts={m.tecla} title={`Tecla ${m.tecla}`} onClick={() => onModo(m.id)}>
-              {m.texto}
-            </button>
-          ))}
-        </div>
+        {modo && (
+          <div className="hz-segmento hz-modo" role="group" aria-label="Modo de proyección">
+            {MODOS.map((m) => (
+              <button key={m.id} type="button" aria-pressed={modo === m.id} aria-keyshortcuts={m.tecla} title={`Tecla ${m.tecla}`} onClick={() => onModo(m.id)}>
+                {m.texto}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="hz-segmento" role="group" aria-label="Vista de la matriz">
           {VISTAS.map((v) => (
-            <button key={String(v.id)} type="button" aria-pressed={vista === v.id} onClick={() => onVista(v.id)}>
+            <button key={String(v.id)} type="button" aria-pressed={vista === v.id} aria-keyshortcuts={v.tecla} title={`Tecla ${v.tecla}`} onClick={() => onVista(v.id)}>
               {v.texto}
             </button>
           ))}
         </div>
       </div>
-    </header>
+    </BarraTablero>
   )
+}
+
+/** Los datos de la barra, separados por «·» (decorativo para el lector de pantalla). */
+function conSeparadores(partes: (ReactNode | false | null)[]): ReactNode[] {
+  return partes.filter(Boolean).flatMap((p, i) => (i ? [<span key={`sep${i}`} aria-hidden="true">·</span>, p] : [p]))
 }
 
 function Vacio({ datos, vista }: { datos: DatosTablero; vista: Vista }) {
@@ -399,23 +546,23 @@ function Vacio({ datos, vista }: { datos: DatosTablero; vista: Vista }) {
 
 /** Qué se hace en la ronda abierta: R1 con aro verde hueco, R2 en rojo sólido, legible a 6 m. */
 function FranjaFase({ estado }: { estado: EstadoSala | undefined }) {
-  const n = estado === 'r1_abierta' ? 1 : estado === 'r2_abierta' ? 2 : null
+  const n = rondaEnCurso(estado)
   if (!n) return null
   return (
     <p className={`hz-franja hz-franja-r${n}`}>
       <i className={`hz-marca-r${n}`} aria-hidden="true" />
-      {n === 1 ? 'Ronda 1 · individual y en silencio' : 'Ronda 2 · discusión en la mesa'}
+      {n === 1 ? 'Ronda 1 · Individual y en silencio' : 'Ronda 2 · Discusión en la mesa'}
     </p>
   )
 }
 
-/** Leyenda por ronda en una línea: R1 aro hueco verde, R2 punto sólido rojo, siempre con su texto. */
+/** Leyenda por ronda en una línea: los proyectos de referencia, R1 aro hueco verde, R2 punto sólido rojo, siempre con su texto. */
 function Leyenda({ vista }: { vista: Vista }) {
   const rondas = vista === 'comparacion' ? ([1, 2] as const) : [vista]
   return (
     <p className="hz-leyenda">
       <span>
-        <i className="hz-ley-fijo" aria-hidden="true" /> Proyectos fijos
+        <i className="hz-ley-fijo" aria-hidden="true" /> Proyectos de referencia
       </span>
       {rondas.map((n) => (
         <span key={n}>
@@ -424,7 +571,6 @@ function Leyenda({ vista }: { vista: Vista }) {
           <span className="hz-ley-largo"> Ronda {n}</span>
         </span>
       ))}
-      <span>Burbuja: TAM</span>
     </p>
   )
 }

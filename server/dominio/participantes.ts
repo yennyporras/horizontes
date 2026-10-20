@@ -197,6 +197,10 @@ function misVotos(db: Db, p: ParticipanteFila, ronda: number) {
   return todos<VotoFila>(db, `SELECT proyecto_id, ronda, ${CRITERIOS.join(', ')}, actualizado_at FROM votos WHERE participante_id = ? AND ronda = ?`, p.id, ronda)
 }
 
+function misVotosAntes(db: Db, p: ParticipanteFila, ronda: number) {
+  return todos<VotoFila>(db, `SELECT proyecto_id, ronda, ${CRITERIOS.join(', ')}, actualizado_at FROM votos WHERE participante_id = ? AND ronda < ? ORDER BY ronda`, p.id, ronda)
+}
+
 export interface DatosVoto {
   proyecto_id?: unknown
   ronda?: unknown
@@ -215,7 +219,7 @@ export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ctx: ContextoPe
   }
   const proyectoId = typeof d.proyecto_id === 'string' ? d.proyecto_id : ''
   if (!vivos(db, p.sala_id).some((x) => x.id === proyectoId)) {
-    throw new ErrorApi(422, 'PROYECTO_INVALIDO', 'Solo se votan INSUMEX y NUTRIWHAT.')
+    throw new ErrorApi(422, 'PROYECTO_INVALIDO', 'Ese proyecto no se califica en esta sala.')
   }
 
   return transaccion(db, () => {
@@ -344,6 +348,9 @@ export function vistaYo(db: Db, p: ParticipanteFila) {
     criterios: c.criterios.map((k) => ({ id: k.id, nombre: k.nombre, pregunta: k.pregunta, perfil_informante: k.perfil_informante, rubrica: k.rubrica })),
     escala: c.escala,
     mis_votos: mios.map((v) => votoPublico(v, sala.zona_horaria)),
+    // Aditivo (20-oct): los votos propios de las rondas anteriores, para que la comparación R1→R2 del celular muestre
+    // «Tú» también en la ronda 1. Son solo de esta persona, igual que mis_votos.
+    mis_votos_anteriores: ronda > 1 ? misVotosAntes(db, p, ronda).map((v) => votoPublico(v, sala.zona_horaria)) : [],
     pendientes: idsVivos.filter((id) => !mios.some((v) => v.proyecto_id === id)),
     completo_ronda: ronda > 0 && mios.length >= idsVivos.length,
     progreso_mesa: { inscritos: pm.inscritos, completos: pm.completos, precierre: pm.precierre },

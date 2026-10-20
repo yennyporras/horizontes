@@ -4,7 +4,7 @@ import { cleanup, render, screen, within } from '@testing-library/react'
 import tablero from '../../../mocks/GET_api_tablero.json'
 import yoBase from '../../../mocks/GET_api_yo.json'
 import { cifra } from '../Comun'
-import { DESCRIPCION_CRITERIO } from '../../shared/criterios'
+import { DESCRIPCION_CRITERIO, NOMBRE_CORTO } from '../../shared/criterios'
 import { MIN_VOTOS, ResultadoAlcance, resultadoVisible } from '../pantallas/Resultado'
 import type { Resultados, Yo } from '../api'
 
@@ -34,7 +34,8 @@ describe('resultado del alcance', () => {
     const tabla = screen.getAllByRole('table')[0]
     const filas = within(tabla).getAllByRole('rowheader').map((th) => th.textContent)
     // Cada criterio con su descripción corta debajo (pedido del 20-oct, 100 caracteres como máximo).
-    expect(filas).toEqual(yo.criterios.map((c) => c.nombre + DESCRIPCION_CRITERIO[c.id as keyof typeof DESCRIPCION_CRITERIO]))
+    // Con el nombre corto, el mismo del tablero (QA por roles del 20-oct); el largo solo va en la pregunta.
+    expect(filas).toEqual(yo.criterios.map((c) => NOMBRE_CORTO[c.id as keyof typeof NOMBRE_CORTO] + DESCRIPCION_CRITERIO[c.id as keyof typeof DESCRIPCION_CRITERIO]))
     expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
     expect(container.textContent).not.toMatch(/Total|10,13|10,25/)
     expect(screen.getAllByRole('cell')).toHaveLength(screen.getAllByRole('table').length * yo.criterios.length * 2)

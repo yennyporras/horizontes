@@ -11,7 +11,7 @@ await page.waitForSelector('svg.hz-matriz circle.hz-r1', { timeout: 30000 })
 const antes = await page.evaluate(() => ({
   meta: document.querySelector('.hz-cab-meta')?.textContent,
   avisos: [...document.querySelectorAll('.hz-avisos li')].map((l) => l.textContent),
-  vista: document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent,
+  vista: document.querySelector('[aria-label="Vista de la matriz"] [aria-pressed="true"]')?.textContent,
 }))
 console.log('antes', JSON.stringify(antes))
 const t0 = Date.now()

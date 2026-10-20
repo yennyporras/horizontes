@@ -7,7 +7,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { type Transporte, usarTransporte } from './api'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from '../../tests/server/ayuda'
-import { CLAVE_RECORRIDO } from './componentes/Recorrido'
+import { CLAVE_GUIA } from './componentes/GuiaUso'
 
 let e: Entorno
 let cookie = ''
@@ -74,8 +74,8 @@ beforeEach(async () => {
   cookie = ''
   usarTransporte(transporteInject)
   localStorage.removeItem('hz_admin_sala')
-  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
-  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
+  // La guía de uso tiene su propia prueba (guia-uso.test.tsx); aquí ya se dio por vista.
+  localStorage.setItem(CLAVE_GUIA, '1,2,3,4,5')
 })
 afterEach(async () => {
   cleanup()
@@ -181,7 +181,7 @@ describe('panel admin contra la API real', () => {
     fireEvent.change(screen.getByLabelText('Perfil de Carla Ruiz'), { target: { value: 'regulacion' } })
     await screen.findByText(/Carla Ruiz ahora tiene el perfil/)
     fireEvent.click(boton('Desactivar a Carla Ruiz'))
-    await screen.findByText(/Carla Ruiz quedó inactivo/)
+    await screen.findByText('Desactivaste a Carla Ruiz: sus calificaciones no cuentan en los promedios.')
     const p = e.db.prepare('SELECT mesa_id, perfil_id, activo FROM participantes WHERE correo = ?').get('carla@x.co') as Record<string, unknown>
     expect(p).toMatchObject({ mesa_id: mesas[1].id, perfil_id: 'regulacion', activo: 0 })
   }, 20_000)
@@ -330,12 +330,12 @@ describe('cambios del 19-oct contra la API real', () => {
     await screen.findByRole('heading', { level: 1, name: 'Salas' })
     expect(nav().getAllByRole('link').map((a) => a.textContent)).toEqual([
       'Salas',
-      'Sala en vivo',
+      'Configuración',
+      'Hojas',
       'Mesas y QR',
+      'Sala en vivo',
       'Participantes',
       'Respuestas',
-      'Hojas',
-      'Configuración',
       'Exportar',
       'Salud',
     ])
@@ -537,7 +537,7 @@ describe('correcciones de la QA del panel contra la API real', () => {
     await crearSalaDesdePanel('Sesión real', 1)
     // Otra pestaña cierra la sesión: el siguiente sondeo responde 401.
     await e.app.inject({ method: 'POST', url: '/api/admin/logout', headers: { cookie } })
-    expect(await screen.findByRole('heading', { name: 'Panel de administración' }, { timeout: 6000 })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Panel del facilitador' }, { timeout: 6000 })).toBeTruthy()
     expect(screen.getByText('Tu sesión terminó. Vuelve a entrar para seguir donde ibas.')).toBeTruthy()
   }, 20_000)
 })

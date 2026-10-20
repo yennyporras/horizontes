@@ -132,6 +132,8 @@ export interface Yo {
   criterios: Criterio[]
   escala: Valor[]
   mis_votos: Voto[]
+  /** Aditivo (20-oct): votos propios de las rondas anteriores a la actual (la ronda 1 cuando la actual es la 2). */
+  mis_votos_anteriores?: Voto[]
   pendientes: string[]
   completo_ronda: boolean
   progreso_mesa: ProgresoMesa
@@ -173,6 +175,27 @@ export interface RondaVivo {
   total?: number | null
   /** true si hay votos pero menos que `Tablero.minimo_votos`: promedios, distribución y punto van en null por privacidad. */
   bajo_minimo?: boolean
+  /**
+   * R1 oculta (20-oct, decisión 1 de Paola): la ronda 1 está abierta, el alcance no está en precierre y quien pide no es el
+   * panel del admin (`GET /api/tablero/{id}?vista=panel` con sesión admin). `n_votos` sí va; promedios, distribución, t2m,
+   * ejes y total en null. Se muestra cuando todo el alcance votó (precierre) o al cerrar la ronda.
+   */
+  oculta?: true
+}
+/**
+ * Convergencia R1 → R2 de un proyecto vivo en el alcance (20-oct), calculada en el servidor. Solo cuando R1 y R2 tienen
+ * resultado visible (sin `oculta` ni `bajo_minimo`). Dispersión = promedio de las desviaciones estándar (poblacionales) de
+ * los 6 criterios, sobre la distribución publicada. `reduccion_pct` = (d1 − d2) / d1 × 100 redondeado (0 si d1 es 0;
+ * negativa si la dispersión creció). `criterio_mayor_cambio` = mayor |promedio R2 − promedio R1| (empate: el primero en
+ * el orden de los criterios). `delta_x`, `delta_y` = eje R2 − eje R1, con 2 decimales.
+ */
+export interface Convergencia {
+  dispersion_r1: number
+  dispersion_r2: number
+  reduccion_pct: number
+  criterio_mayor_cambio: CriterioId
+  delta_x: number
+  delta_y: number
 }
 export interface ProyectoTablero {
   id: string
@@ -193,7 +216,7 @@ export interface Tablero {
   /** `pregunta` y `rubrica` (mismo formato que en `/api/yo`) solo llegan con `config.modo_preguntas = 'guiado'`. */
   criterios: { id: CriterioId; nombre: string; pregunta?: string; rubrica?: Rubrica[] }[]
   proyectos_fijos: (ProyectoTablero & { t2m: number; eje_x: number; eje_y: number; total?: number })[]
-  proyectos_vivos: (ProyectoTablero & { rondas: RondaVivo[] })[]
+  proyectos_vivos: (ProyectoTablero & { rondas: RondaVivo[]; convergencia?: Convergencia })[]
   preliminar: boolean
   /** Votos mínimos por proyecto y ronda para mostrar resultados de un alcance (hoy 3). */
   minimo_votos?: number
@@ -202,6 +225,8 @@ export interface Tablero {
    * renueva solo cuando llegan al menos estos votos nuevos o cambiados desde la última (hoy 3). Con la ronda cerrada, exacto.
    */
   votos_por_actualizacion?: number
+  /** Promedio (redondeado) de `reduccion_pct` de los vivos que tienen `convergencia`. Sin ninguno, no llega. */
+  convergencia_alcance?: { reduccion_pct: number }
 }
 
 /**
@@ -228,6 +253,53 @@ export interface Admin extends AdminYo {
   creado_at: string
   clave_temporal?: string
 }
+/** Migración 8 (20-oct): `ensayo` no cuenta en `GET /api/admin/metricas`. Duplicar una sala crea un ensayo. */
+export type TipoSala = 'taller' | 'ensayo'
+export type SectorSala = 'alimentos' | 'energia' | 'financiero' | 'comercio' | 'salud' | 'manufactura' | 'otro'
+export const SECTORES_SALA: readonly SectorSala[] = ['alimentos', 'energia', 'financiero', 'comercio', 'salud', 'manufactura', 'otro']
+/**
+ * Opcionales en `POST /api/admin/salas` y `PATCH /api/admin/salas/{id}/config`. `empresa`: texto de hasta 80 caracteres
+ * (vacía o null la quita); `sector`: uno de `SECTORES_SALA` o null. Si no, 422 `DATOS_INVALIDOS`.
+ */
+export interface ClasificacionSala {
+  tipo?: TipoSala
+  empresa?: string | null
+  sector?: SectorSala | null
+}
+export interface CuerpoNuevaSala extends ClasificacionSala {
+  nombre: string
+  plantilla: 'foodsume_2026'
+  mesas: number
+}
+/** Una fila de `GET /api/admin/salas` → `{salas}`. */
+export interface SalaListada {
+  id: string
+  codigo: string
+  nombre: string
+  estado: EstadoSala
+  ronda_actual: number
+  creada_at: string
+  mesas: number
+  inscritos: number
+  tipo?: TipoSala
+  empresa?: string | null
+  sector?: SectorSala | null
+}
+/** `GET /api/admin/metricas`: solo salas `taller` con al menos una persona activa (sin ensayos ni demostraciones). */
+export interface Metricas {
+  talleres: number
+  personas: number
+  /** Personas activas con los 2 proyectos vivos votados en la ronda 2. */
+  completaron_r2: number
+  /** Países de esos talleres, en orden alfabético. */
+  paises: Pais[]
+}
+/** `POST /api/admin/demo` (solo superadmin, 201). 409 `DEMO_EN_CURSO` si ya hay una corriendo. */
+export interface RespuestaDemo {
+  sala: SalaResumen
+}
+/** Archivos de `GET /api/admin/salas/{id}/export/{archivo}`. `resultados.csv` no lleva datos personales. */
+export type ArchivoExport = 'inscritos.csv' | 'votos.csv' | 'resultados.csv'
 export interface SalaResumen {
   id: string
   codigo: string
@@ -241,6 +313,9 @@ export interface SalaResumen {
   url_tablero?: string
   /** Pregunta fijada en modo guiado (null sin pregunta). */
   pregunta_guiada?: PreguntaGuiada | null
+  tipo?: TipoSala
+  empresa?: string | null
+  sector?: SectorSala | null
 }
 export interface MesaAdmin {
   id: string
@@ -302,6 +377,20 @@ export interface DetalleSala {
   servidor_at?: string
   /** BASE_URL del servidor: la de los QR y enlaces. El panel avisa si no coincide con su dominio. */
   base_url?: string
+  resumen?: ResumenTaller
+}
+/** Resumen del taller en el detalle de sala (20-oct). */
+export interface ResumenTaller {
+  /** De la primera apertura al último cierre de la ronda según la bitácora, con 1 decimal. null si la ronda no se ha cerrado. */
+  minutos_r1: number | null
+  minutos_r2: number | null
+  /** Participantes activos. */
+  inscritos: number
+  /** Activos con los 2 proyectos vivos votados en esa ronda. */
+  completaron_r1: number
+  completaron_r2: number
+  /** Veces que se usó «Dar acceso de nuevo» (eventos `acceso_reemitido`). */
+  accesos_nuevos: number
 }
 /** GET /api/admin/salas/{id}/respuestas: una fila por persona, ronda y proyecto votado. Solo admin, nunca se proyecta. */
 export interface RespuestaPersona {

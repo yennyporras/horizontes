@@ -19,16 +19,16 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 - **Superadmin:** usuario `paola`. La clave inicial la elige Paola y va solo en Coolify (variable `SUPERADMIN_CLAVE` de cada app) o en `deploy/.env.deploy` (`SUPERADMIN_CLAVE_STAGING` y `SUPERADMIN_CLAVE_PROD`), nunca en git. Cuenta solo la primera vez que arranca una base vacía; después se cambia desde el panel.
 - **Administradores:** Paola los crea en el panel (**Administradores** → *Nuevo administrador*, con clave temporal). Cada uno cambia su clave en el primer ingreso. Un admin normal no ve la gestión de administradores.
 - **Coolify y Hostinger:** cuenta de Paola.
-- **Tablero:** cada sala tiene su enlace con token; se abre desde **Sala en vivo** → **Ver en vivo** → *Tablero de la sala*, en el modo *En vivo, solo la gráfica* o *Con tabla*.
+- **Tablero:** cada sala tiene su enlace con token; se abre desde **Sala en vivo** → **Proyectar el tablero** → *Tablero de la sala*, en el modo *Gráfica* (solo la matriz moviéndose) o *Detallado* (con el progreso y los promedios).
 
 ## 4. Qué está listo
 - Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.1`. Sin autorización no hay inscripción.
 - Votación 1-3-5-7-9 en 6 criterios, 2 rondas, precierre cuando todos votan, cierres programados en la hora del país de la sala.
 - Resultados anónimos: tablas con los 6 criterios y su descripción corta (sin fila «Total» desde la preentrega del 19-oct); mínimo de 3 votos para mostrar un alcance; con la ronda abierta, el resultado se renueva cada 3 votos nuevos y al cerrarla queda el exacto; por defecto toda la sala ve el consolidado apenas vota.
-- Tablero con dos modos de proyección (en vivo, solo la gráfica; o con tabla) y pantalla completa con F.
+- Tablero con dos modos de proyección, *Gráfica* (solo la matriz) y *Detallado* (con progreso y promedios), y pantalla completa con F.
 - Recuperar la sesión: la da el facilitador con *Dar acceso de nuevo* en **Participantes** (enlace de un solo uso, 15 minutos). Nadie entra solo con el correo.
-- Recorrido guiado para administradores (primera visita y botón *Recorrido*).
-- «Cómo votó la sala» (o la mesa): cuántos votos tuvo cada valor 1, 3, 5, 7 y 9 por criterio, en R1 y R2, en el tablero (botón *Cómo votó* o tecla **D**) y en **Sala en vivo** del panel. Es lo que alimenta la conversación de la plenaria.
+- Guía de uso para administradores, un paso por sección en el orden del menú (primera visita y botón *Guía de uso*). El menú sigue el orden del taller: preparar, conducir, después y sistema.
+- «Cómo votó la sala» (o la mesa): cuántos votos tuvo cada valor 1, 3, 5, 7 y 9 por criterio, en R1 y R2, en el tablero (botón *Cómo votó* o tecla **V**) y en **Sala en vivo** del panel. Es lo que alimenta la conversación de la plenaria.
 - Registro interno solo para el admin: país e IP de cada inscripción y voto en el panel y en `inscritos.csv` / `votos.csv`.
 - Panel: salas, duplicar para ensayo, mesas y QR (hoja A4 imprimible), participantes, **hojas de los 6 perfiles** (solo lectura), configuración (visibilidad, país, zona horaria, cierres, rúbricas), exportar, administradores, salud.
 - Plan B en papel y Excel (`docs/PLAN_B.md`), guía del facilitador de una página (`docs/GUIA_FACILITADOR.md`).
@@ -49,7 +49,7 @@ Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado el 19-oct a
 3. **Prueba en staging (10 min).** Entra a `https://staging-horizontes.estratek.com.co/admin` con `paola`, cambia la clave, crea una sala de 2 mesas, elige el país, escanea un QR con el celular, inscríbete, vota, mira el tablero y cierra la sala.
 4. **Producción clonando staging.** En `horizontes-staging` → **Resource Operations** → *Clone* al ambiente `production` (créalo antes en el proyecto si no existe). En la copia, que se llamará `horizontes-prod`:
    - **Domains** = `https://horizontes.estratek.com.co`.
-   - **Environment Variables**: `APP_ENV` = `production`, `BASE_URL` = `https://horizontes.estratek.com.co`, `SUPERADMIN_CLAVE` distinta a la de staging, `SESSION_SECRET` distinto si existe.
+   - **Environment Variables**: `APP_ENV` = `production`, `BASE_URL` = `https://horizontes.estratek.com.co`, `SUPERADMIN_CLAVE` distinta a la de staging.
    - **Persistent Storage**: cambia el volumen a `horizontes-datos-prod` en `/data`. Nunca compartas el volumen con staging.
    - **Advanced**: apaga *Auto Deploy*.
    - **Save** y **Deploy**. Igual que en staging: *Running (healthy)* y `curl -fsS https://horizontes.estratek.com.co/api/health`.
@@ -60,7 +60,7 @@ Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado el 19-oct a
 
 ### 5.2 Para el taller
 9. **Sala real.** Panel → **Salas** → nombre del taller y número de mesas → **Crear sala** → **Configuración** → país.
-10. **Hoja de QR A4 en PDF.** Panel → sala → **Mesas y QR** → *Imprimir hoja de QR* → destino "Guardar como PDF", tamaño A4, márgenes predeterminados. Sin abrir el navegador, desde el repo (cuando el dominio ya responda):
+10. **QR de las mesas en A4 (PDF).** Panel → sala → **Mesas y QR** → *Imprimir los QR* → destino "Guardar como PDF", tamaño A4, márgenes predeterminados. Sin abrir el navegador, desde el repo (cuando el dominio ya responda):
     ```sh
     HZ_ADMIN_CLAVE='<tu clave>' node QA-tests/hoja_qr_pdf.cjs https://horizontes.estratek.com.co paola <CÓDIGO DE SALA> hoja-qr.pdf
     ```

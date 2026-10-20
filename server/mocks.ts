@@ -99,11 +99,29 @@ export async function rutasMocks(app: FastifyInstance) {
   app.get('/api/admin/salas', async () => {
     const a = admin()
     return {
-      salas: [{ id: a.sala.id, codigo: a.sala.codigo, nombre: a.sala.nombre, estado: a.sala.estado, creada_at: a.sala.creada_at, mesas: a.mesas.length }],
+      salas: [
+        {
+          id: a.sala.id,
+          codigo: a.sala.codigo,
+          nombre: a.sala.nombre,
+          estado: a.sala.estado,
+          ronda_actual: a.sala.ronda_actual,
+          creada_at: a.sala.creada_at,
+          mesas: a.mesas.length,
+          inscritos: a.participantes.length,
+          tipo: a.sala.tipo ?? 'taller',
+          empresa: a.sala.empresa ?? null,
+          sector: a.sala.sector ?? null,
+        },
+      ],
     }
   })
+  // Cifras del negocio (QA por roles, 20-oct): fijas en el mock.
+  app.get('/api/admin/metricas', async () => ({ talleres: 3, personas: 72, completaron_r2: 68, paises: ['CO', 'PE'] }))
+  // Modo demo: el mock responde la sala de ejemplo como «Demostración» y no la juega.
+  app.post('/api/admin/demo', async (_req, reply) => reply.code(201).send({ sala: { ...admin().sala, id: 's_demo_mock', nombre: 'Demostración', tipo: 'ensayo', estado: 'preparada' } }))
   app.post('/api/admin/salas', async (_req, reply) => reply.code(201).send(admin().sala))
-  app.post('/api/admin/salas/:id/duplicar', async (_req, reply) => reply.code(201).send({ ...admin().sala, id: 's_copia', nombre: `${admin().sala.nombre} (copia)`, estado: 'preparada' }))
+  app.post('/api/admin/salas/:id/duplicar', async (_req, reply) => reply.code(201).send({ ...admin().sala, id: 's_copia', nombre: `${admin().sala.nombre} (copia)`, estado: 'preparada', tipo: 'ensayo' }))
   app.get('/api/admin/salas/:id', async (req, reply) => responderConVersion(req, reply, admin()))
   app.patch('/api/admin/salas/:id/config', async (req) => ({ ...admin().sala.config, ...(req.body as object) }))
   app.post('/api/admin/salas/:id/acciones', async () => ({ sala: admin().sala }))

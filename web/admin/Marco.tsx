@@ -6,7 +6,8 @@ import { recordarSala, salaRecordada } from './memoria'
 import { dominioDistinto } from './textos'
 import { EncabezadoProducto } from '../shared/ui'
 import { ProveedorPendientes, usePendientes } from './componentes/Pendientes'
-import { useRecorrido } from './componentes/Recorrido'
+import { useGuiaUso } from './componentes/GuiaUso'
+import { GRUPOS, seccionesDe, type Grupo } from './secciones'
 
 /** Navegación del panel. Las secciones de sala usan la sala abierta en la URL o la última que se usó. */
 export function Marco() {
@@ -25,8 +26,9 @@ function MarcoInterno() {
   const { confirmarSalida, hayPendientes } = usePendientes()
   const [menuAbierto, setMenuAbierto] = useState(false)
   const primeraVista = useRef(true)
-  // Recorrido guiado: solo la primera vez de cada admin en este navegador (y nunca con datos simulados).
-  const recorrido = useRecorrido(admin?.id, !usaMocks())
+  const esSuperadmin = admin?.rol === 'superadmin'
+  // Guía de uso: se abre sola la primera vez de cada admin en este navegador (nunca con datos simulados).
+  const guia = useGuiaUso(admin?.id, esSuperadmin, !usaMocks())
 
   // Recordar la sala es un efecto, no algo que pasa en cada render.
   useEffect(() => {
@@ -48,18 +50,14 @@ function MarcoInterno() {
   const sala = salaId ?? salaRecordada()
   const enSala = (seccion: string) => (sala ? `/admin/salas/${sala}/${seccion}` : `/admin/sala/${seccion}`)
 
-  const enlaces = [
-    { a: '/admin/salas', texto: 'Salas', end: true },
-    { a: enSala('vivo'), texto: 'Sala en vivo' },
-    { a: enSala('mesas'), texto: 'Mesas y QR' },
-    { a: enSala('participantes'), texto: 'Participantes' },
-    { a: enSala('respuestas'), texto: 'Respuestas' },
-    { a: enSala('hojas'), texto: 'Hojas' },
-    { a: enSala('configuracion'), texto: 'Configuración' },
-    { a: enSala('export'), texto: 'Exportar' },
-    { a: '/admin/salud', texto: 'Salud' },
-  ]
-  if (admin?.rol === 'superadmin') enlaces.push({ a: '/admin/administradores', texto: 'Administradores' })
+  // El menú sigue el orden del taller (secciones.ts): preparar, conducir, después y el sistema.
+  const enlaces = seccionesDe(esSuperadmin).map((s) => ({
+    a: s.deSala ? enSala(s.ruta) : `/admin/${s.ruta}`,
+    texto: s.texto,
+    grupo: s.grupo,
+    end: s.ruta === 'salas',
+  }))
+  const grupos = [...new Set(enlaces.map((e) => e.grupo))] as Grupo[]
 
   /** QA-A-14: con cambios sin guardar, se pregunta antes de salir de la sección. */
   const irA = (a: string) => async (e: MouseEvent) => {
@@ -95,30 +93,39 @@ function MarcoInterno() {
             Menú<span className="menu-boton__actual"> · {enlaces.find((e) => (e.end ? pathname === e.a : pathname.startsWith(e.a)))?.texto ?? 'Panel'}</span>
           </button>
           <nav id="menu-panel" aria-label="Secciones del panel" className={menuAbierto ? 'nav nav--abierto' : 'nav'}>
-            {enlaces.map((e) => (
-              <NavLink
-                key={e.texto}
-                to={e.a}
-                end={e.end}
-                onClick={irA(e.a)}
-                className={({ isActive }) =>
-                  ['nav__item', isActive && 'nav__item--activo', recorrido.seccion === e.texto && 'nav__item--recorrido'].filter(Boolean).join(' ')
-                }
-              >
-                {e.texto}
-              </NavLink>
+            {grupos.map((g) => (
+              <div key={g} className="nav__grupo" role="group" aria-label={GRUPOS[g]}>
+                {enlaces
+                  .filter((e) => e.grupo === g)
+                  .map((e) => (
+                    <NavLink
+                      key={e.texto}
+                      to={e.a}
+                      end={e.end}
+                      onClick={irA(e.a)}
+                      className={({ isActive }) =>
+                        ['nav__item', isActive && 'nav__item--activo', guia.seccion === e.texto && 'nav__item--guia'].filter(Boolean).join(' ')
+                      }
+                    >
+                      {e.texto}
+                    </NavLink>
+                  ))}
+              </div>
             ))}
           </nav>
-          <div className="usuario">
-            <span className="usuario__nombre">{admin?.nombre}</span>
-            <span className="etiqueta">{admin?.rol === 'superadmin' ? 'Superadmin' : 'Admin'}</span>
-            <button type="button" className="hz-boton hz-boton--fantasma" onClick={recorrido.abrir}>
-              Recorrido
+          {/* En el celular estas dos van dentro del menú plegable; Salir queda siempre a la vista. */}
+          <div className={menuAbierto ? 'cuenta-extra cuenta-extra--abierta' : 'cuenta-extra'}>
+            <button type="button" className="hz-boton hz-boton--fantasma" onClick={guia.abrir}>
+              Guía de uso
             </button>
             {/* QA-A-22: cada quien cambia su clave cuando quiera. */}
             <Link className="hz-boton hz-boton--fantasma" to="/admin/cambiar-clave" onClick={irA('/admin/cambiar-clave')}>
               Cambiar mi clave
             </Link>
+          </div>
+          <div className="usuario">
+            <span className="usuario__nombre">{admin?.nombre}</span>
+            <span className="etiqueta">{esSuperadmin ? 'Superadmin' : 'Admin'}</span>
             <button
               type="button"
               className="hz-boton hz-boton--fantasma"
@@ -139,7 +146,7 @@ function MarcoInterno() {
         <Outlet />
       </main>
       <PiePanel />
-      {recorrido.elemento}
+      {guia.elemento}
     </div>
   )
 }

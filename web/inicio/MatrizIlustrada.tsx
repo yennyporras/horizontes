@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react'
-import seed from '../../data/seed_foodsume.json'
+import { LECTURA_EJES } from '../shared/criterios'
+import { GRAFICO } from './contenido'
 
 // Ilustración de la matriz (no son datos de ninguna sala): los horizontes de la semilla, ocho puntos fijos
 // y dos proyectos que se mueven de la ronda 1 (hueco, verde) a la ronda 2 (sólido, rojo).
-const { grafico } = seed.motor
+const grafico = GRAFICO
 const MAX = 9.5
 const X0 = 7
 const Y0 = 93
@@ -39,6 +40,8 @@ export function MatrizIlustrada() {
               <circle key={h.id} className="in-matriz__horizonte" cx={X0} cy={Y0} r={h.radio! * K} fill={i === 0 ? 'var(--hz-superficie-2)' : 'var(--hz-superficie-3)'} />
             ))}
         </g>
+        {/* Ejes: el plano se lee como gráfica también sobre el fondo blanco. */}
+        <path className="in-matriz__ejes" d={`M${X0} 0 V${Y0} H100`} />
         {Object.entries(grafico.etiquetas_horizonte).map(([id, [x, y]]) => (
           <text key={id} className="in-matriz__h" x={px(x)} y={py(y)}>
             {id}
@@ -56,7 +59,10 @@ export function MatrizIlustrada() {
             <g key={`${x1}-${y1}`}>
               <line className="in-matriz__traza" pathLength={1} x1={x1 + ux * R} y1={y1 + uy * R} x2={x2 - ux * (R + 2.6)} y2={y2 - uy * (R + 2.6)} />
               <circle className="in-matriz__r1" cx={x1} cy={y1} r={R} />
-              <text className="in-matriz__etiqueta" x={x1 + R + 1} y={y1 - R}>R1</text>
+              {/* «R1» del lado contrario a la flecha: si el proyecto se mueve a la derecha, la etiqueta va a la izquierda. */}
+              <text className="in-matriz__etiqueta" x={ux > 0 ? x1 - R - 1 : x1 + R + 1} y={y1 - R} textAnchor={ux > 0 ? 'end' : 'start'}>
+                R1
+              </text>
               <g className="in-matriz__mueve" style={{ '--dx': `${x1 - x2}px`, '--dy': `${y1 - y2}px` } as CSSProperties}>
                 <path className="in-matriz__punta" d="M0 -1.4 L2.4 0 L0 1.4 Z" transform={`translate(${x2 - ux * (R + 2.6)} ${y2 - uy * (R + 2.6)}) rotate(${angulo})`} />
                 <circle className="in-matriz__r2" cx={x2} cy={y2} r={R} />
@@ -67,10 +73,13 @@ export function MatrizIlustrada() {
         })}
         <text className="in-matriz__eje" x={X0 + 1} y={99}>Time 2 Market</text>
         <text className="in-matriz__eje" transform={`translate(4.6 ${Y0 - 1}) rotate(-90)`}>Value Generation Capacity</text>
+        {/* Los extremos de los ejes (LECTURA_EJES): junto al origen, cerca; al final de cada eje, lejos. */}
+        <text className="in-matriz__extremo" x={100} y={99} textAnchor="end">lejos del mercado</text>
+        <text className="in-matriz__extremo" transform="translate(4.6 1) rotate(-90)" textAnchor="end">lejos del core</text>
       </svg>
       <figcaption>
         Ilustración. Cada mesa mueve sus dos proyectos de la <span className="in-r1">R1</span> a la <span className="in-r2">R2</span> entre
-        ocho proyectos fijos. Más cerca del origen, el horizonte H1; más lejos, el H3.
+        ocho proyectos fijos. {LECTURA_EJES} Más cerca del origen, el horizonte H1; más lejos, el H3.
       </figcaption>
     </figure>
   )

@@ -6,7 +6,8 @@ import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import type { RespuestaPersona } from '../tipos'
 import { descripcionCriterio } from '../../shared/criterios'
-import { CRITERIOS, PROYECTOS_VIVOS, fechaHora, nombrePerfil, nombreProyecto, zonaSala } from '../textos'
+import { fechaHora, zonaSala } from '../textos'
+import { nombrePerfil, nombreProyecto, useContenidoSala } from '../contenido'
 
 /**
  * Respuestas de cada persona por ronda (C19-3). Solo para administradores: la API responde 401/403 al resto
@@ -21,6 +22,8 @@ export function Respuestas() {
   const [ronda, setRonda] = useState('todas')
   const [proyecto, setProyecto] = useState('todos')
   const version = datos?.version
+  const contenido = useContenidoSala(datos)
+  const { criterios } = contenido
 
   // Se relee con cada cambio de la sala (un voto nuevo sube la versión).
   useEffect(() => {
@@ -47,7 +50,7 @@ export function Respuestas() {
           .filter((f) => mesa === 'todas' || f.mesa_id === mesa)
           .filter((f) => ronda === 'todas' || String(f.ronda) === ronda)
           .filter((f) => proyecto === 'todos' || f.proyecto_id === proyecto)
-          .sort((a, b) => a.mesa.localeCompare(b.mesa, 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es') || a.ronda - b.ronda || a.proyecto_id.localeCompare(b.proyecto_id))
+          .sort((a, b) => a.mesa.localeCompare(b.mesa, 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }) || a.ronda - b.ronda || a.proyecto_id.localeCompare(b.proyecto_id))
         return (
           <>
             <AvisoPrivado>Aquí se ve qué calificó cada persona. Los tableros y los celulares solo muestran promedios anónimos.</AvisoPrivado>
@@ -77,7 +80,7 @@ export function Respuestas() {
                   <span>Proyecto</span>
                   <select value={proyecto} onChange={(e) => setProyecto(e.target.value)}>
                     <option value="todos">Los dos proyectos</option>
-                    {PROYECTOS_VIVOS.map((p) => (
+                    {contenido.proyectosVivos.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nombre}
                       </option>
@@ -102,7 +105,7 @@ export function Respuestas() {
                   {visibles.length} {visibles.length === 1 ? 'voto' : 'votos'}. Cada fila es una persona, una ronda y un proyecto.
                 </p>
                 <div className="tabla-envoltura">
-                  <table className="tabla-tarjetas tabla-respuestas" aria-describedby="t-conteo-respuestas">
+                  <table className="tabla-tarjetas tabla-tarjetas--ancha tabla-respuestas" aria-describedby="t-conteo-respuestas">
                     <thead>
                       <tr>
                         <th scope="col">Nombre</th>
@@ -110,7 +113,7 @@ export function Respuestas() {
                         <th scope="col">Perfil</th>
                         <th scope="col">Ronda</th>
                         <th scope="col">Proyecto</th>
-                        {CRITERIOS.map((c) => (
+                        {criterios.map((c) => (
                           <th key={c.id} scope="col" className="num" title={`${c.nombre}. ${descripcionCriterio(c.id) ?? ''}`.trim()}>
                             {c.corto}
                           </th>
@@ -132,18 +135,28 @@ export function Respuestas() {
                           <td data-label="Mesa" className="td-corto">
                             {f.mesa}
                           </td>
-                          <td data-label="Perfil">{nombrePerfil(f.perfil_id)}</td>
+                          <td data-label="Perfil">{nombrePerfil(contenido, f.perfil_id)}</td>
                           <td data-label="Ronda">
                             <span className={`ronda ronda--${f.ronda}`}>R{f.ronda}</span>
                           </td>
-                          <td data-label="Proyecto">{nombreProyecto(f.proyecto_id)}</td>
-                          {CRITERIOS.map((c) => (
+                          <td data-label="Proyecto">{nombreProyecto(contenido, f.proyecto_id)}</td>
+                          {criterios.map((c) => (
                             <td key={c.id} className="num crit" data-label={c.corto}>
                               {f.respuestas[c.id] ?? 'Sin dato'}
                             </td>
                           ))}
-                          <td data-label="Fecha" className="td-corto">
-                            {fechaHora(f.actualizado_at, zona)}
+                          {/* Paula (QA por roles): la fecha completa, con año; día y hora pueden ir en dos líneas, nunca partidos por dentro. */}
+                          <td data-label="Fecha">
+                            <span>
+                              {fechaHora(f.actualizado_at, zona)
+                                .split(/(?<=,)\s+/)
+                                .map((parte, i) => (
+                                  <span key={i} className="sin-corte">
+                                    {i > 0 && ' '}
+                                    {parte}
+                                  </span>
+                                ))}
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -152,7 +165,7 @@ export function Respuestas() {
                 </div>
                 {/* Pedido del 20-oct: cada criterio con su descripción corta (web/shared/criterios.ts). */}
                 <dl className="leyenda-criterios" aria-label="Qué mide cada criterio">
-                  {CRITERIOS.map((c) => (
+                  {criterios.map((c) => (
                     <div key={c.id}>
                       <dt>
                         {c.corto}

@@ -3,17 +3,23 @@
 Ruta: `/tablero/:sala?mesa=&t=&modo=`. Con `t` (token de tablero) aparece el selector de alcance; sin `mesa`, el alcance es la sala.
 
 **Modos de proyección** (parámetro `modo` de la URL, para que el panel enlace a cada uno):
-- `modo=vivo` (por defecto): solo la matriz, a todo el ancho y el alto bajo el encabezado (firma, sala, ronda y votos recibidos). Con cada foto nueva de votos (D2, de 3 en 3) las burbujas se deslizan.
-- `modo=tabla`: la matriz y, al lado, el progreso y los promedios por criterio con su descripción corta (`web/shared/criterios.ts`) o «Cómo votó» (tecla D).
+- **Gráfica**, `modo=grafica` (por defecto): la matriz a todo el alto bajo la barra y, en el espacio libre a la derecha (abajo en pantallas angostas), la columna con «Qué se movió» (Comparación con convergencia del servidor), la cortina de la ronda 1 oculta y la lectura de la matriz (tamaño de la burbuja, horizontes y ejes). Con cada foto nueva de votos (D2, de 3 en 3) las burbujas se deslizan.
+- **Detallado**, `modo=detallado`: la matriz y, al lado, el progreso y los promedios por criterio con su descripción corta (`web/shared/criterios.ts`) o «Cómo votó» (tecla V).
+- Los valores anteriores siguen sirviendo para los enlaces ya compartidos: `modo=vivo` abre Gráfica y `modo=tabla` abre Detallado.
 
-Selector «En vivo | Con tabla» en el encabezado; teclas V, T y M (alterna). F o el botón «Pantalla completa» ponen el modo elegido en la pantalla completa del navegador, sin los controles. Sin zoom por porcentaje.
+Selector «Gráfica | Detallado» en la barra (no aparece en Cada mesa por separado, donde no cambia nada); teclas G, D y M (alterna). La insignia «En vivo: se actualiza cada 3 votos» no es un modo: es el estado de la ronda abierta y va junto a los votos recibidos, sin borde ni color de acción. F o el botón «Pantalla completa» (en Detallado, «Pantalla completa con detalle») ponen el modo elegido en la pantalla completa del navegador, sin los controles. Sin zoom por porcentaje.
 
-Tema **carbón** de la familia Estratek (`docs/marca/FAMILIA_ESTRATEK.md` §3): `data-tema="carbon"` en el `<main>` del tablero y solo tokens semánticos `--hz-*` de `web/shared/ui/tokens.css`, sin colores en duro. Encabezado: nombre de la sala, firma «Horizontes por Estratek »» (la » en el azul de acción) y la línea del degradado de marca de borde a borde.
+**Apariencia**: la misma de toda la app (decisión de Paola del 20-oct). Fondo claro, con `data-tema="claro"` en el `<main>` y `useTemaDocumento('claro')`, y arriba la barra carbón de la familia Estratek (`EncabezadoProducto` dentro de `.hz-cab`, con `data-tema="carbon"` solo ahí): logo de Horizontes, «por Estratek »» y la línea del degradado de borde a borde; a la derecha, la sala y los controles. Con la ronda abierta, la franja «Ronda N · …» dice la ronda y la barra no la repite. Solo tokens semánticos `--hz-*` de `web/shared/ui/tokens.css`, sin colores en duro; el azul es solo para controles. Las clases propias que coincidían con las del sistema de diseño llevan el prefijo `hz-tb-` (insignia, progreso, cifra, barra y rúbrica).
 
 | Archivo | Qué hace |
 |---|---|
-| `PaginaTablero.tsx` | Página del proyector: encabezado, modo en vivo (solo la matriz) o con tabla (progreso y detalle por criterio) |
-| `ExplicacionBreve.tsx` | Qué significa cada eje, en una línea al pie del modo en vivo (solo si cabe entera) |
+| `PaginaTablero.tsx` | Página del proyector: barra, modo Gráfica (solo la matriz) o Detallado (progreso y detalle por criterio) |
+| `ExplicacionBreve.tsx` | `LECTURA_EJES` (siempre visible) y `LecturaMatriz` (burbuja, horizontes y ejes) |
+| `Cortina.tsx` | Ronda 1 oculta: cuántos votaron por mesa, en grande, y cuándo se ve el resultado |
+| `QueSeMovio.tsx` | Convergencia R1 → R2 del servidor en palabras |
+| `AyudaTeclas.tsx` | Ayuda de teclas superpuesta (tecla ?) |
+| `CuadriculaMesas.tsx` | Cada mesa por separado, de 4 en 4 (← y →), matrices compactas |
+| `exportar.ts` | `svgMatriz`: la matriz como SVG independiente para «Descargar matriz» del panel |
 | `PreguntaGuiada.tsx` | Modo guiado: la pregunta del facilitador en grande, en lugar de la matriz |
 | `MatrizHorizontes.tsx` | Matriz embebible (solo props, sin fetch) |
 | `matriz/matriz.js` | Dibujo SVG puro, sin dependencias (`matrizSVG`, `calcularLayout`) |
@@ -21,7 +27,7 @@ Tema **carbón** de la familia Estratek (`docs/marca/FAMILIA_ESTRATEK.md` §3): 
 | `ComoVoto.tsx` | «Cómo votó la sala»: conteo 1-3-5-7-9 por criterio, R1 y R2, con la `distribucion` del servidor, en una sola escala para todo el bloque. Lo usa también el panel (Sala en vivo) |
 | `Progreso.tsx` | Inscritos, completos, mesas y avisos de precierre |
 | `usePollingTablero.ts` · `logica.ts` | Polling 2,5 s con ETag y reglas de presentación |
-| `usePantallaCompleta.ts` | Teclas: F (pantalla completa del modo elegido), 1, 2 y C (vistas), V, T, M y Esc (modo en vivo o con tabla; en pantalla completa, Esc solo sale), D (Promedios o Cómo votó) |
+| `usePantallaCompleta.ts` | Teclas: F (pantalla completa del modo elegido; F11 también oculta los controles), 1, 2 y C (vistas; C en Comparación repite la animación), → y Página siguiente / ← y Página anterior (vista siguiente o anterior, o página de mesas), G, D y M (Gráfica o Detallado), V (Promedios o «Cómo votó»), ? (ayuda). Esc cierra la ayuda o sale de la pantalla completa; fuera de ella no hace nada. El selector de alcance no se come los atajos. Una tecla sostenida no repite el atajo |
 
 ## `MatrizHorizontes` para otras pantallas
 
@@ -59,12 +65,12 @@ Ayudas exportadas (`web/tablero/index.ts`):
 | `escalaTexto` | `number` | `1` | Multiplica la letra de la matriz (proyector: 1,45) |
 | `letraMin` | `number` | | Proyector: px del texto más chico (20 en 1280, 24 en 1920). Con un lienzo chico se limita a un 26avo de su lado |
 | `animarComparacion` | `boolean` | `true` | Al pasar a `'comparacion'`, R2 sale desde R1 (respeta `prefers-reduced-motion`) |
-| `animarCambios` | `boolean` | `false` | Modo en vivo: con datos nuevos, las burbujas que cambiaron se deslizan desde su posición anterior |
+| `animarCambios` | `boolean` | `false` | Modo Gráfica del tablero: con datos nuevos, las burbujas que cambiaron se deslizan desde su posición anterior |
 | `className` | `string` | | Clase extra del contenedor |
 
 Reglas:
 - El componente no pide datos ni recalcula el motor: dibuja `eje_x`, `eje_y` y `tam` del servidor.
-- Colores solo con tokens: toma el tema de quien lo aloja (carbón en el tablero, claro en el celular y el panel). H3, H2 y H1 en las superficies 1, 2 y 3; borde de los horizontes en el acento de Horizontes; fijos en `--hz-tinta-3` (gris azulado neutro).
+- Colores solo con tokens: toma el tema de quien lo aloja (hoy el claro en el tablero, el celular y el panel). H3, H2 y H1 en las superficies 1, 2 y 3; borde de los horizontes en el borde de control neutro (el verde agua se confundía con R1); fijos en `--hz-tinta-3` (gris azulado neutro).
 - Se redibuja al cambiar el tamaño del contenedor; si los datos no cambian, no toca el DOM (sin parpadeo con el polling).
 - Las rondas sin votos (`eje_x` null) no se dibujan. Para el texto del estado vacío usa `mensajeVacio(datos, vista)` de `logica.ts`.
 - Nombres pegados a su burbuja: se busca la caja libre más cercana; si quedó apartada, una guía fina la une a su burbuja. Dos vivos en el mismo punto y ronda llevan un rótulo de dos líneas. La marca de agua H1, H2 y H3 se corre dentro de su horizonte si un nombre cae encima.

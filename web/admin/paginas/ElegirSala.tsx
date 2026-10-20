@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, lista } from '../api'
 import type { SalaResumen } from '../tipos'
 import { ESTADOS } from '../textos'
+import { nombreSeccionSala } from '../secciones'
 import { useTituloPagina } from './EncabezadoSala'
 
 /**
@@ -13,7 +14,8 @@ export function ElegirSala() {
   const { seccion = 'vivo' } = useParams()
   const [salas, setSalas] = useState<SalaResumen[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  useTituloPagina('Elige una sala')
+  const nombreSeccion = nombreSeccionSala(seccion)
+  useTituloPagina('Elige una sala', nombreSeccion)
 
   useEffect(() => {
     api
@@ -22,33 +24,40 @@ export function ElegirSala() {
       .catch((e: Error) => setError(e.message))
   }, [])
 
+  // Mismo esquema que las demás secciones: el título afuera y la lista en su tarjeta.
   return (
-    <section className="panel" aria-labelledby="t-elegir">
-      <h1 id="t-elegir" tabIndex={-1}>Elige una sala</h1>
-      <p>Esta sección trabaja sobre una sala. Elige con cuál sigues.</p>
-      {error ? (
-        <p className="alerta alerta--error" role="alert">
-          No pudimos cargar las salas. {error}
-        </p>
-      ) : !salas ? (
-        <p role="status">Cargando salas…</p>
-      ) : salas.length === 0 ? (
-        <p className="vacio">Aún no hay salas. Crea la primera en Salas.</p>
-      ) : (
-        <ul className="lista-elegir">
-          {salas.map((s) => (
-            <li key={s.id}>
-              <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${s.id}/${seccion}`}>
-                {s.nombre}
-              </Link>
-              <span className="pista">
-                {s.codigo} · {ESTADOS[s.estado]}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <Link to="/admin/salas">Ir a Salas</Link>
-    </section>
+    <>
+      <h1 tabIndex={-1}>Elige una sala</h1>
+      <p className="intro">
+        {nombreSeccion ? `${nombreSeccion} trabaja sobre una sala.` : 'Esta sección trabaja sobre una sala.'} Elige con cuál sigues; el panel la recuerda en este
+        navegador.
+      </p>
+      <section className="panel" aria-label="Salas">
+        {error ? (
+          <p className="alerta alerta--error" role="alert">
+            No pudimos cargar las salas. {error}
+          </p>
+        ) : !salas ? (
+          <p role="status">Cargando salas…</p>
+        ) : salas.length === 0 ? (
+          <p className="vacio">
+            Aún no hay salas. Crea la primera en <Link to="/admin/salas">Salas</Link>.
+          </p>
+        ) : (
+          <ul className="lista-elegir">
+            {salas.map((s) => (
+              <li key={s.id}>
+                <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${s.id}/${seccion}`}>
+                  {s.nombre}
+                </Link>
+                <span className="pista">
+                  {s.codigo} · {ESTADOS[s.estado]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
   )
 }
