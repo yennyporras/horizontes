@@ -84,7 +84,11 @@ function MarcoInterno() {
             e.preventDefault()
             if (await confirmarSalida()) navegar('/admin/salas')
           }}
-          etiquetaMenu={`Menú · ${actual}`}
+          etiquetaMenu={
+            <>
+              Menú<span className="menu-boton__actual"> · {actual}</span>
+            </>
+          }
           menuAbierto={menuAbierto}
           onMenu={setMenuAbierto}
           franjaEnMenu

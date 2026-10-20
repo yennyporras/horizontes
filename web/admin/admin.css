@@ -72,10 +72,18 @@
 .hz-admin .usuario { display: inline-flex; align-items: center; gap: var(--hz-sp-2); padding-inline: var(--hz-sp-2); font-size: var(--hz-fs-14); color: var(--hz-tinta-2); white-space: nowrap; }
 .hz-admin .usuario__nombre { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 .hz-admin .hz-producto__desplegable .usuario { min-height: var(--hz-tactil); padding-inline: var(--hz-sp-3); }
+/* En el celular angosto el botón dice solo «Menú» (la sección actual ya es el título de la página). */
+@media (max-width: 29.99rem) { .hz-admin .menu-boton__actual { display: none; } }
 /* Pestañas en el orden del taller: preparar, conducir, después y sistema. Una línea fina separa los grupos, sin rótulos. */
 .hz-admin .hz-franja-pagina .nav__grupo { display: flex; align-items: stretch; }
 .hz-admin .hz-franja-pagina .nav__grupo + .nav__grupo { margin-left: var(--hz-sp-2); padding-left: var(--hz-sp-2); border-left: 1px solid var(--hz-borde); }
 .hz-admin .hz-producto__desplegable .nav__grupo + .nav__grupo { padding-top: var(--hz-sp-1); border-top: 1px solid var(--hz-borde); }
+/* De 1024 a 1279 px las diez pestañas caben en una fila con menos aire entre ellas (sin deslizar). */
+@media (max-width: 79.99rem) {
+  .hz-admin .hz-pestanas-franja, .hz-admin .hz-franja-pagina .nav__grupo { gap: 0; }
+  .hz-admin .hz-franja-pagina .hz-pestanas-franja__item { padding-inline: var(--hz-sp-2); }
+  .hz-admin .hz-franja-pagina .nav__grupo + .nav__grupo { margin-left: var(--hz-sp-1); padding-left: var(--hz-sp-1); }
+}
 
 /* Ancho de página común de la familia Estratek (20-oct): .hz-pagina (--hz-ancho-pagina, 1280 px) en la fila de la barra,
    el contenido y el pie, así los tres comparten bordes. Aquí solo el aire vertical. */
