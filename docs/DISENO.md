@@ -179,7 +179,7 @@ Ruta base `/m/{codigoMesa}`. El estado se decide con `GET /api/mesas/{codigo}` a
 - Casilla de autorización: texto de `consentimiento.texto_autorizacion` + enlace "Lee la Política de Tratamiento de Datos Personales de Estratek" (`politica_url`, se abre en pestaña nueva).
 - Botón: **Inscribirme**. Deshabilitado sin casilla, con ayuda: "Para inscribirte necesitamos tu autorización de tratamiento de datos."
 - Errores de campo: "Escribe tu nombre." · "Escribe un correo válido, por ejemplo ana@empresa.com."
-- 409 `CORREO_YA_INSCRITO`: no es error. Aviso info: "Ya estabas inscrito con este correo. Retomas donde ibas." y entra.
+- 409 `CORREO_YA_INSCRITO` (desde el 20-oct, D1): error con el mensaje del servidor; no entra. Quien perdió la sesión la recibe del facilitador con «Dar acceso de nuevo» (enlace `/m/{codigo}?acceso=…` que el celular canjea con `POST /api/acceso`).
 - 422 `CONSENTIMIENTO_REQUERIDO`: "Marca la autorización de tratamiento de datos para continuar."
 
 ### 8.2 Mesa no existe (404 `MESA_NO_EXISTE`)
