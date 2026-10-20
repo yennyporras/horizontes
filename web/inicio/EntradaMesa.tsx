@@ -49,7 +49,7 @@ export function EntradaMesa() {
     if (revisando) return
     const codigo = codigoDeMesa(texto)
     if (!codigo) {
-      setProblema(texto.trim() ? 'Ese código no tiene la forma de un código de mesa. Se ve así: HZ7K2-1, con el número de la mesa al final.' : 'Escribe el código de tu mesa, por ejemplo HZ7K2-1.')
+      setProblema(texto.trim() ? 'Ese código no tiene la forma de un código de mesa. Se ve así: HZ7K2Q4M8P-1, con el número de la mesa al final.' : 'Escribe el código de tu mesa, por ejemplo HZ7K2Q4M8P-1.')
       return
     }
     setRevisando(true)
@@ -99,7 +99,7 @@ export function EntradaMesa() {
           setTexto(e.target.value)
           setProblema(null)
         }}
-        placeholder="HZ7K2-1"
+        placeholder="HZ7K2Q4M8P-1"
         autoComplete="off"
         autoCapitalize="characters"
         spellCheck={false}

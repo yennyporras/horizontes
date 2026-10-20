@@ -23,7 +23,7 @@ const CONFIG_19OCT = {
 
 /** Orden del taller que valida el servidor (S2): cada hora no antes que la anterior; apertura y cierre de una etapa, estrictos. */
 const ORDEN_PROGRAMADO: { campo: keyof ConfigSala; etapa: string; nombre: string }[] = [
-  { campo: 'apertura_programada_sala_at', etapa: 'sala', nombre: 'la apertura de la sala' },
+  { campo: 'apertura_programada_sala_at', etapa: 'sala', nombre: 'la apertura de la inscripción' },
   { campo: 'apertura_programada_r1_at', etapa: 'r1', nombre: 'la apertura de la ronda 1' },
   { campo: 'cierre_programado_r1_at', etapa: 'r1', nombre: 'el cierre de la ronda 1' },
   { campo: 'apertura_programada_r2_at', etapa: 'r2', nombre: 'la apertura de la ronda 2' },
@@ -446,6 +446,15 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       return ok({ mesas: s.mesas }, 201)
     }
     if (metodo === 'POST' && resto === '/acciones') {
+      // Como el servidor (B-2): token nuevo del tablero en cualquier estado; los enlaces anteriores dejan de servir.
+      if (b.accion === 'regenerar_token_tablero') {
+        const t = `T${Date.now().toString(36)}`
+        const cambiar = (u: string) => u.replace(/t=[^&]*/, `t=${t}`)
+        if (s.sala.url_tablero) s.sala.url_tablero = cambiar(s.sala.url_tablero)
+        s.mesas.forEach((m) => (m.url_tablero = cambiar(m.url_tablero)))
+        tocar(s, 'token_tablero_regenerado', por)
+        return ok({ sala: s.sala })
+      }
       const accion = b.accion as Accion
       const destino = aplicarAccion(s, accion)
       if (!destino) return error(409, 'TRANSICION_INVALIDA', 'Esa acción no aplica en el estado actual de la sala.')

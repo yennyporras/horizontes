@@ -247,6 +247,24 @@ describe('Sala en vivo', () => {
     expect(within(screen.getByRole('region', { name: 'Mesas' })).queryAllByRole('link')).toHaveLength(0)
   })
 
+  it('B-2: «Cambiar el enlace del tablero» pide confirmar, cambia el token de todos los enlaces y lo anota en la bitácora', async () => {
+    await abrirDemo()
+    const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
+    const token = () => new URL(within(enVivo).getByRole('link', { name: 'Con tabla' }).getAttribute('href')!, 'http://x').searchParams.get('t')
+    const antes = token()
+    fireEvent.click(within(enVivo).getByRole('button', { name: 'Cambiar el enlace del tablero' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Cambiar el enlace del tablero' })
+    // Abre con el foco en Cancelar (QA-A-02): cancelar no cambia nada.
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
+    expect(token()).toBe(antes)
+    fireEvent.click(within(enVivo).getByRole('button', { name: 'Cambiar el enlace del tablero' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cambiar el enlace' }))
+    expect((await within(enVivo).findByRole('status')).textContent).toMatch(/enlace nuevo y los anteriores ya no funcionan/)
+    await waitFor(() => expect(token()).not.toBe(antes))
+    expect(within(enVivo).getByRole('link', { name: 'Tablero de Mesa 1' }).getAttribute('href')).toContain(`t=${token()}`)
+    expect(await screen.findByText(/Enlace del tablero cambiado: los anteriores dejaron de funcionar/)).toBeTruthy()
+  })
+
   it('F-8 y D2: el resultado preliminar no parpadea al renovarse y explica que se renueva de 3 en 3', async () => {
     let lento = false
     espiar((metodo, ruta) => (lento && ruta.startsWith('/api/tablero/') ? new Promise((r) => setTimeout(() => r(responderMock(metodo, ruta)), 300)) : undefined))
