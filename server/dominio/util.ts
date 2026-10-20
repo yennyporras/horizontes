@@ -25,12 +25,16 @@ export function textoCodigo(largo: number): string {
 /** Código corto de sala: HZ + 3 caracteres sin ambigüedad. */
 export const codigoSala = (): string => `HZ${textoCodigo(3)}`
 
+/** Caracteres al azar del código de mesa: 31^5 (unos 28,6 millones) combinaciones por número de mesa (M-1c). */
+export const LARGO_AZAR_MESA = 5
+
 /**
- * Código de mesa: el de la sala, 3 caracteres al azar y el número de la mesa (HZ7K2QX4-1). Antes del 20-oct era solo
- * `{sala}-{n}` y se adivinaba con el de la sala (S-5); las mesas que ya existen conservan su código. La forma sigue
- * siendo `[A-Z0-9]+-número`, la que acepta la entrada por código de la landing.
+ * Código de mesa: el de la sala, 5 caracteres al azar y el número de la mesa (HZ7K2QX4AB-1). Antes del 20-oct era solo
+ * `{sala}-{n}` y se adivinaba con el de la sala (S-5); el mismo 20-oct llevó 3 al azar (HZ7K2QX4-1) y la auditoría de
+ * seguridad lo subió a 5 (M-1c). Las mesas que ya existen conservan su código. La forma sigue siendo
+ * `[A-Z0-9]+-número`, la que acepta la entrada por código de la landing.
  */
-export const codigoMesa = (codigoDeSala: string, numero: number): string => `${codigoDeSala}${textoCodigo(3)}-${numero}`
+export const codigoMesa = (codigoDeSala: string, numero: number): string => `${codigoDeSala}${textoCodigo(LARGO_AZAR_MESA)}-${numero}`
 
 /** Se guarda en UTC ISO (comparable como texto). */
 export const isoUtc = (ms: number) => new Date(ms).toISOString()

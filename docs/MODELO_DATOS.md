@@ -49,7 +49,7 @@ CREATE TABLE mesas (
   sala_id   VARCHAR(16) NOT NULL REFERENCES salas(id),
   numero    TINYINT     NOT NULL,
   nombre    VARCHAR(40) NOT NULL,          -- Mesa 1
-  codigo    VARCHAR(12) UNIQUE NOT NULL,   -- HZ7K2QX4-1: código de la sala + 3 al azar + número (desde el 20-oct, S-5); las anteriores, HZ7K2-1
+  codigo    VARCHAR(12) UNIQUE NOT NULL,   -- HZ7K2QX4AB-1: código de la sala + 5 al azar + número (M-1c, hasta 13 caracteres: SQLite no aplica el largo de VARCHAR); antes HZ7K2QX4-1 (S-5) o HZ7K2-1
   UNIQUE (sala_id, numero)
 );
 
