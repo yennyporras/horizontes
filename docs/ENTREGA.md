@@ -19,7 +19,7 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 - **Superadmin:** usuario `paola`. La clave inicial la elige Paola y va solo en Coolify (variable `SUPERADMIN_CLAVE` de cada app) o en `deploy/.env.deploy` (`SUPERADMIN_CLAVE_STAGING` y `SUPERADMIN_CLAVE_PROD`), nunca en git. Cuenta solo la primera vez que arranca una base vacía; después se cambia desde el panel.
 - **Administradores:** Paola los crea en el panel (**Administradores** → *Nuevo administrador*, con clave temporal). Cada uno cambia su clave en el primer ingreso. Un admin normal no ve la gestión de administradores.
 - **Coolify y Hostinger:** cuenta de Paola.
-- **Tablero:** cada sala tiene su enlace con token; se abre desde **Sala en vivo** → **Ver en vivo** → *Tablero de la sala*, en el modo *Gráfica* (solo la matriz moviéndose) o *Detallado* (con el progreso y los promedios).
+- **Tablero:** cada sala tiene su enlace con token; se abre desde **Sala en vivo** → **Proyectar el tablero** → *Tablero de la sala*, en el modo *Gráfica* (solo la matriz moviéndose) o *Detallado* (con el progreso y los promedios).
 
 ## 4. Qué está listo
 - Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.1`. Sin autorización no hay inscripción.
@@ -60,7 +60,7 @@ Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado el 19-oct a
 
 ### 5.2 Para el taller
 9. **Sala real.** Panel → **Salas** → nombre del taller y número de mesas → **Crear sala** → **Configuración** → país.
-10. **Hoja de QR A4 en PDF.** Panel → sala → **Mesas y QR** → *Imprimir hoja de QR* → destino "Guardar como PDF", tamaño A4, márgenes predeterminados. Sin abrir el navegador, desde el repo (cuando el dominio ya responda):
+10. **QR de las mesas en A4 (PDF).** Panel → sala → **Mesas y QR** → *Imprimir los QR* → destino "Guardar como PDF", tamaño A4, márgenes predeterminados. Sin abrir el navegador, desde el repo (cuando el dominio ya responda):
     ```sh
     HZ_ADMIN_CLAVE='<tu clave>' node QA-tests/hoja_qr_pdf.cjs https://horizontes.estratek.com.co paola <CÓDIGO DE SALA> hoja-qr.pdf
     ```

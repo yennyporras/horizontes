@@ -4,16 +4,16 @@ import { useConfirmar } from '../componentes/Confirmar'
 import type { AdminFila } from '../tipos'
 import { useTituloPagina } from './EncabezadoSala'
 import { LARGO_MINIMO_CLAVE } from '../textos'
+import { usuarioAdminValido } from '../../../shared/reglas/usuario'
 
 /**
  * QA-A-21: la regla del usuario, visible y en español (antes vivía en un `title` que no se ve en el celular). Paula (QA
  * por roles): una sola regla en panel y servidor, 3 a 30 caracteres con minúsculas, números, punto, guion o guion bajo.
- * El servidor la publica en `shared/reglas/usuario.ts` (`RE_USUARIO_ADMIN`); mientras esta rama no la tenga, va aquí y
- * una prueba la compara con la del servidor.
+ * La regla vive en `shared/reglas/usuario.ts` y la usan el panel y el servidor.
  */
-export const RE_USUARIO_ADMIN = /^[a-z0-9._-]{3,30}$/
+export { RE_USUARIO_ADMIN } from '../../../shared/reglas/usuario'
 export const REGLA_USUARIO = 'Entre 3 y 30 caracteres: minúsculas, números, punto, guion o guion bajo. Sin espacios ni tildes.'
-export const usuarioValido = (u: string) => RE_USUARIO_ADMIN.test(u)
+export const usuarioValido = (u: string) => usuarioAdminValido(u)
 
 /** Clave temporal legible: 12 caracteres sin letras que se confunden (0/O, 1/l/I). */
 export function claveTemporal(): string {
