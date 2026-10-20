@@ -313,7 +313,8 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 }
 .hz-producto__marca { display: inline-flex; align-items: center; gap: var(--hz-sp-3); min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
 .hz-producto__glifo { flex: none; width: 2.5rem; height: 2.5rem; }
-.hz-producto__marca[href] { border-radius: var(--hz-r-campo); }
+/* Como enlace conserva la tinta del encabezado: las reglas de enlaces de cada área (por ejemplo .hz-admin a) no la pintan de azul. */
+.hz-producto .hz-producto__marca[href] { color: var(--hz-tinta); border-radius: var(--hz-r-campo); }
 .hz-producto__marca[href]:hover .hz-producto__nombre { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
 .hz-producto__textos { display: grid; line-height: 1.1; }
 .hz-producto__nombre { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-display); letter-spacing: var(--hz-ls-titulo); }
