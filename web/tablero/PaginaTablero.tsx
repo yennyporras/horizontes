@@ -33,7 +33,7 @@ import {
   votosRecibidos,
   type ModoTablero,
 } from './logica'
-import { EncabezadoProducto, LogoEstratek, useTemaDocumento } from '../shared/ui'
+import { EncabezadoProducto, LogoEstratek, PiePagina, useTemaDocumento } from '../shared/ui'
 import type { DatosTablero, EstadoSala, Vista } from './tipos'
 import './tablero.css'
 
@@ -207,7 +207,7 @@ export default function PaginaTablero() {
     return (
       <main className="hz-tablero hz-tablero-solo" data-ruta="tablero" data-tema="claro">
         <BarraTablero href={inicio} />
-        <div className="hz-area hz-area-centrada">
+        <div className="hz-area hz-area-centrada hz-pagina">
           {cargando && !error ? (
             <p className="hz-cargando" role="status">
               Cargando el tablero…
@@ -219,6 +219,7 @@ export default function PaginaTablero() {
             </div>
           )}
         </div>
+        <PiePagina className="hz-tablero-pie" />
       </main>
     )
   }
@@ -249,7 +250,7 @@ export default function PaginaTablero() {
         onAlcance={cambiarAlcance}
         reconectando={conexion === 'punto'}
       />
-      <div className="hz-area">
+      <div className="hz-area hz-pagina">
         <FranjaFase estado={datos.sala?.estado} />
         {conexion === 'aviso' && error && (
           <p className="hz-aviso-error" role="alert">
@@ -326,7 +327,7 @@ export default function PaginaTablero() {
                 {!oculta && <Progreso datos={datos} />}
                 <div className="hz-detalle-fila">
                   {!oculta && (
-                    <div className="hz-detalle" role="group" aria-label="Detalle del panel">
+                    <div className="hz-detalle hz-segmento" role="group" aria-label="Detalle del panel">
                       {DETALLES.map((d) => (
                         <button key={d.id} type="button" aria-pressed={detalle === d.id} aria-keyshortcuts="V" onClick={() => setDetalle(d.id)}>
                           {d.texto}
@@ -364,6 +365,9 @@ export default function PaginaTablero() {
           </div>
         )}
       </div>
+      {/* Pie común: en celular y tableta, al final; en el proyector (≥ 1100 px) el tablero ocupa justo la pantalla y la
+          firma de Estratek ya va en la barra (CSS). Nunca en la pantalla completa de la matriz (es otro elemento). */}
+      <PiePagina className="hz-tablero-pie" />
       {/* En pantalla completa la ayuda va dentro de la matriz (lo único que se ve). */}
       {pantalla.ayuda &&
         (pantalla.activa && objetivo
@@ -419,15 +423,14 @@ function useAnchoVentana() {
 }
 
 /**
- * Barra carbón de la familia Estratek, como la del panel y el celular: logo de Horizontes, «por Estratek »» y la
- * línea del degradado debajo, de borde a borde. A la derecha, la sala, los controles del tablero y el logo de
- * Estratek en hielo (QA por roles, Paula: la marca de Estratek no se veía en el proyector).
+ * Barra común de la familia Estratek (EncabezadoProducto), igual que en el panel, el celular y la landing: logo de
+ * Horizontes, «por Estratek »», la línea del degradado y, a la derecha, el logo de Estratek en hielo (QA por roles,
+ * Paula). Debajo, la segunda franja clara con el nombre de la sala y los controles del tablero (alcance, modo y vista).
  */
-function BarraTablero({ href, children }: { href: string; children?: ReactNode }) {
+function BarraTablero({ href, franja }: { href: string; franja?: ReactNode }) {
   return (
     <div className="hz-cab" data-tema="carbon">
-      <EncabezadoProducto href={href} className="hz-cab-barra">
-        {children}
+      <EncabezadoProducto href={href} className="hz-cab-barra" franja={franja}>
         <LogoEstratek className="hz-cab-logo" />
       </EncabezadoProducto>
     </div>
@@ -463,90 +466,97 @@ function Encabezado({
   const alcanceTexto =
     mesa === 'mesas' ? 'Cada mesa por separado' : datos.alcance?.tipo === 'mesa' ? (datos.alcance.mesa_nombre ?? 'Mesa') : 'Toda la sala'
   return (
-    <BarraTablero href={href}>
-      <div className="hz-cab-titulo">
-        <h1>{datos.sala?.nombre ?? 'Tablero'}</h1>
-        <p className="hz-cab-meta">
-          {conSeparadores([
-            // Con la ronda abierta el estado ya lo dice en grande la franja de la ronda: aquí no se repite.
-            !rondaEnCurso(datos.sala?.estado) && (
-              <span key="estado" className="hz-cab-estado">
-                {nombreEstado(datos.sala?.estado)}
-              </span>
-            ),
-            // Con el selector de alcance a la vista no se repite.
-            !token && <span key="alcance">{alcanceTexto}</span>,
-            // Indicador discreto de votos recibidos (progreso en vivo de la ronda).
-            votos && (
-              <span key="votos" className="hz-cab-votos">
-                {votos}
-              </span>
-            ),
-          ])}
-          {/* Estado de la ronda, no un modo de proyección: insignia sin borde, distinta de los botones del selector. */}
-          {insignia === 'preliminar' && (
-            <span className="hz-tb-insignia hz-tb-insignia-alerta" title="Todos votaron. Al cerrar la ronda se muestra el resultado final.">
-              Preliminar
-            </span>
-          )}
-          {insignia === 'en_vivo' && (
-            <span className="hz-tb-insignia hz-tb-insignia-vivo" title={EN_VIVO.titulo}>
-              {EN_VIVO.texto}
-            </span>
-          )}
-          {reconectando && (
-            <span className="hz-reconectando" role="status" title="Sin respuesta del servidor. Reintentamos solos cada pocos segundos.">
-              Reconectando
-            </span>
-          )}
-        </p>
-      </div>
-      <div className="hz-cab-controles">
-        {token && (
-          <label className="hz-alcance">
-            {/* El nombre queda para el lector de pantalla: las opciones ya dicen qué es y la barra cabe en una franja. */}
-            <span className="hz-oculto">Alcance</span>
-            {/* Control de la proyección, no un campo (data-atajos): suelta el foco al cambiar y no se come los atajos. */}
-            <select
-              data-atajos=""
-              value={mesa ?? 'sala'}
-              // Un atajo nunca elige una opción (M buscaba «Mesa 1»): se corta aquí; el tablero lo atiende en window.
-              onKeyDown={(e) => {
-                if (accionDeTecla(e.key)) e.preventDefault()
-              }}
-              onChange={(e) => {
-                onAlcance(e.target.value)
-                e.currentTarget.blur()
-              }}
-            >
-              <option value="sala">Toda la sala</option>
-              <option value="mesas">Cada mesa por separado</option>
-              {(datos.progreso?.por_mesa ?? []).map((m) => (
-                <option key={m.mesa_id} value={m.mesa_id}>
-                  {m.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {modo && (
-          <div className="hz-segmento hz-modo" role="group" aria-label="Modo de proyección">
-            {MODOS.map((m) => (
-              <button key={m.id} type="button" aria-pressed={modo === m.id} aria-keyshortcuts={m.tecla} title={`Tecla ${m.tecla}`} onClick={() => onModo(m.id)}>
-                {m.texto}
-              </button>
-            ))}
+    <BarraTablero
+      href={href}
+      franja={
+        <>
+          <div className="hz-cab-titulo">
+            <h1 className="hz-h1" title={datos.sala?.nombre ?? undefined}>
+              {datos.sala?.nombre ?? 'Tablero'}
+            </h1>
+            <p className="hz-cab-meta">
+              {conSeparadores([
+                // Con la ronda abierta el estado ya lo dice en grande la franja de la ronda: aquí no se repite.
+                !rondaEnCurso(datos.sala?.estado) && (
+                  <span key="estado" className="hz-cab-estado">
+                    {nombreEstado(datos.sala?.estado)}
+                  </span>
+                ),
+                // Con el selector de alcance a la vista no se repite.
+                !token && <span key="alcance">{alcanceTexto}</span>,
+                // Indicador discreto de votos recibidos (progreso en vivo de la ronda).
+                votos && (
+                  <span key="votos" className="hz-cab-votos">
+                    {votos}
+                  </span>
+                ),
+              ])}
+              {/* Estado de la ronda, no un modo de proyección: insignia sin borde, distinta de los botones del selector. */}
+              {insignia === 'preliminar' && (
+                <span className="hz-tb-insignia hz-tb-insignia-alerta" title="Todos votaron. Al cerrar la ronda se muestra el resultado final.">
+                  Preliminar
+                </span>
+              )}
+              {insignia === 'en_vivo' && (
+                <span className="hz-tb-insignia hz-tb-insignia-vivo" title={EN_VIVO.titulo}>
+                  {EN_VIVO.texto}
+                </span>
+              )}
+              {reconectando && (
+                <span className="hz-reconectando" role="status" title="Sin respuesta del servidor. Reintentamos solos cada pocos segundos.">
+                  Reconectando
+                </span>
+              )}
+            </p>
           </div>
-        )}
-        <div className="hz-segmento" role="group" aria-label="Vista de la matriz">
-          {VISTAS.map((v) => (
-            <button key={String(v.id)} type="button" aria-pressed={vista === v.id} aria-keyshortcuts={v.tecla} title={`Tecla ${v.tecla}`} onClick={() => onVista(v.id)}>
-              {v.texto}
-            </button>
-          ))}
-        </div>
-      </div>
-    </BarraTablero>
+          <div className="hz-cab-controles">
+            {token && (
+              <label className="hz-alcance">
+                {/* El nombre queda para el lector de pantalla: las opciones ya dicen qué es y la barra cabe en una franja. */}
+                <span className="hz-oculto">Alcance</span>
+                {/* Control de la proyección, no un campo (data-atajos): suelta el foco al cambiar y no se come los atajos. */}
+                <select
+                  data-atajos=""
+                  value={mesa ?? 'sala'}
+                  // Un atajo nunca elige una opción (M buscaba «Mesa 1»): se corta aquí; el tablero lo atiende en window.
+                  onKeyDown={(e) => {
+                    if (accionDeTecla(e.key)) e.preventDefault()
+                  }}
+                  onChange={(e) => {
+                    onAlcance(e.target.value)
+                    e.currentTarget.blur()
+                  }}
+                >
+                  <option value="sala">Toda la sala</option>
+                  <option value="mesas">Cada mesa por separado</option>
+                  {(datos.progreso?.por_mesa ?? []).map((m) => (
+                    <option key={m.mesa_id} value={m.mesa_id}>
+                      {m.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {modo && (
+              <div className="hz-segmento hz-modo" role="group" aria-label="Modo de proyección">
+                {MODOS.map((m) => (
+                  <button key={m.id} type="button" aria-pressed={modo === m.id} aria-keyshortcuts={m.tecla} title={`Tecla ${m.tecla}`} onClick={() => onModo(m.id)}>
+                    {m.texto}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="hz-segmento" role="group" aria-label="Vista de la matriz">
+              {VISTAS.map((v) => (
+                <button key={String(v.id)} type="button" aria-pressed={vista === v.id} aria-keyshortcuts={v.tecla} title={`Tecla ${v.tecla}`} onClick={() => onVista(v.id)}>
+                  {v.texto}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      }
+    />
   )
 }
 

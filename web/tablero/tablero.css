@@ -10,8 +10,6 @@
  * Escala tipográfica fluida: ~15 px en 360, ~17 px en 1366 y ~20 px en 1920 (lectura a 6 m).
  */
 .hz-tablero {
-  /* Margen lateral del contenido y de la fila de la barra (la barra y su línea van de borde a borde). */
-  --hz-tablero-lado: 1em;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -46,49 +44,44 @@ body:has(> #root > .hz-tablero) {
   white-space: nowrap;
 }
 
-/* ── Barra carbón: logo de Horizontes y firma (EncabezadoProducto), la sala y los controles ── */
+/* ── Barra común (EncabezadoProducto) y segunda franja con la sala y los controles (21-oct) ──
+   La barra es la de todas las vistas (64 px; 72 px desde 1024 px) en el contenedor de página. La sala (h1 con la
+   escala común), su estado y los controles van en la franja clara de 56 px, en una fila. Bajo 1024 px la sala va en
+   su línea y los controles en una fila que se desliza de lado: nunca 300 px de controles apilados. */
 .hz-cab {
   flex: none;
 }
-/* Proyección: la fila va al 100 % del ancho (no al ancho de página de 1280 px), alineada con el contenido. */
-.hz-tablero .hz-cab .hz-producto__fila {
-  flex-wrap: wrap;
-  gap: 0.5em 1.5em;
-  max-width: none;
-  padding: 0.5em var(--hz-tablero-lado) calc(0.5em + 4px);
+.hz-cab .hz-cab-logo {
+  height: 1.5rem;
 }
-/* La sala y los controles son hijos directos de la fila: se reparten el ancho con la marca y bajan solos. */
-.hz-cab .hz-producto__extra {
-  display: contents;
+.hz-cab .hz-franja-pagina__fila {
+  gap: var(--hz-sp-3) var(--hz-sp-6);
 }
-/* La sala cede ancho antes que los controles: en 1280 y 1366 px la barra sigue en una sola franja. */
 .hz-cab-titulo {
-  flex: 1 1 14em;
+  display: grid;
+  flex: 1 1 auto;
   min-width: 0;
 }
-@media (min-width: 600px) {
-  .hz-cab-titulo {
-    padding-left: 1.5em;
-    border-left: 1px solid var(--hz-borde);
-  }
-}
+/* El nombre de la sala en una línea: si no cabe, termina en «…» (está completo en el title y en la pestaña). */
 .hz-cab h1 {
-  margin: 0;
-  font-size: 1.5em;
-  font-weight: var(--hz-fw-titulo);
-  line-height: 1.15;
-  letter-spacing: var(--hz-ls-titulo);
-  color: var(--hz-tinta);
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.1;
 }
 .hz-cab-meta {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.25em 0.6em;
-  margin: 0.2em 0 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--hz-fs-14);
+  line-height: 1.3;
   color: var(--hz-tinta-2);
-  font-weight: 600;
+  font-weight: var(--hz-fw-etiqueta);
+  white-space: nowrap;
 }
 /* Insignias de estado: «Preliminar» y la de la ronda abierta («En vivo: se actualiza cada 3 votos»). Sin borde ni color de
    acción, para que no se confundan con los botones del selector de modo. */
@@ -121,61 +114,44 @@ body:has(> #root > .hz-tablero) {
 }
 .hz-cab-controles {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.6em 1em;
+  gap: var(--hz-sp-2);
 }
 .hz-alcance {
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 0.5em;
-  min-width: 0;
-  max-width: 100%;
-  font-weight: 600;
-  color: var(--hz-tinta-2);
 }
 .hz-alcance select {
-  min-width: 0;
-  max-width: 100%;
-  min-height: 2.4em;
-  padding: 0.3em 0.6em;
+  max-width: 14em;
+  min-height: var(--hz-tactil);
+  padding: 0 var(--hz-sp-3);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--hz-fw-etiqueta);
   color: var(--hz-tinta);
-  background: var(--hz-superficie-1);
-  border: 1px solid var(--hz-borde-control);
+  background: var(--hz-fondo);
+  border: 1.5px solid var(--hz-borde-control);
   border-radius: var(--hz-r-campo);
 }
-.hz-segmento,
-.hz-detalle {
-  display: inline-flex;
-  padding: 0.2em;
-  background: var(--hz-superficie-1);
-  border: 1px solid var(--hz-borde);
-  border-radius: var(--hz-r-pill);
-}
-.hz-segmento button,
-.hz-detalle button {
-  min-height: 2.4em;
-  padding: 0.3em 1em;
-  font: inherit;
-  font-weight: 600;
-  color: var(--hz-tinta-2);
-  white-space: nowrap;
-  background: transparent;
-  border: 0;
-  border-radius: var(--hz-r-pill);
-  cursor: pointer;
-}
-.hz-segmento button:hover,
-.hz-detalle button:hover {
-  color: var(--hz-tinta);
-}
-.hz-segmento button[aria-pressed='true'],
-.hz-detalle button[aria-pressed='true'] {
-  color: var(--hz-sobre-accion);
-  font-weight: 800;
-  background: var(--hz-accion);
+/* Bajo 1024 px: la sala en su línea, los controles en una fila deslizable debajo (la franja no se parte en más). */
+@media (max-width: 1023px) {
+  .hz-cab .hz-franja-pagina__fila {
+    flex-wrap: wrap;
+    padding-block: var(--hz-sp-2);
+    overflow: visible;
+  }
+  .hz-cab-titulo {
+    flex-basis: 100%;
+  }
+  .hz-cab-controles {
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
 }
 
 /* ── Contenido bajo la barra ── */
@@ -184,7 +160,7 @@ body:has(> #root > .hz-tablero) {
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  padding: 0 var(--hz-tablero-lado) 1em;
+  padding-block: 0 0.5em;
 }
 .hz-cuerpo {
   display: flex;
@@ -249,14 +225,15 @@ body:has(> #root > .hz-tablero) {
   gap: 0.4em 1em;
 }
 .hz-boton-pantalla {
-  min-height: 2.4em;
-  padding: 0.3em 0.9em;
+  /* El botón secundario común: 48 px, contorno de control (también en el tablero, 21-oct). */
+  min-height: var(--hz-tactil);
+  padding: 0 var(--hz-sp-4);
   font: inherit;
-  font-weight: 700;
+  font-weight: var(--hz-fw-etiqueta);
   color: var(--hz-tinta);
   white-space: nowrap;
   background: transparent;
-  border: 1px solid var(--hz-borde-control);
+  border: 1.5px solid var(--hz-borde-control);
   border-radius: var(--hz-r-pill);
   cursor: pointer;
 }
@@ -315,7 +292,7 @@ body:has(> #root > .hz-tablero) {
   line-height: 1.3;
   background: var(--hz-fondo);
   border: 1px solid var(--hz-borde);
-  border-radius: 8px;
+  border-radius: var(--hz-r-campo);
 }
 .hz-tb-rubrica-valor {
   display: inline-grid;
@@ -340,7 +317,7 @@ body:has(> #root > .hz-tablero) {
   color: var(--hz-tinta);
   background: var(--hz-superficie-1);
   border-left: 4px solid var(--hz-accion);
-  border-radius: 6px;
+  border-radius: var(--hz-r-campo);
 }
 .hz-leyenda {
   display: flex;
@@ -409,7 +386,7 @@ body:has(> #root > .hz-tablero) {
   font-size: 1.3em;
   font-weight: 800;
   line-height: 1.25;
-  border-radius: 10px;
+  border-radius: var(--hz-r-campo);
 }
 .hz-franja-r1 {
   color: var(--hz-r1);
@@ -634,7 +611,7 @@ body:has(> #root > .hz-tablero) {
   font-weight: 600;
   color: var(--hz-error);
   background: var(--hz-error-fondo);
-  border-radius: 10px;
+  border-radius: var(--hz-r-campo);
 }
 .hz-area-centrada {
   display: grid;
@@ -657,7 +634,9 @@ body:has(> #root > .hz-tablero) {
 }
 .hz-error-grande h1 {
   margin: 0 0 0.4em;
-  font-size: 1.4em;
+  font-size: var(--hz-fs-h1);
+  font-weight: var(--hz-fw-h1);
+  line-height: 1.15;
 }
 .hz-error-grande p {
   margin: 0;
@@ -905,52 +884,28 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Proyector angosto (1280 a 1599 px): barra más compacta para que quede en una sola franja. */
+/* Proyector angosto (1100 a 1599 px): la franja sigue en una fila; en el panel de Detallado la ayuda de teclas no
+   cabe junto a la pantalla completa (sigue en la tecla ?). */
 @media (min-width: 1100px) and (max-width: 1599px) {
-  .hz-tablero .hz-cab .hz-producto__fila {
-    column-gap: 0.8em;
+  .hz-cab .hz-franja-pagina__fila {
+    column-gap: var(--hz-sp-4);
   }
-  .hz-cab-titulo {
-    padding-left: 0.8em;
-  }
-  .hz-cab-controles {
-    gap: 0.5em;
-  }
-  .hz-segmento button {
-    padding: 0.3em 0.6em;
-  }
-  .hz-cab h1 {
-    font-size: 1.35em;
-  }
-  .hz-cab-meta {
-    gap: 0.2em 0.45em;
-    font-size: 0.9em;
-  }
-  /* Con el logo de Estratek a la derecha, la barra sigue en una franja: selector y botones más angostos. */
-  .hz-cab-controles {
-    font-size: 0.88em;
+  .hz-segmento > button {
+    padding-inline: var(--hz-sp-3);
   }
   .hz-alcance select {
-    max-width: 9.5em;
+    max-width: 10em;
   }
-  .hz-segmento button {
-    padding: 0.3em 0.5em;
-  }
-  .hz-cab .hz-cab-logo {
-    height: 24px;
-  }
-  .hz-cab-titulo {
-    flex-basis: 8em;
-  }
-  /* El nombre de la sala en una línea: si no cabe, termina en «…» (está completo en el title de la pestaña). */
-  .hz-cab h1 {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  /* En el panel de Detallado no cabe junto a la pantalla completa: la ayuda sigue en la tecla ?. */
   .hz-lateral .hz-boton-teclas {
     display: none;
+  }
+}
+
+/* Proyector de 1600 px o más en Detallado: la matriz de 820 px y la tabla comparada no caben en 1280 a 6 m. Solo en
+   ese caso el tablero (barra, franja y contenido, juntos) usa el ancho de la pantalla con el margen común de 32 px. */
+@media (min-width: 1600px) {
+  .hz-tablero[data-modo='detallado']:not(.hz-tablero-mesas) {
+    --hz-ancho-pagina: 100%;
   }
 }
 
@@ -966,22 +921,10 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Celular (360 px): sin desborde horizontal; los selectores ocupan el ancho. */
+/* Celular (360 px): sin desborde horizontal; los controles de la franja se deslizan de lado. */
 @media (max-width: 599px) {
-  .hz-tablero {
-    --hz-tablero-lado: 0.75em;
-  }
-  .hz-cab-controles,
-  .hz-alcance,
-  .hz-alcance select,
-  .hz-segmento,
-  .hz-detalle {
-    width: 100%;
-  }
-  .hz-segmento button,
-  .hz-detalle button {
-    flex: 1 1 auto;
-    padding: 0.3em 0.5em;
+  .hz-segmento > button {
+    padding-inline: var(--hz-sp-3);
   }
   .hz-panel {
     padding: 0.6em 0.5em;
@@ -1092,11 +1035,7 @@ body:has(> #root > .hz-tablero) {
 
 /* ── QA por roles (20-oct) ── */
 
-/* Logo de Estratek a la derecha de la barra, en hielo (tinta del tema carbón), al menos 24 px de alto. */
-.hz-cab .hz-cab-logo {
-  height: max(24px, 1.5em);
-  margin-left: auto;
-}
+/* Logo de Estratek a la derecha de la barra, en hielo (tinta del tema carbón): 24 px de alto, como en el pie. */
 
 /* Sin conexión, los primeros 20 s: un punto discreto en la barra. */
 .hz-reconectando {
@@ -1358,6 +1297,17 @@ body:has(> #root > .hz-tablero) {
 /* Celular y tableta: la lectura de los ejes del Detallado va bajo la matriz, no en el panel. */
 @media (max-width: 1099px) {
   .hz-explica-lateral {
+    display: none;
+  }
+}
+
+/* Pie común (21-oct): en celular y tableta, al final del tablero. En el proyector (≥ 1100 px) el tablero ocupa justo la
+   pantalla, sin desplazar, y la firma de Estratek ya va en la barra; el pie vuelve en la carga y en el error. */
+.hz-tablero-pie {
+  margin-top: var(--hz-sp-8);
+}
+@media (min-width: 1100px) {
+  .hz-tablero:not(.hz-tablero-solo) > .hz-tablero-pie {
     display: none;
   }
 }

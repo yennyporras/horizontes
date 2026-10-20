@@ -76,9 +76,18 @@ describe('PaginaTablero', () => {
     // El carbón queda solo en la barra, como en el panel (Paola, 20-oct: una sola apariencia).
     const barra = titulo.closest('.hz-cab')!
     expect(barra.getAttribute('data-tema')).toBe('carbon')
+    // Composición común (21-oct): la sala va en la segunda franja clara, bajo la barra carbón.
+    expect(titulo.closest('.hz-franja-pagina')!.getAttribute('data-tema')).toBe('claro')
+    expect(titulo.closest('.hz-producto')).toBeNull()
+    expect(titulo.className).toBe('hz-h1')
+    expect(document.querySelector('.hz-cab-controles')!.closest('.hz-franja-pagina')).toBeTruthy()
+    // Pie común (en el proyector lo oculta el CSS: el tablero ocupa justo la pantalla).
+    expect(document.querySelector('.hz-tablero > footer.hz-pie')).toBeTruthy()
     for (const el of main.querySelectorAll('[data-tema]')) {
       expect(barra.contains(el), 'data-tema fuera de la barra').toBe(true)
-      expect(el.getAttribute('data-tema')).toBe('carbon')
+      // Carbón en la barra; el único claro dentro de ella es la franja de la sala y los controles.
+      if (el.getAttribute('data-tema') === 'claro') expect(el.classList.contains('hz-franja-pagina')).toBe(true)
+      else expect(el.getAttribute('data-tema')).toBe('carbon')
     }
     expect(main.querySelector('.hz-area')!.closest('[data-tema="carbon"]')).toBeNull()
     const marca = barra.querySelector('a.hz-producto__marca')!
@@ -801,8 +810,9 @@ describe('PaginaTablero: QA por roles', () => {
     servir(structuredClone(mock))
     montar('/tablero/s_demo?t=tok')
     await screen.findByRole('heading', { name: mock.sala.nombre })
-    const logo = screen.getByRole('img', { name: 'Estratek' })
-    expect(logo.closest('.hz-cab')).toBeTruthy()
+    // El logo de la barra y, en celular y tableta, el del pie común.
+    const logo = within(document.querySelector<HTMLElement>('.hz-cab')!).getByRole('img', { name: 'Estratek' })
+    expect(within(document.querySelector<HTMLElement>('.hz-pie')!).getByRole('img', { name: 'Estratek' })).toBeTruthy()
     expect(logo.classList.contains('hz-cab-logo')).toBe(true)
     // Es lo último de la barra: queda a la derecha de los controles.
     const fila = logo.closest('.hz-producto__fila')!
