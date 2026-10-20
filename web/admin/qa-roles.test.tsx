@@ -15,7 +15,7 @@ import { svgDescargable } from './paginas/Exportar'
 import { REGLA_USUARIO, RE_USUARIO_ADMIN, usuarioValido } from './paginas/Administradores'
 import { semaforo } from './paginas/Salud'
 import { PASOS_GUIA } from './componentes/GuiaUso'
-import { estadoMesa } from './textos'
+import { QUE_PASA, estadoMesa } from './textos'
 import tableroEjemplo from '../../mocks/GET_api_tablero.json'
 import type { SalaDetalle } from './tipos'
 
@@ -461,6 +461,8 @@ describe('textos (Paula) y reglas compartidas con el servidor', () => {
 
   it('«Todos votaron» en vez de «Precierre» y fórmulas sin género al desactivar', async () => {
     expect(estadoMesa('r1_abierta', { inscritos: 3, precierre: true })).toEqual({ texto: 'Todos votaron', tono: 'exito' })
+    // «sola» → «por su cuenta», y abrir la ronda 1 avisa que el tablero espera a que todos voten.
+    expect(QUE_PASA.abrir_ronda_1).toBe('Cada persona califica INSUMEX y NUTRIWHAT por su cuenta y en silencio, con la hoja de su perfil. El tablero muestra los resultados cuando todos voten o cierres la ronda.')
     await abrirDemo()
     expect(document.body.textContent).not.toMatch(/[Pp]recierre/)
     fireEvent.click(nav().getByRole('link', { name: 'Configuración' }))

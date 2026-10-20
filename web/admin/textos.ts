@@ -130,7 +130,7 @@ export const accionesParaCorregir = (estado: EstadoSala): Accion[] =>
 /** Qué pasa al pulsar cada acción, en una línea, junto al botón. */
 export const QUE_PASA: Record<Accion, string> = {
   abrir_inscripcion: 'Los QR empiezan a funcionar: cada persona se inscribe, recibe su perfil y lee el caso.',
-  abrir_ronda_1: 'Cada persona califica INSUMEX y NUTRIWHAT sola y en silencio, con la hoja de su perfil.',
+  abrir_ronda_1: 'Cada persona califica INSUMEX y NUTRIWHAT por su cuenta y en silencio, con la hoja de su perfil. El tablero muestra los resultados cuando todos voten o cierres la ronda.',
   cerrar_ronda_1: 'Nadie más responde la ronda 1 y queda su resultado final.',
   abrir_ronda_2: 'Se abren las 6 hojas para todos. Cada mesa conversa y vuelve a calificar.',
   cerrar_ronda_2: 'Nadie más responde la ronda 2. Después pon el tablero en Comparación (tecla C).',
