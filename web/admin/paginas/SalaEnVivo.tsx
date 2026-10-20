@@ -16,6 +16,7 @@ import {
   ORDEN_PREGUNTAS,
   PROYECTOS_VIVOS,
   decimal,
+  enEsteServidor,
   faltan,
   nombreProyecto,
   programaciones,
@@ -67,6 +68,7 @@ export function SalaEnVivo() {
         <>
           {dialogo}
           <Cifras d={d} />
+          <VerEnVivo d={d} />
           <Precierre d={d} />
           <section className="panel" aria-labelledby="t-control">
             <h2 id="t-control">Control de la sala</h2>
@@ -109,6 +111,47 @@ export function SalaEnVivo() {
   )
 }
 
+/**
+ * Accesos directos para ver la sala en vivo: el tablero de toda la sala (el que se proyecta), el de cada mesa y lo
+ * que ve un participante. Se abren en otra pestaña del mismo servidor y se actualizan solos.
+ */
+function VerEnVivo({ d }: { d: SalaDetalle }) {
+  const [mesaId, setMesaId] = useState(d.mesas[0]?.id ?? '')
+  const mesa = d.mesas.find((m) => m.id === mesaId) ?? d.mesas[0]
+  const tableroSala = enEsteServidor(urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero))
+  return (
+    <section className="panel" aria-labelledby="t-en-vivo">
+      <h2 id="t-en-vivo">Ver en vivo</h2>
+      <p className="pista">Se abre en otra pestaña y se actualiza sola. Lleva el tablero de la sala al proyector; el de cada mesa y la vista del participante sirven para seguir el avance.</p>
+      <div className="acciones">
+        {tableroSala && (
+          <a className="hz-boton hz-boton--secundario" href={tableroSala} target="_blank" rel="noreferrer">
+            Tablero de toda la sala
+          </a>
+        )}
+      </div>
+      {mesa && (
+        <div className="acciones">
+          <label htmlFor="ver-mesa">Mesa</label>
+          <select id="ver-mesa" value={mesa.id} onChange={(e) => setMesaId(e.target.value)}>
+            {d.mesas.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre} · {m.codigo}
+              </option>
+            ))}
+          </select>
+          <a className="hz-boton hz-boton--secundario" href={enEsteServidor(mesa.url_tablero) ?? undefined} target="_blank" rel="noreferrer">
+            Tablero de {mesa.nombre}
+          </a>
+          <a className="hz-boton hz-boton--secundario" href={enEsteServidor(mesa.url_participante) ?? undefined} target="_blank" rel="noreferrer">
+            Ver como participante
+          </a>
+        </div>
+      )}
+    </section>
+  )
+}
+
 /** El paso que sigue en el taller: la primera acción posible que no pide confirmación. */
 function siguientePaso(estado: SalaDetalle['sala']['estado']) {
   return ORDEN_ACCIONES.find((a) => ACCIONES_POR_ESTADO[estado].includes(a) && !CONFIRMACIONES[a])
@@ -141,7 +184,7 @@ function Cifras({ d }: { d: SalaDetalle }) {
 function Programado({ d }: { d: SalaDetalle }) {
   const ahora = useAhora()
   const programados = programaciones(d.sala.config)
-  const tablero = urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero)
+  const tablero = enEsteServidor(urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero))
   const zona = zonaSala(d.sala.config)
 
   return (
@@ -356,7 +399,7 @@ function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: st
         ))}
       </div>
       {urlTablero && (
-        <a href={urlTablero} target="_blank" rel="noreferrer">
+        <a href={enEsteServidor(urlTablero) ?? undefined} target="_blank" rel="noreferrer">
           Abrir la matriz en el tablero
         </a>
       )}
@@ -505,10 +548,10 @@ function Mesas({ d }: { d: SalaDetalle }) {
                   </td>
                   <td data-label="Enlaces">
                     <span className="enlaces">
-                      <a href={m.url_tablero} target="_blank" rel="noreferrer">
+                      <a href={enEsteServidor(m.url_tablero) ?? undefined} target="_blank" rel="noreferrer">
                         Tablero de {m.nombre}
                       </a>
-                      <a href={m.url_participante} target="_blank" rel="noreferrer">
+                      <a href={enEsteServidor(m.url_participante) ?? undefined} target="_blank" rel="noreferrer">
                         Vista participante
                       </a>
                     </span>

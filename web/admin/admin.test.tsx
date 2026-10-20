@@ -17,6 +17,7 @@ import {
   rutaApiTablero,
   textoEvento,
   urlTableroSala,
+  enEsteServidor,
   zonaSala,
 } from './textos'
 
@@ -73,6 +74,13 @@ describe('textos del panel', () => {
     expect(urlTableroSala('/x', mesa)).toBe('/x')
     expect(rutaApiTablero('s_demo', mesa, 'm1')).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m1&t=TOK')
     expect(rutaApiTablero('s_demo', mesa)).toBe('/api/tablero/s_demo?alcance=sala&t=TOK')
+  })
+
+  it('los enlaces del panel abren en su propio servidor aunque BASE_URL apunte a otro ambiente', () => {
+    expect(enEsteServidor('https://staging-horizontes.estratek.com.co/tablero/s_1?mesa=m1&t=TOK')).toBe('/tablero/s_1?mesa=m1&t=TOK')
+    expect(enEsteServidor('https://otro.dominio/m/HZ7K2-1')).toBe('/m/HZ7K2-1')
+    expect(enEsteServidor('/tablero/s_1?t=TOK')).toBe('/tablero/s_1?t=TOK')
+    expect(enEsteServidor(undefined)).toBeNull()
   })
 
   it('describe los eventos de la bitácora en lenguaje claro', () => {
@@ -173,6 +181,11 @@ describe('panel admin contra el simulador', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Abrir inscripción' }))
     await screen.findByText('Inscripción abierta', { selector: '.estado' })
     expect(principales()).toEqual(['Abrir ronda 1'])
+    const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
+    for (const nombre of ['Tablero de toda la sala', /^Tablero de Mesa 1/, 'Ver como participante']) {
+      const href = within(enVivo).getByRole('link', { name: nombre }).getAttribute('href') ?? ''
+      expect(href.startsWith('/')).toBe(true)
+    }
   })
 
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {
