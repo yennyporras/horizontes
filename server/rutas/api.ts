@@ -82,8 +82,10 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     // Cada celular consulta su mesa al abrir el QR; el tope frena a quien recorre códigos para adivinar mesas (S-5).
     'GET /api/mesas/:codigo': new LimitadorPeticiones(600, 60_000),
   }
+  // Fastify crea un HEAD por cada GET con el mismo manejador: HEAD cuenta como GET y gasta el mismo cupo (M-1a).
+  const metodoDeCupo = (req: FastifyRequest) => (req.method === 'HEAD' ? 'GET' : req.method)
   app.addHook('onRequest', async (req) => {
-    const clave = `${req.method} ${req.routeOptions.url ?? ''}`
+    const clave = `${metodoDeCupo(req)} ${req.routeOptions.url ?? ''}`
     const l = limites[clave]
     if (l && !l.permitir(`${req.ip}|${clave}`, ahora())) {
       throw new ErrorApi(429, 'DEMASIADAS_PETICIONES', 'Hay demasiados intentos desde esta red. Espera un minuto e intenta de nuevo.')
