@@ -58,6 +58,12 @@ export class LimitadorPeticiones {
     return v.n <= this.maximo
   }
 
+  /** true si la clave ya gastó su cupo en la ventana vigente. Solo consulta: no cuenta la petición. */
+  agotado(clave: string, ahora: number): boolean {
+    const v = this.ventanas.get(clave)
+    return Boolean(v && ahora - v.inicio < this.ventanaMs && v.n >= this.maximo)
+  }
+
   private limpiar(ahora: number) {
     for (const [k, v] of this.ventanas) if (ahora - v.inicio >= this.ventanaMs) this.ventanas.delete(k)
   }
