@@ -1,7 +1,8 @@
+import { timingSafeEqual } from 'node:crypto'
 import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { type CriterioSemilla, semilla } from './semilla.js'
-import { type Pais, type ZonaHoraria, codigoSala, idAleatorio, isoUtc, sha256, tokenAleatorio } from './util.js'
+import { type Pais, type ZonaHoraria, codigoMesa, codigoSala, idAleatorio, isoUtc, sha256, tokenAleatorio } from './util.js'
 
 export type EstadoSala = 'preparada' | 'inscripcion' | 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cerrada' | 'cerrada'
 
@@ -28,7 +29,9 @@ export interface SalaFila {
   pregunta_guiada_criterio_id: string | null
   pais: Pais
   zona_horaria: ZonaHoraria
+  /** Sin uso desde la migración 7 (20-oct, S-12): vacía. La única fuente es `token_tablero`. */
   token_tablero_hash: string
+  /** Token del tablero (`?t=`). En claro porque el panel vuelve a mostrar el enlace; no es dato personal. */
   token_tablero: string
   version: number
   creada_at: string
@@ -51,6 +54,13 @@ export function cargarSala(db: Db, idOCodigo: string): SalaFila {
   const s = uno<SalaFila>(db, 'SELECT * FROM salas WHERE id = ? OR codigo = ?', idOCodigo, idOCodigo.toUpperCase())
   if (!s) throw new ErrorApi(404, 'SALA_NO_EXISTE', 'No encontramos esa sala.')
   return s
+}
+
+/** ¿`t` es el token del tablero de la sala? Comparación en tiempo constante contra la única fuente, `token_tablero`. */
+export function tokenTableroValido(sala: SalaFila, t: string): boolean {
+  const a = Buffer.from(sha256(t), 'hex')
+  const b = Buffer.from(sha256(sala.token_tablero), 'hex')
+  return timingSafeEqual(a, b)
 }
 
 export function mesasDeSala(db: Db, salaId: string): MesaFila[] {
@@ -81,7 +91,9 @@ export function agregarMesas(db: Db, salaId: string, cantidad: number) {
     const max = uno<{ n: number | null }>(db, 'SELECT MAX(numero) AS n FROM mesas WHERE sala_id = ?', salaId)?.n ?? 0
     if (max + cantidad > MAX_MESAS) throw new ErrorApi(422, 'CANTIDAD_INVALIDA', `Una sala admite hasta ${MAX_MESAS} mesas.`)
     for (let n = max + 1; n <= max + cantidad; n++) {
-      ejecutar(db, 'INSERT INTO mesas (id, sala_id, numero, nombre, codigo) VALUES (?, ?, ?, ?, ?)', idAleatorio('m', 6), salaId, n, `Mesa ${n}`, `${sala.codigo}-${n}`)
+      let codigo = codigoMesa(sala.codigo, n)
+      while (uno(db, 'SELECT 1 FROM mesas WHERE codigo = ?', codigo)) codigo = codigoMesa(sala.codigo, n)
+      ejecutar(db, 'INSERT INTO mesas (id, sala_id, numero, nombre, codigo) VALUES (?, ?, ?, ?, ?)', idAleatorio('m', 6), salaId, n, `Mesa ${n}`, codigo)
     }
     tocar(db, salaId)
     return mesasDeSala(db, salaId)
@@ -89,9 +101,9 @@ export function agregarMesas(db: Db, salaId: string, cantidad: number) {
 }
 
 export interface NuevaSala {
-  nombre: string
-  plantilla: string
-  mesas: number
+  nombre: unknown
+  plantilla: unknown
+  mesas: unknown
 }
 
 /** Criterios de la semilla con las rúbricas que el admin guardó para las salas nuevas de la plantilla. */
@@ -108,30 +120,29 @@ function criteriosDePlantilla(db: Db, plantilla: string, criterios: CriterioSemi
 /** Crea sala desde la plantilla foodsume_2026: proyectos, hojas, contenido, mesas y token del tablero. */
 export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number, por: string) {
   const sem = semilla()
-  if (datos.plantilla !== sem.plantilla.id) throw new ErrorApi(422, 'PLANTILLA_NO_EXISTE', `La plantilla "${datos.plantilla}" no existe. Usa "${sem.plantilla.id}".`)
-  const nombre = (datos.nombre ?? '').trim()
+  if (datos.plantilla !== sem.plantilla.id) throw new ErrorApi(422, 'PLANTILLA_NO_EXISTE', `La plantilla "${String(datos.plantilla)}" no existe. Usa "${sem.plantilla.id}".`)
+  // Tipos del cuerpo sin confiar: `{nombre: 123}` terminaba en 500 (S-9).
+  const nombre = typeof datos.nombre === 'string' ? datos.nombre.trim() : ''
   if (!nombre || nombre.length > 120) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Escribe un nombre para la sala (máximo 120 caracteres).')
   const nMesas = datos.mesas ?? 1
-  if (!Number.isInteger(nMesas) || nMesas < 1 || nMesas > MAX_MESAS) throw new ErrorApi(422, 'CANTIDAD_INVALIDA', `Indica entre 1 y ${MAX_MESAS} mesas.`)
+  if (typeof nMesas !== 'number' || !Number.isInteger(nMesas) || nMesas < 1 || nMesas > MAX_MESAS) throw new ErrorApi(422, 'CANTIDAD_INVALIDA', `Indica entre 1 y ${MAX_MESAS} mesas.`)
 
   return transaccion(db, () => {
     let id = idAleatorio('s', 6)
     while (uno(db, 'SELECT 1 FROM salas WHERE id = ?', id)) id = idAleatorio('s', 6)
     let codigo = codigoSala()
     while (uno(db, 'SELECT 1 FROM salas WHERE codigo = ?', codigo)) codigo = codigoSala()
-    const token = tokenAleatorio()
     ejecutar(
       db,
       `INSERT INTO salas (id, codigo, nombre, plantilla, estado, alcance_resultados, vista_participante, token_tablero_hash, token_tablero, creada_at)
-       VALUES (?, ?, ?, ?, 'preparada', ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, 'preparada', ?, ?, '', ?, ?)`,
       id,
       codigo,
       nombre,
       sem.plantilla.id,
       CONFIG_POR_DEFECTO.alcance_resultados,
       CONFIG_POR_DEFECTO.vista_participante,
-      sha256(token),
-      token,
+      tokenAleatorio(),
       isoUtc(ahora),
     )
     for (const p of sem.plantilla.proyectos) {
