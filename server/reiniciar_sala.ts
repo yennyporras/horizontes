@@ -1,5 +1,6 @@
 // Reinicio limpio de la sala del taller: respalda la BD y deja la sala como recién creada (sin participantes,
-// votos ni eventos), con las mismas mesas, QR y enlace del tablero. Pensado para después del ensayo general.
+// votos ni eventos), con las mismas mesas y QR. El enlace del tablero cambia: el nuevo está en el panel. Pensado para
+// después del ensayo general.
 // Uso (local):      npm run sala:reiniciar -- --sala <id o código> --confirmar
 // Uso (producción): docker exec <contenedor> node_modules/.bin/tsx server/reiniciar_sala.ts --sala <código> --confirmar
 // Sin --confirmar solo muestra qué se borraría. Se puede correr con el servidor arriba (SQLite en WAL).
@@ -32,6 +33,7 @@ try {
     console.log(`Respaldo: ${respaldo ?? '(BD en memoria, sin respaldo)'}`)
     const r = reiniciarSalaLimpia(db, sala.id, Date.now())
     console.log(`Listo: sala en estado ${r.sala.estado}. Borrados: ${JSON.stringify(r.borrados)}.`)
+    console.log('El enlace del tablero cambió: copia el nuevo desde el panel antes de proyectar.')
   }
 } catch (e) {
   console.error(e instanceof Error ? e.message : e)

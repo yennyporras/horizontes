@@ -142,10 +142,26 @@ describe('correcciones de la QA de la landing', () => {
     // Formato de mesa con 3 caracteres al azar (S-5): HZ7K2QX4-1.
     expect(codigoDeMesa('hz7k2qx4 - 1')).toBe('HZ7K2QX4-1')
     expect(codigoDeMesa('HZ7K2QX41')).toBe('HZ7K2QX4-1')
-    expect(codigoDeMesa('HZ7K2Q12123')).toBe('HZ7K2Q12-123')
+    // Si cabe más de una lectura gana la de 5 al azar (una sala tiene hasta 30 mesas).
+    expect(codigoDeMesa('HZ7K2Q12123')).toBe('HZ7K2Q1212-3')
     expect(codigoDeMesa('HZ7K2123')).toBe('HZ7K2-123')
     expect(codigoDeMesa('HZ5MG')).toBeNull()
     expect(codigoDeMesa('hola mundo')).toBeNull()
+  })
+
+  it('acepta el código de mesa con 5 caracteres al azar (M-1c) y sigue aceptando los de antes', () => {
+    expect(codigoDeMesa('HZ7K2QX4AB-1')).toBe('HZ7K2QX4AB-1')
+    expect(codigoDeMesa('hz7k2qx4ab - 12')).toBe('HZ7K2QX4AB-12')
+    expect(codigoDeMesa('hz7k2qx4ab1')).toBe('HZ7K2QX4AB-1')
+    expect(codigoDeMesa('HZ7K2QX4AB30')).toBe('HZ7K2QX4AB-30')
+    // El azar puede traer números: HZ7K2 + 23456 + mesa 1.
+    expect(codigoDeMesa('HZ7K2234561')).toBe('HZ7K223456-1')
+    expect(codigoDeMesa('https://horizontes.estratek.com.co/m/HZ7K2QX4AB-7')).toBe('HZ7K2QX4AB-7')
+    // Los de 3 al azar y los viejos siguen igual.
+    expect(codigoDeMesa('HZ7K2QX412')).toBe('HZ7K2QX4-12')
+    expect(codigoDeMesa('HZ7K2-1')).toBe('HZ7K2-1')
+    // Más largo que cualquier código real: no.
+    expect(codigoDeMesa('HZ7K2QX4ABC-1')).toBeNull()
   })
 
   it('el código con espacio lleva a la mesa normalizada', async () => {

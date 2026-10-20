@@ -71,6 +71,13 @@ describe('antes de inscribirse', () => {
     expect(screen.getByText(/El código NOEXISTE no corresponde/)).toBeTruthy()
   })
 
+  it('abre la mesa con el código de 5 caracteres al azar (M-1c) y lo usa tal cual', async () => {
+    servidor((url) => (url.startsWith('/api/mesas/') ? { status: 200, body: MESA } : { status: 404 }))
+    montar('/m/HZ7K2QX4AB-12')
+    await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
+    expect(llamadas[0].url).toBe('/api/mesas/HZ7K2QX4AB-12')
+  })
+
   it('inscripción cerrada antes de empezar y sala terminada', async () => {
     servidor(() => ({ status: 200, body: { ...MESA, inscripcion_abierta: false, sala: { ...MESA.sala, estado: 'preparada' } } }))
     montar()

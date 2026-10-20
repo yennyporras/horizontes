@@ -6,6 +6,9 @@ logs
 .*
 .env
 .env.*
+# Secretos en cualquier carpeta y el de despliegue (B-4).
+**/.env*
+deploy/.env.deploy
 **/*.sqlite*
 **/*.db
 QA-tests

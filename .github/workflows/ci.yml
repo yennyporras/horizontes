@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+# Mínimo privilegio: la CI solo lee el repo.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true

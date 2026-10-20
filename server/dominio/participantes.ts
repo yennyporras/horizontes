@@ -158,9 +158,9 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
 }
 
 export function autenticarParticipante(db: Db, token: string | undefined): ParticipanteFila {
-  if (!token) throw new ErrorApi(401, 'TOKEN_REQUERIDO', 'Tu sesión no es válida. Vuelve a escanear el QR de tu mesa.')
+  if (!token) throw new ErrorApi(401, 'TOKEN_REQUERIDO', 'Tu sesión no es válida. Pídele al facilitador que te dé acceso de nuevo.')
   const p = uno<ParticipanteFila>(db, 'SELECT * FROM participantes WHERE token_hash = ?', sha256(token))
-  if (!p) throw new ErrorApi(401, 'TOKEN_INVALIDO', 'Tu sesión no es válida. Vuelve a escanear el QR de tu mesa.')
+  if (!p) throw new ErrorApi(401, 'TOKEN_INVALIDO', 'Tu sesión no es válida. Pídele al facilitador que te dé acceso de nuevo.')
   return p
 }
 
