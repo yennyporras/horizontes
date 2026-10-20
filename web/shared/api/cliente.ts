@@ -1,6 +1,7 @@
 // Cliente mínimo del contrato. Responsable: equipo del servidor. Uso opcional: cada área puede seguir con su propio
 // transporte, pero este maneja errores con forma de contrato, el token del participante y ETag/304.
 import type {
+  AccesoParticipante,
   AccionSala,
   Admin,
   AdminYo,
@@ -12,8 +13,11 @@ import type {
   DetalleSala,
   HojasSala,
   InfoMesa,
+  RespuestaAcceso,
   RespuestaInscripcion,
   RespuestaPreguntaGuiada,
+  ResultadosParticipante,
+  RubricaPlantillaBorrada,
   RespuestasSala,
   RespuestaVoto,
   RubricasSala,
@@ -69,7 +73,7 @@ export async function pedir<T>(ruta: string, op: Opciones = {}): Promise<{ datos
   if (r.status === 304) return { datos: null, etag: op.etag, status: 304 }
   const texto = await r.text()
   const cuerpo = texto && (r.headers.get('content-type') ?? '').includes('json') ? JSON.parse(texto) : texto
-  if (!r.ok && !(r.status === 409 && cuerpo?.token)) {
+  if (!r.ok) {
     const e = cuerpo?.error ?? { codigo: 'ERROR_HTTP', mensaje: 'Algo falló. Intenta de nuevo.' }
     throw new ErrorApi(r.status, e.codigo, e.mensaje, cuerpo)
   }
@@ -81,15 +85,21 @@ const datos = async <T>(p: Promise<{ datos: T | null }>) => (await p).datos as T
 export const api = {
   // Participante
   mesa: (codigo: string) => datos(pedir<InfoMesa>(`/api/mesas/${encodeURIComponent(codigo)}`)),
-  /** Guarda el token en el dispositivo. También resuelve con 409 CORREO_YA_INSCRITO (recupera la sesión). */
+  /** Guarda el token en el dispositivo. 409 CORREO_YA_INSCRITO es un error (desde el 20-oct no trae token): el facilitador da acceso de nuevo. */
   inscribir: async (c: CuerpoInscripcion) => {
     const r = await datos(pedir<RespuestaInscripcion>('/api/inscripcion', { metodo: 'POST', cuerpo: c }))
     tokenParticipante.guardar(r.token)
     return r
   },
+  /** Canjea el enlace de «Dar acceso de nuevo» (`?acceso=…`) por un token nuevo y lo guarda. Cierra las demás sesiones. */
+  canjearAcceso: async (acceso: string) => {
+    const r = await datos(pedir<RespuestaAcceso>('/api/acceso', { metodo: 'POST', cuerpo: { acceso } }))
+    tokenParticipante.guardar(r.token)
+    return r
+  },
   yo: (etag?: string) => pedir<Yo>('/api/yo', { participante: true, etag }),
   votar: (c: CuerpoVoto) => datos(pedir<RespuestaVoto>('/api/votos', { metodo: 'PUT', cuerpo: c, participante: true })),
-  resultados: (ronda?: number, etag?: string) => pedir<Tablero>(`/api/resultados${ronda ? `?ronda=${ronda}` : ''}`, { participante: true, etag }),
+  resultados: (ronda?: number, etag?: string) => pedir<ResultadosParticipante>(`/api/resultados${ronda ? `?ronda=${ronda}` : ''}`, { participante: true, etag }),
 
   // Tablero
   tablero: (salaId: string, q: { alcance?: 'sala' | 'mesa'; mesa?: string; t?: string }, etag?: string) => {
@@ -112,12 +122,17 @@ export const api = {
   agregarMesas: (id: string, cantidad: number) => datos(pedir<{ mesas: DetalleSala['mesas'] }>(`/api/admin/salas/${id}/mesas`, { metodo: 'POST', cuerpo: { cantidad } })),
   editarParticipante: (id: string, cambios: { perfil_id?: string; mesa_id?: string; activo?: boolean }) =>
     datos(pedir<unknown>(`/api/admin/participantes/${id}`, { metodo: 'PATCH', cuerpo: cambios })),
+  /** «Dar acceso de nuevo»: enlace personal de un solo uso (15 min). 409 SALA_CERRADA o PARTICIPANTE_INACTIVO. */
+  darAcceso: (participanteId: string) => datos(pedir<AccesoParticipante>(`/api/admin/participantes/${participanteId}/acceso`, { metodo: 'POST', cuerpo: {} })),
   admins: () => datos(pedir<{ admins: Admin[] }>('/api/admin/admins')),
   crearAdmin: (a: { usuario: string; nombre: string; correo?: string; clave_temporal: string }) => datos(pedir<Admin>('/api/admin/admins', { metodo: 'POST', cuerpo: a })),
   editarAdmin: (id: number, c: { activo?: boolean; nombre?: string; correo?: string; restablecer_clave?: boolean | string }) =>
     datos(pedir<Admin>(`/api/admin/admins/${id}`, { metodo: 'PATCH', cuerpo: c })),
   rubricas: (id: string) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas`)),
   editarRubrica: (id: string, criterio: string, c: CuerpoRubrica) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas/${criterio}`, { metodo: 'PUT', cuerpo: c })),
+  /** Las salas nuevas vuelven a la rúbrica de la semilla en ese criterio (idempotente). */
+  borrarRubricaPlantilla: (criterio: string) =>
+    datos(pedir<RubricaPlantillaBorrada>(`/api/admin/rubricas-plantilla/${encodeURIComponent(criterio)}`, { metodo: 'DELETE' })),
   hojas: (id: string) => datos(pedir<HojasSala>(`/api/admin/salas/${id}/hojas`)),
   /** Respuestas por persona (solo admin, no se proyecta). */
   respuestas: (id: string) => datos(pedir<RespuestasSala>(`/api/admin/salas/${id}/respuestas`)),

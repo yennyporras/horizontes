@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify'
 import { RAIZ } from './config.js'
 import { cuerpoError, responderConVersion } from './http.js'
 import { consentimientoVigente } from './dominio/consentimiento.js'
+import { MENSAJE_ACCESO_INVALIDO, MENSAJE_ACCESO_VENCIDO, MENSAJE_CORREO_YA_INSCRITO } from './dominio/accesos.js'
 import { MOTIVO_CON_VOTOS } from './dominio/rubricas.js'
 import { nombrePerfil, semilla } from './dominio/semilla.js'
 
@@ -44,11 +45,24 @@ export async function rutasMocks(app: FastifyInstance) {
         .code(422)
         .send(cuerpoError('CONSENTIMIENTO_REQUERIDO', 'Para continuar debes aceptar la autorización de tratamiento de datos.'))
     }
+    // D1 (20-oct): un correo ya inscrito es un error sin token. `ya@inscrito.co` lo muestra en `npm run dev`.
+    if (String(b.correo ?? '').trim().toLowerCase() === 'ya@inscrito.co') {
+      return reply.code(409).send(cuerpoError('CORREO_YA_INSCRITO', MENSAJE_CORREO_YA_INSCRITO))
+    }
     const yo = leer('GET_api_yo')
     return reply.code(201).send({
       token: 'mock-token-participante',
       participante: { id: yo.participante.id, nombre: b.nombre ?? yo.participante.nombre, mesa: yo.participante.mesa, perfil: yo.participante.perfil },
     })
+  })
+
+  // Enlace de «Dar acceso de nuevo»: `vencido` responde 410, `invalido` 404 y cualquier otro valor canjea.
+  app.post<{ Body: { acceso?: unknown } }>('/api/acceso', async (req, reply) => {
+    const acceso = req.body?.acceso
+    if (typeof acceso !== 'string' || !acceso.trim()) return reply.code(422).send(cuerpoError('DATOS_INVALIDOS', 'Falta el código de acceso.'))
+    if (acceso === 'vencido') return reply.code(410).send(cuerpoError('ACCESO_VENCIDO', MENSAJE_ACCESO_VENCIDO))
+    if (acceso === 'invalido') return reply.code(404).send(cuerpoError('ACCESO_INVALIDO', MENSAJE_ACCESO_INVALIDO))
+    return leer('POST_api_acceso')
   })
 
   app.get('/api/yo', async (req, reply) => responderConVersion(req, reply, leer('GET_api_yo')))
@@ -67,7 +81,12 @@ export async function rutasMocks(app: FastifyInstance) {
     }
   })
 
-  app.get('/api/resultados', async (req, reply) => responderConVersion(req, reply, leer('GET_api_tablero')))
+  // Vista del participante: la del tablero sin `progreso.por_mesa` (D2, 20-oct).
+  app.get('/api/resultados', async (req, reply) => {
+    const t = leer('GET_api_tablero')
+    const { por_mesa: _, ...progreso } = t.progreso
+    return responderConVersion(req, reply, { ...t, progreso })
+  })
 
   // Tablero
   app.get('/api/tablero/:salaId', async (req, reply) => responderConVersion(req, reply, leer('GET_api_tablero')))
@@ -127,6 +146,12 @@ export async function rutasMocks(app: FastifyInstance) {
   app.put('/api/admin/salas/:id/pregunta-guiada', async (req) => ({ pregunta_guiada: req.body ?? null, version: admin().version }))
   app.post('/api/admin/salas/:id/mesas', async () => ({ mesas: admin().mesas }))
   app.patch('/api/admin/participantes/:id', async (req) => ({ ...admin().participantes[0], ...(req.body as object) }))
+  app.post('/api/admin/participantes/:id/acceso', async () => leer('POST_api_admin_participantes_id_acceso'))
+  app.delete<{ Params: { criterio: string } }>('/api/admin/rubricas-plantilla/:criterio', async (req, reply) => {
+    const c = semilla().motor.criterios.find((x) => x.id === req.params.criterio)
+    if (!c) return reply.code(422).send(cuerpoError('CRITERIO_NO_EXISTE', `El criterio "${req.params.criterio}" no existe.`))
+    return { plantilla: semilla().plantilla.id, criterio_id: c.id, borrada: true, rubrica: c.rubrica }
+  })
   app.get('/api/admin/admins', async () => ({ admins: [admin().admin_actual] }))
   app.post('/api/admin/admins', async (req, reply) => reply.code(201).send({ id: 2, rol: 'admin', activo: true, ...(req.body as object) }))
   app.patch('/api/admin/admins/:id', async (req) => ({ id: 2, rol: 'admin', activo: true, ...(req.body as object) }))
