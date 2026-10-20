@@ -574,6 +574,10 @@ describe('ancho de página estándar: encabezado, contenido y pie con el mismo c
     for (const sel of ['.hzp-contexto', 'main', '.hz-barra-accion__interior'])
       expect(container.querySelector(sel)!.classList.contains('hz-pagina--lectura'), sel).toBe(true)
     expect(container.querySelector('.hz-producto__fila')!.classList.contains('hz-pagina--lectura')).toBe(false)
+    // En escritorio (desde 1280 px) el resultado sale de la columna y toma el contenedor de página, centrado (triage #25).
+    expect(readFileSync('web/participante/participante.css', 'utf8')).toMatch(
+      /@media \(min-width: 80rem\) \{\s*\.hzp-vista \.hzp-resultado \{[^}]*width: var\(--hzp-ancho-resultado\);\s*margin-inline: calc\(50% - var\(--hzp-ancho-resultado\) \/ 2\);/,
+    )
     const pie = container.querySelector('footer.hz-pie')!
     expect(pie.firstElementChild!.classList.contains('hz-pagina')).toBe(true)
     expect(pie.firstElementChild!.classList.contains('hz-pagina--lectura')).toBe(false)

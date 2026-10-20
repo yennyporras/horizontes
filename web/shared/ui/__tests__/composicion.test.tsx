@@ -72,6 +72,15 @@ describe('barra común (EncabezadoProducto)', () => {
     expect(desplegable()).toBeNull()
   })
 
+  it('«Menú» cede ancho antes que la marca: en 320 px termina en «…» y no desborda la barra', () => {
+    expect(css).toMatch(/\.hz-producto__menu-boton \{[^}]*flex: 0 1 auto; min-width: 0;[^}]*text-overflow: ellipsis;/)
+    expect(css).toMatch(/\.hz-producto__marca \{ flex: none; \}/)
+    // El panel muestra solo «Menú» bajo 480 px; la sección actual va en el título de la página.
+    expect(readFileSync('web/admin/admin.css', 'utf8')).toMatch(/@media \(max-width: 29\.99rem\) \{ \.hz-admin \.menu-boton__actual \{ display: none; \} \}/)
+    render(<EncabezadoProducto menu={<a href="#x">X</a>} etiquetaMenu={<>Menú<span className="menu-boton__actual"> · Salas</span></>} />)
+    expect(screen.getByRole('button', { name: 'Menú · Salas' })).toBeTruthy()
+  })
+
   it('sin nada que plegar no hay botón «Menú» (el celular y el tablero)', () => {
     render(<EncabezadoProducto href="/m/X" />)
     expect(screen.queryByRole('button')).toBeNull()
@@ -171,6 +180,17 @@ describe('mismas piezas en todas las áreas', () => {
     expect(sinComentarios(tablero)).not.toMatch(/\.hz-segmento button/)
     // Sin radios sueltos en el tablero: los del sistema.
     expect(sinComentarios(tablero)).not.toMatch(/border-radius: (6|8|10)px/)
+  })
+
+  it('el tablero usa el contenedor de 1280 px; solo el Detallado desde 1600 px toma la pantalla (matriz y tabla a 6 m)', () => {
+    const tablero = sinComentarios(readFileSync('web/tablero/tablero.css', 'utf8'))
+    expect(tablero).toMatch(/@media \(min-width: 1600px\) \{\s*\.hz-tablero\[data-modo='detallado'\]:not\(\.hz-tablero-mesas\) \{\s*--hz-ancho-pagina: 100%;/)
+    // Ninguna otra regla del tablero cambia el ancho de página ni lleva la barra al 100 %.
+    expect(tablero.match(/--hz-ancho-pagina/g)).toHaveLength(1)
+    // La franja del tablero usa la letra de todas las vistas, no la escala del proyector.
+    expect(tablero).toMatch(/\.hz-cab \.hz-franja-pagina__fila \{[^}]*font-size: var\(--hz-fs-16\);/)
+    // Pie común fuera del proyector: el tablero ocupa justo la pantalla desde 1100 px.
+    expect(tablero).toMatch(/@media \(min-width: 1100px\) \{\s*\.hz-tablero:not\(\.hz-tablero-solo\) > \.hz-tablero-pie \{\s*display: none;/)
   })
 
   it('el celular centra su columna de lectura (640 px) dentro del contenedor de página', () => {
