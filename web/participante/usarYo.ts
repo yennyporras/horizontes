@@ -30,6 +30,10 @@ export function usarYo(token: string | null) {
   const recuperacion = useRef<ReturnType<typeof setTimeout> | null>(null)
   const vivo = useRef(true)
   const ciclo = useRef<() => void>(() => {})
+  // Consultas numeradas: el polling, «refrescar» tras guardar y el regreso a la pestaña pueden cruzarse, y una
+  // respuesta vieja que llega tarde no debe pisar a una más nueva.
+  const pedidas = useRef(0)
+  const atendida = useRef(0)
 
   const programar = useCallback((ms: number) => {
     if (temporizador.current) clearTimeout(temporizador.current)
@@ -39,9 +43,11 @@ export function usarYo(token: string | null) {
   const consultar = useCallback(
     async (forzar = false) => {
       if (!token) return
+      const n = ++pedidas.current
       try {
         const r = await obtenerYo(token, forzar ? null : etag.current)
-        if (!vivo.current) return
+        if (!vivo.current || n < atendida.current) return
+        atendida.current = n
         const veniaSinConexion = fallos.current >= 2
         fallos.current = 0
         if (veniaSinConexion) {
@@ -60,7 +66,8 @@ export function usarYo(token: string | null) {
         if (r) etag.current = r.etag
         programar(INTERVALO_MS)
       } catch (err) {
-        if (!vivo.current) return
+        if (!vivo.current || n < atendida.current) return
+        atendida.current = n
         const e = err instanceof ErrorApi ? err : new ErrorApi(0, 'SIN_RED', 'Sin conexión')
         if (esFatal(e)) {
           setEstado((s) => ({ ...s, fatal: e }))
@@ -86,6 +93,7 @@ export function usarYo(token: string | null) {
     vivo.current = true
     etag.current = null
     fallos.current = 0
+    atendida.current = pedidas.current
     setEstado({ yo: null, fatal: null, errorCarga: null, sinConexion: false, recuperada: false })
     if (token) void consultar(true)
     const alVolver = () => document.visibilityState === 'visible' && void consultar()

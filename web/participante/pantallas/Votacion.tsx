@@ -59,11 +59,13 @@ interface EnvioProps {
   codigo: string
   token: string
   onGuardado: (r: RespuestaVoto, proyecto: string) => void
-  /** Sin señal: el voto pasa a la cola del celular y se reenvía solo. */
+  /** Sin señal o con el servidor ocupado (429, 5xx): el voto pasa a la cola del celular y se reenvía solo. */
   onSinSenal: (voto: Omit<VotoEnCola, 'id' | 'participante_id'>) => void
+  /** Proyectos de esta ronda con un voto en la cola, todavía sin enviar. */
+  porEnviar?: string[]
   /** Espera el reenvío de la cola en curso antes del PUT. */
   esperarCola?: () => Promise<void>
-  /** 401: la página revisa la sesión y ofrece recuperarla (lo marcado queda en el borrador). */
+  /** 401: la página revisa la sesión y explica cómo entrar de nuevo (lo marcado queda en el borrador). */
   onSesionVencida: () => void
   marco: MarcoBase
 }
@@ -90,18 +92,18 @@ function usarEnvio({ yo, codigo, token, onGuardado, onSinSenal, onSesionVencida,
       onGuardado(r, proyecto.nombre)
     } catch (e) {
       const ea = e instanceof ErrorApi ? e : null
-      if (ea?.esRed || !ea) {
-        // Sin señal: queda en la cola del celular y se envía sola al volver la conexión.
+      if (!ea || ea.esRed || ea.status === 429 || ea.status >= 500) {
+        // Sin señal o el servidor no pudo atenderlo: queda en la cola del celular y la cola lo reintenta sola.
         onSinSenal({ proyecto_id: proyecto.id, nombre: proyecto.nombre, ronda, respuestas })
         return
       }
       if (ea.status === 401) {
-        setError('Tu sesión se cerró. Lo que marcaste está guardado en este celular. Recupera tu sesión y guarda de nuevo.')
+        setError('Tu sesión se cerró. Lo que marcaste está guardado en este celular. Pídele al facilitador que te dé acceso de nuevo y guarda otra vez.')
         onSesionVencida()
       } else if (ea.codigo === 'RESPUESTA_INVALIDA') setError('Una de las respuestas no es válida. Vuelve a elegir y guarda de nuevo.')
       else if (ea.codigo === 'RONDA_CERRADA') setError(`La ronda ${ronda} ya se cerró. Tu última calificación guardada es la que cuenta.`)
       else if (ea.codigo === 'RONDA_NO_ACTIVA') setError(`La ronda ${ronda} todavía no está abierta.`)
-      else setError('Algo falló de nuestro lado. Vuelve a intentarlo en unos segundos.')
+      else setError('No pudimos guardar tu calificación. Vuelve a intentarlo en unos segundos.')
     } finally {
       setGuardando(false)
     }
@@ -375,15 +377,26 @@ export function PreguntaGuiada(props: GuiadaProps) {
 }
 
 function RespuestaGuiada(props: GuiadaProps & { proyecto: ProyectoPortafolio; indice: number }) {
-  const { yo, codigo, proyecto, indice, marco, children } = props
+  const { yo, codigo, proyecto, indice, marco, children, porEnviar = [] } = props
   const ronda = yo.sala.ronda_actual
   const criterio = yo.criterios[indice]
   const total = yo.criterios.length
   const [respuestas, setRespuestas] = useState<Respuestas>(() => respuestasIniciales(yo, codigo, proyecto.id))
-  const { error, enviar } = usarEnvio(props, proyecto)
+  const { guardando, error, enviar } = usarEnvio(props, proyecto)
   const valor = respuestas[criterio.id] ?? null
   const respondidas = yo.criterios.filter((c) => respuestas[c.id]).length
-  const enviado = completas(yo, respuestas) && iguales(votoDe(yo, proyecto.id)?.respuestas, respuestas)
+  const listas = completas(yo, respuestas)
+  const enviado = listas && iguales(votoDe(yo, proyecto.id)?.respuestas, respuestas)
+  const enCola = porEnviar.includes(proyecto.id)
+  // El facilitador cambia de pregunta: el foco va al encabezado de la pregunta nueva, así el lector la anuncia
+  // («Pregunta 2 de 6: …») y no solo el nombre del proyecto, que no cambió.
+  const titulo = useRef<HTMLHeadingElement>(null)
+  const criterioAnterior = useRef(criterio.id)
+  useEffect(() => {
+    if (criterioAnterior.current === criterio.id) return
+    criterioAnterior.current = criterio.id
+    titulo.current?.focus()
+  }, [criterio.id])
 
   const elegir = (v: number) => {
     const nuevas = { ...respuestas, [criterio.id]: v }
@@ -393,18 +406,24 @@ function RespuestaGuiada(props: GuiadaProps & { proyecto: ProyectoPortafolio; in
   }
 
   return (
-    <Marco {...marco} claveFoco={`guiada-${proyecto.id}-${criterio.id}`}>
+    <Marco {...marco} claveFoco={`guiada-${proyecto.id}`}>
       <h1 className="hz-titulo">{proyecto.nombre}</h1>
       <FaseRonda ronda={ronda} />
-      {error && <Aviso tono="error">{error}</Aviso>}
-      <Pregunta yo={yo} proyecto={proyecto} indice={indice} valor={valor} onElegir={elegir} />
-      {valor !== null && (
-        <Aviso tono={enviado ? 'ok' : 'info'} titulo="Espera la siguiente pregunta del facilitador">
+      {error && (
+        <Aviso tono="error" accion={listas && !guardando ? { texto: 'Reintentar', onClick: () => void enviar(respuestas) } : undefined}>
+          {error}
+        </Aviso>
+      )}
+      <Pregunta yo={yo} proyecto={proyecto} indice={indice} valor={valor} onElegir={elegir} titulo={titulo} />
+      {valor !== null && !error && (
+        <Aviso tono={enviado ? 'ok' : enCola ? 'alerta' : 'info'} titulo="Espera la siguiente pregunta del facilitador">
           {enviado
             ? `Tus ${total} respuestas de ${proyecto.nombre} quedaron guardadas. Puedes cambiar esta mientras la ronda siga abierta.`
             : respondidas < total
               ? `Tu respuesta quedó en este celular. Enviamos tu calificación de ${proyecto.nombre} cuando respondas las ${total} preguntas (llevas ${respondidas}).`
-              : `Tus ${total} respuestas de ${proyecto.nombre} están listas. Las enviamos apenas haya señal.`}
+              : enCola
+                ? `Tus ${total} respuestas de ${proyecto.nombre} están guardadas en este celular y todavía no llegan. Las enviamos solas en cuanto se pueda.`
+                : `Enviando tus ${total} respuestas de ${proyecto.nombre}…`}
         </Aviso>
       )}
       <HojaPlegable yo={yo} proyectoId={proyecto.id} />
