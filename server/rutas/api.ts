@@ -232,7 +232,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     const a = adminDeSesion(db, req.cookies[COOKIE], ahora())
     if (!a) throw new ErrorApi(401, 'SESION_REQUERIDA', 'Inicia sesión para continuar.')
     if (a.debe_cambiar_clave && !LIBRES_CAMBIO.has(url)) {
-      throw new ErrorApi(403, 'CAMBIO_CLAVE_REQUERIDO', 'Antes de continuar cambia tu clave temporal.')
+      throw new ErrorApi(403, 'CAMBIO_CLAVE_REQUERIDO', 'Antes de continuar, cambia tu clave temporal.')
     }
     req.admin = a
   })
@@ -279,6 +279,9 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   })
 
   app.get<{ Params: { id: string } }>('/api/admin/salas/:id', async (req, reply) => {
+    // El panel consulta cada 2,5 s: si ya tiene esta versión, 304 sin armar el detalle (participantes, eventos, resumen).
+    const version = `v-${cargarSala(db, req.params.id).version}`
+    if (yaLaTiene(req, version)) return reply.header('ETag', `"${version}"`).header('Cache-Control', 'no-cache').code(304).send()
     const d = detalleSala(db, req.params.id, op.baseUrl)
     const zona = d.sala.config.zona_horaria
     const a = req.admin!
@@ -341,7 +344,8 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     const m = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ? OR codigo = ?', req.params.mesaId, req.params.mesaId.toUpperCase())
     if (!m) throw new ErrorApi(404, 'MESA_NO_EXISTE', 'Esa mesa no existe.')
     const url = urls(op.baseUrl, cargarSala(db, m.sala_id), m).url_participante!
-    const svg = await QRCode.toString(url, { type: 'svg', margin: 2, errorCorrectionLevel: 'M', color: { dark: '#1C4587', light: '#FFFFFF' } })
+    // Carbón de la familia Estratek (#141414) sobre blanco: máximo contraste para la cámara del celular.
+    const svg = await QRCode.toString(url, { type: 'svg', margin: 2, errorCorrectionLevel: 'M', color: { dark: '#141414', light: '#FFFFFF' } })
     return reply.type('image/svg+xml; charset=utf-8').header('Cache-Control', 'private, max-age=3600').send(svg)
   })
 

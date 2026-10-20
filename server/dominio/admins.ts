@@ -3,6 +3,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
+import { MENSAJE_USUARIO_ADMIN, usuarioAdminValido } from '../../shared/reglas/usuario.js'
 import { isoEnZona, isoUtc, sha256, tokenAleatorio } from './util.js'
 
 export interface AdminFila {
@@ -46,8 +47,6 @@ export const adminPublico = (a: AdminFila) => ({
   creado_at: isoEnZona(a.creado_at),
 })
 
-const RE_USUARIO = /^[a-z0-9._-]{3,60}$/
-
 function validarClave(clave: unknown): string {
   if (typeof clave !== 'string' || clave.length < LARGO_MINIMO_CLAVE || clave.length > 200) {
     throw new ErrorApi(422, 'CLAVE_INVALIDA', `La clave debe tener al menos ${LARGO_MINIMO_CLAVE} caracteres.`)
@@ -70,6 +69,29 @@ export function asegurarSuperadmin(db: Db, usuario: string, clave: string, ahora
     isoUtc(ahora),
   )
   return 'creado'
+}
+
+/**
+ * Restablece la cuenta superadministradora con la clave del entorno (QA de la CTO, 20-oct: si Paola pierde su clave no hay
+ * otra cuenta que pueda restablecerla desde el panel). Si no existe, la crea; si existe, le pone esa clave, la activa,
+ * no le pide cambiarla (la eligió quien corre el script) y cierra todas sus sesiones. Un usuario `admin` con ese
+ * nombre no se promueve: 409.
+ */
+export function restablecerSuperadmin(db: Db, usuario: string, clave: string, ahora: number): 'creado' | 'restablecido' {
+  const u = usuario.trim().toLowerCase()
+  if (!u) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Falta el usuario de la cuenta superadministradora (SUPERADMIN_USUARIO o --usuario).')
+  const c = validarClave(clave)
+  return transaccion(db, () => {
+    const a = uno<AdminFila>(db, 'SELECT * FROM admins WHERE usuario = ?', u)
+    if (!a) {
+      asegurarSuperadmin(db, u, c, ahora)
+      return 'creado'
+    }
+    if (a.rol !== 'superadmin') throw new ErrorApi(409, 'OPERACION_INVALIDA', `El usuario "${u}" es un administrador, no la cuenta superadministradora. No se cambió nada.`)
+    ejecutar(db, 'UPDATE admins SET clave_hash = ?, activo = 1, debe_cambiar_clave = 0 WHERE id = ?', hashClave(c), a.id)
+    ejecutar(db, 'DELETE FROM sesiones_admin WHERE admin_id = ?', a.id)
+    return 'restablecido'
+  })
 }
 
 // Hash ficticio para que un usuario inexistente tarde lo mismo que uno real (sin enumeración por tiempo).
@@ -117,7 +139,7 @@ export function cambiarClave(db: Db, a: AdminFila, actual: unknown, nueva: unkno
 // --- Gestión de administradores (solo superadmin) ------------------------------------
 
 export function exigirSuperadmin(a: AdminFila) {
-  if (a.rol !== 'superadmin') throw new ErrorApi(403, 'SOLO_SUPERADMIN', 'Solo la superadministradora puede gestionar administradores.')
+  if (a.rol !== 'superadmin') throw new ErrorApi(403, 'SOLO_SUPERADMIN', 'Solo la cuenta superadministradora puede gestionar administradores.')
 }
 
 export function listarAdmins(db: Db) {
@@ -136,7 +158,7 @@ export function crearAdmin(db: Db, por: AdminFila, d: DatosAdmin, ahora: number)
   const usuario = typeof d.usuario === 'string' ? d.usuario.trim().toLowerCase() : ''
   const nombre = typeof d.nombre === 'string' ? d.nombre.trim() : ''
   const correo = typeof d.correo === 'string' && d.correo.trim() ? d.correo.trim().toLowerCase() : null
-  if (!RE_USUARIO.test(usuario)) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'El usuario debe tener entre 3 y 60 caracteres: letras minúsculas, números, punto, guion o guion bajo.')
+  if (!usuarioAdminValido(usuario)) throw new ErrorApi(422, 'DATOS_INVALIDOS', MENSAJE_USUARIO_ADMIN)
   if (!nombre || nombre.length > 120) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Escribe el nombre del administrador.')
   const clave = validarClave(d.clave_temporal)
   return transaccion(db, () => {

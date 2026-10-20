@@ -81,6 +81,19 @@ const NOMBRE_ESTADO: Record<EstadoSala, string> = {
   cerrada: 'cerrada',
 }
 
+/** Cómo se nombra cada acción en un mensaje: con artículo y tildes («No se puede abrir la inscripción: …»). */
+const NOMBRE_ACCION: Record<Accion, string> = {
+  abrir_inscripcion: 'abrir la inscripción',
+  abrir_ronda_1: 'abrir la ronda 1',
+  cerrar_ronda_1: 'cerrar la ronda 1',
+  abrir_ronda_2: 'abrir la ronda 2',
+  cerrar_ronda_2: 'cerrar la ronda 2',
+  reabrir_ronda: 'reabrir la ronda',
+  reiniciar_ronda: 'reiniciar la ronda',
+  cerrar_sala: 'cerrar la sala',
+  reabrir_sala: 'reabrir la sala',
+}
+
 export interface OpcionesAccion {
   /** Solo para reiniciar_ronda: qué ronda reiniciar (por defecto la actual). Llega del cuerpo sin validar. */
   ronda?: unknown
@@ -110,7 +123,7 @@ export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: num
     }
     const t = TRANSICIONES[accion as Exclude<Accion, 'reiniciar_ronda'>]
     if (!t.desde.includes(s.estado)) {
-      throw new ErrorApi(409, 'TRANSICION_INVALIDA', `No se puede ${accion.replace(/_/g, ' ')}: la sala está ${NOMBRE_ESTADO[s.estado]}.`)
+      throw new ErrorApi(409, 'TRANSICION_INVALIDA', `No se puede ${NOMBRE_ACCION[accion as Accion]}: la sala está ${NOMBRE_ESTADO[s.estado]}.`)
     }
     const hacia = typeof t.hacia === 'function' ? t.hacia(s) : t.hacia
     // D2: al reabrir una ronda, la foto de partida es el resultado exacto que se mostró con la ronda cerrada; si no,
