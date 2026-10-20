@@ -39,7 +39,7 @@ Formato para nuevas entradas: `- AAAA-MM-DD [Área|Paola] decisión — razón`.
 - Un correo = una inscripción por sala; si la persona vuelve a entrar con el mismo correo, recupera su sesión.
 
 ## Registro por área
-- 2026-10-16 [Celular] El participante usa tema claro (fondo blanco, tinta `#0F2340`, acción `#1C4587`), no el tema oscuro del IRMI: la identidad de Horizontes en CLAUDE.md pide azules claros como el deck y el celular se usa con luz de salón.
+- 2026-10-16 [Celular] El participante usa tema claro (fondo blanco, tinta `#0F2340`, acción `#1C4587`), no el tema oscuro del IRMI: la identidad de Horizontes (reglas del proyecto, hoy en `CONTRIBUTING.md`) pide azules claros como el deck y el celular se usa con luz de salón.
 - 2026-10-16 [Celular] Firma visual única: arco de horizonte (cuarto de círculo con radio proporcional al valor 1 a 9) en cada opción de la rúbrica, coherente con las curvas H1/H2 de la matriz. Todo lo demás sobrio.
 - 2026-10-16 [Celular] Textos de la app en tuteo (como el IRMI, D-113). Sin rayas.
 - 2026-10-16 [Celular] Componentes base en React + TypeScript sin dependencias de UI externas (mismo stack del IRMI). Si el servidor fija otro framework, se portan; los tokens CSS no cambian.

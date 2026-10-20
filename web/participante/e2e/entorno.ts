@@ -17,7 +17,7 @@ const CLAVE = 'clave-e2e-participante'
 
 /**
  * Navegador de Playwright instalado (misma revisión que playwright-core). Para Chromium también vale PW_EXE.
- * Con HZ_E2E=0 se omite, como el e2e del tablero: las pruebas en navegador se corren una sola vez con el candado.
+ * Con HZ_E2E=0 se omite, como el e2e del tablero: las pruebas en navegador cargan la máquina y se corren aparte.
  */
 export function hayNavegador(motor: Motor): boolean {
   if (process.env.HZ_E2E === '0') return false
