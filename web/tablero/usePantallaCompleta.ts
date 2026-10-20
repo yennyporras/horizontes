@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Vista } from './tipos'
-import type { AccionZoom } from './zoom'
 
 /** true si la tecla viene de un campo editable (no se interceptan atajos ahí). */
 function enCampo(e: KeyboardEvent): boolean {
@@ -14,23 +13,9 @@ export type AccionTecla =
   | { tipo: 'pantalla' }
   | { tipo: 'detalle' }
   | { tipo: 'vista'; vista: Vista }
-  | { tipo: 'zoom'; zoom: AccionZoom }
   | { tipo: 'matriz'; sola: boolean | null }
 
-const TECLAS_ZOOM: Record<string, AccionZoom> = {
-  '+': 'acercar',
-  '=': 'acercar',
-  '-': 'alejar',
-  '0': 'ver_todo',
-  arrowleft: 'izquierda',
-  arrowright: 'derecha',
-  arrowup: 'arriba',
-  arrowdown: 'abajo',
-}
-
 export function accionDeTecla(tecla: string): AccionTecla | null {
-  const zoom = TECLAS_ZOOM[tecla.toLowerCase()]
-  if (zoom) return { tipo: 'zoom', zoom }
   switch (tecla.toLowerCase()) {
     case 'f':
       return { tipo: 'pantalla' }
@@ -38,6 +23,9 @@ export function accionDeTecla(tecla: string): AccionTecla | null {
       return { tipo: 'detalle' }
     case 'm':
       return { tipo: 'matriz', sola: null }
+    case 'v':
+      return { tipo: 'matriz', sola: true }
+    case 't':
     case 'escape':
       return { tipo: 'matriz', sola: false }
     case '1':
@@ -52,39 +40,44 @@ export function accionDeTecla(tecla: string): AccionTecla | null {
 }
 
 export interface AtajosTablero {
+  /** Lo que se pone en pantalla completa: la página del tablero en el modo elegido (null mientras carga). */
+  elemento: HTMLElement | null
   onVista: (v: Vista) => void
   onDetalle: () => void
-  /** Devuelve false si no cambió nada: así una flecha sin zoom sigue desplazando la página. */
-  onZoom: (a: AccionZoom) => boolean
-  /** M alterna la matriz sola y la vista con datos (null); Esc vuelve a los datos (false). */
+  /** M alterna los modos «En vivo» (true) y «Con tabla» (false); V y T eligen uno; Esc vuelve a la tabla. */
   onMatriz: (sola: boolean | null) => void
 }
 
 /**
- * Modo proyector: F alterna pantalla completa; 1, 2 y C cambian de vista; D alterna promedios y «Cómo votó»;
- * M muestra la matriz sola o con datos y Esc vuelve a los datos; +, − y 0 acercan, alejan y vuelven a
- * ver toda la matriz, y las flechas la mueven con zoom.
- * Si el navegador no permite la API de pantalla completa, F igual oculta los controles.
+ * Modo proyector: F o el botón «Pantalla completa» ponen el tablero, en el modo elegido («En vivo»: solo la
+ * matriz; «Con tabla»: matriz y tabla), en la pantalla completa del navegador sin los controles del
+ * encabezado; F, Esc o el mismo botón salen. 1, 2 y C cambian de vista; V, T y M de modo; D alterna
+ * promedios y «Cómo votó». Si el navegador no deja usar la API, igual se ocultan los controles
+ * (`activa` sigue siendo true) y Esc lo cierra.
  */
-export function usePantallaCompleta({ onVista, onDetalle, onZoom, onMatriz }: AtajosTablero) {
-  const [activa, setActiva] = useState(false)
+export function usePantallaCompleta({ elemento, onVista, onDetalle, onMatriz }: AtajosTablero) {
+  const [real, setReal] = useState(false)
+  const [respaldo, setRespaldo] = useState(false)
+  const activa = real || respaldo
+  const activaRef = useRef(activa)
+  activaRef.current = activa
+  const elementoRef = useRef(elemento)
+  elementoRef.current = elemento
 
-  const alternar = useCallback(() => {
-    const doc = document as Document & { fullscreenElement?: Element | null }
-    if (doc.fullscreenElement) {
-      doc.exitFullscreen?.().catch(() => setActiva(false))
-      return
-    }
-    const el = document.documentElement
-    if (typeof el.requestFullscreen === 'function') {
-      el.requestFullscreen().catch(() => setActiva((a) => !a))
-    } else {
-      setActiva((a) => !a)
-    }
+  const salir = useCallback(() => {
+    setRespaldo(false)
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => setReal(false))
   }, [])
 
+  const alternar = useCallback(() => {
+    if (activaRef.current) return salir()
+    const el = elementoRef.current ?? document.documentElement
+    if (typeof el.requestFullscreen === 'function') el.requestFullscreen().catch(() => setRespaldo(true))
+    else setRespaldo(true)
+  }, [salir])
+
   useEffect(() => {
-    const cambio = () => setActiva(!!document.fullscreenElement)
+    const cambio = () => setReal(!!document.fullscreenElement)
     document.addEventListener('fullscreenchange', cambio)
     return () => document.removeEventListener('fullscreenchange', cambio)
   }, [])
@@ -94,19 +87,17 @@ export function usePantallaCompleta({ onVista, onDetalle, onZoom, onMatriz }: At
       if (e.ctrlKey || e.metaKey || e.altKey || enCampo(e)) return
       const a = accionDeTecla(e.key)
       if (!a) return
-      if (a.tipo === 'zoom') {
-        if (onZoom(a.zoom)) e.preventDefault()
-        return
-      }
       e.preventDefault()
+      // En pantalla completa, Esc solo sale de ella (no cambia de modo).
+      if (e.key === 'Escape' && activaRef.current) return salir()
       if (a.tipo === 'pantalla') alternar()
+      else if (a.tipo === 'vista') onVista(a.vista)
       else if (a.tipo === 'detalle') onDetalle()
-      else if (a.tipo === 'matriz') onMatriz(a.sola)
-      else onVista(a.vista)
+      else onMatriz(a.sola)
     }
     window.addEventListener('keydown', tecla)
     return () => window.removeEventListener('keydown', tecla)
-  }, [alternar, onVista, onDetalle, onZoom, onMatriz])
+  }, [alternar, salir, onVista, onDetalle, onMatriz])
 
-  return { activa, alternar }
+  return { activa, alternar, salir }
 }

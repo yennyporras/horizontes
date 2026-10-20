@@ -31,17 +31,68 @@ export function bajoMinimoEnRonda(datos: DatosTablero | null | undefined, n: num
   return (datos?.proyectos_vivos ?? []).some((v) => !!rondaDe(v, n)?.bajo_minimo)
 }
 
-/** «Hace falta al menos 3 votos para mostrar esta mesa» (alcance mesa) o «… estos resultados» (sala). */
+/** «Hacen falta al menos 3 votos» (F-12: concordancia; con 1, «Hace falta al menos 1 voto»). */
+export function faltanVotos(minimo: number): string {
+  return minimo === 1 ? 'Hace falta al menos 1 voto' : `Hacen falta al menos ${minimo} votos`
+}
+
+/** «Hacen falta al menos 3 votos para mostrar esta mesa» (alcance mesa) o «… estos resultados» (sala). */
 export function mensajeMinimo(datos: DatosTablero | null | undefined): string {
   const que = datos?.alcance?.tipo === 'mesa' ? 'esta mesa' : 'estos resultados'
-  return `Hace falta al menos ${datos?.minimo_votos ?? MINIMO_VOTOS} votos para mostrar ${que}`
+  return `${faltanVotos(datos?.minimo_votos ?? MINIMO_VOTOS)} para mostrar ${que}`
+}
+
+/**
+ * D2 (20-oct): con la ronda abierta el servidor publica una foto del consolidado que se renueva cuando hay
+ * 3 o más votos nuevos; al cerrar la ronda, el resultado exacto. El tablero lo dice así, sin prometer cada voto.
+ */
+export const VOTOS_POR_FOTO = 3
+
+/** Ronda abierta en este momento (1 o 2), o null. */
+export function rondaEnCurso(estado: EstadoSala | undefined): 1 | 2 | null {
+  return estado === 'r1_abierta' ? 1 : estado === 'r2_abierta' ? 2 : null
+}
+
+/**
+ * Modo de proyección (pedido de Nicolai, 20-oct), en la URL como `?modo=vivo|tabla`: «vivo» es solo la matriz
+ * (por defecto), «tabla» la matriz con los promedios por criterio y «Cómo votó». Cualquier otro valor, vivo.
+ */
+export type ModoTablero = 'vivo' | 'tabla'
+export const PARAMETRO_MODO = 'modo'
+export function modoDeUrl(valor: string | null | undefined): ModoTablero {
+  return valor === 'tabla' ? 'tabla' : 'vivo'
+}
+
+/**
+ * Indicador discreto de votos recibidos: «14 de 20 votaron» en la ronda en curso (o la última), del progreso
+ * en vivo; en el alcance de una mesa, el de esa mesa. null sin ronda o sin inscritos.
+ */
+export function votosRecibidos(datos: DatosTablero | null | undefined): string | null {
+  const p = datos?.progreso
+  if (!p || !datos?.sala?.ronda_actual) return null
+  const m = datos.alcance?.tipo === 'mesa' ? p.por_mesa?.find((x) => x.mesa_id === datos.alcance.mesa_id) : null
+  const { inscritos, completos } = m ?? p
+  if (!inscritos) return null
+  return `${Math.min(completos, inscritos)} de ${inscritos} votaron`
+}
+
+/** Texto visible de la insignia «En vivo» y su explicación (title). */
+export const EN_VIVO = {
+  texto: `En vivo, cada ${VOTOS_POR_FOTO} votos`,
+  titulo: `La ronda sigue abierta: el resultado se actualiza cada ${VOTOS_POR_FOTO} votos nuevos y queda exacto al cerrarla.`,
 }
 
 /** Texto del estado vacío para la vista elegida, o null si hay algo que dibujar. */
 export function mensajeVacio(datos: DatosTablero | null | undefined, vista: Vista): string | null {
   const r1 = hayVotosEnRonda(datos, 1)
   const r2 = hayVotosEnRonda(datos, 2)
-  const sinRonda = (n: 1 | 2) => (bajoMinimoEnRonda(datos, n) ? mensajeMinimo(datos) : `Aún no hay votos en la ronda ${n}`)
+  // Con la ronda abierta lo que llega es la última foto (D2): puede haber votos que aún no se ven.
+  const sinRonda = (n: 1 | 2) =>
+    bajoMinimoEnRonda(datos, n)
+      ? mensajeMinimo(datos)
+      : rondaEnCurso(datos?.sala?.estado) === n
+        ? `Aún no hay resultados en la ronda ${n}. Se actualizan cada ${VOTOS_POR_FOTO} votos nuevos`
+        : `Aún no hay votos en la ronda ${n}`
   if (vista === 1) return r1 ? null : sinRonda(1)
   if (vista === 2) return r2 ? null : sinRonda(2)
   if (!r1 && !r2) return sinRonda(1)
@@ -79,6 +130,24 @@ export function delta(r1: number | null | undefined, r2: number | null | undefin
 export function rondaAbierta(estado: EstadoSala | undefined): boolean {
   return estado === 'r1_abierta' || estado === 'r2_abierta'
 }
+
+/**
+ * Conteo de una mesa para la ronda que se ve (QA-T-04): «R1: 2 de 2» o, en Comparación, «R1: 2 de 2 · R2: 0 de 2».
+ * La ronda en curso usa el progreso (en vivo); una ronda cerrada, cuántos votaron los dos proyectos (n_votos
+ * mínimo entre los vivos, exacto tras el cierre). Sin la respuesta de la mesa, el progreso de la ronda en curso.
+ */
+export function conteoMesa(datos: DatosTablero | null | undefined, mesa: { inscritos: number; completos: number }, vista: Vista): string {
+  const enCurso = rondaEnCurso(datos?.sala?.estado)
+  const rondas: (1 | 2)[] = vista === 'comparacion' ? (mostrarR2Datos(datos) ? [1, 2] : [1]) : [vista]
+  if (!datos) return `${mesa.completos} de ${mesa.inscritos}`
+  return rondas
+    .map((n) => {
+      const votaron = enCurso === n ? mesa.completos : Math.min(...datos.proyectos_vivos.map((v) => rondaDe(v, n)?.n_votos ?? 0))
+      return `R${n}: ${Number.isFinite(votaron) ? votaron : 0} de ${mesa.inscritos}`
+    })
+    .join(' · ')
+}
+const mostrarR2Datos = (d: DatosTablero | null | undefined) => !!d && mostrarR2(d)
 
 /** Avisos de precierre visibles en el tablero ("Mesa 2: todos votaron"). */
 export function avisosPrecierre(datos: DatosTablero | null | undefined): { id: string; texto: string }[] {
@@ -167,6 +236,8 @@ const MENSAJES_STATUS: Record<number, string> = {
   403: SIN_PERMISO,
   404: 'No encontramos esta sala. Revisa el enlace del tablero.',
 }
+/** QA-T-05: la sala existe pero la mesa del enlace no (404 `MESA_NO_EXISTE`). */
+const MESA_NO_EXISTE = 'No encontramos esta mesa en la sala. Revisa el enlace del tablero.'
 
 /** 401 o 403: el enlace no tiene permiso y reintentar no lo arregla, así que se deja de consultar. */
 export function esSinPermiso(status: number): boolean {
@@ -202,6 +273,7 @@ export async function pedirTablero(
     } catch {
       /* cuerpo vacío o no JSON */
     }
+    if (res.status === 404 && codigo === 'MESA_NO_EXISTE') mensaje = MESA_NO_EXISTE
     return { tipo: 'error', status: res.status, codigo, mensaje }
   }
   let datos: DatosTablero

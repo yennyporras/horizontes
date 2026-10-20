@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import mockJson from '../../mocks/GET_api_tablero.json'
 import PaginaTablero from './PaginaTablero'
 import type { DatosTablero } from './tipos'
@@ -10,17 +10,34 @@ import type { DatosTablero } from './tipos'
 const mock = structuredClone(mockJson) as unknown as DatosTablero
 mock.sala.pregunta_guiada = null
 
-/** Por defecto el tablero muestra solo la matriz (preentrega del 19-oct); M abre los datos. */
+/** Por defecto el tablero va en el modo «En vivo» (solo la matriz); T abre el modo «Con tabla». */
 async function verDatos() {
-  fireEvent.keyDown(window, { key: 'm' })
+  fireEvent.keyDown(window, { key: 't' })
   await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
 }
+
+/** La URL actual, para ver que el modo queda en ?modo=. */
+function Ubicacion() {
+  const l = useLocation()
+  return <output data-testid="url">{l.search}</output>
+}
+const modoEnUrl = () => new URLSearchParams(screen.getByTestId('url').textContent ?? '').get('modo')
+/** Botones de la vista (Ronda 1, Ronda 2, Comparación): el grupo tiene su nombre. */
+const vistaPulsada = () => document.querySelector('[aria-label="Vista de la matriz"] [aria-pressed="true"]')?.textContent
 
 function montar(ruta: string) {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
       <Routes>
-        <Route path="/tablero/:sala/*" element={<PaginaTablero />} />
+        <Route
+          path="/tablero/:sala/*"
+          element={
+            <>
+              <PaginaTablero />
+              <Ubicacion />
+            </>
+          }
+        />
       </Routes>
     </MemoryRouter>,
   )
@@ -57,49 +74,84 @@ describe('PaginaTablero', () => {
     expect(firma.querySelector('.hz-firma-flecha')!.getAttribute('aria-hidden')).toBe('true')
   })
 
-  test('por defecto solo la matriz; clic en ella, el botón, M o Esc alternan con los datos', async () => {
+  test('dos modos de proyección: «En vivo» (por defecto, solo la matriz) y «Con tabla», en ?modo=, con selector y teclas V, T, M y Esc', async () => {
     montar('/tablero/s_demo?t=tok')
     await screen.findByRole('heading', { name: mock.sala.nombre })
-    expect(document.querySelector('main')!.className).toContain('hz-matriz-sola')
+    const main = document.querySelector('main')!
+    expect(main.className).toContain('hz-matriz-sola')
+    expect(main.dataset.modo).toBe('vivo')
     expect(document.querySelector('.hz-lateral')).toBeNull()
     expect(document.querySelector('.hz-comparada, .hz-panel')).toBeNull()
-    // Clic (sin arrastre) sobre la matriz: aparecen los datos; otro clic, de nuevo sola.
-    const lienzo = document.querySelector('.hz-lienzo')!
-    // jsdom no trae PointerEvent: un MouseEvent con pointerId hace de puntero.
-    const puntero = (tipo: string, x: number, y: number) =>
-      act(() => {
-        const ev = new MouseEvent(tipo, { bubbles: true, button: 0, clientX: x, clientY: y })
-        Object.defineProperty(ev, 'pointerId', { value: 1 })
-        lienzo.dispatchEvent(ev)
-      })
-    const clic = () => {
-      puntero('pointerdown', 100, 100)
-      puntero('pointerup', 101, 100)
-    }
-    clic()
-    expect(document.querySelector('.hz-lateral')).toBeTruthy()
-    expect(document.querySelector('main')!.className).not.toContain('hz-matriz-sola')
-    clic()
-    expect(document.querySelector('.hz-lateral')).toBeNull()
-    // Un arrastre no cuenta como clic.
-    puntero('pointerdown', 100, 100)
-    puntero('pointermove', 160, 130)
-    puntero('pointerup', 160, 130)
-    expect(document.querySelector('.hz-lateral')).toBeNull()
-    // Botón accesible y teclas M y Esc.
-    fireEvent.click(screen.getByRole('button', { name: 'Ver datos M' }))
-    expect(document.querySelector('.hz-lateral')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Solo la matriz M' }))
-    expect(document.querySelector('.hz-lateral')).toBeNull()
+    const selector = screen.getByRole('group', { name: 'Modo de proyección' })
+    expect(within(selector).getByRole('button', { name: 'En vivo' }).getAttribute('aria-pressed')).toBe('true')
+    expect(within(selector).getByRole('button', { name: 'Con tabla' }).getAttribute('aria-keyshortcuts')).toBe('T')
+    // Selector: «Con tabla» trae la tabla y queda en la URL.
+    fireEvent.click(within(selector).getByRole('button', { name: 'Con tabla' }))
+    await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
+    expect(modoEnUrl()).toBe('tabla')
+    expect(main.dataset.modo).toBe('tabla')
+    fireEvent.click(within(selector).getByRole('button', { name: 'En vivo' }))
+    await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeNull())
+    expect(modoEnUrl()).toBe('vivo')
+    // Teclas: T y V eligen; M alterna; Esc vuelve a la tabla.
+    fireEvent.keyDown(window, { key: 't' })
+    await waitFor(() => expect(modoEnUrl()).toBe('tabla'))
+    fireEvent.keyDown(window, { key: 'v' })
+    await waitFor(() => expect(modoEnUrl()).toBe('vivo'))
     fireEvent.keyDown(window, { key: 'm' })
-    expect(document.querySelector('.hz-lateral')).toBeTruthy()
+    await waitFor(() => expect(modoEnUrl()).toBe('tabla'))
     fireEvent.keyDown(window, { key: 'm' })
+    await waitFor(() => expect(modoEnUrl()).toBe('vivo'))
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(document.querySelector('.hz-lateral')).toBeTruthy()
-    // D desde la matriz sola abre los datos en «Cómo votó» (para el facilitador).
-    fireEvent.keyDown(window, { key: 'm' })
+    await waitFor(() => expect(modoEnUrl()).toBe('tabla'))
+    // Clic en la matriz (sin arrastre) alterna; un arrastre no cuenta como clic.
+    fireEvent.keyDown(window, { key: 'v' })
+    await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeNull())
+    const lienzo = document.querySelector('.hz-lienzo')!
+    // jsdom no trae PointerEvent: un MouseEvent llamado pointerdown hace de puntero.
+    const bajar = (x: number, y: number) => act(() => void lienzo.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: x, clientY: y })))
+    bajar(100, 100)
+    fireEvent.click(lienzo, { clientX: 160, clientY: 130 })
+    expect(document.querySelector('.hz-lateral')).toBeNull()
+    bajar(100, 100)
+    fireEvent.click(lienzo, { clientX: 101, clientY: 100 })
+    await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
+    // D desde el modo en vivo abre la tabla en «Cómo votó» (para el facilitador).
+    fireEvent.keyDown(window, { key: 'v' })
     fireEvent.keyDown(window, { key: 'd' })
     expect(await screen.findByRole('heading', { name: 'Cómo votó la mesa' })).toBeTruthy()
+    // QA-T-07: volver a abrir la tabla con clic, M o T la abre en «Promedios», no en la última pestaña.
+    fireEvent.keyDown(window, { key: 'v' })
+    fireEvent.keyDown(window, { key: 'm' })
+    await waitFor(() => expect(document.querySelector('.hz-comparada')).toBeTruthy())
+    expect(screen.queryByRole('heading', { name: 'Cómo votó la mesa' })).toBeNull()
+  })
+
+  test('?modo=tabla abre directo la tabla; cualquier otro valor, en vivo', async () => {
+    montar('/tablero/s_demo?t=tok&modo=tabla')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    expect(document.querySelector('.hz-lateral')).toBeTruthy()
+    expect(document.querySelector('.hz-comparada')).toBeTruthy()
+    cleanup()
+    montar('/tablero/s_demo?t=tok&modo=otro')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    expect(document.querySelector('.hz-lateral')).toBeNull()
+  })
+
+  test('modo en vivo: la matriz con firma, sala, ronda y votos recibidos; la explicación breve en el pie; sin tabla', async () => {
+    montar('/tablero/s_demo?t=tok')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    const meta = document.querySelector('.hz-cab-meta')!.textContent!
+    expect(meta).toContain('Ronda 2 abierta')
+    expect(document.querySelector('.hz-cab-votos')!.textContent).toBe('7 de 7 votaron')
+    // D2: la insignia dice que el resultado llega de 3 en 3 votos.
+    const vivo = document.querySelector('.hz-insignia-vivo, .hz-insignia-alerta')
+    expect(vivo).toBeTruthy()
+    const texto = document.querySelector('.hz-explica-breve')!.textContent!
+    expect(texto).toBe('Eje X: qué tan lejos está del mercado. Eje Y: qué tan lejos está del core. 1 es cerca; 9, lejos.')
+    expect(texto).not.toMatch(/—|%|peso|Total/)
+    expect(screen.getByRole('button', { name: 'Pantalla completa F' })).toBeTruthy()
+    expect(document.querySelector('.hz-comparada, .hz-cv, .hz-progreso')).toBeNull()
   })
 
   test('muestra matriz, paneles, progreso y aviso de precierre', async () => {
@@ -156,23 +208,71 @@ describe('PaginaTablero', () => {
     expect(document.querySelector('.hz-franja')).toBeNull()
   })
 
-  test('atajos: C, 1 y 2 cambian la vista; F oculta los controles', async () => {
+  test('atajos: C, 1 y 2 cambian la vista; F y el botón ponen la pantalla completa en el modo elegido; Esc o F salen', async () => {
     montar('/tablero/s_demo?t=tok')
     await screen.findByRole('heading', { name: mock.sala.nombre })
-    const pulsado = () => document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent
     fireEvent.keyDown(window, { key: 'c' })
-    await waitFor(() => expect(pulsado()).toBe('Comparación'))
+    await waitFor(() => expect(vistaPulsada()).toBe('Comparación'))
     await waitFor(() => expect(document.querySelectorAll('.hz-flecha').length).toBe(2))
     fireEvent.keyDown(window, { key: '1' })
-    await waitFor(() => expect(pulsado()).toBe('Ronda 1'))
+    await waitFor(() => expect(vistaPulsada()).toBe('Ronda 1'))
     // dentro del selector de alcance no se interceptan teclas
     fireEvent.keyDown(screen.getByRole('combobox'), { key: '2' })
-    await waitFor(() => expect(pulsado()).toBe('Ronda 1'))
-    // jsdom no tiene requestFullscreen: F igual activa el modo sin controles
+    await waitFor(() => expect(vistaPulsada()).toBe('Ronda 1'))
+    // jsdom no tiene requestFullscreen: F igual quita los controles del encabezado.
+    const main = document.querySelector('main')!
     fireEvent.keyDown(window, { key: 'f' })
-    await waitFor(() => expect(document.querySelector('main')?.className).toContain('hz-pantalla-completa'))
-    fireEvent.keyDown(window, { key: 'F' })
-    await waitFor(() => expect(document.querySelector('main')?.className).not.toContain('hz-pantalla-completa'))
+    await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
+    expect(document.querySelector('.hz-cab-vista')!.textContent).toBe('Ronda 1')
+    expect(screen.getByRole('button', { name: 'Salir de pantalla completa F' })).toBeTruthy()
+    // En pantalla completa, Esc solo sale (no cambia de modo).
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(main.className).not.toContain('hz-pantalla-completa'))
+    expect(main.dataset.modo).toBe('vivo')
+    // En el modo con tabla, la pantalla completa lleva la tabla; el botón entra y sale.
+    fireEvent.keyDown(window, { key: 't' })
+    await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Pantalla completa F' }))
+    await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
+    expect(document.querySelector('.hz-lateral')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Salir de pantalla completa F' }))
+    await waitFor(() => expect(main.className).not.toContain('hz-pantalla-completa'))
+  })
+
+  test('pantalla completa con la API del navegador: sobre el tablero, y sin zoom por porcentaje', async () => {
+    const pedir = vi.fn(function (this: HTMLElement) {
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: this })
+      document.dispatchEvent(new Event('fullscreenchange'))
+      return Promise.resolve()
+    })
+    const salir = vi.fn(() => {
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null })
+      document.dispatchEvent(new Event('fullscreenchange'))
+      return Promise.resolve()
+    })
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', { configurable: true, value: pedir })
+    Object.defineProperty(document, 'exitFullscreen', { configurable: true, value: salir })
+    try {
+      montar('/tablero/s_demo?t=tok')
+      await screen.findByRole('heading', { name: mock.sala.nombre })
+      fireEvent.keyDown(window, { key: 'f' })
+      await waitFor(() => expect(pedir).toHaveBeenCalledTimes(1))
+      expect(pedir.mock.contexts[0]).toBe(document.querySelector('main'))
+      await waitFor(() => expect(document.querySelector('main')!.className).toContain('hz-pantalla-completa'))
+      fireEvent.keyDown(window, { key: 'f' })
+      await waitFor(() => expect(salir).toHaveBeenCalledTimes(1))
+      await waitFor(() => expect(document.querySelector('main')!.className).not.toContain('hz-pantalla-completa'))
+      // Pedido de Paola (20-oct): sin controles de zoom ni teclas +, − y 0.
+      expect(screen.queryByRole('group', { name: 'Zoom de la matriz' })).toBeNull()
+      const svg = document.querySelector('svg.hz-matriz')!
+      const caja = svg.getAttribute('viewBox')
+      for (const key of ['+', '-', '0']) fireEvent.keyDown(window, { key })
+      expect(svg.getAttribute('viewBox')).toBe(caja)
+    } finally {
+      delete (HTMLElement.prototype as { requestFullscreen?: unknown }).requestFullscreen
+      delete (document as { exitFullscreen?: unknown }).exitFullscreen
+      delete (document as { fullscreenElement?: unknown }).fullscreenElement
+    }
   })
 
   test('«Cómo votó»: el botón o la tecla D cambian la tabla por el conteo 1-3-5-7-9, sin tapar la matriz', async () => {
@@ -207,7 +307,11 @@ describe('PaginaTablero', () => {
     expect(screen.getByRole('combobox')).toBe(select)
     expect(screen.queryByText('Cargando el tablero…')).toBeNull()
     await waitFor(() => expect(llamadas.at(-1)).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m2&t=tok'))
-    expect(document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent).toBe('Comparación')
+    expect(vistaPulsada()).toBe('Comparación')
+    // QA-T-04: al pasar a todas las mesas no queda la mesa anterior en la URL.
+    fireEvent.change(select, { target: { value: 'mesas' } })
+    await waitFor(() => expect(new URLSearchParams(screen.getByTestId('url').textContent!).get('vista')).toBe('mesas'))
+    expect(new URLSearchParams(screen.getByTestId('url').textContent!).get('mesa')).toBeNull()
   })
 
   test('todas las mesas: una matriz por mesa con inscritos, solo con token', async () => {
@@ -217,60 +321,13 @@ describe('PaginaTablero', () => {
     await waitFor(() => expect(document.querySelectorAll('svg.hz-matriz').length).toBe(3))
     expect(llamadas[0]).toBe('/api/tablero/s_demo?alcance=sala&t=tok')
     await waitFor(() => expect(llamadas).toContain('/api/tablero/s_demo?alcance=mesa&mesa=m2&t=tok'))
-    expect(screen.getByText('7 de 7, todos votaron')).toBeTruthy()
+    // QA-T-04: el conteo dice de qué ronda es (la de la vista; en la ronda en curso, el progreso en vivo).
+    expect(screen.getByText('R2: 7 de 7, todos votaron')).toBeTruthy()
     cleanup()
     llamadas.length = 0
     montar('/tablero/s_demo?vista=mesas')
     await screen.findByRole('heading', { name: mock.sala.nombre })
     expect(screen.queryByRole('heading', { name: 'Mesa 3' })).toBeNull()
-  })
-
-  test('zoom: botones con etiqueta, teclas +, − y 0, rueda; cambia el viewBox sin reemplazar el SVG', async () => {
-    montar('/tablero/s_demo?t=tok')
-    await screen.findByRole('heading', { name: mock.sala.nombre })
-    const grupo = screen.getByRole('group', { name: 'Zoom de la matriz' })
-    const nivel = () => within(grupo).getByRole('status').textContent
-    const svg = document.querySelector('svg.hz-matriz')!
-    const completa = svg.getAttribute('viewBox')
-    expect(nivel()).toBe('100 %')
-    expect(within(grupo).getByRole('button', { name: 'Alejar' })).toHaveProperty('disabled', true)
-    expect(within(grupo).getByRole('button', { name: 'Ver todo' })).toHaveProperty('disabled', true)
-    fireEvent.click(within(grupo).getByRole('button', { name: 'Acercar' }))
-    expect(nivel()).toBe('150 %')
-    expect(svg.getAttribute('viewBox')).not.toBe(completa)
-    expect(document.querySelector('svg.hz-matriz')).toBe(svg)
-    expect(document.querySelector('.hz-lienzo')!.className).toContain('hz-con-zoom')
-    fireEvent.keyDown(window, { key: '+' })
-    expect(nivel()).toBe('225 %')
-    fireEvent.keyDown(window, { key: '-' })
-    expect(nivel()).toBe('150 %')
-    fireEvent.keyDown(window, { key: '0' })
-    expect(nivel()).toBe('100 %')
-    expect(svg.getAttribute('viewBox')).toBe(completa)
-    // Rueda hacia arriba sobre la matriz: acerca. Hacia abajo en la vista completa: deja desplazar la página.
-    const lienzo = document.querySelector('.hz-lienzo')!
-    const abajo = new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true })
-    lienzo.dispatchEvent(abajo)
-    expect(abajo.defaultPrevented).toBe(false)
-    const arriba = new WheelEvent('wheel', { deltaY: -200, bubbles: true, cancelable: true })
-    act(() => void lienzo.dispatchEvent(arriba))
-    expect(arriba.defaultPrevented).toBe(true)
-    expect(Number(nivel()!.replace(/\D/g, ''))).toBeGreaterThan(100)
-    fireEvent.click(within(grupo).getByRole('button', { name: 'Ver todo' }))
-    expect(nivel()).toBe('100 %')
-  })
-
-  test('bajo la matriz: qué significa cada eje y cada punto, sin pesos ni fórmulas', async () => {
-    montar('/tablero/s_demo?t=tok')
-    await screen.findByRole('heading', { name: mock.sala.nombre })
-    const texto = document.querySelector('.hz-explica')!.textContent!
-    expect(texto).toContain('Eje X, Time to Market: qué tan lejos está el proyecto del mercado.')
-    expect(texto).toContain('Eje Y, Value Generation Capacity: qué tan lejos está del core del negocio y cuánto cuesta probarlo.')
-    expect(texto).toContain('1 es cerca y listo; 9, lejos e incierto')
-    // El mock trae alcance de mesa.
-    expect(texto).toContain('Cada punto es el promedio de los votos de la mesa y el tamaño de la burbuja es el tamaño de la oportunidad.')
-    expect(texto).not.toMatch(/—|%|peso|Total/)
-    expect(screen.queryByText('¿Cómo se calcula?')).toBeNull()
   })
 
   test('modo guiado: la pregunta del facilitador con su rúbrica, en grande, en lugar de la matriz', async () => {
@@ -289,8 +346,9 @@ describe('PaginaTablero', () => {
     expect(bloque.textContent).toContain('¿Qué tantas barreras de entrada tiene el mercado?')
     expect([...bloque.querySelectorAll('.hz-rubrica li')].map((li) => li.textContent)).toEqual(['9Nivel 9', '7Nivel 7', '5Nivel 5', '3Nivel 3', '1Nivel 1'])
     expect(document.querySelector('svg.hz-matriz')).toBeNull()
-    // Con los datos abiertos, el panel lateral sigue al lado (progreso y promedios).
+    // Con la tabla, el panel lateral sigue al lado (progreso y promedios); F también sirve sin matriz.
     await verDatos()
+    expect(screen.getByRole('button', { name: 'Pantalla completa F' })).toBeTruthy()
     expect(screen.getByRole('progressbar')).toBeTruthy()
     cleanup()
     // Modo automático o sin pregunta elegida: la matriz de siempre.
@@ -317,10 +375,32 @@ describe('PaginaTablero', () => {
     const vacio = structuredClone(mock)
     vacio.sala.estado = 'r1_abierta'
     vacio.sala.ronda_actual = 1
+    vacio.progreso.por_mesa.forEach((m) => (m.precierre = false))
     for (const v of vacio.proyectos_vivos) for (const r of v.rondas) Object.assign(r, { n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null })
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(vacio), { status: 200 })))
     montar('/tablero/s_demo')
-    expect(await screen.findByText('Aún no hay votos en la ronda 1')).toBeTruthy()
+    // D2: con la ronda abierta llega la última foto; no se afirma que no haya votos.
+    expect(await screen.findByText('Aún no hay resultados en la ronda 1. Se actualizan cada 3 votos nuevos')).toBeTruthy()
+    expect(document.querySelector('.hz-insignia-vivo')!.textContent).toBe('En vivo, cada 3 votos')
+    await verDatos()
+    expect(screen.getByText('Se actualizan cada 3 votos nuevos.')).toBeTruthy()
     await act(async () => {})
+  })
+
+  test('QA-T-09: el progreso no lista mesas sin inscritos', async () => {
+    const conVacia = structuredClone(mock)
+    conVacia.progreso.por_mesa.push({ mesa_id: 'm9', nombre: 'Mesa 9', inscritos: 0, completos: 0, precierre: false })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(conVacia), { status: 200 })))
+    montar('/tablero/s_demo?modo=tabla')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    const mesas = screen.getByRole('list', { name: 'Progreso por mesa' })
+    expect(within(mesas).queryByText('Mesa 9')).toBeNull()
+    expect(within(mesas).getByText('Mesa 1')).toBeTruthy()
+  })
+
+  test('QA-T-05: enlace con una mesa que no existe', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { codigo: 'MESA_NO_EXISTE', mensaje: 'x' } }), { status: 404 })))
+    montar('/tablero/s_demo?t=tok&mesa=m_nada')
+    expect(await screen.findByText('No encontramos esta mesa en la sala. Revisa el enlace del tablero.')).toBeTruthy()
   })
 })

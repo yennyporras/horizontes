@@ -53,7 +53,7 @@ describe('MatrizHorizontes', () => {
     expect(r.container.querySelector('.hz-anim-mov')).toBeNull()
     r.rerender(<MatrizHorizontes datos={mock} vista="comparacion" alto={600} />)
     expect(r.container.querySelector('.hz-anim-mov')).not.toBeNull()
-    expect(r.container.querySelector('style')!.textContent).toContain('hzMover 1.2s cubic-bezier(.22,.8,.3,1) 0ms both')
+    expect(r.container.querySelector('style')!.textContent).toMatch(/-mover 1\.2s cubic-bezier\(\.22,\.8,\.3,1\) 0ms both/)
     // 400 ms después el encabezado cambia de alto: el SVG nuevo sigue la animación en 400 ms.
     reloj.mockReturnValue(1400)
     r.rerender(<MatrizHorizontes datos={mock} vista="comparacion" alto={604} />)
@@ -67,22 +67,40 @@ describe('MatrizHorizontes', () => {
     vi.useRealTimers()
   })
 
-  test('zoom: el encuadre cambia solo el viewBox (mismo nodo, texto vectorial) y se conserva con datos nuevos', () => {
-    const r = render(<MatrizHorizontes datos={mock} vista={2} alto={600} />)
-    const svg = r.container.querySelector('svg')!
-    const W = svg.getAttribute('width')
-    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${W} 600`)
-    r.rerender(<MatrizHorizontes datos={mock} vista={2} alto={600} encuadre={{ k: 2, cx: 0.5, cy: 0.5 }} />)
-    expect(r.container.querySelector('svg')).toBe(svg)
-    expect(svg.getAttribute('viewBox')).toBe(`${Number(W) / 4} 150 ${Number(W) / 2} 300`)
-    expect(svg.getAttribute('width')).toBe(W)
-    // El polling trae un voto nuevo: SVG nuevo, mismo encuadre.
+  test('letra mínima de proyector: el texto más chico de la matriz no baja de letraMin', () => {
+    const menor = (letraMin?: number) => {
+      const { container } = render(<MatrizHorizontes datos={mock} alto={620} letraMin={letraMin} />)
+      const t = [...container.querySelectorAll('svg text')].filter((x) => !x.classList.contains('hz-mz-horizonte'))
+      const m = Math.min(...t.map((x) => Number(x.getAttribute('font-size'))))
+      cleanup()
+      return m
+    }
+    // En jsdom el lienzo mide 360 px de ancho: sin mínimo, las marcas quedan en 10 px.
+    expect(menor()).toBeLessThan(12)
+    expect(menor(13)).toBeGreaterThanOrEqual(13)
+  })
+
+  test('modo en vivo: con una foto nueva las burbujas que cambiaron se deslizan desde su posición anterior', () => {
+    vi.useFakeTimers()
+    const r = render(<MatrizHorizontes datos={mock} vista={2} alto={600} animarCambios />)
+    expect(r.container.querySelector('.hz-anim-act')).toBeNull()
+    // Mismos valores en un objeto nuevo: nada se mueve.
+    r.rerender(<MatrizHorizontes datos={structuredClone(mock)} vista={2} alto={600} animarCambios />)
+    expect(r.container.querySelector('.hz-anim-act')).toBeNull()
     const otro = structuredClone(mock)
-    otro.version = 'v-nueva'
-    otro.proyectos_vivos[0].rondas[1].eje_x = 4.2
-    r.rerender(<MatrizHorizontes datos={otro} vista={2} alto={600} encuadre={{ k: 2, cx: 0.5, cy: 0.5 }} />)
-    expect(r.container.querySelector('svg')).not.toBe(svg)
-    expect(r.container.querySelector('svg')!.getAttribute('viewBox')).toBe(`${Number(W) / 4} 150 ${Number(W) / 2} 300`)
+    otro.proyectos_vivos[0].rondas[1].eje_x = 2.5
+    r.rerender(<MatrizHorizontes datos={otro} vista={2} alto={600} animarCambios />)
+    const movidas = r.container.querySelectorAll('circle.hz-anim-act')
+    expect(movidas).toHaveLength(1)
+    expect((movidas[0] as SVGElement).dataset.proyecto).toBe(otro.proyectos_vivos[0].id)
+    expect(movidas[0].getAttribute('style')).toMatch(/--dx:-?[\d.]+px;--dy:-?[\d.]+px/)
+    expect(r.container.querySelector('style')!.textContent).toContain('prefers-reduced-motion: reduce')
+    act(() => vi.advanceTimersByTime(1300))
+    expect(r.container.querySelector('.hz-anim-act')).toBeNull()
+    // Sin animarCambios (celular y panel), nada se desliza.
+    r.rerender(<MatrizHorizontes datos={mock} vista={2} alto={600} />)
+    expect(r.container.querySelector('.hz-anim-act')).toBeNull()
+    vi.useRealTimers()
   })
 
   test('alto fijo y clase extra', () => {

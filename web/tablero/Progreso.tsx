@@ -7,6 +7,8 @@ export function Progreso({ datos }: { datos: DatosTablero }) {
   const avisos = avisosPrecierre(datos)
   const abierta = rondaAbierta(datos.sala?.estado)
   const pct = p.inscritos ? Math.min(100, Math.round((p.completos / p.inscritos) * 100)) : 0
+  // QA-T-09: una mesa sin inscritos es ruido en el proyector.
+  const mesas = (p.por_mesa ?? []).filter((m) => m.inscritos > 0)
   return (
     <section className="hz-progreso" aria-labelledby="hz-progreso-t">
       <h2 id="hz-progreso-t" className="hz-sub">
@@ -44,9 +46,9 @@ export function Progreso({ datos }: { datos: DatosTablero }) {
           ))}
         </ul>
       )}
-      {p.por_mesa?.length > 0 && (
+      {mesas.length > 0 && (
         <ul className="hz-mesas" aria-label="Progreso por mesa">
-          {p.por_mesa.map((m) => (
+          {mesas.map((m) => (
             <li key={m.mesa_id} className={m.precierre && abierta ? 'hz-mesa hz-mesa-lista' : 'hz-mesa'}>
               <span className="hz-mesa-nombre">{m.nombre}</span>
               <span className="hz-mesa-n">
