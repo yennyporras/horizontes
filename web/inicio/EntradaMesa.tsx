@@ -3,12 +3,16 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, ErrorApi } from '../shared/api/cliente'
 import { Boton, Campo } from '../shared/ui'
 
-// Código de mesa = código de la sala (HZ + 3), 3 caracteres al azar desde el 20-oct (S-5) y el número de la mesa,
-// como HZ7K2QX4-1; las mesas anteriores no traen los 3 al azar: HZ7K2-1 (server/dominio/util.ts).
+// Código de mesa = código de la sala (HZ + 3), 5 caracteres al azar (M-1c) y el número de la mesa, como HZ7K2QX4AB-1.
+// Las mesas anteriores conservan el suyo: con 3 al azar (HZ7K2QX4-1, del 20-oct) o sin ellos (HZ7K2-1) (server/dominio/util.ts).
 const FORMATO = /^[A-Z0-9]{3,10}-\d{1,3}$/
 
-/** Código sin guion antes del número de la mesa: HZ7K2QX41 = HZ7K2QX4 y mesa 1; HZ7K21 = HZ7K2 y mesa 1. */
-const SIN_GUION = /^(HZ[A-Z0-9]{3}(?:[A-Z0-9]{3})?)(\d{1,3})$/
+/**
+ * Código sin guion antes del número de la mesa: HZ7K2QX4AB1 = HZ7K2QX4AB y mesa 1; HZ7K2QX41 = HZ7K2QX4 y mesa 1;
+ * HZ7K21 = HZ7K2 y mesa 1. Si cabe más de una lectura gana la de 5 al azar: una sala tiene hasta 30 mesas, así que
+ * HZ7K2Q12123 es HZ7K2Q1212 y mesa 3, no HZ7K2Q12 y mesa 123.
+ */
+const SIN_GUION = /^(HZ[A-Z0-9]{3}(?:[A-Z0-9]{5}|[A-Z0-9]{3})?)(\d{1,3})$/
 
 /**
  * Acepta el código solo o el enlace completo del QR (…/m/HZ7K2-1), y lo que se teclea en el celular: minúsculas,
