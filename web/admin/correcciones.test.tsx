@@ -442,6 +442,34 @@ describe('Configuración', () => {
   })
 })
 
+describe('Rúbricas de las salas nuevas', () => {
+  it('«Quitar de las salas nuevas» devuelve la rúbrica original para las próximas salas', async () => {
+    await salaNueva('Plantilla')
+    fireEvent.click(nav().getByText('Configuración'))
+    const seccion = within(await screen.findByRole('region', { name: 'Rúbricas' }))
+    fireEvent.change(await seccion.findByLabelText('Nivel 9'), { target: { value: 'Inversión muy alta (> USD 2MM)' } })
+    fireEvent.click(seccion.getByLabelText(/Usar también en las salas nuevas/))
+    fireEvent.click(seccion.getByRole('button', { name: 'Guardar' }))
+    await seccion.findByText(/las salas nuevas también la usarán/)
+    fireEvent.click(seccion.getByRole('button', { name: 'Quitar de las salas nuevas' }))
+    const dialogo = await screen.findByRole('dialog', { name: '¿Quitar la rúbrica de Inversión Requerida para Probar de las salas nuevas?' })
+    expect(document.activeElement?.textContent).toBe('Cancelar')
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Sí, quitar' }))
+    expect(await seccion.findByText('Las salas nuevas vuelven a usar la rúbrica original de Inversión Requerida para Probar.')).toBeTruthy()
+    // Esta sala conserva su texto; una sala nueva nace con la original.
+    expect((seccion.getByLabelText('Nivel 9') as HTMLTextAreaElement).value).toBe('Inversión muy alta (> USD 2MM)')
+    const r = await responderMock('POST', '/api/admin/salas', { nombre: 'Nueva', mesas: 1 })
+    const rub = await responderMock('GET', `/api/admin/salas/${(r.body as { id: string }).id}/rubricas`)
+    const inv = (rub.body as { criterios: { id: string; rubrica: { valor: number; texto: string }[] }[] }).criterios.find((c) => c.id === 'inversion_requerida')!
+    expect(inv.rubrica.find((n) => n.valor === 9)?.texto).toMatch(/^Inversión muy alta/)
+    expect(inv.rubrica.find((n) => n.valor === 9)?.texto).not.toBe('Inversión muy alta (> USD 2MM)')
+    // Idempotente: sin nada guardado, lo dice.
+    fireEvent.click(seccion.getByRole('button', { name: 'Quitar de las salas nuevas' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, quitar' }))
+    expect(await seccion.findByText('Las salas nuevas ya usaban la rúbrica original de Inversión Requerida para Probar.')).toBeTruthy()
+  })
+})
+
 describe('Login, cuenta y navegación', () => {
   it('QA-A-19 y F-16: tras un error el foco vuelve a la clave; sin claves de prueba en pantalla', async () => {
     montar('/admin/login')

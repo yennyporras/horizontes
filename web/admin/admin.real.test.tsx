@@ -538,3 +538,24 @@ describe('correcciones de la QA del panel contra la API real', () => {
     expect(screen.getByText('Tu sesión terminó. Vuelve a entrar para seguir donde ibas.')).toBeTruthy()
   }, 20_000)
 })
+
+describe('rúbricas de las salas nuevas contra la API real', () => {
+  it('«Quitar de las salas nuevas» borra la rúbrica guardada y la sala nueva nace con la original', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    await crearSalaDesdePanel('Plantilla real', 1)
+    fireEvent.click(nav().getByText('Configuración'))
+    const rubricas = within(await screen.findByRole('region', { name: 'Rúbricas' }))
+    fireEvent.change(await rubricas.findByLabelText('Nivel 9'), { target: { value: 'Inversión muy alta (> USD 2MM)' } })
+    fireEvent.click(rubricas.getByLabelText(/Usar también en las salas nuevas/))
+    fireEvent.click(rubricas.getByRole('button', { name: 'Guardar' }))
+    await rubricas.findByText(/las salas nuevas también la usarán/)
+    fireEvent.click(rubricas.getByRole('button', { name: 'Quitar de las salas nuevas' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, quitar' }))
+    expect(await rubricas.findByText('Las salas nuevas vuelven a usar la rúbrica original de Inversión Requerida para Probar.')).toBeTruthy()
+    const nueva = await crearSala(e, 1, 'Nace con la original')
+    const r = await e.app.inject({ url: `/api/admin/salas/${nueva.id}/rubricas`, headers: { cookie } })
+    const inv = (r.json().criterios as { id: string; rubrica: { valor: number; texto: string }[] }[]).find((c) => c.id === 'inversion_requerida')!
+    expect(inv.rubrica.find((n) => n.valor === 9)?.texto).not.toBe('Inversión muy alta (> USD 2MM)')
+  }, 20_000)
+})
