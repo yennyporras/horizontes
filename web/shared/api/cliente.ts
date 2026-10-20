@@ -1,30 +1,7 @@
-// Cliente mínimo del contrato. Responsable: equipo del servidor. Uso opcional: cada área puede seguir con su propio
-// transporte, pero este maneja errores con forma de contrato, el token del participante y ETag/304.
-import type {
-  AccesoParticipante,
-  AccionSala,
-  Admin,
-  AdminYo,
-  Config,
-  CuerpoInscripcion,
-  CuerpoPreguntaGuiada,
-  CuerpoRubrica,
-  CuerpoVoto,
-  DetalleSala,
-  HojasSala,
-  InfoMesa,
-  RespuestaAcceso,
-  RespuestaInscripcion,
-  RespuestaPreguntaGuiada,
-  ResultadosParticipante,
-  RubricaPlantillaBorrada,
-  RespuestasSala,
-  RespuestaVoto,
-  RubricasSala,
-  SalaResumen,
-  Tablero,
-  Yo,
-} from './contrato'
+// Cliente mínimo del contrato para la landing (código de mesa). Cada área tiene su propio transporte: el celular en
+// web/participante/api.ts, el tablero en web/tablero/logica.ts y el panel en web/admin/api.ts. Maneja errores con
+// forma de contrato y ETag/304.
+import type { InfoMesa } from './contrato'
 
 export * from './contrato'
 
@@ -39,20 +16,10 @@ export class ErrorApi extends Error {
   }
 }
 
-export const INTERVALO_POLLING_MS = 2500
-const LLAVE_TOKEN = 'hz_participante_token'
-
-export const tokenParticipante = {
-  leer: (): string | null => (typeof localStorage === 'undefined' ? null : localStorage.getItem(LLAVE_TOKEN)),
-  guardar: (t: string) => localStorage.setItem(LLAVE_TOKEN, t),
-  borrar: () => localStorage.removeItem(LLAVE_TOKEN),
-}
-
 interface Opciones {
   metodo?: string
   cuerpo?: unknown
   etag?: string
-  participante?: boolean
 }
 
 /** `null` cuando el servidor responde 304 (sin cambios desde `etag`). */
@@ -60,10 +27,6 @@ export async function pedir<T>(ruta: string, op: Opciones = {}): Promise<{ datos
   const headers: Record<string, string> = {}
   if (op.cuerpo !== undefined) headers['Content-Type'] = 'application/json'
   if (op.etag) headers['If-None-Match'] = op.etag
-  if (op.participante) {
-    const t = tokenParticipante.leer()
-    if (t) headers['X-Participante-Token'] = t
-  }
   let r: Response
   try {
     r = await fetch(ruta, { method: op.metodo ?? 'GET', headers, credentials: 'same-origin', body: op.cuerpo === undefined ? undefined : JSON.stringify(op.cuerpo) })
@@ -83,61 +46,5 @@ export async function pedir<T>(ruta: string, op: Opciones = {}): Promise<{ datos
 const datos = async <T>(p: Promise<{ datos: T | null }>) => (await p).datos as T
 
 export const api = {
-  // Participante
   mesa: (codigo: string) => datos(pedir<InfoMesa>(`/api/mesas/${encodeURIComponent(codigo)}`)),
-  /** Guarda el token en el dispositivo. 409 CORREO_YA_INSCRITO es un error (desde el 20-oct no trae token): el facilitador da acceso de nuevo. */
-  inscribir: async (c: CuerpoInscripcion) => {
-    const r = await datos(pedir<RespuestaInscripcion>('/api/inscripcion', { metodo: 'POST', cuerpo: c }))
-    tokenParticipante.guardar(r.token)
-    return r
-  },
-  /** Canjea el enlace de «Dar acceso de nuevo» (`?acceso=…`) por un token nuevo y lo guarda. Cierra las demás sesiones. */
-  canjearAcceso: async (acceso: string) => {
-    const r = await datos(pedir<RespuestaAcceso>('/api/acceso', { metodo: 'POST', cuerpo: { acceso } }))
-    tokenParticipante.guardar(r.token)
-    return r
-  },
-  yo: (etag?: string) => pedir<Yo>('/api/yo', { participante: true, etag }),
-  votar: (c: CuerpoVoto) => datos(pedir<RespuestaVoto>('/api/votos', { metodo: 'PUT', cuerpo: c, participante: true })),
-  resultados: (ronda?: number, etag?: string) => pedir<ResultadosParticipante>(`/api/resultados${ronda ? `?ronda=${ronda}` : ''}`, { participante: true, etag }),
-
-  // Tablero
-  tablero: (salaId: string, q: { alcance?: 'sala' | 'mesa'; mesa?: string; t?: string }, etag?: string) => {
-    const s = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][])
-    return pedir<Tablero>(`/api/tablero/${encodeURIComponent(salaId)}?${s}`, { etag })
-  },
-
-  // Admin
-  login: (usuario: string, clave: string) => datos(pedir<{ ok: true; admin: Admin }>('/api/admin/login', { metodo: 'POST', cuerpo: { usuario, clave } })),
-  logout: () => datos(pedir<{ ok: true }>('/api/admin/logout', { metodo: 'POST' })),
-  adminYo: () => datos(pedir<AdminYo>('/api/admin/yo')),
-  cambiarClave: (actual: string, nueva: string) => datos(pedir<{ ok: true }>('/api/admin/cambiar-clave', { metodo: 'POST', cuerpo: { actual, nueva } })),
-  salas: () => datos(pedir<{ salas: (Omit<SalaResumen, 'config'> & { mesas: number; inscritos: number })[] }>('/api/admin/salas')),
-  crearSala: (nombre: string, mesas: number) => datos(pedir<SalaResumen>('/api/admin/salas', { metodo: 'POST', cuerpo: { nombre, plantilla: 'foodsume_2026', mesas } })),
-  /** Sala nueva para ensayos con las mismas mesas y el mismo país, visibilidad por defecto y sin inscritos. `nombre` por defecto: "<original> (copia)". */
-  duplicarSala: (id: string, nombre?: string) => datos(pedir<SalaResumen>(`/api/admin/salas/${id}/duplicar`, { metodo: 'POST', cuerpo: nombre ? { nombre } : {} })),
-  sala: (id: string, etag?: string) => pedir<DetalleSala>(`/api/admin/salas/${id}`, { etag }),
-  config: (id: string, cambios: Partial<Config>) => datos(pedir<Config>(`/api/admin/salas/${id}/config`, { metodo: 'PATCH', cuerpo: cambios })),
-  accion: (id: string, accion: AccionSala, ronda?: number) => datos(pedir<{ sala: SalaResumen }>(`/api/admin/salas/${id}/acciones`, { metodo: 'POST', cuerpo: { accion, ronda } })),
-  agregarMesas: (id: string, cantidad: number) => datos(pedir<{ mesas: DetalleSala['mesas'] }>(`/api/admin/salas/${id}/mesas`, { metodo: 'POST', cuerpo: { cantidad } })),
-  editarParticipante: (id: string, cambios: { perfil_id?: string; mesa_id?: string; activo?: boolean }) =>
-    datos(pedir<unknown>(`/api/admin/participantes/${id}`, { metodo: 'PATCH', cuerpo: cambios })),
-  /** «Dar acceso de nuevo»: enlace personal de un solo uso (15 min). 409 SALA_CERRADA o PARTICIPANTE_INACTIVO. */
-  darAcceso: (participanteId: string) => datos(pedir<AccesoParticipante>(`/api/admin/participantes/${participanteId}/acceso`, { metodo: 'POST', cuerpo: {} })),
-  admins: () => datos(pedir<{ admins: Admin[] }>('/api/admin/admins')),
-  crearAdmin: (a: { usuario: string; nombre: string; correo?: string; clave_temporal: string }) => datos(pedir<Admin>('/api/admin/admins', { metodo: 'POST', cuerpo: a })),
-  editarAdmin: (id: number, c: { activo?: boolean; nombre?: string; correo?: string; restablecer_clave?: boolean | string }) =>
-    datos(pedir<Admin>(`/api/admin/admins/${id}`, { metodo: 'PATCH', cuerpo: c })),
-  rubricas: (id: string) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas`)),
-  editarRubrica: (id: string, criterio: string, c: CuerpoRubrica) => datos(pedir<RubricasSala>(`/api/admin/salas/${id}/rubricas/${criterio}`, { metodo: 'PUT', cuerpo: c })),
-  /** Las salas nuevas vuelven a la rúbrica de la semilla en ese criterio (idempotente). */
-  borrarRubricaPlantilla: (criterio: string) =>
-    datos(pedir<RubricaPlantillaBorrada>(`/api/admin/rubricas-plantilla/${encodeURIComponent(criterio)}`, { metodo: 'DELETE' })),
-  hojas: (id: string) => datos(pedir<HojasSala>(`/api/admin/salas/${id}/hojas`)),
-  /** Respuestas por persona (solo admin, no se proyecta). */
-  respuestas: (id: string) => datos(pedir<RespuestasSala>(`/api/admin/salas/${id}/respuestas`)),
-  /** Modo guiado: fija la pregunta que ven los celulares y el tablero (`null` la quita). 409 RONDA_CERRADA sin ronda abierta. */
-  preguntaGuiada: (id: string, p: CuerpoPreguntaGuiada) => datos(pedir<RespuestaPreguntaGuiada>(`/api/admin/salas/${id}/pregunta-guiada`, { metodo: 'PUT', cuerpo: p })),
-  urlQr: (mesaId: string) => `/api/admin/mesas/${mesaId}/qr.svg`,
-  urlExport: (salaId: string, archivo: 'inscritos.csv' | 'votos.csv') => `/api/admin/salas/${salaId}/export/${archivo}`,
 }

@@ -28,7 +28,7 @@ function MarcoInterno() {
   // Recorrido guiado: solo la primera vez de cada admin en este navegador (y nunca con datos simulados).
   const recorrido = useRecorrido(admin?.id, !usaMocks())
 
-  // Deuda: recordar la sala es un efecto, no algo que pasa en cada render.
+  // Recordar la sala es un efecto, no algo que pasa en cada render.
   useEffect(() => {
     if (salaId) recordarSala(salaId)
   }, [salaId])

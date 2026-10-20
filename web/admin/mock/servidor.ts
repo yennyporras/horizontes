@@ -35,7 +35,7 @@ const ORDEN_PROGRAMADO: { campo: keyof ConfigSala; etapa: string; nombre: string
 function validarConfig(actual: ConfigSala, cambio: Record<string, unknown>): Respuesta | null {
   for (const [campo, v] of Object.entries(cambio)) {
     if (/_at$/.test(campo) && typeof v === 'string' && Date.parse(v) <= Date.now()) {
-      const hora = new Date().toLocaleTimeString('es-CO', { timeZone: actual.zona_horaria ?? 'America/Bogota', hour12: false })
+      const hora = new Date().toLocaleTimeString('es-CO', { timeZone: actual.zona_horaria ?? 'America/Bogota', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' })
       return error(422, 'HORA_PASADA', `Esa hora ya pasó. En el servidor son las ${hora}; elige una hora posterior.`)
     }
   }

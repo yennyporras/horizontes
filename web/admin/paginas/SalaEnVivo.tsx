@@ -6,6 +6,7 @@ import { useConfirmar } from '../componentes/Confirmar'
 import { ConSala } from './EncabezadoSala'
 import { ComoVoto } from '../../tablero'
 import type { CriterioId } from '../../shared/api/contrato'
+import { descripcionCriterio } from '../../shared/criterios'
 import type { Accion, PreguntaGuiada, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
 import {
   ACCIONES,
@@ -467,7 +468,10 @@ function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResu
         <tbody>
           {criterios.map((c) => (
             <tr key={c.id}>
-              <th scope="row">{c.nombre}</th>
+              <th scope="row" abbr={c.nombre}>
+                {c.nombre}
+                {descripcionCriterio(c.id) && <span className="tabla-criterio__desc">{descripcionCriterio(c.id)}</span>}
+              </th>
               {porRonda.map((r, i) => (
                 <td key={rondas[i]} className="num">
                   {valor(r, r?.promedios?.[c.id])}
@@ -500,7 +504,7 @@ function VerEnVivo({ d }: { d: SalaDetalle }) {
             <p className="en-vivo__titulo">Tablero de la sala</p>
             <div className="acciones">
               <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'vivo') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
-                En vivo, pantalla completa
+                En vivo, solo la gráfica
               </a>
               <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'tabla') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
                 Con tabla
@@ -538,8 +542,7 @@ function VerEnVivo({ d }: { d: SalaDetalle }) {
               El tablero de una mesa sirve para seguir su avance o proyectarla sola.
             </p>
             <p id="ayuda-vista-previa" className="pista">
-              La vista previa muestra lo que ve un participante de {mesa.nombre}, solo para mirar. No te inscribas ni votes ahí: contarías como participante y cambiarías el avance
-              y los resultados de la mesa.
+              La vista previa muestra la entrada a {mesa.nombre} tal como la ve un participante, solo para mirar: no inscribe a nadie ni cuenta en el avance.
             </p>
           </li>
         )}

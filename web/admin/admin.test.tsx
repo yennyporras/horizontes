@@ -234,13 +234,13 @@ describe('panel admin contra el simulador', () => {
     await screen.findByText('Inscripción abierta', { selector: '.estado' })
     expect(principales()).toEqual(['Abrir ronda 1'])
     const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
-    for (const nombre of ['En vivo, pantalla completa', 'Con tabla', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
+    for (const nombre of ['En vivo, solo la gráfica', 'Con tabla', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
       const href = within(enVivo).getByRole('link', { name: nombre }).getAttribute('href') ?? ''
       expect(href.startsWith('/')).toBe(true)
     }
     // Dos modos de proyección del tablero de la sala, a elegir por evento (pedido de Nicolai, 20-oct).
     const modo = (n: string) => new URL(within(enVivo).getByRole('link', { name: n }).getAttribute('href')!, 'http://x').searchParams.get('modo')
-    expect([modo('En vivo, pantalla completa'), modo('Con tabla')]).toEqual(['vivo', 'tabla'])
+    expect([modo('En vivo, solo la gráfica'), modo('Con tabla')]).toEqual(['vivo', 'tabla'])
   })
 
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {
@@ -277,7 +277,9 @@ describe('panel admin contra el simulador', () => {
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
     // Acta A3, A4 y P2: los 6 criterios; sin T2M, ejes ni votos. Preentrega 19-oct: sin fila «Total».
     const tabla = screen.getByRole('table', { name: 'INSUMEX' })
-    expect(within(tabla).getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
+    // Cada fila: el nombre del criterio y debajo su descripción corta (pedido del 20-oct).
+    expect(within(tabla).getAllByRole('rowheader').map((th) => th.querySelector('.tabla-criterio__desc')?.textContent)).toEqual(Object.values(DESCRIPCION_CRITERIO))
+    expect(within(tabla).getAllByRole('rowheader').map((th) => th.firstChild?.textContent)).toEqual([
       'Nivel de Alistamiento Técnico',
       'Nivel de Conocimiento del Cliente/Mercado',
       'Regulación',
@@ -288,7 +290,8 @@ describe('panel admin contra el simulador', () => {
     expect(within(tabla).getByRole('columnheader', { name: 'R1' }).querySelector('.ronda--1')).toBeTruthy()
     expect(within(tabla).queryByText(/eje|votos|time to market|total/i)).toBeNull()
     // Promedio del servidor con 2 decimales.
-    expect(within(tabla).getByRole('rowheader', { name: 'Regulación' }).parentElement?.textContent).toMatch(/^Regulación\d+,\d\d$/)
+    const regulacion = within(tabla).getByRole('rowheader', { name: /^Regulación/ }).parentElement!
+    expect(regulacion.querySelector('td')?.textContent).toMatch(/^\d+,\d\d$/)
   })
 
   it('una sala nueva muestra la sala completa tras votar y el país cambia la zona de los cierres', async () => {

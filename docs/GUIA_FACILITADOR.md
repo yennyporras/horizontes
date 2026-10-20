@@ -14,9 +14,9 @@ Una página. Lo que tienes que hacer, en orden, para que el taller corra sin sus
 
 ## En el salón
 Todo lo que se ve en vivo está en un solo lugar: **Sala en vivo → Ver en vivo**. Cada enlace se abre en otra pestaña y se actualiza solo.
-- **Proyector:** *Tablero de la sala*, en uno de sus dos modos según el evento (ya trae su clave; no compartas el enlace). *En vivo, pantalla completa* muestra solo la matriz moviéndose; *Con tabla* suma el progreso y los promedios. Tecla **F** para pantalla completa; **V** y **T** cambian de modo; **1**, **2** y **C** cambian entre ronda 1, ronda 2 y comparación.
+- **Proyector:** *Tablero de la sala*, en uno de sus dos modos según el evento (ya trae su clave; no compartas el enlace). *En vivo, solo la gráfica* muestra la matriz moviéndose; *Con tabla* suma el progreso y los promedios. Tecla **F** para pantalla completa; **V** y **T** cambian de modo; **1**, **2** y **C** cambian entre ronda 1, ronda 2 y comparación.
 - **Una mesa:** elige la mesa y abre *Tablero de Mesa N*, para seguir su avance o proyectarla sola.
-- **Lo que ve un celular:** elige la mesa y abre *Vista previa del celular*. Es solo para mirar: **no te inscribas ni votes ahí**, porque contarías como participante y cambiarías el avance y los resultados de la mesa.
+- **Lo que ve un celular:** elige la mesa y abre *Vista previa del celular*. Es solo para mirar: muestra la entrada a la mesa tal como la ve un participante, pero no inscribe a nadie ni cuenta en el avance.
 - Modos del tablero (selector del encabezado; queda en el enlace como `modo=vivo` o `modo=tabla`):
   - **En vivo** (tecla **V**): solo la matriz, a todo el ancho. Las burbujas se deslizan cada vez que llega una actualización; con la ronda abierta el resultado se renueva cada 3 votos nuevos y al cerrarla queda exacto. Arriba, la sala, la ronda y cuántos ya votaron.
   - **Con tabla** (tecla **T**): la matriz y, al lado, el progreso y los promedios por criterio con una descripción corta de cada uno. **D** cambia los promedios por *Cómo votó* (dispersión) y vuelve.

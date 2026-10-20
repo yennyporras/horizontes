@@ -123,7 +123,8 @@ export default function PaginaTablero() {
   const inicioClic = useRef({ x: 0, y: 0 })
   const botonPantalla = (
     <button type="button" className="hz-boton-pantalla" aria-keyshortcuts="F" onClick={pantalla.alternar}>
-      {pantalla.activa ? 'Salir de pantalla completa' : 'Pantalla completa'} <kbd>F</kbd>
+      {/* En vivo, la pantalla completa es solo el diagrama; con tabla, lo dice el botón (pedido de Paola, 20-oct). */}
+      {pantalla.activa ? 'Salir de pantalla completa' : modo === 'tabla' ? 'Pantalla completa con tabla' : 'Pantalla completa'} <kbd>F</kbd>
     </button>
   )
 

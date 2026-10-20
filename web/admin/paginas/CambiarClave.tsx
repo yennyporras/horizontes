@@ -40,7 +40,7 @@ export function CambiarClave() {
   return (
     <div className="login">
       <div data-tema="carbon">
-        <EncabezadoProducto href="/" />
+        <EncabezadoProducto href="/admin/salas" />
       </div>
       <main className="login__cuerpo hz-pagina">
         <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-clave">
