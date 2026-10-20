@@ -158,12 +158,13 @@ export function editarParticipante(db: Db, id: string, d: CambiosParticipante, a
     const antes = progreso(db, sala)
     const detalle: Record<string, unknown> = { participante_id: id }
     if (d.perfil_id !== undefined) {
-      if (!perfiles().some((x) => x.id === d.perfil_id)) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Ese perfil no existe.')
+      if (typeof d.perfil_id !== 'string' || !perfiles().some((x) => x.id === d.perfil_id)) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Ese perfil no existe.')
       ejecutar(db, 'UPDATE participantes SET perfil_id = ? WHERE id = ?', d.perfil_id, id)
       detalle.perfil_id = d.perfil_id
     }
     if (d.mesa_id !== undefined) {
-      const m = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ? AND sala_id = ?', d.mesa_id, p.sala_id)
+      // Solo texto: un booleano o un objeto llegaban a SQLite y terminaban en 500 (S-9).
+      const m = typeof d.mesa_id === 'string' ? uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ? AND sala_id = ?', d.mesa_id, p.sala_id) : undefined
       if (!m) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Esa mesa no pertenece a la sala del participante.')
       ejecutar(db, 'UPDATE participantes SET mesa_id = ? WHERE id = ?', m.id, id)
       detalle.mesa_id = m.id
