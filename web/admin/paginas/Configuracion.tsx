@@ -77,10 +77,9 @@ export function Configuracion() {
         return (
           <>
             <p className="pista">Los cambios se aplican de inmediato y los celulares los ven en menos de 5 segundos.</p>
-            <div className="rejilla">
-              <Visibilidad d={vista} guardar={guardar} aviso={aviso} />
-              <PaisSala d={vista} guardar={guardar} aviso={aviso} setAviso={setAviso} />
-            </div>
+            {/* Orden de la preparación: el país primero (define el aviso de datos y la hora de lo programado). */}
+            <PaisSala d={vista} guardar={guardar} aviso={aviso} setAviso={setAviso} />
+            <Visibilidad d={vista} guardar={guardar} aviso={aviso} />
             <Programacion d={d} guardarCampo={guardarCampo} />
             <Rubricas salaId={d.sala.id} version={d.version} />
           </>
@@ -120,81 +119,83 @@ function Visibilidad({ d, guardar, aviso }: PropsSeccion) {
   return (
     <section className="panel" aria-labelledby="t-visibilidad">
       <h2 id="t-visibilidad">Qué ven los participantes</h2>
-      <fieldset>
-        <legend>Alcance de los resultados</legend>
-        <Opcion type="radio" name="alcance" checked={c.alcance_resultados === 'sala'} onChange={() => guardar({ alcance_resultados: 'sala' }, 'Ahora todos ven el resultado de toda la sala.', 'alcance')}>
-          Todos ven la sala completa <span className="etiqueta">Por defecto</span>
-          <small>Promedio de todas las mesas en una sola matriz.</small>
-        </Opcion>
-        <Opcion type="radio" name="alcance" checked={c.alcance_resultados === 'mesa'} onChange={() => guardar({ alcance_resultados: 'mesa' }, 'Ahora cada mesa ve solo su resultado.', 'alcance')}>
-          Cada mesa ve su resultado
-          <small>Cada mesa funciona como una empresa y discute su propia matriz.</small>
-        </Opcion>
-        <AvisoEn aviso={aviso} lugar="alcance" />
-      </fieldset>
-      <fieldset>
-        <legend>Después de votar</legend>
-        <Opcion
-          type="radio"
-          name="vista"
-          checked={c.vista_participante === 'en_vivo'}
-          onChange={() => guardar({ vista_participante: 'en_vivo' }, 'Tras votar, el participante ve el resultado en vivo.', 'vista')}
-        >
-          Resultado en vivo <span className="etiqueta">Por defecto</span>
-          {/* D2: el consolidado en vivo se renueva de 3 en 3 votos. */}
-          <small>Apenas vota, cada persona ve el resultado consolidado. Se renueva cada 3 votos nuevos, así nadie deduce el voto de otro; al cerrar la ronda queda el exacto.</small>
-        </Opcion>
-        <Opcion
-          type="radio"
-          name="vista"
-          checked={c.vista_participante === 'registrado'}
-          onChange={() => guardar({ vista_participante: 'registrado' }, 'Tras votar, el participante ve «Voto registrado».', 'vista')}
-        >
-          Voto registrado
-          <small>Ven el progreso de su mesa hasta que cierres la ronda o llegue el precierre.</small>
-        </Opcion>
-        <AvisoEn aviso={aviso} lugar="vista" />
-      </fieldset>
-      <fieldset>
-        <legend>Hojas de información</legend>
-        <Opcion
-          type="checkbox"
-          checked={c.revelar_hojas}
-          onChange={(e) =>
-            guardar(
-              { revelar_hojas: e.target.checked },
-              e.target.checked ? 'Todos ven ahora las 6 hojas.' : 'Cada participante ve ahora solo la hoja de su perfil.',
-              'hojas',
-            )
-          }
-        >
-          Mostrar las 6 hojas a todos
-          <small>Se enciende sola al abrir la ronda 2. Puedes apagarla o encenderla cuando quieras.</small>
-        </Opcion>
-        <AvisoEn aviso={aviso} lugar="hojas" />
-      </fieldset>
-      <fieldset>
-        <legend>Preguntas en el celular</legend>
-        <Opcion
-          type="radio"
-          name="modo"
-          checked={c.modo_preguntas !== 'guiado'}
-          onChange={() => guardar({ modo_preguntas: 'automatico' }, 'Cada persona avanza sola: al responder pasa a la siguiente pregunta.', 'modo')}
-        >
-          Automático <span className="etiqueta">Por defecto</span>
-          <small>Una pregunta por pantalla. Al responder, pasa sola a la siguiente.</small>
-        </Opcion>
-        <Opcion
-          type="radio"
-          name="modo"
-          checked={c.modo_preguntas === 'guiado'}
-          onChange={() => guardar({ modo_preguntas: 'guiado' }, 'Modo guiado: todos ven la pregunta que elijas en Sala en vivo.', 'modo')}
-        >
-          Guiado
-          <small>Todos ven la misma pregunta y tú decides cuándo pasar a la siguiente, desde Sala en vivo. El tablero la muestra en grande.</small>
-        </Opcion>
-        <AvisoEn aviso={aviso} lugar="modo" />
-      </fieldset>
+      <div className="rejilla rejilla--campos">
+        <fieldset>
+          <legend>Alcance de los resultados</legend>
+          <Opcion type="radio" name="alcance" checked={c.alcance_resultados === 'sala'} onChange={() => guardar({ alcance_resultados: 'sala' }, 'Ahora todos ven el resultado de toda la sala.', 'alcance')}>
+            Todos ven la sala completa <span className="etiqueta">Por defecto</span>
+            <small>Promedio de todas las mesas en una sola matriz.</small>
+          </Opcion>
+          <Opcion type="radio" name="alcance" checked={c.alcance_resultados === 'mesa'} onChange={() => guardar({ alcance_resultados: 'mesa' }, 'Ahora cada mesa ve solo su resultado.', 'alcance')}>
+            Cada mesa ve su resultado
+            <small>Cada mesa funciona como una empresa y discute su propia matriz.</small>
+          </Opcion>
+          <AvisoEn aviso={aviso} lugar="alcance" />
+        </fieldset>
+        <fieldset>
+          <legend>Después de votar</legend>
+          <Opcion
+            type="radio"
+            name="vista"
+            checked={c.vista_participante === 'en_vivo'}
+            onChange={() => guardar({ vista_participante: 'en_vivo' }, 'Tras votar, el participante ve el resultado en vivo.', 'vista')}
+          >
+            Resultado en vivo <span className="etiqueta">Por defecto</span>
+            {/* D2: el consolidado en vivo se renueva de 3 en 3 votos. */}
+            <small>Apenas vota, cada persona ve el resultado consolidado. Se renueva cada 3 votos nuevos, así nadie deduce el voto de otro; al cerrar la ronda queda el exacto.</small>
+          </Opcion>
+          <Opcion
+            type="radio"
+            name="vista"
+            checked={c.vista_participante === 'registrado'}
+            onChange={() => guardar({ vista_participante: 'registrado' }, 'Tras votar, el participante ve «Voto registrado».', 'vista')}
+          >
+            Voto registrado
+            <small>Ven el progreso de su mesa hasta que cierres la ronda o llegue el precierre.</small>
+          </Opcion>
+          <AvisoEn aviso={aviso} lugar="vista" />
+        </fieldset>
+        <fieldset>
+          <legend>Hojas de información</legend>
+          <Opcion
+            type="checkbox"
+            checked={c.revelar_hojas}
+            onChange={(e) =>
+              guardar(
+                { revelar_hojas: e.target.checked },
+                e.target.checked ? 'Todos ven ahora las 6 hojas.' : 'Cada participante ve ahora solo la hoja de su perfil.',
+                'hojas',
+              )
+            }
+          >
+            Mostrar las 6 hojas a todos
+            <small>Se enciende sola al abrir la ronda 2. Puedes apagarla o encenderla cuando quieras.</small>
+          </Opcion>
+          <AvisoEn aviso={aviso} lugar="hojas" />
+        </fieldset>
+        <fieldset>
+          <legend>Preguntas en el celular</legend>
+          <Opcion
+            type="radio"
+            name="modo"
+            checked={c.modo_preguntas !== 'guiado'}
+            onChange={() => guardar({ modo_preguntas: 'automatico' }, 'Cada persona avanza sola: al responder pasa a la siguiente pregunta.', 'modo')}
+          >
+            Automático <span className="etiqueta">Por defecto</span>
+            <small>Una pregunta por pantalla. Al responder, pasa sola a la siguiente.</small>
+          </Opcion>
+          <Opcion
+            type="radio"
+            name="modo"
+            checked={c.modo_preguntas === 'guiado'}
+            onChange={() => guardar({ modo_preguntas: 'guiado' }, 'Modo guiado: todos ven la pregunta que elijas en Sala en vivo.', 'modo')}
+          >
+            Guiado
+            <small>Todos ven la misma pregunta y tú decides cuándo pasar a la siguiente, desde Sala en vivo. El tablero la muestra en grande.</small>
+          </Opcion>
+          <AvisoEn aviso={aviso} lugar="modo" />
+        </fieldset>
+      </div>
     </section>
   )
 }
@@ -228,7 +229,7 @@ function PaisSala({ d, guardar, aviso, setAviso }: PropsSeccion & { setAviso: (a
   return (
     <section className="panel" aria-labelledby="t-pais">
       <h2 id="t-pais">País y hora</h2>
-      <div className="fila-form">
+      <div className="fila-form fila-form--corta">
         <label className="campo">
           <span>País de la sala</span>
           <select
@@ -459,9 +460,12 @@ function CampoHora({
 
   const describe = [`${id}-descripcion`, bloqueo && `${id}-bloqueo`, resultado && `${id}-resultado`].filter(Boolean).join(' ')
   return (
-    <div className="fila-form campo-hora">
-      <label className="campo" htmlFor={id}>
-        <span id={`${id}-etiqueta`}>{etiqueta}</span>
+    // La etiqueta va sola arriba y la caja con sus dos botones en una fila: alineados aunque los botones bajen de línea.
+    <div className="campo-hora">
+      <label className="campo-hora__etiqueta" htmlFor={id} id={`${id}-etiqueta`}>
+        {etiqueta}
+      </label>
+      <div className="campo-hora__fila">
         <input
           id={id}
           type="datetime-local"
@@ -471,13 +475,13 @@ function CampoHora({
           aria-describedby={describe}
           onChange={(e) => setLocal(e.target.value)}
         />
-      </label>
-      <button className="hz-boton hz-boton--secundario" type="button" onClick={programar} disabled={bloqueo !== null || guardando} aria-describedby={`${id}-etiqueta`}>
-        Programar
-      </button>
-      <button className="hz-boton hz-boton--secundario" type="button" disabled={!valor || guardando} onClick={() => void enviar(null)} aria-describedby={`${id}-etiqueta`}>
-        Quitar
-      </button>
+        <button className="hz-boton hz-boton--secundario" type="button" onClick={programar} disabled={bloqueo !== null || guardando} aria-describedby={`${id}-etiqueta`}>
+          Programar
+        </button>
+        <button className="hz-boton hz-boton--secundario" type="button" disabled={!valor || guardando} onClick={() => void enviar(null)} aria-describedby={`${id}-etiqueta`}>
+          Quitar
+        </button>
+      </div>
       <p id={`${id}-descripcion`} className="pista campo-hora__nota">
         {descripcion}
       </p>

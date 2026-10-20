@@ -136,6 +136,9 @@ export function Salas() {
               </div>
               <span className={`estado estado--${s.estado}`}>{ESTADOS[s.estado]}</span>
               <span className="acciones-sala">
+                <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${s.id}/vivo`}>
+                  Abrir
+                </Link>
                 <button
                   className="hz-boton hz-boton--secundario"
                   type="button"
@@ -146,9 +149,6 @@ export function Salas() {
                 >
                   {duplicando === s.id ? 'Duplicando…' : 'Duplicar para ensayo'}
                 </button>
-                <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${s.id}/vivo`}>
-                  Abrir
-                </Link>
               </span>
             </li>
           ))}

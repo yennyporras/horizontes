@@ -28,11 +28,12 @@ export function Hojas() {
     <ConSala titulo="Hojas de los perfiles" datos={datos} error={error}>
       {(d) => (
         <>
-          <p className="pista">Lo que sabe cada perfil de cada proyecto que se califica. Solo lectura.</p>
-          <p>
+          {/* Una sola introducción: qué es la sección y qué ven hoy los celulares. */}
+          <p className="intro">
+            Lo que sabe cada perfil de cada proyecto que se califica, de solo lectura.{' '}
             {d.sala.config.revelar_hojas
               ? 'Los celulares ya muestran las 6 hojas a todos.'
-              : 'Hoy cada persona ve en su celular solo la hoja de su perfil. Las 6 se abren para todos al iniciar la ronda 2.'}
+              : 'Hoy cada persona ve en su celular solo la hoja de su perfil; las 6 se abren para todos al iniciar la ronda 2.'}
           </p>
           {errorHojas ? (
             <p className="alerta alerta--error" role="alert">
@@ -46,7 +47,7 @@ export function Hojas() {
             proyectos.map(([id, nombre]) => (
               <section key={id} className="panel" aria-labelledby={`t-hojas-${id}`}>
                 <h2 id={`t-hojas-${id}`}>{nombre}</h2>
-                <div className="rejilla">
+                <div className="rejilla rejilla--columnas">
                   {hojas
                     .filter((h) => h.proyecto_id === id)
                     .map((h) => (

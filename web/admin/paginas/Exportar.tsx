@@ -57,11 +57,11 @@ export function Exportar() {
           )}
           <div className="rejilla">
             {ARCHIVOS.map((f) => (
-              <section key={f.archivo} className="panel" aria-labelledby={`t-${f.archivo}`}>
+              <section key={f.archivo} className="panel tarjeta-accion" aria-labelledby={`t-${f.archivo}`}>
                 <h2 id={`t-${f.archivo}`}>{f.titulo}</h2>
                 <p>{f.texto}</p>
                 {usaMocks() ? (
-                  <button className="hz-boton hz-boton--secundario" onClick={() => descargarSimulado(f.archivo, d.sala.codigo)}>
+                  <button type="button" className="hz-boton hz-boton--secundario" onClick={() => descargarSimulado(f.archivo, d.sala.codigo)}>
                     Descargar {f.archivo}
                   </button>
                 ) : (
