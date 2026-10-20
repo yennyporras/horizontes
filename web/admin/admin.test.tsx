@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
-import { CLAVE_RECORRIDO } from './componentes/Recorrido'
+import { CLAVE_GUIA } from './componentes/GuiaUso'
 import { DESCRIPCION_CRITERIO } from '../shared/criterios'
 import {
   ACCIONES_POR_ESTADO,
@@ -45,8 +45,8 @@ beforeEach(() => {
   reiniciarMock({ simularVotos: false })
   // Cada prueba empieza como un navegador que nunca abrió una sala.
   localStorage.removeItem('hz_admin_sala')
-  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
-  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
+  // La guía de uso tiene su propia prueba (guia-uso.test.tsx); aquí ya se dio por vista.
+  localStorage.setItem(CLAVE_GUIA, '1,2,3,4,5')
   usarTransporte(responderMock)
 })
 afterEach(cleanup)
@@ -234,13 +234,16 @@ describe('panel admin contra el simulador', () => {
     await screen.findByText('Inscripción abierta', { selector: '.estado' })
     expect(principales()).toEqual(['Abrir ronda 1'])
     const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
-    for (const nombre of ['En vivo, solo la gráfica', 'Con tabla', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
+    for (const nombre of ['Gráfica', 'Detallado', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
       const href = within(enVivo).getByRole('link', { name: nombre }).getAttribute('href') ?? ''
       expect(href.startsWith('/')).toBe(true)
     }
-    // Dos modos de proyección del tablero de la sala, a elegir por evento (pedido de Nicolai, 20-oct).
+    // Dos modos de proyección del tablero de la sala, a elegir por evento: Gráfica y Detallado (20-oct).
     const modo = (n: string) => new URL(within(enVivo).getByRole('link', { name: n }).getAttribute('href')!, 'http://x').searchParams.get('modo')
-    expect([modo('En vivo, solo la gráfica'), modo('Con tabla')]).toEqual(['vivo', 'tabla'])
+    expect([modo('Gráfica'), modo('Detallado')]).toEqual(['grafica', 'detallado'])
+    const ayuda = document.getElementById('ayuda-tablero-sala')!.textContent ?? ''
+    for (const t of ['Gráfica muestra solo la matriz moviéndose', 'Detallado muestra la matriz con el progreso y los promedios', 'G y D cambian de modo', 'M los alterna', 'V muestra Cómo votó', 'F pone pantalla completa'])
+      expect(ayuda).toContain(t)
   })
 
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {
@@ -485,8 +488,15 @@ describe('cambios del 19-oct en el panel', () => {
   ])('%s recorre cada sección de la sala sin bloqueos', async (usuario, esSuper) => {
     montar('/admin/login')
     await entrar(usuario)
-    const secciones = ['Salas', 'Sala en vivo', 'Mesas y QR', 'Participantes', 'Respuestas', 'Hojas', 'Configuración', 'Exportar', 'Salud']
+    // Orden del taller (pedido de Paola, 20-oct): preparar, conducir, después y sistema, cada grupo con su nombre.
+    const secciones = ['Salas', 'Configuración', 'Hojas', 'Mesas y QR', 'Sala en vivo', 'Participantes', 'Respuestas', 'Exportar', 'Salud']
     expect(nav().getAllByRole('link').map((a) => a.textContent)).toEqual(esSuper ? [...secciones, 'Administradores'] : secciones)
+    expect(nav().getAllByRole('group').map((g) => [g.getAttribute('aria-label'), within(g).getAllByRole('link').map((a) => a.textContent)])).toEqual([
+      ['Preparar el taller', ['Salas', 'Configuración', 'Hojas', 'Mesas y QR']],
+      ['Conducir el taller', ['Sala en vivo', 'Participantes']],
+      ['Después del taller', ['Respuestas', 'Exportar']],
+      ['Sistema', esSuper ? ['Salud', 'Administradores'] : ['Salud']],
+    ])
 
     // Primera vez en este navegador: la sección pide la sala y la deja elegir ahí mismo.
     fireEvent.click(nav().getByText('Sala en vivo'))
@@ -533,7 +543,7 @@ describe('cambios del 19-oct en el panel', () => {
     const mesas = await screen.findByLabelText('Mesas')
     expect(document.getElementById(mesas.getAttribute('aria-describedby')!)?.textContent).toBe('Recomendado: una mesa por cada 6 personas (hay 6 perfiles por mesa).')
     fireEvent.click(nav().getByText('Mesas y QR'))
-    expect(await screen.findByText('Imprime el QR de cada mesa y ponlo en su mesa; no lo proyectes, así cada persona entra a su mesa.')).toBeTruthy()
+    expect(await screen.findByText('Imprime el QR de cada mesa y ponlo en su mesa, así cada persona entra a la suya. Proyecta un QR solo si a una mesa le falta su hoja.')).toBeTruthy()
     fireEvent.click(nav().getByText('Participantes'))
     expect(await screen.findByText('Solo administradores. No se proyecta.')).toBeTruthy()
   })

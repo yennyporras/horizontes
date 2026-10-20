@@ -3,6 +3,12 @@ import { nombreCorto } from '../tablero/logica'
 import type { CriterioId } from '../shared/api/contrato'
 import type { Accion, EstadoSala, Pais, ZonaHoraria } from './tipos'
 
+/**
+ * Largo mínimo de una clave de administrador. Es el que exige el servidor (LARGO_MINIMO_CLAVE en
+ * server/dominio/admins.ts); el panel no importa el servidor, así que una prueba verifica que coincidan.
+ */
+export const LARGO_MINIMO_CLAVE = 8
+
 export const PERFILES: { id: string; nombre: string }[] = seed.perfiles
 
 /** Los 6 criterios de la plantilla, en el orden del motor (el mismo de la hoja de votación). */
@@ -223,11 +229,23 @@ export function enEsteServidor(url: string | null | undefined): string | null {
   }
 }
 
+/** Modos de proyección del tablero de la sala, con su nombre en el panel y su tecla en el tablero. */
+export type ModoTablero = 'grafica' | 'detallado'
+export const MODOS_TABLERO: { modo: ModoTablero; nombre: string; tecla: string; ayuda: string }[] = [
+  { modo: 'grafica', nombre: 'Gráfica', tecla: 'G', ayuda: 'solo la matriz moviéndose, a toda la pantalla' },
+  { modo: 'detallado', nombre: 'Detallado', tecla: 'D', ayuda: 'la matriz con el progreso y los promedios' },
+]
+
+/** Teclas del tablero, en una línea, para la ayuda de Ver en vivo (las mismas de la guía del facilitador). */
+export const TECLAS_TABLERO =
+  'En el tablero, G y D cambian de modo, M los alterna, V muestra Cómo votó, F pone pantalla completa y 1, 2 y C cambian entre ronda 1, ronda 2 y comparación.'
+
 /**
- * Modos de proyección del tablero (pedido de Nicolai, 20-oct): `vivo`, solo la matriz moviéndose a toda la
- * pantalla, o `tabla`, la matriz con el progreso y los promedios. Se elige por evento desde Ver en vivo.
+ * Modos de proyección del tablero (pedido de Nicolai, 20-oct; nombres del 20-oct en la tarde): `grafica`, solo la
+ * matriz moviéndose a toda la pantalla, o `detallado`, la matriz con el progreso y los promedios. Se elige por evento
+ * desde Ver en vivo.
  */
-export function conModo(url: string | null | undefined, modo: 'vivo' | 'tabla'): string | null {
+export function conModo(url: string | null | undefined, modo: ModoTablero): string | null {
   if (!url) return null
   const u = new URL(url, 'http://x')
   u.searchParams.set('modo', modo)
@@ -262,6 +280,10 @@ export const decimal = (n: number | null | undefined, d = 2) =>
 
 export const fechaHora = (iso: string | null, zona: ZonaHoraria = 'America/Bogota') =>
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, dateStyle: 'medium', timeStyle: 'short' }) : 'Sin definir'
+
+/** Fecha corta sin año para tablas densas (Respuestas): «20 de oct, 6:54 a. m.». El export trae la fecha completa. */
+export const fechaCorta = (iso: string | null, zona: ZonaHoraria = 'America/Bogota') =>
+  iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'Sin definir'
 
 const TEXTO_EVENTO: Record<string, string> = {
   token_tablero_regenerado: 'Enlace del tablero cambiado: los anteriores dejaron de funcionar',

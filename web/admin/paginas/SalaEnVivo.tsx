@@ -13,10 +13,12 @@ import {
   CONFIRMACIONES,
   CRITERIOS,
   ES_DESTRUCTIVA,
+  MODOS_TABLERO,
   ORDEN_PREGUNTAS,
   PASO_SIGUIENTE,
   PROYECTOS_VIVOS,
   QUE_PASA,
+  TECLAS_TABLERO,
   ZONAS,
   accionesParaCorregir,
   bitacora,
@@ -151,6 +153,13 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
             <p id={`que-pasa-${siguiente}`} className="pista">
               {QUE_PASA[siguiente]}
             </p>
+            {/* Orden del taller (menú): antes de abrir la inscripción se prepara la sala. */}
+            {estado === 'preparada' && (
+              <p className="pista">
+                Antes de abrir, revisa <Link to={`/admin/salas/${d.sala.id}/configuracion`}>Configuración</Link>,{' '}
+                <Link to={`/admin/salas/${d.sala.id}/hojas`}>Hojas</Link> y <Link to={`/admin/salas/${d.sala.id}/mesas`}>Mesas y QR</Link>.
+              </p>
+            )}
           </>
         ) : (
           <>
@@ -525,23 +534,38 @@ function VerEnVivo({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<
       <ul className="en-vivo">
         {tableroSala && (
           <li>
-            <p className="en-vivo__titulo">Tablero de la sala</p>
-            <div className="acciones">
-              <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'vivo') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
-                En vivo, solo la gráfica
-              </a>
-              <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'tabla') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
-                Con tabla
-              </a>
+            <p className="en-vivo__titulo" id="t-tablero-sala">
+              Tablero de la sala
+            </p>
+            <div className="acciones" role="group" aria-labelledby="t-tablero-sala">
+              {MODOS_TABLERO.map((m) => (
+                <a
+                  key={m.modo}
+                  className="hz-boton hz-boton--secundario"
+                  href={conModo(tableroSala, m.modo) ?? undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-describedby="ayuda-tablero-sala"
+                >
+                  {m.nombre}
+                </a>
+              ))}
             </div>
             <p id="ayuda-tablero-sala" className="pista">
-              El que se proyecta, con la matriz de toda la sala. Elige el modo según el evento: en vivo muestra solo la matriz moviéndose; con tabla suma el progreso y los promedios. En el
-              tablero, F pone pantalla completa, V y T cambian de modo y 1, 2 y C cambian entre ronda 1, ronda 2 y comparación.
+              El que se proyecta, con la matriz de toda la sala. Elige el modo según el evento:{' '}
+              {MODOS_TABLERO.map((m, i) => (
+                <span key={m.modo}>
+                  {i > 0 && '; '}
+                  <strong>{m.nombre}</strong> muestra {m.ayuda}
+                </span>
+              ))}
+              . {TECLAS_TABLERO}
             </p>
           </li>
         )}
         {mesa && (
           <li>
+            <p className="en-vivo__titulo">Una mesa</p>
             <div className="en-vivo__mesa">
               <label className="campo-linea" htmlFor="ver-mesa">
                 Mesa
