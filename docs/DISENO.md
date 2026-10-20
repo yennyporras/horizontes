@@ -2,7 +2,9 @@
 
 **La ley de diseño es `docs/marca/FAMILIA_ESTRATEK.md`** (línea gráfica de la familia Estratek, aprobada por Paola el 19-oct). Este documento la aplica a Horizontes: qué token usa cada pieza, cuánto contraste da y cómo se ven los componentes. Si algo choca con FAMILIA_ESTRATEK, manda FAMILIA_ESTRATEK.
 Valores en código: `web/shared/ui/tokens.css`. Si este documento y el CSS no coinciden, manda el CSS y se corrige este documento en la misma ronda. Fuera de `tokens.css` no hay colores en duro.
-Muestra viva: `/m/_ui` (todos los componentes base en 360 px, con una muestra del tema carbón).
+Muestra viva en desarrollo: `/m/_ui` (todos los componentes base, en el claro con la barra carbón).
+
+**20-oct, decisión de Paola: una sola apariencia.** Landing, celular, tablero y panel usan el tema claro con la barra superior carbón y la línea del degradado. El carbón ya no es el tema de la landing ni del proyector (§2.1). Lo reemplazado queda tachado con su fecha.
 
 ## 1. Idea de diseño
 
@@ -10,19 +12,22 @@ Muestra viva: `/m/_ui` (todos los componentes base en 360 px, con una muestra de
 
 **Familia Estratek.** Horizontes es una herramienta respaldada: nombre, glifo «H» y acento propios (verde agua `#00CDA1`), y la firma «por Estratek »». Todo lo demás es común a la familia: paleta núcleo, Montserrat, retícula de 8 px, radios, componentes, foco y el azul Estratek como único color de acción.
 
-**Lo memorable: el horizonte.** La matriz dibuja los horizontes como cuartos de círculo. Cada opción de la rúbrica lleva un **arco de horizonte** cuyo radio crece con el valor (1 pegado a la esquina, 9 amplio); el elegido se llena con el color de acción. El encabezado del celular lleva los tres arcos H1, H2, H3 en las superficies del tema. En la landing, H1, H2 y H3 y las viñetas van en el acento de Horizontes.
+**Lo memorable: el horizonte.** La matriz dibuja los horizontes como cuartos de círculo. Cada opción de la rúbrica lleva un **arco de horizonte** cuyo radio crece con el valor (1 pegado a la esquina, 9 amplio); el elegido se llena con el color de acción. En la landing, los pasos de «Cómo funciona» llevan un horizonte que crece paso a paso y las viñetas son cuartos de círculo en el acento de Horizontes; las etiquetas H1, H2 y H3 de la matriz van en el borde de control (el verde agua se confunde con R1).
 
 **Sobrio.** El degradado de marca solo como línea (bajo el encabezado de producto, sobre el pie), borde, barra de progreso o gráfico grande; nunca detrás de texto. Sin sombras fuertes ni brillos. Un `h1` y un primario por vista.
 
 ## 2. Color
 
-### 2.1 Temas por contexto
+### 2.1 Página clara y barra carbón (20-oct)
 
-| Contexto | Tema | Cómo |
+| Dónde | Tema | Cómo |
 |---|---|---|
-| Celular del participante, panel | **Claro** | Por defecto (`:root`) |
-| Landing (`/`) y tablero (`/tablero/:sala`) | **Carbón** | `data-tema="carbon"` en el elemento raíz de la vista y `useTemaDocumento('carbon')` (lo pone en `<html>` mientras la vista está montada: fondo del rebote y `theme-color`) |
-| Barra superior del panel | Carbón dentro del claro | `data-tema="carbon"` en la barra |
+| Todas las páginas: landing (`/`), celular (`/m/:codigo`), tablero (`/tablero/:sala`) y panel (`/admin`) | **Claro** | Por defecto (`:root`). Cada vista lleva `data-tema="claro"` en su elemento raíz y llama `useTemaDocumento('claro')` (lo pone en `<html>` mientras está montada: fondo del rebote igual a la vista aunque se llegue desde otra ruta de la SPA) |
+| Barra superior de todas las vistas | **Carbón** dentro del claro | `EncabezadoProducto` ya lleva `data-tema="carbon"` en su `<header>`: no hace falta envolverlo. Una barra propia (la del tablero) pone `data-tema="carbon"` en su contenedor y usa los mismos tokens |
+
+~~Landing y tablero en carbón con `useTemaDocumento('carbon')`; barra carbón solo en el panel~~ (19-oct). **Reemplazado el 20-oct** por la tabla de arriba.
+
+`web/index.html` declara `color-scheme: light` y `theme-color` `#141414` (el carbón de la barra superior: la barra del navegador y la de la vista se leen como una sola). `useTemaDocumento` ya no cambia el `theme-color`.
 
 Mismos nombres de token en los dos temas; solo cambian los valores. Una variable propia de un área que use `var(--hz-…)` se resuelve donde se declara: si un área define alias (`--a-*`, `--t-*`), deben declararse en el elemento con `data-tema` o dentro de él.
 
@@ -30,19 +35,19 @@ Mismos nombres de token en los dos temas; solo cambian los valores. Una variable
 
 Contraste WCAG 2.2 medido el 19-oct; la prueba `web/shared/ui/__tests__/contraste.test.ts` lo verifica en los dos temas. f = fondo, s1, s2 y s3 = superficies.
 
-| Token | Claro | Carbón | Rol | Contraste claro · carbón |
+| Token | Claro (páginas) | Carbón (barra) | Rol | Contraste claro · carbón |
 |---|---|---|---|---|
-| `--hz-fondo` (= `--hz-lienzo`) | `#FFFFFF` | `#141414` | Fondo de página | |
+| `--hz-fondo` | `#FFFFFF` | `#141414` | Fondo de página (en carbón, de la barra) | |
 | `--hz-superficie-1` | `#F3F8FF` | `#1B1D22` | Tarjetas, barra inferior, secciones alternas | |
 | `--hz-superficie-2` (= `--hz-h1`) | `#E8F1FF` | `#23262D` | Bloques suaves, pestañas | |
 | `--hz-superficie-3` (= `--hz-h2`) | `#DCECFF` | `#2C3038` | Hover, pista de barras, deshabilitado, insignia neutra | |
-| `--hz-borde` (= `-suave`, `--hz-superficie-4`, `--hz-h3`) | `#C9D9F2` | `#343944` | Bordes de tarjeta y separadores | |
-| `--hz-borde-control` (= `--hz-borde-fuerte`) | `#5A6680` | `#8A9BB8` | Borde de campos, casillas y botón secundario | f 5,76 · 6,55; s2 5,06 · 5,38 (≥ 3) |
+| `--hz-borde` (= `--hz-h3`) | `#C9D9F2` | `#343944` | Bordes de tarjeta y separadores | |
+| `--hz-borde-control` | `#5A6680` | `#8A9BB8` | Borde de campos, casillas y botón secundario | f 5,76 · 6,55; s2 5,06 · 5,38 (≥ 3) |
 | `--hz-tinta` | `#141414` | `#DCECFF` | Texto y títulos | f 18,42 · 15,34; s3 15,34 · 11,02 |
 | `--hz-tinta-2` | `#44506A` | `#A8B6CF` | Texto de apoyo | f 8,07 · 9,00; s3 6,72 · 6,46 |
 | `--hz-tinta-3` | `#5A6680` | `#8A9BB8` | Metadatos, ayudas, deshabilitado | f 5,76 · 6,55; s3 4,79 · 4,70 |
-| `--hz-accion` (= `--hz-azul`, `--hz-acento`, `--hz-cielo`) | `#1A66D6` | `#3487FF` | Acción, enlaces, selección, cifra elegida | f 5,36 · 5,31; s1 5,03 · 4,86 |
-| `--hz-sobre-accion` (= `--hz-sobre-acento`) | `#FFFFFF` | `#141414` | Texto sobre un relleno de acción | 5,36 · 5,31 |
+| `--hz-accion` (= `--hz-azul`) | `#1A66D6` | `#3487FF` | Acción, enlaces, selección, cifra elegida | f 5,36 · 5,31; s1 5,03 · 4,86 |
+| `--hz-sobre-accion` | `#FFFFFF` | `#141414` | Texto sobre un relleno de acción | 5,36 · 5,31 |
 | `--hz-foco-color` | `#1A66D6` | `#3487FF` | Contorno de foco | f 5,36 · 5,31 (≥ 3) |
 | `--hz-acento-producto` | `#00CDA1` | `#00CDA1` | Glifo, línea, gráficos propios; **nunca texto sobre claro** | |
 | `--hz-acento-producto-texto` | `#007A60` | `#00CDA1` | Acento como texto | f 5,31 · 8,99 |
@@ -63,7 +68,7 @@ Reglas que salen de la medición:
 
 ### 2.3 Rondas
 
-| Token | Claro | Carbón | Contraste claro · carbón |
+| Token | Claro (páginas) | Carbón (barra) | Contraste claro · carbón |
 |---|---|---|---|
 | `--hz-r1` (verde, hueco) | `#1B7F3A` | `#3FB25A` | f 5,07 · 6,78; s1 4,75 · 6,20; s3 4,22 · 4,87 (forma ≥ 3) |
 | `--hz-r2` (rojo, sólido) | `#C62828` | `#F36363` | f 5,62 · 5,94; s1 5,27 · 5,44; s3 4,68 · 4,27 (forma ≥ 3) |
@@ -90,7 +95,7 @@ R1 y R2 son de ronda, no de estado. Siempre con el texto «R1»/«R2» y con for
 | `--hz-fs-h1` / `--hz-fs-h2` | 24 a 32 / 20 a 24 px | Título de pantalla y de sección |
 | `--hz-fs-display` / `--hz-fs-display-2` | 40 a 56 / 32 a 40 px | Landing (900, interlineado 1,05) |
 | `--hz-fs-proj-*` | 16 a 44 px | Tablero en proyección |
-| `--hz-fs-18` · `--hz-fs-25` · `--hz-fs-30` · `--hz-fs-36` | | Se conservan para las áreas que ya los usan |
+| `--hz-fs-18` · `--hz-fs-25` | 18 · 25 px | Pregunta y cifra de la rúbrica |
 
 - Interlineado 1,5 en cuerpo y 1,2 en títulos. Medida del caso: `--hz-medida` (34rem).
 - Cifras con `font-variant-numeric: tabular-nums` y coma decimal.
@@ -98,7 +103,7 @@ R1 y R2 son de ronda, no de estado. Siempre con el texto «R1»/«R2» y con for
 
 ## 4. Espaciado y retícula
 
-- Retícula de 8 px con medio paso de 4: `--hz-sp-1` 4 · `-2` 8 · `-3` 12 · `-4` 16 · `-6` 24 · `-8` 32 · `-10` 40 · `-12` 48 · `-16` 64 · `-20` 80. `--hz-sp-5` (20) y `--hz-sp-24` (96) se conservan.
+- Retícula de 8 px con medio paso de 4: `--hz-sp-1` 4 · `-2` 8 · `-3` 12 · `-4` 16 · `-6` 24 · `-8` 32 · `-10` 40 · `-12` 48 · `-16` 64 · `-20` 80. `--hz-sp-5` (20) se conserva.
 - Móvil primero: 360 px, margen lateral 16 px, una columna. La acción principal del celular vive en la barra inferior fija (`.hz-barra-accion`).
 - Áreas táctiles de 48 px (`--hz-tactil`); 8 px mínimo entre objetivos.
 
@@ -107,7 +112,7 @@ R1 y R2 son de ronda, no de estado. Siempre con el texto «R1»/«R2» y con for
 | Token | Valor | Uso |
 |---|---|---|
 | `--hz-r-boton` (= `--hz-r-pill`) | 999 px | Botones, pestañas, insignias, progreso |
-| `--hz-r-campo` (= `--hz-r-s`, `--hz-r-m`) | 12 px | Campos, opciones de rúbrica, avisos, glifo |
+| `--hz-r-campo` (= `--hz-r-m`) | 12 px | Campos, opciones de rúbrica, avisos, glifo |
 | `--hz-r-tarjeta` (= `--hz-r-l`) | 16 px | Tarjetas y hojas |
 
 Jerarquía por superficie y borde de 1 px. Sombra (`--hz-sombra`) solo en lo que flota: la barra inferior fija, menús y diálogos.
@@ -125,7 +130,10 @@ Jerarquía por superficie y borde de 1 px. Sombra (`--hz-sombra`) solo en lo que
 React sin dependencias externas, clases `hz-*` y tokens `--hz-*`. Ningún componente calcula resultados.
 
 ### EncabezadoProducto
-- Glifo «H» (40 px, radio 12, carbón sobre el acento de Horizontes), nombre en 900, firma «por Estratek »» con la » en azul y la línea del degradado de 4 px debajo. `href` opcional (la marca se vuelve enlace) y `children` a la derecha (navegación, sala, acciones). Props `nombre` y `glifo` para las demás herramientas de la familia.
+- La barra superior carbón de todas las vistas: el `<header>` lleva `data-tema="carbon"`, así la barra y sus hijos (navegación, botones, menú desplegable) toman los tokens del carbón aunque la página sea clara. Glifo de Horizontes (40 px, radio 12, carbón sobre el acento), nombre en 900, firma «por Estratek »» con la » en azul y la línea del degradado de 4 px debajo, de borde a borde. La fila usa `.hz-pagina`. `href` opcional (la marca se vuelve enlace), `onIr` para navegar sin recargar y `children` a la derecha. Prop `nombre` para las demás herramientas de la familia.
+
+### LogoEstratek
+- Logo oficial de Estratek (`marca/estratek-logo.png`, un solo color) como máscara pintada con `--hz-tinta`: carbón sobre el claro, hielo dentro de la barra. `role="img"` y nombre «Estratek». Alto de 32 px por defecto (se cambia con `className`); en alto contraste de Windows, `CanvasText`.
 
 ### Boton
 - `primario`: sólido en `--hz-accion` con texto `--hz-sobre-accion`, uno por vista; al pasar, `--hz-azul-presionado`.
@@ -158,11 +166,12 @@ React sin dependencias externas, clases `hz-*` y tokens `--hz-*`. Ningún compon
 ### Hoja
 - Tarjeta en superficie 1 con borde y radio 16; la activa lleva un filo de acción de 3 px arriba.
 
-### EncabezadoHorizonte
-- Nombre de la sala, mesa y perfil, con los tres arcos H1, H2, H3 en las superficies del tema (`aria-hidden`).
-
 ### Landing (`web/inicio/`)
-- Tema carbón. EncabezadoProducto con la navegación; titulares en 900 con la palabra clave en azul («La mesa mueve el **portafolio**»); un primario en el hero («Entrar a mi mesa») y el avance «Ver cómo funciona »» como enlace. Secciones que alternan fondo y superficie 1 con borde. La matriz ilustrada lleva H1, H2 y H3 en el acento de Horizontes, curvas en `--hz-azul-medio`, fijos en tinta 3 y R1/R2 del tema. Pie con la línea del degradado, «Horizontes »» en grande y el logo oficial blanco de Estratek (`web/shared/ui/marca/estratek-logo-blanco.png`, texto alternativo «Estratek»). En 360 px el encabezado lleva solo la marca; «Ingresar al panel» sigue en «Para facilitadores» y en el pie.
+- Tema claro con la barra carbón (20-oct). `EncabezadoProducto` con las cinco secciones e «Ingresar al panel» desde 1152 px; por debajo, «Menú» (se cierra al elegir, con Escape, con el mismo botón o tocando fuera) y, desde 480 px, «Ingresar al panel» al lado.
+- Héroe: titular en 900 con la palabra clave en azul («La mesa mueve el **portafolio**»), un primario («Escribir el código de mi mesa») y el avance «Ver cómo funciona »». Desde 768 px, texto y matriz lado a lado.
+- Matriz ilustrada: plano en superficie 1 con ejes en borde de control, H2 y H1 en superficies 2 y 3 con su borde, etiquetas H1 a H3 en borde de control, fijos en tinta 3, R1 hueco verde y R2 sólido rojo del claro, «R1» del lado contrario a la flecha.
+- Secciones que alternan fondo y superficie 1 con borde. En las de dos columnas, el título lleva su bajada (y en facilitadores, «Ingresar al panel») al lado: la columna no queda vacía.
+- Pie con la línea del degradado, «Horizontes »» en grande y `LogoEstratek` en carbón. ~~Logo blanco sobre carbón~~ (19-oct).
 
 ## 8. Flujo de pantallas del participante
 
