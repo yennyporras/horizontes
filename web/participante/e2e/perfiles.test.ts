@@ -77,7 +77,8 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)
         await votarApi(e, tokenC, 'nutriwhat', 1)
-        await ver(p, /^Todos votaron en Mesa 1/, espera)
+        // Alcance sala (por defecto): el precierre que se anuncia es el de la sala.
+        await ver(p, /^Todos votaron en la sala/, espera)
         await accion(e, sala.id, 'cerrar_ronda_1')
         await titulo(p, 'Ronda 1 cerrada', espera)
         await p.locator('.hzp-matriz svg.hz-matriz').waitFor()

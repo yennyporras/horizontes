@@ -91,7 +91,9 @@ describe('antes de inscribirse', () => {
   it('con la inscripción cerrada pide al facilitador «Dar acceso de nuevo» en vez de recuperar por correo (D1)', async () => {
     servidor((url) => (url.startsWith('/api/mesas/') ? { status: 200, body: { ...MESA, inscripcion_abierta: false, sala: { ...MESA.sala, estado: 'r2_cerrada' } } } : { status: 404 }))
     montar()
-    expect(await screen.findByRole('heading', { name: 'El taller ya terminó' })).toBeTruthy()
+    // Con la ronda 2 cerrada la sala no ha cerrado (se puede reabrir la ronda): no dice que el taller terminó.
+    expect(await screen.findByRole('heading', { name: 'La votación ya terminó' })).toBeTruthy()
+    expect(screen.queryByText(/Esta sala cerró/)).toBeNull()
     expect(screen.getByText('¿Ya te inscribiste y perdiste la sesión?')).toBeTruthy()
     expect(screen.getByText(PIDE_ACCESO)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /recuperar/i })).toBeNull()
@@ -341,7 +343,15 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
     expect(screen.getAllByRole('button', { name: /^Cambiar / })).toHaveLength(6)
     expect(screen.queryByText('Sin responder')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
-    expect(await screen.findByText('La ronda 1 ya se cerró. Tu última calificación guardada es la que cuenta.')).toBeTruthy()
+    // NUTRIWHAT no tenía calificación guardada: no se promete una «anterior» que no existe.
+    expect(await screen.findByText('La ronda 1 ya se cerró y tu calificación de NUTRIWHAT no alcanzó a guardarse.')).toBeTruthy()
+    cleanup()
+    // INSUMEX sí tenía una guardada: esa es la que cuenta.
+    sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:insumex')
+    montar()
+    await screen.findByRole('heading', { name: 'INSUMEX' })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
+    expect(await screen.findByText('La ronda 1 ya se cerró. Cuenta tu última calificación guardada de INSUMEX.')).toBeTruthy()
   })
 
   it('sin red al guardar deja el voto en la cola y lo envía solo al volver la señal', async () => {

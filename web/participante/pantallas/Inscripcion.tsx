@@ -105,9 +105,8 @@ export function Inscripcion({ codigo, mesa, onInscrito, previa = false }: Inscri
         </Aviso>
       )}
       <h1 className="hz-titulo">Te damos la bienvenida al taller Horizontes</h1>
-      <p className="hz-texto-2">
-        Estás en {mesa.mesa.nombre} de {mesa.sala.nombre}. Inscríbete para recibir el caso y tu hoja de información.
-      </p>
+      {/* La sala y la mesa ya van en la franja de arriba: el texto no las repite. */}
+      <p className="hz-texto-2">Inscríbete para recibir el caso y tu hoja de información.</p>
       <form ref={formRef} className="hzp-form" noValidate onSubmit={enviar}>
         <Campo
           etiqueta="Tu nombre"

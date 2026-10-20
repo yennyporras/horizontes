@@ -191,8 +191,9 @@ function AntesDeInscribirse({ codigo, onInscrito, previa = false }: { codigo: st
         if (!vivo) return
         setMesa(m)
         setError(null)
-        // Inscripción aún cerrada: la pantalla se actualiza sola.
-        if (!m.inscripcion_abierta && m.sala.estado === 'preparada') t = setTimeout(() => setIntento((i) => i + 1), 5000)
+        // Inscripción cerrada: la pantalla se actualiza sola cuando abre (o cuando el facilitador reabre una ronda).
+        // Con la sala cerrada no: ya no hay nada que esperar.
+        if (!m.inscripcion_abierta && m.sala.estado !== 'cerrada') t = setTimeout(() => setIntento((i) => i + 1), 5000)
       })
       .catch((e: unknown) => {
         if (!vivo) return
@@ -233,14 +234,17 @@ function AntesDeInscribirse({ codigo, onInscrito, previa = false }: { codigo: st
   if (!mesa.inscripcion_abierta && !previa) {
     if (mesa.sala.estado !== 'preparada') {
       const cerrada = mesa.sala.estado === 'cerrada'
-      const termino = cerrada || mesa.sala.estado === 'r2_cerrada'
+      // Con la ronda 2 cerrada la sala sigue abierta (el facilitador puede reabrir la ronda): no se dice que terminó.
+      const votacionTerminada = mesa.sala.estado === 'r2_cerrada'
       return (
         <Marco sala={mesa.sala.nombre} meta={mesa.mesa.nombre} claveFoco="inscripcion-cerrada">
-          <h1 className="hz-titulo">{termino ? 'El taller ya terminó' : 'La inscripción está cerrada'}</h1>
+          <h1 className="hz-titulo">{cerrada ? 'El taller ya terminó' : votacionTerminada ? 'La votación ya terminó' : 'La inscripción está cerrada'}</h1>
           <p className="hz-texto-2">
-            {termino
-              ? 'Esta sala cerró y no recibe más inscripciones. Gracias por participar.'
-              : 'Esta sala ya no recibe inscripciones nuevas. Si llegaste tarde, pídele ayuda al facilitador.'}
+            {cerrada
+              ? 'Esta sala cerró y no recibe más inscripciones.'
+              : votacionTerminada
+                ? 'Las dos rondas de esta sala ya se cerraron y no recibe inscripciones nuevas.'
+                : 'Esta sala no recibe inscripciones nuevas en este momento. Si llegaste tarde, pídele ayuda al facilitador.'}
           </p>
           {/* D1: con la sala cerrada no hay acceso nuevo; antes, quien ya se inscribió lo pide al facilitador. */}
           {!cerrada && <Aviso tono="info" titulo="¿Ya te inscribiste y perdiste la sesión?">{PIDE_ACCESO}</Aviso>}
@@ -467,9 +471,17 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   }
   if (!yo) {
     if (errorCarga) {
+      // El título dice lo que pasó: sin señal no es una falla del servidor.
+      if (errorCarga.esRed) {
+        return (
+          <Mensaje titulo="Sin conexión" accion={{ texto: 'Reintentar', onClick: () => void refrescar() }}>
+            No pudimos cargar tu mesa. Revisa la señal, seguimos intentando.
+          </Mensaje>
+        )
+      }
       return (
         <Mensaje titulo="Algo falló de nuestro lado" tono="error" accion={{ texto: 'Reintentar', onClick: () => void refrescar() }}>
-          {errorCarga.esRed ? 'Sin conexión. Seguimos intentando.' : 'Vuelve a intentarlo en unos segundos.'}
+          Vuelve a intentarlo en unos segundos.
         </Mensaje>
       )
     }
@@ -486,8 +498,9 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   // Solo los votos de esta persona: si en el celular entró otra, los suyos no cuentan aquí.
   const porEnviar = cola.filter((v) => v.ronda === ronda && v.participante_id === yo.participante.id).map((v) => v.proyecto_id)
   const completo = yo.completo_ronda || (vivos.length > 0 && vivos.every((p) => votoDe(yo, p.id) || porEnviar.includes(p.id)))
-  const precierreSala = alcance === 'sala' && Boolean(yo.resultados?.progreso?.precierre)
-  const precierre = abierta && (yo.progreso_mesa.precierre || precierreSala)
+  // El precierre que cuenta es el del alcance de los resultados (SPEC §4): con alcance «sala», que termine de votar
+  // la mesa no muestra nada nuevo (el resultado de la sala espera a toda la sala) y la pantalla no cambia.
+  const precierre = abierta && (alcance === 'sala' ? Boolean(yo.resultados?.progreso?.precierre) : yo.progreso_mesa.precierre)
   const donde = textoAlcance(yo.resultados, alcance)
   const hayResultado = resultadoVisible(yo.resultados)
   const minimo = yo.resultados?.minimo_votos ?? MIN_VOTOS
@@ -518,7 +531,9 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   if (porEnviar.length > 0 && abierta)
     flotantes.push(
       <Aviso key="cola" tono="alerta" titulo={porEnviar.length === 1 ? '1 calificación por enviar' : `${porEnviar.length} calificaciones por enviar`}>
-        Está guardada en este celular y la enviamos sola en cuanto se pueda. No borres los datos del navegador.
+        {porEnviar.length === 1
+          ? 'Está guardada en este celular y la enviamos sola en cuanto se pueda. No borres los datos del navegador.'
+          : 'Están guardadas en este celular y las enviamos solas en cuanto se pueda. No borres los datos del navegador.'}
       </Aviso>,
     )
   if (avisoOk && abierta) flotantes.push(<Aviso key="ok" tono="ok">{avisoOk}</Aviso>)
@@ -550,8 +565,11 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
           </Boton>
         }
       >
-        <p className="hz-texto-3 hzp-saludo">Hola, {yo.participante.nombre.split(' ')[0]}</p>
-        <h1 className="hz-titulo">Tu perfil es {yo.participante.perfil.nombre}</h1>
+        {/* El saludo va pegado al título: es su antetítulo, no un párrafo suelto. */}
+        <div className="hzp-titular">
+          <p className="hzp-saludo">Hola, {yo.participante.nombre.split(' ')[0]}</p>
+          <h1 className="hz-titulo">Tu perfil es {yo.participante.perfil.nombre}</h1>
+        </div>
         <p className="hz-texto-2">
           En tu mesa cada persona tiene información distinta sobre {nombres}. Tú aportas la mirada de {yo.participante.perfil.nombre}. Lee el caso y tu
           hoja. En la ronda 1 calificas por tu cuenta y en silencio. En la ronda 2 compartes tu hoja y discuten en la mesa.
@@ -591,7 +609,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
       <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} misVotos={yo.mis_votos} preliminar={preliminar} />
     ) : null
   // 8.11 Precierre: va al final de la pantalla para no empujar lo que se está leyendo cuando llega.
-  const quienes = precierreSala && !yo.progreso_mesa.precierre ? 'la sala' : yo.participante.mesa.nombre
+  const quienes = alcance === 'sala' ? 'la sala' : yo.participante.mesa.nombre
   const seccionPreliminar = precierre && (
     <section className="hzp-seccion" aria-labelledby="hzp-pre">
       <h2 id="hzp-pre" className="hz-subtitulo">
@@ -599,7 +617,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
       </h2>
       <Aviso tono="alerta" titulo={hayResultado ? `Todos votaron en ${quienes}` : undefined}>
         {hayResultado
-          ? 'Este es un resultado preliminar. Puedes editar tus calificaciones hasta que el facilitador cierre la ronda.'
+          ? 'Puedes editar tus calificaciones hasta que el facilitador cierre la ronda. Al cerrarla sale el resultado final.'
           : `Puedes editar tus calificaciones hasta que el facilitador cierre la ronda. El resultado se muestra cuando hay al menos ${minimo} votos.`}
       </Aviso>
       {hayResultado && resultado(true)}
@@ -689,7 +707,9 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
           <Aviso tono="info">
             {completo
               ? `Ya calificaste los ${vivos.length} proyectos en la ronda ${ronda}. Puedes editar mientras la ronda siga abierta.`
-              : `La ronda ${ronda} ya está abierta. Cuando termines de leer, califica los ${vivos.length} proyectos. ${textoRonda(ronda)}`}
+              : guiado
+                ? `La ronda ${ronda} ya está abierta. Cuando termines de leer, ve a la pregunta que marca el facilitador. ${textoRonda(ronda)}`
+                : `La ronda ${ronda} ya está abierta. Cuando termines de leer, califica los ${vivos.length} proyectos. ${textoRonda(ronda)}`}
           </Aviso>
         )}
         {sinResultadoCerrada && estado === 'r2_cerrada' && <Aviso tono="info">La ronda 2 se cerró. El resultado aparece aquí en unos segundos.</Aviso>}
@@ -713,7 +733,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   // 8.12 Ronda cerrada. El texto solo promete lo que se muestra (con el mínimo de votos puede no haber resultado).
   if (estado === 'r1_cerrada' || estado === 'r2_cerrada') {
     let texto: string | null
-    if (ronda === 1) texto = hayResultado ? `Este es el resultado de ${donde}. Discútanlo en la mesa antes de la ronda 2.` : 'Discutan el caso en la mesa antes de la ronda 2.'
+    if (ronda === 1) texto = hayResultado ? `Este es el resultado de ${donde}. Discútanlo en la mesa antes de la ronda\u00a02.` : 'Discutan el caso en la mesa antes de la ronda\u00a02.'
     else if (yo.resultados && vistaMatriz(yo.resultados) === 'comparacion')
       texto = `Así se movieron ${vivos.map((p) => p.nombre).join(' y ')} de la ronda 1 a la ronda 2 en ${donde}.`
     else texto = hayResultado ? `Este es el resultado de ${donde}.` : null
@@ -722,7 +742,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
         <h1 className="hz-titulo">Ronda {ronda} cerrada</h1>
         {texto && <p className="hz-texto-2">{texto}</p>}
         {ronda === 1 && (
-          <Aviso tono="info">La ronda 2 aún no está abierta. Cuando el facilitador la abra, compartan sus hojas y discutan en la mesa antes de calificar.</Aviso>
+          <Aviso tono="info">La ronda 2 aún no está abierta. Cuando el facilitador la abra, compartan sus hojas antes de calificar.</Aviso>
         )}
         {resultado(false)}
         {botonLeer}
@@ -781,9 +801,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
         <Boton variante="secundario" bloque onClick={() => ir('elegir')}>
           Editar mis calificaciones
         </Boton>
-        <Boton variante="fantasma" onClick={() => ir('lectura')}>
-          Volver al caso
-        </Boton>
+        {botonLeer}
       </div>
       {seccionPreliminar}
     </Marco>
