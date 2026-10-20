@@ -38,6 +38,22 @@ test('antes de la ronda 2 no muestra la columna R2 (solo diría "Sin votos")', (
   expect(encabezados(container).filter((t) => t === 'R1')).toHaveLength(datos.proyectos_vivos.length)
 })
 
+test('«Sin votos» y «Faltan votos» van en texto secundario; la cifra de la ronda que se ve, resaltada', () => {
+  const datos: DatosTablero = structuredClone(mock)
+  const [a, b] = datos.proyectos_vivos
+  Object.assign(a.rondas.find((r) => r.ronda === 2)!, { n_votos: 0, promedios: null, eje_x: null, eje_y: null })
+  Object.assign(b.rondas.find((r) => r.ronda === 2)!, { bajo_minimo: true, promedios: null, eje_x: null, eje_y: null })
+  const { container } = render(<TablaComparada datos={datos} vista={2} />)
+  const fila = within(container).getByRole('rowheader', { name: /^Regulación/ }).parentElement!
+  const celdas = [...fila.querySelectorAll('td')]
+  expect(celdas.map((c) => c.textContent)).toEqual([expect.stringMatching(/^\d,\d\d$/), 'Sin votos', expect.stringMatching(/^\d,\d\d$/), 'Faltan votos'])
+  expect(celdas.map((c) => c.className)).toEqual(['hz-ini', 'hz-sin-dato', 'hz-ini', 'hz-sin-dato'])
+  cleanup()
+  const { container: c2 } = render(<TablaComparada datos={mock} vista={2} />)
+  const f2 = within(c2).getByRole('rowheader', { name: /^Regulación/ }).parentElement!
+  expect([...f2.querySelectorAll('td')].map((c) => c.className)).toEqual(['hz-ini', 'hz-foco', 'hz-ini', 'hz-foco'])
+})
+
 test('cada criterio lleva su descripción corta bajo el nombre (máximo 100 caracteres)', () => {
   const { container } = render(<TablaComparada datos={mock} vista="comparacion" />)
   const fila = within(container).getByRole('rowheader', { name: /^Alineación con el core/ })

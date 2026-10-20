@@ -200,7 +200,7 @@ test('nombres de los fijos sin solaparse entre sí ni con otras etiquetas, con l
   assert.ok(omitidos <= 12, `${omitidos} nombres omitidos`);
 });
 
-test('colores solo con tokens semánticos (sirven en carbón y en claro), en reglas CSS limitadas a cada SVG', () => {
+test('colores solo con tokens semánticos (toman el tema de quien aloja la matriz), en reglas CSS limitadas a cada SVG', () => {
   const svg = matrizSVG(mock, { ancho: 800, idPrefijo: 'zz' });
   assert.ok(svg.includes('<svg xmlns="http://www.w3.org/2000/svg" id="zz" '));
   const estilo = svg.match(/<style>(.*?)<\/style>/)![1];
@@ -295,7 +295,7 @@ test('F-13: descripción y títulos con coma decimal; la animación va limitada 
   assert.ok(!/@keyframes hz/.test(estilo));
 });
 
-test('modo en vivo: con valores anteriores, las burbujas que cambiaron se deslizan y sus nombres aparecen después', () => {
+test('modo Gráfica: con valores anteriores, las burbujas que cambiaron se deslizan y sus nombres aparecen después', () => {
   const v = mock.proyectos_vivos[0];
   const r2 = v.rondas.find((r) => r.ronda === 2)!;
   const svg = matrizSVG(mock, { ancho: 900, vista: 2, idPrefijo: 'tt', transicion: { valores: { [`${v.id}-2`]: { x: r2.eje_x! - 2, y: r2.eje_y! } } } });
@@ -304,4 +304,17 @@ test('modo en vivo: con valores anteriores, las burbujas que cambiaron se desliz
   assert.ok(svg.includes('hz-etq hz-etq-vivo hz-mz-texto hz-anim-etq'));
   // Sin cambios de posición, nada se anima.
   assert.ok(!matrizSVG(mock, { ancho: 900, vista: 2, transicion: { valores: { [`${v.id}-2`]: { x: r2.eje_x!, y: r2.eje_y! } } } }).includes('hz-anim'));
+});
+
+test('el subtítulo del eje X no se sale del lienzo cuando el plano está corrido a la derecha (Detallado en 1280×720)', () => {
+  // Matriz angosta con letra de proyector: el plano empieza después del eje Y y el subtítulo, centrado bajo él, se
+  // salía por la derecha («(Capacidades + Recursos + Barreras de Entrada» sin el paréntesis final).
+  for (const [ancho, alto] of [[517, 526], [540, 548], [583, 591], [360, 360]]) {
+    const svg = matrizSVG(mock, { ancho, alto, escalaTexto: ancho > 400 ? 1.45 : 1, letraMin: ancho > 400 ? 20 : 0, idPrefijo: 'st' });
+    const m = svg.match(/<text class="hz-mz-suave hz-mz-subtitulo-eje" x="([\d.]+)" y="[\d.]+" font-size="([\d.]+)" text-anchor="middle">([^<]*)<\/text>/);
+    assert.ok(m, 'subtítulo del eje X');
+    const [x, fs, texto] = [Number(m[1]), Number(m[2]), m[3]];
+    const medio = (texto.length * 0.6 * fs) / 2;
+    assert.ok(x - medio >= 0 && x + medio <= ancho, `${ancho}px: subtítulo de ${Math.round(x - medio)} a ${Math.round(x + medio)}`);
+  }
 });

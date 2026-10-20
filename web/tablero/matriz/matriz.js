@@ -5,11 +5,11 @@
 const ETIQUETAS_HORIZONTE_DEFECTO = { H1: [1.3, 1.9], H2: [4.3, 4.0], H3: [8.0, 7.6] };
 
 // Paleta de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md): solo tokens semánticos de
-// web/shared/ui/tokens.css, sin valores en duro. El mismo SVG sirve en el tema carbón (tablero) y en el
-// claro (celular y panel): cada var() toma el valor del tema de quien lo aloja.
+// web/shared/ui/tokens.css, sin valores en duro. Cada var() toma el valor del tema de quien lo aloja (hoy el
+// claro en el tablero, el celular y el panel; el carbón también da los contrastes pedidos).
 // Horizontes de afuera hacia adentro en superficies escalonadas: H3 superficie 1, H2 superficie 2 y
-// H1 superficie 3; su borde, el borde de control neutro (el verde agua se confundía con R1 en proyector). R1, R2 y los fijos dan al
-// menos 3:1 sobre las tres; el texto, más de 4,5:1 sobre su halo.
+// H1 superficie 3; su borde, el borde de control neutro (el verde agua se confundía con R1 en proyector).
+// R1, R2 y los fijos dan al menos 3:1 sobre las tres; el texto, más de 4,5:1 sobre su halo.
 export const COLORES = {
   fondoH3: 'var(--hz-superficie-1)',
   fondoH2: 'var(--hz-superficie-2)',
@@ -452,7 +452,7 @@ export function matrizSVG(datos, opciones = {}) {
       `@keyframes ${id}-aparecer{from{opacity:0}to{opacity:1}}` +
       `@media (prefers-reduced-motion: reduce){${s}.hz-anim-mov,${s}.hz-anim-apar{animation:none}}`;
   }
-  // Modo en vivo (pedido de Nicolai, 20-oct): cuando llega una foto nueva de votos (D2), cada burbuja viva se
+  // Modo Gráfica (pedido de Nicolai, 20-oct): cuando llega una foto nueva de votos (D2), cada burbuja viva se
   // desliza desde donde estaba (valores anteriores en unidades de los ejes, así sirve aunque cambie el tamaño)
   // y sus nombres, flechas y guías aparecen al llegar. No se mezcla con la animación R1 → R2.
   const tr = !animar && opciones.transicion && opciones.transicion.valores ? opciones.transicion : null;
@@ -535,13 +535,17 @@ export function matrizSVG(datos, opciones = {}) {
   for (let v = Math.ceil(L.ymin); v <= L.ymax && v - L.ymin <= 50; v++) {
     partes.push(`<text class="hz-mz-suave hz-mz-marca" x="${r2(posEjes.marcaY)}" y="${r2(sy(v))}" font-size="${r2(fM)}" text-anchor="end" dominant-baseline="middle">${v}</text>`);
   }
-  // Títulos de ejes. El subtítulo del eje X se achica solo si no cabe en el ancho del lienzo.
+  // Títulos de ejes. El subtítulo del eje X va centrado bajo el plano; si no cabe ahí (el plano está corrido a
+  // la derecha por el eje Y), se corre a la izquierda lo justo, y solo se achica si no cabe en todo el lienzo.
   const tx = x0 + P / 2;
   const subX = String(L.ejes.x.subtitulo || '');
-  const fSX = Math.min(letras.subtitulo, (W * 0.98) / Math.max(1, subX.length * 0.56));
+  const AVANCE_MINUSCULAS = 0.6;
+  const fSX = Math.min(letras.subtitulo, (W * 0.98) / Math.max(1, subX.length * AVANCE_MINUSCULAS));
+  const medioSubX = (subX.length * AVANCE_MINUSCULAS * fSX) / 2;
+  const txSub = clamp(tx, Math.min(W / 2, medioSubX + 2), Math.max(W / 2, W - medioSubX - 2));
   partes.push(
     `<text class="hz-mz-texto hz-mz-titulo-eje" x="${r2(tx)}" y="${r2(posEjes.tituloX)}" font-size="${r2(letras.titulo)}" font-weight="800" text-anchor="middle" letter-spacing="0.04em">${esc(L.ejes.x.titulo || '')}</text>`,
-    `<text class="hz-mz-suave hz-mz-subtitulo-eje" x="${r2(tx)}" y="${r2(posEjes.subtituloX)}" font-size="${r2(fSX)}" text-anchor="middle">${esc(subX)}</text>`,
+    `<text class="hz-mz-suave hz-mz-subtitulo-eje" x="${r2(txSub)}" y="${r2(posEjes.subtituloX)}" font-size="${r2(fSX)}" text-anchor="middle">${esc(subX)}</text>`,
   );
   const ty = y0 + P / 2;
   partes.push(
@@ -620,39 +624,4 @@ export function matrizSVG(datos, opciones = {}) {
   }
   partes.push(`</g></svg>`);
   return partes.join('');
-}
-
-/**
- * Monta la matriz en un elemento del DOM y la redibuja al cambiar de tamaño.
- * @returns {{actualizar:(datos:object)=>void, destruir:()=>void}}
- */
-export function montarMatriz(contenedor, datosIniciales, opciones = {}) {
-  let datos = datosIniciales;
-  const idPrefijo = opciones.idPrefijo || `hzm${++contadorInstancias}`;
-  const dibujar = () => {
-    const ancho = contenedor.clientWidth || 360;
-    const altoDisp = contenedor.clientHeight || ancho;
-    const alto = Math.min(altoDisp, ancho * 1.05);
-    contenedor.innerHTML = matrizSVG(datos, { ...opciones, ancho, alto: Math.max(alto, Math.min(ancho, 320)), idPrefijo });
-  };
-  dibujar();
-  let ro = null;
-  if (typeof ResizeObserver !== 'undefined') {
-    let pendiente = 0;
-    ro = new ResizeObserver(() => {
-      cancelAnimationFrame(pendiente);
-      pendiente = requestAnimationFrame(dibujar);
-    });
-    ro.observe(contenedor);
-  }
-  return {
-    actualizar(nuevos) {
-      datos = nuevos;
-      dibujar();
-    },
-    destruir() {
-      ro?.disconnect();
-      contenedor.innerHTML = '';
-    },
-  };
 }

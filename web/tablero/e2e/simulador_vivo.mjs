@@ -43,7 +43,7 @@ const dibujados = () =>
     const vx = lin(tx), vy = lin(ty)
     const out = {}
     for (const c of svg.querySelectorAll('circle.hz-r1, circle.hz-r2')) out[`${c.dataset.proyecto}-${c.classList.contains('hz-r1') ? 1 : 2}`] = [vx(Number(c.getAttribute('cx'))), vy(Number(c.getAttribute('cy')))]
-    return { out, version: document.querySelector('.hz-lienzo')?.dataset.version, estado: document.querySelector('.hz-cab-meta span')?.textContent, vista: document.querySelector('.hz-segmento [aria-pressed="true"]')?.textContent }
+    return { out, version: document.querySelector('.hz-lienzo')?.dataset.version, estado: document.querySelector('.hz-cab-estado, .hz-franja')?.textContent, vista: document.querySelector('[aria-label="Vista de la matriz"] [aria-pressed="true"]')?.textContent }
   })
 
 const delApi = (t) => {

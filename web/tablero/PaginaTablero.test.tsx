@@ -10,9 +10,9 @@ import type { DatosTablero } from './tipos'
 const mock = structuredClone(mockJson) as unknown as DatosTablero
 mock.sala.pregunta_guiada = null
 
-/** Por defecto el tablero va en el modo «En vivo» (solo la matriz); T abre el modo «Con tabla». */
+/** Por defecto el tablero va en el modo «Gráfica» (solo la matriz); D abre el modo «Detallado». */
 async function verDatos() {
-  fireEvent.keyDown(window, { key: 't' })
+  fireEvent.keyDown(window, { key: 'd' })
   await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
 }
 
@@ -60,61 +60,77 @@ describe('PaginaTablero', () => {
     vi.unstubAllGlobals()
   })
 
-  test('tema carbón y encabezado de marca: nombre de la sala y firma «Horizontes por Estratek »»', async () => {
+  test('tema claro con la barra carbón de la familia Estratek: logo, «Horizontes por Estratek »» y el nombre de la sala', async () => {
     montar('/tablero/s_demo?t=tok')
-    // Mientras carga, también en carbón (sin destello claro en el proyector).
-    expect(document.querySelector('main')!.dataset.tema).toBe('carbon')
+    // Mientras carga, ya en claro y con la barra de la marca.
+    expect(document.querySelector('main')!.dataset.tema).toBe('claro')
+    expect(document.querySelector('.hz-cab')!.getAttribute('data-tema')).toBe('carbon')
+    expect(screen.getByText('Cargando el tablero…').getAttribute('role')).toBe('status')
     const titulo = await screen.findByRole('heading', { level: 1, name: mock.sala.nombre })
-    expect(document.querySelector('main')!.dataset.tema).toBe('carbon')
-    const firma = titulo.closest('.hz-cab')!.querySelector('.hz-firma')!
-    expect(firma.textContent!.replace(/\s+/g, ' ').trim()).toBe('Horizontes por Estratek »')
+    const main = document.querySelector('main')!
+    expect(main.dataset.tema).toBe('claro')
     // También en <html> (fondo del rebote y theme-color).
-    expect(document.documentElement.dataset.tema).toBe('carbon')
+    expect(document.documentElement.dataset.tema).toBe('claro')
+    // El carbón queda solo en la barra, como en el panel (Paola, 20-oct: una sola apariencia).
+    const barra = titulo.closest('.hz-cab')!
+    expect(barra.getAttribute('data-tema')).toBe('carbon')
+    for (const el of main.querySelectorAll('[data-tema]')) {
+      expect(barra.contains(el), 'data-tema fuera de la barra').toBe(true)
+      expect(el.getAttribute('data-tema')).toBe('carbon')
+    }
+    expect(main.querySelector('.hz-area')!.closest('[data-tema="carbon"]')).toBeNull()
+    const marca = barra.querySelector('a.hz-producto__marca')!
+    expect(marca.querySelector('.hz-producto__nombre')!.textContent).toBe('Horizontes')
+    expect(marca.querySelector('.hz-producto__firma')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('por Estratek »')
     // La » es la marca gráfica: decorativa para el lector de pantalla.
-    expect(firma.querySelector('.hz-firma-flecha')!.getAttribute('aria-hidden')).toBe('true')
+    expect(marca.querySelector('.hz-producto__flecha')!.getAttribute('aria-hidden')).toBe('true')
     // Logo decorativo y enlace: con el token del facilitador lleva a su panel.
-    expect(firma.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true')
-    expect(firma.querySelector('a')!.getAttribute('href')).toBe('/admin/salas')
+    expect(marca.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true')
+    expect(marca.getAttribute('href')).toBe('/admin/salas')
   })
 
   test('sin token del facilitador, el logo del tablero lleva al inicio', async () => {
     montar('/tablero/s_demo')
     const titulo = await screen.findByRole('heading', { level: 1, name: mock.sala.nombre })
-    expect(titulo.closest('.hz-cab')!.querySelector('.hz-firma a')!.getAttribute('href')).toBe('/')
+    expect(titulo.closest('.hz-cab')!.querySelector('a.hz-producto__marca')!.getAttribute('href')).toBe('/')
   })
 
-  test('dos modos de proyección: «En vivo» (por defecto, solo la matriz) y «Con tabla», en ?modo=, con selector y teclas V, T, M y Esc', async () => {
+  test('dos modos de proyección: «Gráfica» (por defecto, solo la matriz) y «Detallado», en ?modo=, con selector y teclas G, D, M y Esc', async () => {
     montar('/tablero/s_demo?t=tok')
     await screen.findByRole('heading', { name: mock.sala.nombre })
     const main = document.querySelector('main')!
     expect(main.className).toContain('hz-matriz-sola')
-    expect(main.dataset.modo).toBe('vivo')
+    expect(main.dataset.modo).toBe('grafica')
     expect(document.querySelector('.hz-lateral')).toBeNull()
     expect(document.querySelector('.hz-comparada, .hz-panel')).toBeNull()
     const selector = screen.getByRole('group', { name: 'Modo de proyección' })
-    expect(within(selector).getByRole('button', { name: 'En vivo' }).getAttribute('aria-pressed')).toBe('true')
-    expect(within(selector).getByRole('button', { name: 'Con tabla' }).getAttribute('aria-keyshortcuts')).toBe('T')
-    // Selector: «Con tabla» trae la tabla y queda en la URL.
-    fireEvent.click(within(selector).getByRole('button', { name: 'Con tabla' }))
+    expect(within(selector).getAllByRole('button').map((b) => b.textContent)).toEqual(['Gráfica', 'Detallado'])
+    expect(within(selector).getByRole('button', { name: 'Gráfica' }).getAttribute('aria-pressed')).toBe('true')
+    expect(within(selector).getByRole('button', { name: 'Gráfica' }).getAttribute('aria-keyshortcuts')).toBe('G')
+    expect(within(selector).getByRole('button', { name: 'Detallado' }).getAttribute('aria-keyshortcuts')).toBe('D')
+    // Selector: «Detallado» trae el panel y queda en la URL.
+    fireEvent.click(within(selector).getByRole('button', { name: 'Detallado' }))
     await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
-    expect(modoEnUrl()).toBe('tabla')
-    expect(main.dataset.modo).toBe('tabla')
-    fireEvent.click(within(selector).getByRole('button', { name: 'En vivo' }))
+    expect(modoEnUrl()).toBe('detallado')
+    expect(main.dataset.modo).toBe('detallado')
+    fireEvent.click(within(selector).getByRole('button', { name: 'Gráfica' }))
     await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeNull())
-    expect(modoEnUrl()).toBe('vivo')
-    // Teclas: T y V eligen; M alterna; Esc vuelve a la tabla.
+    expect(modoEnUrl()).toBe('grafica')
+    // Teclas: D y G eligen; M alterna; Esc pasa a Detallado. T ya no es un atajo.
+    fireEvent.keyDown(window, { key: 'd' })
+    await waitFor(() => expect(modoEnUrl()).toBe('detallado'))
+    fireEvent.keyDown(window, { key: 'g' })
+    await waitFor(() => expect(modoEnUrl()).toBe('grafica'))
+    fireEvent.keyDown(window, { key: 'm' })
+    await waitFor(() => expect(modoEnUrl()).toBe('detallado'))
+    fireEvent.keyDown(window, { key: 'm' })
+    await waitFor(() => expect(modoEnUrl()).toBe('grafica'))
     fireEvent.keyDown(window, { key: 't' })
-    await waitFor(() => expect(modoEnUrl()).toBe('tabla'))
-    fireEvent.keyDown(window, { key: 'v' })
-    await waitFor(() => expect(modoEnUrl()).toBe('vivo'))
-    fireEvent.keyDown(window, { key: 'm' })
-    await waitFor(() => expect(modoEnUrl()).toBe('tabla'))
-    fireEvent.keyDown(window, { key: 'm' })
-    await waitFor(() => expect(modoEnUrl()).toBe('vivo'))
+    expect(modoEnUrl()).toBe('grafica')
     fireEvent.keyDown(window, { key: 'Escape' })
-    await waitFor(() => expect(modoEnUrl()).toBe('tabla'))
+    await waitFor(() => expect(modoEnUrl()).toBe('detallado'))
     // Clic en la matriz (sin arrastre) alterna; un arrastre no cuenta como clic.
-    fireEvent.keyDown(window, { key: 'v' })
+    fireEvent.keyDown(window, { key: 'G' })
     await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeNull())
     const lienzo = document.querySelector('.hz-lienzo')!
     // jsdom no trae PointerEvent: un MouseEvent llamado pointerdown hace de puntero.
@@ -125,42 +141,89 @@ describe('PaginaTablero', () => {
     bajar(100, 100)
     fireEvent.click(lienzo, { clientX: 101, clientY: 100 })
     await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
-    // D desde el modo en vivo abre la tabla en «Cómo votó» (para el facilitador).
+    // V (votos) desde Gráfica abre Detallado en «Cómo votó» (para el facilitador).
+    fireEvent.keyDown(window, { key: 'g' })
     fireEvent.keyDown(window, { key: 'v' })
-    fireEvent.keyDown(window, { key: 'd' })
     expect(await screen.findByRole('heading', { name: 'Cómo votó la mesa' })).toBeTruthy()
-    // QA-T-07: volver a abrir la tabla con clic, M o T la abre en «Promedios», no en la última pestaña.
-    fireEvent.keyDown(window, { key: 'v' })
+    expect(modoEnUrl()).toBe('detallado')
+    // QA-T-07: volver a abrir Detallado con clic, M o D lo abre en «Promedios», no en la última pestaña.
+    fireEvent.keyDown(window, { key: 'g' })
     fireEvent.keyDown(window, { key: 'm' })
     await waitFor(() => expect(document.querySelector('.hz-comparada')).toBeTruthy())
     expect(screen.queryByRole('heading', { name: 'Cómo votó la mesa' })).toBeNull()
   })
 
-  test('?modo=tabla abre directo la tabla; cualquier otro valor, en vivo', async () => {
-    montar('/tablero/s_demo?t=tok&modo=tabla')
-    await screen.findByRole('heading', { name: mock.sala.nombre })
-    expect(document.querySelector('.hz-lateral')).toBeTruthy()
-    expect(document.querySelector('.hz-comparada')).toBeTruthy()
-    cleanup()
-    montar('/tablero/s_demo?t=tok&modo=otro')
-    await screen.findByRole('heading', { name: mock.sala.nombre })
-    expect(document.querySelector('.hz-lateral')).toBeNull()
+  test('?modo=detallado abre directo el detalle; los enlaces viejos (?modo=tabla y ?modo=vivo) siguen sirviendo; otro valor, Gráfica', async () => {
+    for (const [valor, detallado] of [
+      ['detallado', true],
+      ['tabla', true],
+      ['grafica', false],
+      ['vivo', false],
+      ['otro', false],
+    ] as const) {
+      montar(`/tablero/s_demo?t=tok&modo=${valor}`)
+      await screen.findByRole('heading', { name: mock.sala.nombre })
+      expect(!!document.querySelector('.hz-lateral'), valor).toBe(detallado)
+      expect(!!document.querySelector('.hz-comparada'), valor).toBe(detallado)
+      expect(document.querySelector('main')!.dataset.modo).toBe(detallado ? 'detallado' : 'grafica')
+      const pulsado = screen.getByRole('group', { name: 'Modo de proyección' }).querySelector('[aria-pressed="true"]')!
+      expect(pulsado.textContent).toBe(detallado ? 'Detallado' : 'Gráfica')
+      cleanup()
+    }
   })
 
-  test('modo en vivo: la matriz con firma, sala, ronda y votos recibidos; la explicación breve en el pie; sin tabla', async () => {
+  test('la insignia de la ronda abierta («En vivo, cada 3 votos») es un estado, no un modo: va junto al estado y fuera del selector', async () => {
+    const abierta = structuredClone(mock)
+    abierta.progreso.precierre = false
+    abierta.progreso.por_mesa.forEach((m) => (m.precierre = false))
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(abierta), { status: 200 })))
     montar('/tablero/s_demo?t=tok')
     await screen.findByRole('heading', { name: mock.sala.nombre })
-    const meta = document.querySelector('.hz-cab-meta')!.textContent!
-    expect(meta).toContain('Ronda 2 abierta')
+    const insignia = document.querySelector('.hz-tb-insignia-vivo')!
+    expect(insignia.textContent).toBe('En vivo, cada 3 votos')
+    expect(insignia.tagName).toBe('SPAN')
+    expect(insignia.closest('.hz-cab-meta')).toBeTruthy()
+    expect(insignia.closest('[role="group"], button')).toBeNull()
+    const selector = screen.getByRole('group', { name: 'Modo de proyección' })
+    expect(selector.textContent).not.toMatch(/vivo/i)
+  })
+
+  test('Todas las mesas: sin selector de modo (ahí no cambia nada), con la leyenda de las rondas y la pantalla completa', async () => {
+    montar('/tablero/s_demo?t=tok&vista=mesas&modo=detallado')
+    await screen.findByRole('heading', { name: 'Mesa 3' })
+    expect(screen.queryByRole('group', { name: 'Modo de proyección' })).toBeNull()
+    expect(screen.getByRole('group', { name: 'Vista de la matriz' })).toBeTruthy()
+    expect(document.querySelector('.hz-pie-mesas .hz-leyenda')!.textContent).toContain('Proyectos fijos')
+    expect(screen.getByRole('button', { name: 'Pantalla completa F' })).toBeTruthy()
+  })
+
+  test('una tecla sostenida no repite el atajo (F no entra y sale de la pantalla completa sin parar)', async () => {
+    montar('/tablero/s_demo?t=tok')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    const main = document.querySelector('main')!
+    fireEvent.keyDown(window, { key: 'f' })
+    await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
+    fireEvent.keyDown(window, { key: 'f', repeat: true })
+    fireEvent.keyDown(window, { key: 'm', repeat: true })
+    expect(main.className).toContain('hz-pantalla-completa')
+    expect(main.dataset.modo).toBe('grafica')
+  })
+
+  test('modo Gráfica: la matriz con la marca, la sala, la ronda y los votos recibidos; la explicación breve en el pie; sin tabla', async () => {
+    montar('/tablero/s_demo?t=tok')
+    await screen.findByRole('heading', { name: mock.sala.nombre })
+    // Con la ronda abierta, la franja dice en grande qué ronda es; la barra no lo repite.
+    expect(document.querySelector('.hz-franja')!.textContent).toBe('Ronda 2 · discusión en la mesa')
+    expect(document.querySelector('.hz-cab-meta')!.textContent).not.toContain('Ronda 2 abierta')
     expect(document.querySelector('.hz-cab-votos')!.textContent).toBe('7 de 7 votaron')
     // D2: la insignia dice que el resultado llega de 3 en 3 votos.
-    const vivo = document.querySelector('.hz-insignia-vivo, .hz-insignia-alerta')
+    const vivo = document.querySelector('.hz-tb-insignia-vivo, .hz-tb-insignia-alerta')
     expect(vivo).toBeTruthy()
     const texto = document.querySelector('.hz-explica-breve')!.textContent!
     expect(texto).toBe('Eje X: qué tan lejos está del mercado. Eje Y: qué tan lejos está del core. 1 es cerca; 9, lejos.')
     expect(texto).not.toMatch(/—|%|peso|Total/)
     expect(screen.getByRole('button', { name: 'Pantalla completa F' })).toBeTruthy()
-    expect(document.querySelector('.hz-comparada, .hz-cv, .hz-progreso')).toBeNull()
+    expect(document.querySelector('.hz-comparada, .hz-cv, .hz-tb-progreso')).toBeNull()
   })
 
   test('muestra matriz, paneles, progreso y aviso de precierre', async () => {
@@ -215,6 +278,10 @@ describe('PaginaTablero', () => {
     montar('/tablero/s_demo?t=tok')
     await screen.findByRole('heading', { name: mock.sala.nombre })
     expect(document.querySelector('.hz-franja')).toBeNull()
+    // Sin franja, el estado va en la barra; los datos van separados por «·», sin uno suelto al principio.
+    const meta = document.querySelector('.hz-cab-meta')!
+    expect(meta.textContent).toBe('Ronda 2 cerrada·7 de 7 votaron')
+    expect(meta.firstElementChild!.getAttribute('aria-hidden')).toBeNull()
   })
 
   test('atajos: C, 1 y 2 cambian la vista; F y el botón ponen la pantalla completa en el modo elegido; Esc o F salen', async () => {
@@ -237,11 +304,11 @@ describe('PaginaTablero', () => {
     // En pantalla completa, Esc solo sale (no cambia de modo).
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(main.className).not.toContain('hz-pantalla-completa'))
-    expect(main.dataset.modo).toBe('vivo')
-    // En el modo con tabla, la pantalla completa lleva la tabla; el botón entra y sale.
-    fireEvent.keyDown(window, { key: 't' })
+    expect(main.dataset.modo).toBe('grafica')
+    // En Detallado, la pantalla completa lleva el panel; el botón lo dice, entra y sale.
+    fireEvent.keyDown(window, { key: 'd' })
     await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Pantalla completa con tabla F' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pantalla completa con detalle F' }))
     await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
     expect(document.querySelector('.hz-lateral')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Salir de pantalla completa F' }))
@@ -284,12 +351,13 @@ describe('PaginaTablero', () => {
     }
   })
 
-  test('«Cómo votó»: el botón o la tecla D cambian la tabla por el conteo 1-3-5-7-9, sin tapar la matriz', async () => {
+  test('«Cómo votó»: el botón o la tecla V cambian la tabla por el conteo 1-3-5-7-9, sin tapar la matriz', async () => {
     montar('/tablero/s_demo?t=tok')
     await screen.findByRole('heading', { name: mock.sala.nombre })
     await verDatos()
     const detalle = screen.getByRole('group', { name: 'Detalle del panel' })
     expect(within(detalle).getByRole('button', { name: 'Promedios' }).getAttribute('aria-pressed')).toBe('true')
+    expect(within(detalle).getByRole('button', { name: 'Cómo votó' }).getAttribute('aria-keyshortcuts')).toBe('V')
     expect(screen.queryByRole('heading', { name: 'Cómo votó la mesa' })).toBeNull()
     fireEvent.click(within(detalle).getByRole('button', { name: 'Cómo votó' }))
     expect(screen.getByRole('heading', { name: 'Cómo votó la mesa' })).toBeTruthy()
@@ -300,10 +368,10 @@ describe('PaginaTablero', () => {
     expect(document.querySelectorAll('.hz-cv-barras-r2')).toHaveLength(mock.proyectos_vivos.length * mock.criterios.length)
     fireEvent.keyDown(window, { key: 'c' })
     await waitFor(() => expect(document.querySelectorAll('.hz-cv-barras-r1')).toHaveLength(mock.proyectos_vivos.length * mock.criterios.length))
-    fireEvent.keyDown(window, { key: 'd' })
+    fireEvent.keyDown(window, { key: 'v' })
     await waitFor(() => expect(document.querySelector('.hz-cv')).toBeNull())
     expect(document.querySelector('.hz-comparada')).toBeTruthy()
-    fireEvent.keyDown(window, { key: 'D' })
+    fireEvent.keyDown(window, { key: 'V' })
     await waitFor(() => expect(document.querySelector('.hz-cv')).toBeTruthy())
   })
 
@@ -353,11 +421,11 @@ describe('PaginaTablero', () => {
     const bloque = titulo.closest('section')!
     expect(bloque.textContent).toContain('NUTRIWHAT · Pregunta 3 de 6')
     expect(bloque.textContent).toContain('¿Qué tantas barreras de entrada tiene el mercado?')
-    expect([...bloque.querySelectorAll('.hz-rubrica li')].map((li) => li.textContent)).toEqual(['9Nivel 9', '7Nivel 7', '5Nivel 5', '3Nivel 3', '1Nivel 1'])
+    expect([...bloque.querySelectorAll('.hz-tb-rubrica li')].map((li) => li.textContent)).toEqual(['9Nivel 9', '7Nivel 7', '5Nivel 5', '3Nivel 3', '1Nivel 1'])
     expect(document.querySelector('svg.hz-matriz')).toBeNull()
-    // Con la tabla, el panel lateral sigue al lado (progreso y promedios); F también sirve sin matriz.
+    // En Detallado, el panel lateral sigue al lado (progreso y promedios); F también sirve sin matriz.
     await verDatos()
-    expect(screen.getByRole('button', { name: 'Pantalla completa con tabla F' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Pantalla completa con detalle F' })).toBeTruthy()
     expect(screen.getByRole('progressbar')).toBeTruthy()
     cleanup()
     // Modo automático o sin pregunta elegida: la matriz de siempre.
@@ -390,9 +458,11 @@ describe('PaginaTablero', () => {
     montar('/tablero/s_demo')
     // D2: con la ronda abierta llega la última foto; no se afirma que no haya votos.
     expect(await screen.findByText('Aún no hay resultados en la ronda 1. Se actualizan cada 3 votos nuevos')).toBeTruthy()
-    expect(document.querySelector('.hz-insignia-vivo')!.textContent).toBe('En vivo, cada 3 votos')
+    expect(document.querySelector('.hz-tb-insignia-vivo')!.textContent).toBe('En vivo, cada 3 votos')
     await verDatos()
-    expect(screen.getByText('Se actualizan cada 3 votos nuevos.')).toBeTruthy()
+    // En Detallado la foto de 3 en 3 la sigue diciendo la insignia de la barra (sin repetirla en el panel).
+    expect(document.querySelector('.hz-tb-insignia-vivo')!.textContent).toBe('En vivo, cada 3 votos')
+    expect(document.querySelector('.hz-lateral')!.textContent).not.toContain('Se actualizan cada')
     await act(async () => {})
   })
 
@@ -400,7 +470,7 @@ describe('PaginaTablero', () => {
     const conVacia = structuredClone(mock)
     conVacia.progreso.por_mesa.push({ mesa_id: 'm9', nombre: 'Mesa 9', inscritos: 0, completos: 0, precierre: false })
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(conVacia), { status: 200 })))
-    montar('/tablero/s_demo?modo=tabla')
+    montar('/tablero/s_demo?modo=detallado')
     await screen.findByRole('heading', { name: mock.sala.nombre })
     const mesas = screen.getByRole('list', { name: 'Progreso por mesa' })
     expect(within(mesas).queryByText('Mesa 9')).toBeNull()

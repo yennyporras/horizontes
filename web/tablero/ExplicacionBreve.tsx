@@ -1,5 +1,5 @@
 /**
- * Pie del modo en vivo (pedido de Nicolai, 20-oct; reemplaza la explicación de tres líneas de C19-7): qué
+ * Pie del modo Gráfica (pedido de Nicolai, 20-oct; reemplaza la explicación de tres líneas de C19-7): qué
  * significa cada eje, en una línea y sin pesos ni fórmulas. Solo se muestra si cabe entera (CSS).
  */
 export function ExplicacionBreve() {

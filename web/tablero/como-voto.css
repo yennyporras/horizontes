@@ -2,7 +2,7 @@
  * «Cómo votó la sala»: lo usan el tablero y el panel. Tamaños en em: crece con la letra de quien lo aloja
  * (≈ 20 px en el proyector de 1920, 16 px en el panel). R1 barra hueca verde, R2 barra sólida roja,
  * siempre con «R1»/«R2» y el conteo en texto. Solo tokens semánticos: toma el tema de quien lo aloja
- * (carbón en el tablero, claro en el panel).
+ * (el tema claro en el tablero y en el panel).
  */
 .hz-cv {
   min-width: 0;

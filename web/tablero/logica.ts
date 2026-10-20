@@ -54,13 +54,14 @@ export function rondaEnCurso(estado: EstadoSala | undefined): 1 | 2 | null {
 }
 
 /**
- * Modo de proyección (pedido de Nicolai, 20-oct), en la URL como `?modo=vivo|tabla`: «vivo» es solo la matriz
- * (por defecto), «tabla» la matriz con los promedios por criterio y «Cómo votó». Cualquier otro valor, vivo.
+ * Modo de proyección, en la URL como `?modo=grafica|detallado` (nombres de Paola, 20-oct): «Gráfica» es solo la
+ * matriz (por defecto) y «Detallado» la matriz con el progreso, los promedios por criterio y «Cómo votó».
+ * Los valores anteriores `vivo` y `tabla` siguen sirviendo (enlaces ya compartidos). Cualquier otro valor, Gráfica.
  */
-export type ModoTablero = 'vivo' | 'tabla'
+export type ModoTablero = 'grafica' | 'detallado'
 export const PARAMETRO_MODO = 'modo'
 export function modoDeUrl(valor: string | null | undefined): ModoTablero {
-  return valor === 'tabla' ? 'tabla' : 'vivo'
+  return valor === 'detallado' || valor === 'tabla' ? 'detallado' : 'grafica'
 }
 
 /**
@@ -76,7 +77,10 @@ export function votosRecibidos(datos: DatosTablero | null | undefined): string |
   return `${Math.min(completos, inscritos)} de ${inscritos} votaron`
 }
 
-/** Texto visible de la insignia «En vivo» y su explicación (title). */
+/**
+ * Texto visible de la insignia de la ronda abierta y su explicación (title). Es un estado de la ronda, no un modo
+ * de proyección: por eso va como insignia neutra junto al estado y no como botón.
+ */
 export const EN_VIVO = {
   texto: `En vivo, cada ${VOTOS_POR_FOTO} votos`,
   titulo: `La ronda sigue abierta: el resultado se actualiza cada ${VOTOS_POR_FOTO} votos nuevos y queda exacto al cerrarla.`,
@@ -108,6 +112,15 @@ export function mostrarR2(datos: DatosTablero): boolean {
 /** Celda de una tabla de resultados: la cifra del servidor, «Faltan votos» bajo el mínimo o «Sin votos». */
 export function cifraRonda(r: RondaVivo | null, valor: number | null | undefined): string {
   return r?.bajo_minimo ? 'Faltan votos' : numero(valor)
+}
+
+/**
+ * Clase de esa celda: la cifra de la ronda que se ve va resaltada (`hz-foco`); «Sin votos» y «Faltan votos» van
+ * en texto secundario y sin negrita, para que una tabla vacía no grite (`hz-sin-dato`).
+ */
+export function claseCifra(r: RondaVivo | null, valor: number | null | undefined, foco: boolean, extra?: string): string | undefined {
+  const hayCifra = !r?.bajo_minimo && typeof valor === 'number' && Number.isFinite(valor)
+  return [extra, hayCifra ? foco && 'hz-foco' : 'hz-sin-dato'].filter(Boolean).join(' ') || undefined
 }
 
 const fmt = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -173,7 +186,7 @@ export function esPreliminar(datos: DatosTablero | null | undefined): boolean {
   return !!p.precierre
 }
 
-/** Insignia del encabezado: "Preliminar" en precierre, "En vivo" con la ronda abierta, nada al cerrar. */
+/** Insignia del encabezado: «Preliminar» en precierre, «En vivo, cada 3 votos» con la ronda abierta, nada al cerrar. */
 export function insigniaResultado(datos: DatosTablero | null | undefined): 'preliminar' | 'en_vivo' | null {
   if (esPreliminar(datos)) return 'preliminar'
   return rondaAbierta(datos?.sala?.estado) ? 'en_vivo' : null
