@@ -50,17 +50,36 @@ export const MAX_MESAS = 30
 /** Visibilidad con que nace, se duplica o se reinicia una sala (acta A2: consolidado de toda la sala tras votar). */
 export const CONFIG_POR_DEFECTO = { alcance_resultados: 'sala', vista_participante: 'en_vivo' } as const
 
+/** La sala por id o código, o null si no existe. */
+export function buscarSala(db: Db, idOCodigo: string): SalaFila | null {
+  return uno<SalaFila>(db, 'SELECT * FROM salas WHERE id = ? OR codigo = ?', idOCodigo, idOCodigo.toUpperCase()) ?? null
+}
+
 export function cargarSala(db: Db, idOCodigo: string): SalaFila {
-  const s = uno<SalaFila>(db, 'SELECT * FROM salas WHERE id = ? OR codigo = ?', idOCodigo, idOCodigo.toUpperCase())
+  const s = buscarSala(db, idOCodigo)
   if (!s) throw new ErrorApi(404, 'SALA_NO_EXISTE', 'No encontramos esa sala.')
   return s
 }
 
 /** ¿`t` es el token del tablero de la sala? Comparación en tiempo constante contra la única fuente, `token_tablero`. */
-export function tokenTableroValido(sala: SalaFila, t: string): boolean {
+export function tokenTableroValido(sala: Pick<SalaFila, 'token_tablero'>, t: string): boolean {
   const a = Buffer.from(sha256(t), 'hex')
   const b = Buffer.from(sha256(sala.token_tablero), 'hex')
   return timingSafeEqual(a, b)
+}
+
+/**
+ * Token nuevo del tablero (B-2): el enlace anterior deja de servir y `url_tablero` sale con el nuevo. Se guarda en la
+ * única fuente, `token_tablero` (S-12). Vale en cualquier estado de la sala. Evento `token_tablero_regenerado` sin el token.
+ */
+export function regenerarTokenTablero(db: Db, salaId: string, ahora: number, por: string): SalaFila {
+  return transaccion(db, () => {
+    const s = cargarSala(db, salaId)
+    ejecutar(db, "UPDATE salas SET token_tablero = ?, token_tablero_hash = '' WHERE id = ?", tokenAleatorio(), s.id)
+    registrarEvento(db, s.id, ahora, 'token_tablero_regenerado', por)
+    tocar(db, s.id)
+    return cargarSala(db, s.id)
+  })
 }
 
 export function mesasDeSala(db: Db, salaId: string): MesaFila[] {

@@ -10,7 +10,16 @@ FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
-COPY . .
+# Copias explícitas, nunca `COPY . .` (B-4): ni deploy/ ni docs/ ni archivos .env entran a la imagen aunque estén en
+# el contexto. tsc revisa server, shared, web y tests (tsconfig.json), y las pruebas importan tools/ y mocks/.
+COPY tsconfig.json vite.config.ts vitest.config.ts ./
+COPY server ./server
+COPY shared ./shared
+COPY web ./web
+COPY data ./data
+COPY mocks ./mocks
+COPY tests ./tests
+COPY tools ./tools
 # typecheck + build de la SPA (participante, tablero y admin) hacia dist/web
 RUN npx tsc --noEmit && npx vite build && mkdir -p shared
 

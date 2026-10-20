@@ -34,7 +34,7 @@ describe('S-3: el límite de peticiones no se evita codificando la URL', () => {
 describe('S-5: códigos de mesa y GET /api/mesas/:codigo', () => {
   it('el código de una mesa nueva no se deduce del de la sala', async () => {
     const s = await crearSala(e, 2)
-    for (const m of s.mesas) expect(m.codigo).toMatch(new RegExp(`^${s.codigo}[A-HJ-NP-Z2-9]{3}-\\d+$`))
+    for (const m of s.mesas) expect(m.codigo).toMatch(new RegExp(`^${s.codigo}[A-HJ-NP-Z2-9]{5}-\\d+$`))
     expect((await e.app.inject(`/api/mesas/${s.codigo}-1`)).statusCode).toBe(404)
     expect((await e.app.inject(`/api/mesas/${s.mesas[0].codigo}`)).statusCode).toBe(200)
   })
@@ -48,7 +48,7 @@ describe('S-5: códigos de mesa y GET /api/mesas/:codigo', () => {
     // Agregar mesas a esa sala deja las nuevas con sufijo y no toca la vieja.
     const m = (await pedir('POST', `/api/admin/salas/${s.id}/mesas`, { cantidad: 1 })).json().mesas
     expect(m[0].codigo).toBe(`${s.codigo}-1`)
-    expect(m[1].codigo).toMatch(new RegExp(`^${s.codigo}[A-HJ-NP-Z2-9]{3}-2$`))
+    expect(m[1].codigo).toMatch(new RegExp(`^${s.codigo}[A-HJ-NP-Z2-9]{5}-2$`))
   })
 
   it('GET /api/mesas/:codigo tiene límite por IP: quien recorre códigos recibe 429', async () => {

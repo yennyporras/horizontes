@@ -5,7 +5,7 @@ import { ErrorApi } from '../http.js'
 import { CRITERIOS } from '../../shared/motor/motor.js'
 import { borrarFotos, fijarFotosExactas } from './fotos.js'
 import { contenido, preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
-import { type EstadoSala, type SalaFila, cargarSala, mesasDeSala, registrarEvento, tocar } from './salas.js'
+import { type EstadoSala, type SalaFila, cargarSala, mesasDeSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
 import { DESFASES, PAISES, type ZonaHoraria, ZONA_POR_PAIS, isoEnZona, isoUtc } from './util.js'
 
 export const ACCIONES = [
@@ -20,6 +20,9 @@ export const ACCIONES = [
   'reabrir_sala',
 ] as const
 export type Accion = (typeof ACCIONES)[number]
+
+/** Acción del panel que no cambia el estado de la sala y vale en cualquiera (B-2): el tablero estrena enlace. */
+export const REGENERAR_TOKEN_TABLERO = 'regenerar_token_tablero'
 
 interface Transicion {
   desde: EstadoSala[]
@@ -49,7 +52,7 @@ const TRANSICIONES: Record<Exclude<Accion, 'reiniciar_ronda'>, Transicion> = {
  * solo si la transición es válida en ese momento. Una transición (manual o programada) consume lo programado para ella.
  */
 export const PROGRAMACION = [
-  { col: 'apertura_programada_sala_at', accion: 'abrir_inscripcion', etapa: 'sala', apertura: true, nombre: 'la apertura de la sala' },
+  { col: 'apertura_programada_sala_at', accion: 'abrir_inscripcion', etapa: 'sala', apertura: true, nombre: 'la apertura de la inscripción' },
   { col: 'apertura_programada_r1_at', accion: 'abrir_ronda_1', etapa: 'r1', apertura: true, nombre: 'la apertura de la ronda 1' },
   { col: 'cierre_programado_r1_at', accion: 'cerrar_ronda_1', etapa: 'r1', apertura: false, nombre: 'el cierre de la ronda 1' },
   { col: 'apertura_programada_r2_at', accion: 'abrir_ronda_2', etapa: 'r2', apertura: true, nombre: 'la apertura de la ronda 2' },
@@ -85,6 +88,7 @@ export interface OpcionesAccion {
 
 /** Aplica una acción del admin (o del programador). 409 TRANSICION_INVALIDA si no aplica. */
 export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: number, por: string, op: OpcionesAccion = {}): SalaFila {
+  if (accion === REGENERAR_TOKEN_TABLERO) return regenerarTokenTablero(db, salaId, ahora, por)
   if (!(ACCIONES as readonly string[]).includes(accion)) {
     throw new ErrorApi(422, 'ACCION_INVALIDA', `La acción "${accion}" no existe.`)
   }
