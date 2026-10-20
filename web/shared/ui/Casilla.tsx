@@ -7,7 +7,7 @@ export interface CasillaProps {
   nombre?: string
 }
 
-/** Casilla de 24 px con área táctil de 44 px y el texto como etiqueta. El texto puede incluir enlaces. */
+/** Casilla de 24 px con área táctil de 48 px y el texto como etiqueta. El texto puede incluir enlaces. */
 export function Casilla({ marcada, onCambio, children, nombre }: CasillaProps) {
   const id = useId()
   return (

@@ -26,10 +26,10 @@ export function MuestraUI() {
   const hojas = yo.contenido.hojas
 
   return (
-    <div className="hz hz-pagina" lang="es-CO">
+    <div className="hz hz-vista" lang="es-CO">
       <EncabezadoProducto />
       <EncabezadoHorizonte sala={yo.sala.nombre} meta={`${yo.participante.mesa.nombre} · Perfil ${yo.participante.perfil.nombre}`} />
-      <main className="hz-contenido">
+      <main className="hz-contenido hz-pagina">
         <h1 className="hz-titulo">Componentes base</h1>
         <p className="hz-texto-2">Muestra del sistema de diseño de Horizontes. Todo lo que ves aquí lo usan las pantallas del participante.</p>
 

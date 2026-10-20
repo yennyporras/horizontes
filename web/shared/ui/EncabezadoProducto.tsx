@@ -14,7 +14,8 @@ export interface EncabezadoProductoProps {
 
 /**
  * Encabezado de producto de la familia Estratek (FAMILIA_ESTRATEK §6): glifo en el acento de la herramienta,
- * nombre, firma «por Estratek »» con la » en azul y la línea del degradado debajo.
+ * nombre, firma «por Estratek »» con la » en azul y la línea del degradado debajo. El fondo y la línea van de borde
+ * a borde; la fila usa el contenedor de página (`.hz-pagina`), así el encabezado se alinea con el contenido.
  */
 export function EncabezadoProducto({ nombre = 'Horizontes', glifo = 'H', href, children, className }: EncabezadoProductoProps) {
   const marca = (
@@ -32,7 +33,7 @@ export function EncabezadoProducto({ nombre = 'Horizontes', glifo = 'H', href, c
   )
   return (
     <header className={['hz-producto', className].filter(Boolean).join(' ')}>
-      <div className="hz-producto__fila">
+      <div className="hz-producto__fila hz-pagina">
         {href ? (
           <a className="hz-producto__marca" href={href}>
             {marca}

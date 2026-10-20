@@ -79,7 +79,7 @@ export async function sinDesborde(p: Page, ancho = p.viewportSize()?.width ?? 36
 }
 
 /**
- * Objetivos táctiles de 44 px o más: botones, pestañas, opciones de rúbrica y la casilla.
+ * Objetivos táctiles de 48 px o más (familia Estratek §5): botones, pestañas, opciones de rúbrica y la casilla.
  * Los enlaces dentro de un párrafo quedan exentos (WCAG 2.5.8, excepción en línea).
  */
 export async function tactiles(p: Page) {
@@ -88,7 +88,7 @@ export async function tactiles(p: Page) {
     return [...document.querySelectorAll<HTMLElement>(sel)]
       .filter((el) => el.offsetParent !== null && !el.closest('.hz-visual-oculto'))
       .map((el) => ({ el: `${el.tagName}.${el.className} "${el.textContent?.trim().slice(0, 30)}"`, r: el.getBoundingClientRect() }))
-      .filter(({ r }) => r.height < 44 || r.width < 44)
+      .filter(({ r }) => r.height < 48 || r.width < 48)
       .map(({ el, r }) => `${el} ${Math.round(r.width)}×${Math.round(r.height)}`)
   })
   expect(chicos).toEqual([])
