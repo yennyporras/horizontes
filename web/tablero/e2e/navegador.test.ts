@@ -5,8 +5,9 @@
 // 1. Sala con la prueba sintética del golden cerrada en R2: los puntos dibujados (leídos del SVG y
 //    convertidos con las marcas de los ejes) coinciden con golden y con los 8 fijos, en 1920, 1366 y 360 px.
 //    Además: sin desborde horizontal, 1920×1080 sin scroll, vista Comparación automática, contraste AA del
-//    texto HTML y tecla F (pantalla completa). Dos modos de proyección (?modo=vivo|tabla): en vivo, la matriz
-//    ocupa toda el área; con tabla, la matriz y los promedios con la descripción de cada criterio. Letra mínima
+//    texto HTML y tecla F (pantalla completa). Tema claro con la barra carbón de la marca. Dos modos de
+//    proyección (?modo=grafica|detallado): en Gráfica, la matriz ocupa toda el área; en Detallado, la matriz y los
+//    promedios con la descripción de cada criterio. Letra mínima
 //    medida en 1280×720, 1366×768 y 1920×1080 (20 a 24 px efectivos en la matriz y la leyenda) y nombres de la
 //    matriz sin solaparse, pegados a su burbuja y fuera de la marca de agua H1, H2 y H3.
 // 2. Sala con R1 abierta: un voto y el cierre de ronda se ven en el tablero en menos de 5 s, con 304
@@ -175,9 +176,9 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     async (w, h) => {
       const page = await abrir(w, h, `/tablero/${golden1.id}?t=${golden1.token}`)
       await page.evaluate(() => document.fonts.ready)
-      await modoEnVivo(page, w)
-      // Modo con tabla (tecla T): panel lateral con progreso y promedios.
-      await page.keyboard.press('t')
+      await modoGrafica(page, w)
+      // Modo Detallado (tecla D): panel lateral con progreso y promedios.
+      await page.keyboard.press('d')
       await page.waitForSelector('.hz-lateral')
       // La matriz se redibuja al ancho de su columna (en el proyector, al lado de la tabla).
       if (w >= 1100) await expect.poll(() => page.evaluate(() => document.querySelector('svg.hz-matriz')!.getBoundingClientRect().width)).toBeLessThan(w * 0.6)
@@ -249,13 +250,13 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
       if (w >= 1280) expect(r.lateralOculto, 'panel lateral con contenido oculto').toBeLessThanOrEqual(0)
       if (w >= 1900) expect(r.letraMin, 'letra mínima en proyector').toBeGreaterThanOrEqual(12)
       else if (w >= 1280) expect(r.letraMin, 'letra mínima en proyector pequeño').toBeGreaterThanOrEqual(10)
-      // Con la tabla abierta la matriz conserva la letra de proyector (QA-T-01) y un tamaño legible.
-      const conTabla = await page.evaluate(letrasMatriz)
-      console.info(`[tablero e2e] ${w}px con tabla: matriz ${conTabla.ancho}×${conTabla.alto} px, letra mínima ${conTabla.minimo} px, leyenda ${conTabla.leyenda} px`)
+      // En Detallado la matriz conserva la letra de proyector (QA-T-01) y un tamaño legible.
+      const detallado = await page.evaluate(letrasMatriz)
+      console.info(`[tablero e2e] ${w}px en Detallado: matriz ${detallado.ancho}×${detallado.alto} px, letra mínima ${detallado.minimo} px, leyenda ${detallado.leyenda} px`)
       if (w >= 1280) {
-        expect(conTabla.minimo, 'letra de la matriz con la tabla').toBeGreaterThanOrEqual(w >= 1900 ? 24 : 20)
-        expect(conTabla.leyenda, 'leyenda con la tabla').toBeGreaterThanOrEqual(w >= 1900 ? 24 : 20)
-        expect(Math.min(conTabla.ancho, conTabla.alto), 'matriz con la tabla').toBeGreaterThanOrEqual(w >= 1900 ? 820 : 520)
+        expect(detallado.minimo, 'letra de la matriz en Detallado').toBeGreaterThanOrEqual(w >= 1900 ? 24 : 20)
+        expect(detallado.leyenda, 'leyenda en Detallado').toBeGreaterThanOrEqual(w >= 1900 ? 24 : 20)
+        expect(Math.min(detallado.ancho, detallado.alto), 'matriz en Detallado').toBeGreaterThanOrEqual(w >= 1900 ? 820 : 520)
         // Descripción corta bajo cada criterio de la tabla (máximo 100 caracteres), legible.
         const desc = await page.$$eval('.hz-comparada .hz-crit-desc', (d) => d.map((x) => ({ t: x.textContent ?? '', fs: parseFloat(getComputedStyle(x).fontSize) })))
         expect(desc).toHaveLength(6)
@@ -280,14 +281,14 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
       // R1 verde y R2 rojo: con su etiqueta y forma propia, y contraste suficiente sobre los fondos.
       const fallasRondas = await page.evaluate(rondasLegibles)
       expect(fallasRondas, fallasRondas.join('\n')).toEqual([])
-      // Tema carbón y encabezado de marca: firma «Horizontes por Estratek »» y la línea del degradado.
-      const fallasMarca = await page.evaluate(marcaCarbon)
+      // Tema claro con la barra carbón de la marca: «Horizontes por Estratek »» y la línea del degradado.
+      const fallasMarca = await page.evaluate(marcaClara)
       expect(fallasMarca, fallasMarca.join('\n')).toEqual([])
 
       if (capturas) await page.screenshot({ path: join(capturas, `tablero-${w}.png`), fullPage: w < 1100 })
 
-      // «Cómo votó la sala» (tecla D): conteos de la API por criterio, R1 y R2, sin desborde, legible y AA.
-      await page.keyboard.press('d')
+      // «Cómo votó la sala» (tecla V): conteos de la API por criterio, R1 y R2, sin desborde, legible y AA.
+      await page.keyboard.press('v')
       await page.waitForSelector('.hz-cv-barras-r2')
       const api = (await e.app.inject(`/api/tablero/${golden1.id}?alcance=sala&t=${golden1.token}`)).json()
       const cv = await page.evaluate(() => {
@@ -332,18 +333,18 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
       const fallasCv = await page.evaluate(contrasteAA)
       expect(fallasCv, fallasCv.join('\n')).toEqual([])
       if (capturas) await page.screenshot({ path: join(capturas, `tablero-${w}-como-voto.png`), fullPage: w < 1100 })
-      await page.keyboard.press('d')
+      await page.keyboard.press('v')
       await page.waitForSelector('.hz-cv', { state: 'detached' })
 
       if (w >= 1280) {
         // Tecla F: pantalla completa del modo elegido (o, si el navegador no deja, igual oculta los controles).
-        // En vivo: solo la matriz, que llena el área; quedan la firma, la sala, la ronda y los votos recibidos.
-        await page.keyboard.press('v')
+        // Gráfica: solo la matriz, que llena el área; quedan la marca, la sala, la ronda y los votos recibidos.
+        await page.keyboard.press('g')
         await page.waitForSelector('.hz-lateral', { state: 'detached' })
         await page.keyboard.press('f')
         await page.waitForSelector('.hz-pantalla-completa', { timeout: 5000 })
         expect(await page.locator('.hz-cab-controles').isVisible()).toBe(false)
-        expect(await page.locator('.hz-firma').isVisible()).toBe(true)
+        expect(await page.locator('.hz-cab .hz-producto__marca').isVisible()).toBe(true)
         expect(await page.locator('.hz-cab-votos').textContent()).toMatch(/^\d+ de \d+ votaron$/)
         await page.keyboard.press('1')
         await expect.poll(() => page.locator('.hz-cab-vista').textContent()).toBe('Ronda 1')
@@ -405,7 +406,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     p.on('response', (res) => res.url().includes('/api/tablero/') && estados.push(res.status()))
     // D2: con la ronda abierta el tablero recibe fotos que se renuevan de 3 en 3 votos.
     expect(await p.locator('.hz-vacio').textContent()).toContain('Aún no hay resultados en la ronda 1')
-    expect(await p.locator('.hz-insignia-vivo').textContent()).toBe('En vivo, cada 3 votos')
+    expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo, cada 3 votos')
     expect(await p.locator('.hz-franja').textContent()).toBe('Ronda 1 · individual y en silencio')
     // Sin cambios: el servidor responde 304 y el <svg> sigue siendo el mismo nodo (sin parpadeo).
     await p.evaluate(() => ((window as unknown as { __svg: Element }).__svg = document.querySelector('svg.hz-matriz')!))
@@ -421,14 +422,15 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
       .poll(() => p.locator('.hz-vacio').textContent(), { timeout: 10_000, interval: 100 })
       .toBe('Hacen falta al menos 3 votos para mostrar estos resultados')
     expect(await p.locator('svg.hz-matriz circle.hz-r1').count()).toBe(0)
-    await p.keyboard.press('t')
+    await p.keyboard.press('d')
     expect(await p.locator('.hz-comparada').textContent()).toContain('Faltan votos')
-    expect(await p.locator('.hz-nota-foto').textContent()).toBe('Se actualizan cada 3 votos nuevos.')
+    // D2: la foto de 3 en 3 la dice la insignia de la barra, también en Detallado.
+    expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo, cada 3 votos')
     const mesa = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}&mesa=${s2.mesas[0].id}`, '.hz-vacio')
     expect(await mesa.locator('.hz-vacio').textContent()).toBe('Hacen falta al menos 3 votos para mostrar esta mesa')
     await mesa.context().close()
     // En el celular (360 px), con «Faltan votos» en las celdas, nada se desborda (triage #5).
-    const cel = await abrir(360, 740, `/tablero/${vivo.id}?t=${vivo.token}&modo=tabla`, '.hz-lateral')
+    const cel = await abrir(360, 740, `/tablero/${vivo.id}?t=${vivo.token}&modo=detallado`, '.hz-lateral')
     await cel.waitForSelector('.hz-panel')
     expect(await cel.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'desborde a 360 px').toBeLessThanOrEqual(0)
     await cel.context().close()
@@ -437,9 +439,9 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     const t0 = Date.now()
     for (const tk of resto) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 1, resp)).statusCode).toBe(200)
     await p.waitForSelector('svg.hz-matriz circle.hz-r1', { timeout: 10_000 })
-    await p.waitForSelector('.hz-insignia-alerta', { timeout: 10_000 })
+    await p.waitForSelector('.hz-tb-insignia-alerta', { timeout: 10_000 })
     const tVoto = Date.now() - t0
-    expect(await p.locator('.hz-insignia-alerta').textContent()).toBe('Preliminar')
+    expect(await p.locator('.hz-tb-insignia-alerta').textContent()).toBe('Preliminar')
     expect(await p.locator('.hz-lateral').textContent()).toContain('Toda la sala votó')
 
     // Cierre de la ronda: desaparece "Preliminar" y el estado cambia.
@@ -447,7 +449,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     await accion(e, vivo.id, 'cerrar_ronda_1')
     await expect.poll(() => p.locator('.hz-cab-meta').textContent(), { timeout: 10_000, interval: 100 }).toContain('Ronda 1 cerrada')
     const tCierre = Date.now() - t1
-    expect(await p.locator('.hz-insignia').count()).toBe(0)
+    expect(await p.locator('.hz-tb-insignia').count()).toBe(0)
     expect(tVoto).toBeLessThan(5000)
     expect(tCierre).toBeLessThan(5000)
     if (capturas) await p.screenshot({ path: join(capturas, 'tablero-vivo-cerrada.png') })
@@ -549,7 +551,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     await tomar('02-ronda-2.png', 1920, 1080, cerrada, vista('2', 'Ronda 2'))
     await tomar('03-comparacion.png', 1920, 1080, cerrada)
     await tomar('04-preliminar.png', 1920, 1080, url(sp.id, sp.token_tablero), async (p) => {
-      await p.waitForSelector('.hz-insignia-alerta')
+      await p.waitForSelector('.hz-tb-insignia-alerta')
     })
     await tomar('05-todas-las-mesas.png', 1920, 1080, url(sc.id, sc.token_tablero, '&vista=mesas'), async (p) => {
       await expect.poll(() => p.locator('svg.hz-matriz').count(), { timeout: 15_000 }).toBe(2)
@@ -569,10 +571,10 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
       await expect.poll(() => p.locator('.hz-vacio').textContent()).toContain('Hacen falta al menos')
     })
     await tomar('12-celular-360-ronda-2.png', 360, 740, url(s2.id, s2.token_tablero))
-    await tomar('13-con-tabla.png', 1920, 1080, url(sc.id, sc.token_tablero, '&modo=tabla'))
-    await tomar('14-con-tabla-1280x720.png', 1280, 720, url(sc.id, sc.token_tablero, '&modo=tabla'))
-    await tomar('15-como-voto.png', 1920, 1080, url(sc.id, sc.token_tablero, '&modo=tabla'), async (p) => {
-      await p.keyboard.press('d')
+    await tomar('13-detallado.png', 1920, 1080, url(sc.id, sc.token_tablero, '&modo=detallado'))
+    await tomar('14-detallado-1280x720.png', 1280, 720, url(sc.id, sc.token_tablero, '&modo=detallado'))
+    await tomar('15-como-voto.png', 1920, 1080, url(sc.id, sc.token_tablero, '&modo=detallado'), async (p) => {
+      await p.keyboard.press('v')
       await p.waitForSelector('.hz-cv-barras-r2')
     })
     await tomar('16-proyector-1280x720-pantalla-completa.png', 1280, 720, cerrada, async (p) => {
@@ -583,14 +585,14 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
 })
 
 /**
- * Modo «En vivo» (por defecto, ?modo=vivo): solo la matriz, que ocupa toda el área bajo el encabezado, sin
+ * Modo «Gráfica» (por defecto, ?modo=grafica): solo la matriz, que ocupa toda el área bajo el encabezado, sin
  * panel ni tablas, sin desborde y AA. Letra de proyector (QA-T-01): ningún texto de la matriz ni de la leyenda
  * baja de 20 px en 1280×720 y 1366×768 ni de 24 px en 1920×1080. La explicación breve va en el pie solo si
- * cabe entera. Sin zoom por porcentaje (pedido de Paola, 20-oct). Un clic sin arrastre pasa a la tabla y otro
+ * cabe entera. Sin zoom por porcentaje (pedido de Paola, 20-oct). Un clic sin arrastre pasa a Detallado y otro
  * vuelve; el modo queda en la URL.
  */
-async function modoEnVivo(page: Page, w: number) {
-  const vivo = await page.evaluate(() => {
+async function modoGrafica(page: Page, w: number) {
+  const graf = await page.evaluate(() => {
     const zona = document.querySelector('.hz-zona-matriz')!.getBoundingClientRect()
     const svg = document.querySelector('svg.hz-matriz')!.getBoundingClientRect()
     const pie = document.querySelector('.hz-pie-matriz')!.getBoundingClientRect()
@@ -607,45 +609,45 @@ async function modoEnVivo(page: Page, w: number) {
       zoom: !!document.querySelector('.hz-zoom, [aria-label="Zoom de la matriz"]'),
     }
   })
-  expect(vivo.modo).toBe('vivo')
-  expect(vivo.lateral, 'en vivo: sin panel lateral ni tablas').toBe(false)
-  expect(vivo.zoom, 'sin zoom por porcentaje').toBe(false)
-  expect(vivo.desbordeX, 'en vivo: desborde horizontal').toBeLessThanOrEqual(0)
+  expect(graf.modo).toBe('grafica')
+  expect(graf.lateral, 'Gráfica: sin panel lateral ni tablas').toBe(false)
+  expect(graf.zoom, 'sin zoom por porcentaje').toBe(false)
+  expect(graf.desbordeX, 'Gráfica: desborde horizontal').toBeLessThanOrEqual(0)
   if (w >= 1280) {
-    expect(vivo.desbordeY, 'en vivo: scroll vertical en proyector').toBeLessThanOrEqual(0)
+    expect(graf.desbordeY, 'Gráfica: scroll vertical en proyector').toBeLessThanOrEqual(0)
     // La gráfica ocupa toda el área: todo el ancho de la zona y el alto hasta el pie.
-    expect(vivo.svg[0], 'en vivo: ancho de la matriz').toBeGreaterThanOrEqual(vivo.zona[0] - 1)
-    expect(vivo.pieArriba - vivo.svg[2], 'en vivo: alto de la matriz hasta el pie').toBeLessThanOrEqual(12)
-    expect(vivo.svg[1], 'en vivo: alto de la matriz').toBeGreaterThan(w >= 1900 ? 850 : 520)
+    expect(graf.svg[0], 'Gráfica: ancho de la matriz').toBeGreaterThanOrEqual(graf.zona[0] - 1)
+    expect(graf.pieArriba - graf.svg[2], 'Gráfica: alto de la matriz hasta el pie').toBeLessThanOrEqual(12)
+    expect(graf.svg[1], 'Gráfica: alto de la matriz').toBeGreaterThan(w >= 1900 ? 850 : 520)
     const l = await page.evaluate(letrasMatriz)
-    console.info(`[tablero e2e] ${w}px en vivo: matriz ${l.ancho}×${l.alto} px, letra mínima ${l.minimo} px, leyenda ${l.leyenda} px, explicación ${vivo.breve.visible ? 'visible' : 'oculta'}`)
+    console.info(`[tablero e2e] ${w}px en Gráfica: matriz ${l.ancho}×${l.alto} px, letra mínima ${l.minimo} px, leyenda ${l.leyenda} px, explicación ${graf.breve.visible ? 'visible' : 'oculta'}`)
     expect(l.minimo, 'letra mínima de la matriz').toBeGreaterThanOrEqual(w >= 1900 ? 24 : 20)
     expect(l.leyenda, 'letra de la leyenda').toBeGreaterThanOrEqual(w >= 1900 ? 24 : 20)
-    if (w >= 1900) expect(vivo.breve.visible, 'explicación breve en 1920').toBe(true)
+    if (w >= 1900) expect(graf.breve.visible, 'explicación breve en 1920').toBe(true)
   }
   // Si la explicación breve se ve, se ve entera y sin pesos ni fórmulas.
-  if (vivo.breve.visible) expect(vivo.breve.cortada, 'explicación breve cortada').toBeLessThanOrEqual(0)
-  expect(vivo.breve.texto).toContain('Eje X:')
-  expect(vivo.breve.texto).not.toMatch(/%|—/)
+  if (graf.breve.visible) expect(graf.breve.cortada, 'explicación breve cortada').toBeLessThanOrEqual(0)
+  expect(graf.breve.texto).toContain('Eje X:')
+  expect(graf.breve.texto).not.toMatch(/%|—/)
   const fallas = await page.evaluate(contrasteAA)
   expect(fallas, fallas.join('\n')).toEqual([])
   const solapes = await page.evaluate(solapesEtiquetas)
-  expect(solapes, `en vivo: ${solapes.join('\n')}`).toEqual([])
-  if (process.env.HZ_CAPTURAS) await page.screenshot({ path: join(process.env.HZ_CAPTURAS, `tablero-${w}-en-vivo.png`), fullPage: w < 1100 })
+  expect(solapes, `Gráfica: ${solapes.join('\n')}`).toEqual([])
+  if (process.env.HZ_CAPTURAS) await page.screenshot({ path: join(process.env.HZ_CAPTURAS, `tablero-${w}-grafica.png`), fullPage: w < 1100 })
 
   // Las teclas +, − y 0 ya no hacen nada sobre la matriz.
   const vb = await page.locator('svg.hz-matriz').getAttribute('viewBox')
   for (const k of ['+', '-', '0']) await page.keyboard.press(k)
   expect(await page.locator('svg.hz-matriz').getAttribute('viewBox')).toBe(vb)
-  // Clic sin arrastre: la tabla (y ?modo=tabla); otro clic (la matriz ahora es más angosta): de nuevo en vivo.
+  // Clic sin arrastre: Detallado (y ?modo=detallado); otro clic (la matriz ahora es más angosta): de nuevo Gráfica.
   // locator.click espera a que la matriz deje de cambiar de tamaño y comprueba que el clic le llegue a ella: con
   // coordenadas medidas a mano, en una máquina lenta el segundo clic caía sobre el panel lateral que aún se abría.
   await page.locator('svg.hz-matriz').click()
   await page.waitForSelector('.hz-lateral')
-  expect(new URL(page.url()).searchParams.get('modo')).toBe('tabla')
+  expect(new URL(page.url()).searchParams.get('modo')).toBe('detallado')
   await page.locator('svg.hz-matriz').click()
   await page.waitForSelector('.hz-lateral', { state: 'detached' })
-  expect(new URL(page.url()).searchParams.get('modo')).toBe('vivo')
+  expect(new URL(page.url()).searchParams.get('modo')).toBe('grafica')
 }
 
 /** Corre en el navegador: tamaño de la matriz y letra efectiva (px en pantalla) de sus textos y de la leyenda. */
@@ -701,7 +703,7 @@ function contrasteAA(): string[] {
 /**
  * Corre en el navegador sobre la matriz en Comparación: cada burbuja viva lleva su etiqueta «R1»/«R2»;
  * R1 es un aro hueco y R2 sólida (se distinguen sin color); el color de cada ronda contrasta 3:1 con
- * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo. Tema carbón:
+ * todos los fondos de horizonte (elemento gráfico) y el texto «R1»/«R2» 4,5:1 con su halo. Tema claro:
  * H1, H2 y H3 en superficies distintas y los fijos en un gris neutro (ni R1, ni R2, ni el azul de acción)
  * con 3:1 sobre cada horizonte. Colores calculados (los de los tokens del tema), no los atributos.
  */
@@ -752,23 +754,32 @@ function rondasLegibles(): string[] {
 }
 
 /**
- * Corre en el navegador: el tablero usa el tema carbón (data-tema="carbon", fondo #141414 y tinta hielo),
- * el encabezado lleva la firma «Horizontes por Estratek »» con la » en el azul de acción y la línea del
- * degradado de marca de borde a borde.
+ * Corre en el navegador: una sola apariencia en toda la app (Paola, 20-oct). El tablero va en el tema claro
+ * (data-tema="claro", fondo blanco y tinta carbón) y solo la barra en carbón (#141414 con tinta hielo), con
+ * «Horizontes» y «por Estratek »» (la » en el azul de acción del tema carbón) y la línea del degradado de
+ * marca de borde a borde. Nada fuera de la barra lleva el tema carbón.
  */
-function marcaCarbon(): string[] {
+function marcaClara(): string[] {
   const fallas: string[] = []
   const raiz = document.querySelector<HTMLElement>('.hz-tablero')!
   const cs = getComputedStyle(raiz)
-  if (raiz.dataset.tema !== 'carbon') fallas.push(`data-tema="${raiz.dataset.tema}"`)
-  if (cs.backgroundColor !== 'rgb(20, 20, 20)') fallas.push(`fondo ${cs.backgroundColor}, se esperaba carbón #141414`)
-  if (cs.color !== 'rgb(220, 236, 255)') fallas.push(`tinta ${cs.color}, se esperaba hielo #DCECFF`)
-  const firma = document.querySelector('.hz-cab .hz-firma')
-  if (firma?.textContent?.replace(/\s+/g, ' ').trim() !== 'Horizontes por Estratek »') fallas.push(`firma «${firma?.textContent}»`)
-  const flecha = document.querySelector('.hz-firma-flecha')
+  if (raiz.dataset.tema !== 'claro') fallas.push(`data-tema="${raiz.dataset.tema}"`)
+  if (cs.backgroundColor !== 'rgb(255, 255, 255)') fallas.push(`fondo ${cs.backgroundColor}, se esperaba blanco`)
+  if (cs.color !== 'rgb(20, 20, 20)') fallas.push(`tinta ${cs.color}, se esperaba carbón #141414`)
+  if (document.documentElement.dataset.tema !== 'claro') fallas.push(`<html> con data-tema="${document.documentElement.dataset.tema}"`)
+  const barra = document.querySelector<HTMLElement>('.hz-cab')!
+  for (const el of raiz.querySelectorAll('[data-tema="carbon"]')) if (!barra.contains(el)) fallas.push(`tema carbón fuera de la barra: ${el.className}`)
+  const producto = barra.querySelector('.hz-producto')!
+  const cb = getComputedStyle(producto)
+  if (cb.backgroundColor !== 'rgb(20, 20, 20)') fallas.push(`barra ${cb.backgroundColor}, se esperaba carbón #141414`)
+  const nombre = barra.querySelector('.hz-producto__nombre')
+  if (nombre?.textContent !== 'Horizontes' || getComputedStyle(nombre).color !== 'rgb(220, 236, 255)') fallas.push(`nombre «${nombre?.textContent}» sin la tinta hielo`)
+  const firma = barra.querySelector('.hz-producto__firma')
+  if (firma?.textContent?.replace(/\s+/g, ' ').trim() !== 'por Estratek »') fallas.push(`firma «${firma?.textContent}»`)
+  const flecha = barra.querySelector('.hz-producto__flecha')
   if (!flecha || getComputedStyle(flecha).color !== 'rgb(52, 135, 255)') fallas.push(`» sin el azul de acción #3487FF`)
-  const linea = getComputedStyle(document.querySelector('.hz-cab')!, '::after')
-  if (!linea.backgroundImage.startsWith('linear-gradient')) fallas.push(`línea del encabezado sin degradado: ${linea.backgroundImage}`)
+  const linea = getComputedStyle(producto, '::after')
+  if (!linea.backgroundImage.startsWith('linear-gradient')) fallas.push(`línea de la barra sin degradado: ${linea.backgroundImage}`)
   if (Math.abs(parseFloat(linea.width) - document.documentElement.clientWidth) > 1) fallas.push(`línea del degradado de ${linea.width} en ${document.documentElement.clientWidth} px`)
   return fallas
 }

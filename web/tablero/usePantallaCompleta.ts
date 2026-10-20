@@ -19,13 +19,13 @@ export function accionDeTecla(tecla: string): AccionTecla | null {
   switch (tecla.toLowerCase()) {
     case 'f':
       return { tipo: 'pantalla' }
-    case 'd':
+    case 'v':
       return { tipo: 'detalle' }
     case 'm':
       return { tipo: 'matriz', sola: null }
-    case 'v':
+    case 'g':
       return { tipo: 'matriz', sola: true }
-    case 't':
+    case 'd':
     case 'escape':
       return { tipo: 'matriz', sola: false }
     case '1':
@@ -44,15 +44,15 @@ export interface AtajosTablero {
   elemento: HTMLElement | null
   onVista: (v: Vista) => void
   onDetalle: () => void
-  /** M alterna los modos «En vivo» (true) y «Con tabla» (false); V y T eligen uno; Esc vuelve a la tabla. */
+  /** M alterna los modos «Gráfica» (true) y «Detallado» (false); G y D eligen uno; Esc pasa a Detallado. */
   onMatriz: (sola: boolean | null) => void
 }
 
 /**
- * Modo proyector: F o el botón «Pantalla completa» ponen el tablero, en el modo elegido («En vivo»: solo la
- * matriz; «Con tabla»: matriz y tabla), en la pantalla completa del navegador sin los controles del
- * encabezado; F, Esc o el mismo botón salen. 1, 2 y C cambian de vista; V, T y M de modo; D alterna
- * promedios y «Cómo votó». Si el navegador no deja usar la API, igual se ocultan los controles
+ * Modo proyector: F o el botón «Pantalla completa» ponen el tablero, en el modo elegido («Gráfica»: solo la
+ * matriz; «Detallado»: matriz, progreso y promedios), en la pantalla completa del navegador sin los controles
+ * del encabezado; F, Esc o el mismo botón salen. 1, 2 y C cambian de vista; G, D y M de modo; V alterna
+ * promedios y «Cómo votó» (votos). Si el navegador no deja usar la API, igual se ocultan los controles
  * (`activa` sigue siendo true) y Esc lo cierra.
  */
 export function usePantallaCompleta({ elemento, onVista, onDetalle, onMatriz }: AtajosTablero) {
@@ -84,7 +84,8 @@ export function usePantallaCompleta({ elemento, onVista, onDetalle, onMatriz }: 
 
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || enCampo(e)) return
+      // Una tecla sostenida no repite la acción (F entraba y salía de la pantalla completa sin parar).
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || enCampo(e)) return
       const a = accionDeTecla(e.key)
       if (!a) return
       e.preventDefault()

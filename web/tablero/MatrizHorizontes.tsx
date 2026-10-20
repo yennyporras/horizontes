@@ -32,7 +32,7 @@ export interface MatrizHorizontesProps {
   letraMin?: number
   /** Anima R1 → R2 cuando la vista cambia a Comparación (por defecto, sí). */
   animarComparacion?: boolean
-  /** Modo en vivo: con cada foto nueva de votos, las burbujas que cambiaron se deslizan (por defecto, no). */
+  /** Modo Gráfica del tablero: con cada foto nueva de votos, las burbujas que cambiaron se deslizan (por defecto, no). */
   animarCambios?: boolean
   className?: string
 }

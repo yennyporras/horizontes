@@ -1,5 +1,5 @@
 import type { CriterioId, DatosTablero, RondaVivo, Vista } from './tipos'
-import { cifraRonda, mostrarR2, nombreCorto, rondaDe } from './logica'
+import { cifraRonda, claseCifra, mostrarR2, nombreCorto, rondaDe } from './logica'
 import { descripcionCriterio } from '../shared/criterios'
 
 /** Nombre del criterio y, debajo, su descripción corta (pedido de Paola, 20-oct; máximo 100 caracteres). */
@@ -37,11 +37,11 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
         <NombreCriterio id={c.id} nombre={c.nombre} />
       </th>
       {vivos.map(({ p, r1, r2 }) => [
-        <td key={`${p.id}1`} className={foco(1) ? 'hz-ini hz-foco' : 'hz-ini'}>
+        <td key={`${p.id}1`} className={claseCifra(r1, valor(r1), foco(1), 'hz-ini')}>
           {cifraRonda(r1, valor(r1))}
         </td>,
         conR2 && (
-          <td key={`${p.id}2`} className={foco(2) ? 'hz-foco' : undefined}>
+          <td key={`${p.id}2`} className={claseCifra(r2, valor(r2), foco(2))}>
             {cifraRonda(r2, valor(r2))}
           </td>
         ),

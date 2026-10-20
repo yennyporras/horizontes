@@ -40,7 +40,7 @@ function CeldaMesa({
           {conteoMesa(datos, propia, vista)}
           {lista ? ', todos votaron' : ''}
         </span>
-        {datos && esPreliminar(datos) && <span className="hz-insignia hz-insignia-alerta">Preliminar</span>}
+        {datos && esPreliminar(datos) && <span className="hz-tb-insignia hz-tb-insignia-alerta">Preliminar</span>}
       </header>
       {error && !datos && (
         <p className="hz-aviso-error" role="alert">

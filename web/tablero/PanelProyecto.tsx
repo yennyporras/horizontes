@@ -1,6 +1,6 @@
 import type { DatosTablero, ProyectoVivo, RondaVivo, Vista } from './tipos'
 import { ColRonda, NombreCriterio } from './TablaComparada'
-import { cifraRonda, delta, mostrarR2, rondaDe } from './logica'
+import { cifraRonda, claseCifra, delta, mostrarR2, rondaDe } from './logica'
 
 /** Móvil y tableta: un panel por proyecto con R1, R2 y el cambio por criterio (sin fila «Total», preentrega del 19-oct). */
 export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVivo; datos: DatosTablero; vista: Vista }) {
@@ -13,10 +13,10 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
       <th scope="row" title={c.nombre}>
         <NombreCriterio id={c.id} nombre={c.nombre} />
       </th>
-      <td className={vista === 1 || vista === 'comparacion' ? 'hz-foco' : undefined}>{cifraRonda(r1, valor(r1))}</td>
+      <td className={claseCifra(r1, valor(r1), vista === 1 || vista === 'comparacion')}>{cifraRonda(r1, valor(r1))}</td>
       {conR2 && (
         <>
-          <td className={vista === 2 || vista === 'comparacion' ? 'hz-foco' : undefined}>{cifraRonda(r2, valor(r2))}</td>
+          <td className={claseCifra(r2, valor(r2), vista === 2 || vista === 'comparacion')}>{cifraRonda(r2, valor(r2))}</td>
           <td className="hz-delta">{delta(valor(r1), valor(r2)) ?? ''}</td>
         </>
       )}

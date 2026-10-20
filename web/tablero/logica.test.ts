@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { accionDeTecla } from './usePantallaCompleta'
 import type { DatosTablero } from './tipos'
 import {
   EN_VIVO,
@@ -108,11 +110,28 @@ describe('estados vacíos', () => {
 })
 
 describe('modos de proyección y votos recibidos', () => {
-  test('?modo=vivo|tabla; cualquier otro valor es en vivo', () => {
-    expect(modoDeUrl('tabla')).toBe('tabla')
-    expect(modoDeUrl('vivo')).toBe('vivo')
-    expect(modoDeUrl(null)).toBe('vivo')
-    expect(modoDeUrl('otro')).toBe('vivo')
+  test('?modo=grafica|detallado, con los valores anteriores vivo|tabla como alias; cualquier otro valor es Gráfica', () => {
+    expect(modoDeUrl('detallado')).toBe('detallado')
+    expect(modoDeUrl('grafica')).toBe('grafica')
+    // Enlaces ya compartidos (antes del 20-oct): tabla es Detallado y vivo es Gráfica.
+    expect(modoDeUrl('tabla')).toBe('detallado')
+    expect(modoDeUrl('vivo')).toBe('grafica')
+    expect(modoDeUrl(null)).toBe('grafica')
+    expect(modoDeUrl('otro')).toBe('grafica')
+  })
+  test('teclas del proyector: G Gráfica, D Detallado, M alterna, V «Cómo votó», F pantalla completa, 1, 2 y C la vista', () => {
+    expect(accionDeTecla('g')).toEqual({ tipo: 'matriz', sola: true })
+    expect(accionDeTecla('G')).toEqual({ tipo: 'matriz', sola: true })
+    expect(accionDeTecla('d')).toEqual({ tipo: 'matriz', sola: false })
+    expect(accionDeTecla('Escape')).toEqual({ tipo: 'matriz', sola: false })
+    expect(accionDeTecla('m')).toEqual({ tipo: 'matriz', sola: null })
+    expect(accionDeTecla('v')).toEqual({ tipo: 'detalle' })
+    expect(accionDeTecla('f')).toEqual({ tipo: 'pantalla' })
+    expect(accionDeTecla('1')).toEqual({ tipo: 'vista', vista: 1 })
+    expect(accionDeTecla('2')).toEqual({ tipo: 'vista', vista: 2 })
+    expect(accionDeTecla('c')).toEqual({ tipo: 'vista', vista: 'comparacion' })
+    // T era «Con tabla»: ya no es un atajo.
+    expect(accionDeTecla('t')).toBeNull()
   })
   test('indicador discreto: los de la sala o, con alcance mesa, los de esa mesa', () => {
     const d = structuredClone(mock)
@@ -181,7 +200,11 @@ describe('formato', () => {
   })
   test('sin rayas en los textos', () => {
     const textos = [mensajeVacio(sinVotos(mock, 2), 'comparacion'), ...avisosPrecierre(mock).map((a) => a.texto)]
-    for (const t of textos) expect(t).not.toContain('—')
+    for (const t of textos) expect(t).not.toMatch(/[—–]/)
+    // Ni en el código del tablero (textos visibles, ayudas y comentarios).
+    const fuentes = [...readdirSync(__dirname), 'matriz/matriz.js'].filter((n) => /\.(tsx?|css|js)$/.test(n) && !n.includes('.test.'))
+    expect(fuentes).toContain('PaginaTablero.tsx')
+    for (const f of fuentes) expect(readFileSync(join(__dirname, f), 'utf8'), f).not.toMatch(/[—–]/)
   })
 })
 

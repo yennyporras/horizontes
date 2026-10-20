@@ -10,10 +10,10 @@ export function PreguntaGuiada({ p }: { p: VistaPregunta }) {
       <h2 id="hz-guiada-titulo">{p.nombre}</h2>
       {p.pregunta && <p className="hz-guiada-pregunta">{p.pregunta}</p>}
       {p.rubrica.length > 0 && (
-        <ul className="hz-rubrica" aria-label="Rúbrica">
+        <ul className="hz-tb-rubrica" aria-label="Rúbrica">
           {p.rubrica.map((r) => (
             <li key={r.valor}>
-              <span className="hz-rubrica-valor">{r.valor}</span>
+              <span className="hz-tb-rubrica-valor">{r.valor}</span>
               <span>{r.texto}</span>
             </li>
           ))}
