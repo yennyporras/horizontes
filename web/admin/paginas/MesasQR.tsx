@@ -3,7 +3,17 @@ import { useParams } from 'react-router-dom'
 import { api, usaMocks } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
-import type { Mesa } from '../tipos'
+import { useConfirmar } from '../componentes/Confirmar'
+import type { RespuestaEliminarMesa } from '../../shared/api/contrato'
+import type { Mesa, SalaDetalle } from '../tipos'
+
+/** Por qué no se puede eliminar la mesa, o null si se puede. Cuenta inscritos activos e inactivos. */
+export function motivoNoEliminarMesa(d: Pick<SalaDetalle, 'mesas' | 'participantes'>, m: Pick<Mesa, 'id'>): string | null {
+  const n = d.participantes.filter((p) => p.mesa_id === m.id).length
+  if (n > 0) return `Tiene ${n === 1 ? '1 persona inscrita' : `${n} personas inscritas`}. Para eliminarla, muévelas a otra mesa en Participantes.`
+  if (d.mesas.length <= 1) return 'Es la única mesa de la sala: una sala necesita al menos una.'
+  return null
+}
 
 /** En modo simulado no hay servidor que dibuje el QR: se muestra una tarjeta con el código. */
 function srcQR(m: Mesa) {
@@ -45,6 +55,8 @@ export function MesasQR() {
   const [aviso, setAviso] = useState<{ tono: 'exito' | 'error'; texto: string } | null>(null)
   const [copiada, setCopiada] = useState<string | null>(null)
   const [agregando, setAgregando] = useState(false)
+  const [avisoMesas, setAvisoMesas] = useState<{ tono: 'exito' | 'error'; texto: string } | null>(null)
+  const [dialogo, confirmar] = useConfirmar()
   const enCurso = useRef(false)
 
   const agregar = async (e: FormEvent) => {
@@ -63,6 +75,19 @@ export function MesasQR() {
     } finally {
       enCurso.current = false
       setAgregando(false)
+    }
+  }
+
+  /** Pedido de Paola (21-oct): solo una mesa sin inscritos (activos o inactivos), y nunca la última. Confirmación con el foco en Cancelar. */
+  const eliminar = async (m: Mesa) => {
+    if (!(await confirmar(`¿Eliminar ${m.nombre}?`, `Su QR (código ${m.codigo}) deja de servir. Las demás mesas conservan su número y su QR.`, 'Sí, eliminar mesa'))) return
+    setAvisoMesas(null)
+    try {
+      await api.delete<RespuestaEliminarMesa>(`/api/admin/mesas/${encodeURIComponent(m.id)}`)
+      await refrescar()
+      setAvisoMesas({ tono: 'exito', texto: `Eliminamos ${m.nombre}.` })
+    } catch (err) {
+      setAvisoMesas({ tono: 'error', texto: err instanceof Error ? err.message : 'No se pudo eliminar la mesa.' })
     }
   }
 
@@ -118,10 +143,38 @@ export function MesasQR() {
                       {copiada === m.id ? 'Enlace copiado' : 'Copiar enlace'}
                     </button>
                   </div>
+                  {(() => {
+                    const motivo = motivoNoEliminarMesa(d, m)
+                    return (
+                      <div className="qr-tarjeta__eliminar no-imprimir">
+                        <button
+                          className="hz-boton hz-boton--peligro hz-boton--chico"
+                          type="button"
+                          aria-label={`Eliminar ${m.nombre}`}
+                          aria-describedby={motivo ? `motivo-${m.id}` : undefined}
+                          disabled={Boolean(motivo)}
+                          onClick={() => void eliminar(m)}
+                        >
+                          Eliminar mesa
+                        </button>
+                        {motivo && (
+                          <p id={`motivo-${m.id}`} className="pista">
+                            {motivo}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </li>
               ))}
             </ul>
           )}
+          {avisoMesas && (
+            <p className={`alerta alerta--${avisoMesas.tono} no-imprimir`} role={avisoMesas.tono === 'error' ? 'alert' : 'status'}>
+              {avisoMesas.texto}
+            </p>
+          )}
+          {dialogo}
 
           <section className="panel no-imprimir seccion-final" aria-labelledby="t-agregar">
             <h2 id="t-agregar">Agregar mesas</h2>

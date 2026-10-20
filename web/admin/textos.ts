@@ -340,6 +340,7 @@ const TEXTO_EVENTO: Record<string, string> = {
   pregunta_guiada: 'Pregunta en pantalla',
   rubrica_editada: 'Rúbrica editada',
   mesas_agregadas: 'Mesas agregadas',
+  mesa_eliminada: 'Mesa eliminada',
   acceso_reemitido: 'Acceso de nuevo',
   acceso_canjeado: 'Volvió a entrar con el acceso de nuevo',
   voto: 'Voto recibido',
@@ -435,6 +436,10 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
       break
     case 'mesas_agregadas':
       if (typeof d.cantidad === 'number') t = d.cantidad === 1 ? 'Se agregó 1 mesa' : `Se agregaron ${d.cantidad} mesas`
+      break
+    case 'mesa_eliminada':
+      // La mesa ya no está en la sala: el nombre sale del detalle del evento.
+      t = typeof d.nombre === 'string' ? `Se eliminó ${d.nombre}${typeof d.codigo === 'string' ? ` (código ${d.codigo})` : ''}` : 'Se eliminó una mesa'
       break
     case 'rubrica_editada':
       if (typeof d.criterio_id === 'string') t = `Rúbrica editada: ${nombreCriterio(c, d.criterio_id)}`

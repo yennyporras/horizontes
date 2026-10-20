@@ -594,6 +594,13 @@
 /* Mesas y QR: llamada a la acción en cada tarjeta (también en la hoja impresa) */
 .hz-admin .qr-tarjeta__cta { font-weight: var(--hz-fw-titulo); font-size: var(--hz-fs-18); margin-bottom: var(--hz-sp-1); }
 .hz-admin .seccion-final { margin-top: var(--hz-sp-6); }
+/* Eliminar (21-oct): la zona de peligro va al final, separada y con el borde del error; el botón en contorno rojo. */
+.hz-admin .zona-peligro { margin-top: var(--hz-sp-6); border-left: 4px solid var(--hz-error); }
+.hz-admin .zona-peligro p { max-width: 70ch; }
+.hz-admin dialog.dialogo-eliminar { max-width: 560px; }
+.hz-admin .qr-tarjeta__eliminar { margin-top: var(--hz-sp-2); }
+.hz-admin .qr-tarjeta__eliminar .pista { margin: var(--hz-sp-1) 0 0; }
+.hz-admin .selector-sala { max-width: 40rem; }
 
 /* Avisos junto al control que los produjo (QA-A-13) */
 .hz-admin .aviso-campo { margin: var(--hz-sp-2) 0 0; }

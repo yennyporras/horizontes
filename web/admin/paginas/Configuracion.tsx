@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSala } from '../useSala'
+import { useSesion } from '../sesion'
+import { olvidarSala } from '../memoria'
+import type { CuerpoEliminarSala } from '../../shared/api/contrato'
 import { ConSala } from './EncabezadoSala'
 import { Rubricas } from './Rubricas'
 import type { ConfigSala, EstadoSala, Pais, SalaDetalle, Sector, TipoSala, ZonaHoraria } from '../tipos'
-import { LARGO_MAXIMO_EMPRESA, PAISES, SECTORES, TIPOS_SALA, ZONAS, conPunto, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala, type CampoProgramado } from '../textos'
+import { ESTADOS, LARGO_MAXIMO_EMPRESA, PAISES, SECTORES, TIPOS_SALA, ZONAS, conPunto, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala, type CampoProgramado } from '../textos'
 
 /** QA-A-13: el resultado de cada cambio sale junto al control que lo produjo (`lugar`), no arriba de la página. */
 type Aviso = { lugar: string; tono: 'exito' | 'error' | 'aviso'; texto: string } | null
@@ -46,6 +49,7 @@ export function moverProgramacion(c: Partial<Record<CampoProgramado, string | nu
 export function Configuracion() {
   const { salaId } = useParams()
   const { datos, error, refrescar } = useSala(salaId)
+  const { admin } = useSesion()
   const [aviso, setAviso] = useState<Aviso>(null)
   /** QA-A-13: lo que se acaba de elegir se ve marcado de inmediato, mientras responde el servidor. */
   const [pendiente, setPendiente] = useState<Partial<ConfigSala>>({})
@@ -85,10 +89,138 @@ export function Configuracion() {
             <Visibilidad d={vista} guardar={guardar} aviso={aviso} />
             <Programacion d={d} guardarCampo={guardarCampo} />
             <Rubricas salaId={d.sala.id} version={d.version} />
+            {admin?.rol === 'superadmin' && <EliminarSala d={d} />}
           </>
         )
       }}
     </ConSala>
+  )
+}
+
+/** Aviso que Salas muestra al volver de eliminar una sala (`location.state`). */
+export interface EstadoSalaEliminada {
+  salaEliminada?: string
+}
+
+/** Estados en los que hay gente entrando o votando: el diálogo de eliminar lo advierte. */
+const ESTADOS_ABIERTOS: EstadoSala[] = ['inscripcion', 'r1_abierta', 'r2_abierta']
+
+/**
+ * Pedido de Paola (21-oct): eliminar la sala, solo superadmin, en la zona final de Configuración. El diálogo pide escribir
+ * el nombre exacto (el botón se habilita solo entonces), dice que no se puede deshacer y que queda un respaldo en el
+ * servidor, y advierte si la sala está abierta. Al terminar vuelve a Salas con un aviso.
+ */
+function EliminarSala({ d }: { d: SalaDetalle }) {
+  const [abierto, setAbierto] = useState(false)
+  const [nombre, setNombre] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null)
+  const dialogo = useRef<HTMLDialogElement>(null)
+  const campo = useRef<HTMLInputElement>(null)
+  const origen = useRef<HTMLButtonElement>(null)
+  const navegar = useNavigate()
+  const abiertaAhora = ESTADOS_ABIERTOS.includes(d.sala.estado)
+  const coincide = nombre.trim() === d.sala.nombre
+
+  useEffect(() => {
+    const el = dialogo.current
+    if (!abierto || !el) return
+    if (!el.open) {
+      if (typeof el.showModal === 'function') el.showModal()
+      else el.setAttribute('open', '')
+    }
+    campo.current?.focus()
+  }, [abierto])
+
+  const cerrar = () => {
+    const el = dialogo.current
+    if (el?.open) {
+      if (typeof el.close === 'function') el.close()
+      else el.removeAttribute('open')
+    }
+    setAbierto(false)
+    setNombre('')
+    setErrorEliminar(null)
+    origen.current?.focus()
+  }
+
+  const eliminar = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!coincide || enviando) return
+    setEnviando(true)
+    setErrorEliminar(null)
+    try {
+      await api.delete(`/api/admin/salas/${encodeURIComponent(d.sala.id)}`, { confirmar: nombre.trim() } satisfies CuerpoEliminarSala)
+      olvidarSala(d.sala.id)
+      navegar('/admin/salas', { state: { salaEliminada: d.sala.nombre } satisfies EstadoSalaEliminada })
+    } catch (err) {
+      setErrorEliminar(err instanceof Error ? err.message : 'No se pudo eliminar la sala.')
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <section className="panel zona-peligro" aria-labelledby="t-eliminar-sala">
+      <h2 id="t-eliminar-sala">Eliminar sala</h2>
+      <p>
+        Borra la sala con sus mesas, inscritos, avisos de datos aceptados, votos, bitácora y rúbricas. No se puede deshacer. Antes de borrar, el servidor guarda un
+        respaldo de la base.
+      </p>
+      <button ref={origen} type="button" className="hz-boton hz-boton--peligro" onClick={() => setAbierto(true)}>
+        Eliminar sala
+      </button>
+      {abierto && (
+        <dialog
+          ref={dialogo}
+          className="dialogo-eliminar"
+          aria-labelledby="eliminar-sala-titulo"
+          aria-describedby="eliminar-sala-texto"
+          onCancel={(e) => {
+            e.preventDefault()
+            cerrar()
+          }}
+        >
+          <h2 id="eliminar-sala-titulo">¿Eliminar «{d.sala.nombre}»?</h2>
+          <form onSubmit={eliminar}>
+            <div id="eliminar-sala-texto" className="dialogo__texto">
+              {abiertaAhora && (
+                <p className="alerta alerta--error">
+                  La sala está abierta ({ESTADOS[d.sala.estado].toLowerCase()}): hay gente entrando o votando. Si la eliminas, sus celulares y el tablero dejan de
+                  funcionar.
+                </p>
+              )}
+              <p>Se borran sus mesas, inscritos, avisos de datos aceptados, votos y bitácora. No se puede deshacer.</p>
+              <p>Antes de borrar queda un respaldo de la base en el servidor, por si hay que recuperarla.</p>
+            </div>
+            <div className="campo">
+              <label htmlFor="eliminar-sala-nombre">Escribe el nombre de la sala para confirmar: {d.sala.nombre}</label>
+              <input
+                ref={campo}
+                id="eliminar-sala-nombre"
+                autoComplete="off"
+                spellCheck={false}
+                value={nombre}
+                aria-invalid={errorEliminar ? true : undefined}
+                onChange={(e) => setNombre(e.target.value)}
+              />
+            </div>
+            {errorEliminar && (
+              <p className="alerta alerta--error" role="alert">
+                {errorEliminar}
+              </p>
+            )}
+            <div className="acciones">
+              <button type="button" className="hz-boton hz-boton--secundario" onClick={cerrar}>
+                Cancelar
+              </button>
+              <button type="submit" className="hz-boton hz-boton--destructivo" disabled={!coincide || enviando} aria-busy={enviando}>
+                {enviando ? 'Eliminando…' : 'Eliminar sala'}
+              </button>
+            </div>
+          </form>
+        </dialog>
+      )}
+    </section>
   )
 }
 

@@ -431,6 +431,27 @@ describe('cambios del 19-oct contra la API real', () => {
     expect((await yo()).sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'conocimiento_cliente' })
   }, 20_000)
 
+  // Pedido de Paola (21-oct): eliminar una mesa vacía y la sala completa contra la API real.
+  it('elimina una mesa vacía y después la sala, que desaparece de la base', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId } = await crearSalaDesdePanel('Para eliminar', 2)
+    fireEvent.click(nav().getByText('Mesas y QR'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Eliminar Mesa 2' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, eliminar mesa' }))
+    expect(await screen.findByText('Eliminamos Mesa 2.')).toBeTruthy()
+    expect(e.db.prepare('SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?').get(salaId)).toEqual({ n: 1 })
+
+    fireEvent.click(nav().getByText('Configuración'))
+    fireEvent.click(within(await screen.findByRole('region', { name: 'Eliminar sala' })).getByRole('button', { name: 'Eliminar sala' }))
+    const dialogo = within(await screen.findByRole('dialog', { name: '¿Eliminar «Para eliminar»?' }))
+    fireEvent.change(dialogo.getByLabelText(/^Escribe el nombre de la sala/), { target: { value: 'Para eliminar' } })
+    fireEvent.click(dialogo.getByRole('button', { name: 'Eliminar sala' }))
+    expect(await screen.findByText('Eliminamos la sala «Para eliminar». Quedó un respaldo de la base en el servidor.')).toBeTruthy()
+    expect(e.db.prepare('SELECT COUNT(*) AS n FROM salas WHERE id = ?').get(salaId)).toEqual({ n: 0 })
+    expect(e.db.prepare('SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?').get(salaId)).toEqual({ n: 0 })
+  }, 20_000)
+
   // A5 (C19-1): el servidor de prueba arma los QR con https://horizontes.test, que no es el origen de jsdom.
   it('avisa en rojo que BASE_URL del servidor no es el dominio del panel', async () => {
     montar('/admin/login')

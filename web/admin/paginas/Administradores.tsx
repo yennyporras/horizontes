@@ -88,6 +88,20 @@ export function Administradores() {
     }
   }
 
+  /** Pedido de Paola (21-oct): borra la cuenta y cierra sus sesiones; sus salas y su rastro en la bitácora se quedan. */
+  const eliminar = async (a: AdminFila) => {
+    const texto = `No podrá entrar al panel y la cuenta no se puede recuperar. Las salas que creó y lo que hizo en la bitácora se conservan. Si solo quieres pausar su acceso, usa Desactivar.`
+    if (!(await confirmar(`¿Eliminar la cuenta de ${a.nombre}?`, texto, 'Sí, eliminar cuenta'))) return
+    setAviso(null)
+    try {
+      await api.delete(`/api/admin/admins/${a.id}`)
+      setAviso({ tono: 'exito', texto: `Eliminamos la cuenta de ${a.nombre} (usuario ${a.usuario}).` })
+      await cargar()
+    } catch (err) {
+      setAviso({ tono: 'error', texto: err instanceof Error ? err.message : 'No se pudo eliminar la cuenta.' })
+    }
+  }
+
   const restablecer = async (a: AdminFila) => {
     if (!(await confirmar(`¿Restablecer la clave de ${a.nombre}?`, 'Su clave actual deja de servir. Le darás una clave temporal y la cambiará al entrar.', 'Sí, restablecer'))) return
     const nueva = claveTemporal()
@@ -219,6 +233,14 @@ export function Administradores() {
                             onClick={() => cambiarActivo(a)}
                           >
                             {a.activo ? 'Desactivar' : 'Activar'}
+                          </button>
+                          <button
+                            type="button"
+                            className="hz-boton hz-boton--peligro hz-boton--chico"
+                            aria-label={`Eliminar a ${a.nombre}`}
+                            onClick={() => eliminar(a)}
+                          >
+                            Eliminar
                           </button>
                         </span>
                       )}
