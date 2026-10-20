@@ -225,7 +225,7 @@ Ruta base `/m/{codigoMesa}`. El estado se decide con `GET /api/mesas/{codigo}` a
 - Botones: **Editar mis calificaciones** (secundario) y **Volver al caso** (fantasma).
 
 ### 8.10 En vivo (`vista_participante = en_vivo`)
-- Muestra el tablero del alcance (componente de T3) bajo el título **Resultados en vivo de {tu mesa | la sala}** con la insignia "Preliminar". Si aún no hay votos en el alcance: "Todavía no hay calificaciones en {tu mesa | la sala}. Los puntos aparecen con el primer voto."
+- Muestra el tablero del alcance (componente del tablero) bajo el título **Resultados en vivo de {tu mesa | la sala}** con la insignia "Preliminar". Si aún no hay votos en el alcance: "Todavía no hay calificaciones en {tu mesa | la sala}. Los puntos aparecen con el primer voto."
 
 ### 8.11 Precierre (derivado, `progreso_mesa.precierre = true` o sala en precierre)
 - Aviso alerta fijo arriba: título **Todos votaron en {Mesa N}**, texto "Este es un resultado preliminar. El facilitador cerrará la ronda; hasta entonces puedes editar tus calificaciones."
@@ -235,7 +235,7 @@ Ruta base `/m/{codigoMesa}`. El estado se decide con `GET /api/mesas/{codigo}` a
 - Título: **Ronda {n} cerrada**
 - Texto R1: "Este es el resultado de {tu mesa | la sala}. Discútanlo en la mesa antes de la ronda 2."
 - Texto R2: "Así se movieron INSUMEX y NUTRIWHAT de la ronda 1 a la ronda 2 en {tu mesa | la sala}."
-- Resultado del alcance (matriz y promedios por criterio, componente de T3). Nunca respuestas individuales ni nombres.
+- Resultado del alcance (matriz y promedios por criterio, componente del tablero). Nunca respuestas individuales ni nombres.
 
 ### 8.13 Sala cerrada (`cerrada`)
 - Título: **El taller terminó**
