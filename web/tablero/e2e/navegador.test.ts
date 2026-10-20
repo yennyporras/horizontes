@@ -20,6 +20,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Browser, Page } from 'playwright-core'
 import type { ViteDevServer } from 'vite'
 import { CRITERIOS } from '../../../shared/motor/motor'
+import { generadorRealista } from '../../../tools/simulador/distribuciones'
+import { LECTURA_EJES } from '../../shared/criterios'
 import { nombreCorto } from '../logica'
 import { REINTENTOS_E2E, sinNavegador } from '../../../tests/navegador'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, votar } from '../../../tests/server/ayuda'
@@ -34,6 +36,7 @@ const fijosGolden = golden.casos_proyecto as { nombre: string; esperado: { eje_x
 const ANCHOS: [number, number][] = [
   [1920, 1080],
   [1366, 768],
+  [1280, 800],
   [1280, 720],
   [768, 1024],
   [360, 740],
@@ -258,12 +261,22 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
         expect(detallado.leyenda, 'leyenda en Detallado').toBeGreaterThanOrEqual(w >= 1900 ? 24 : 20)
         expect(Math.min(detallado.ancho, detallado.alto), 'matriz en Detallado').toBeGreaterThanOrEqual(w >= 1900 ? 820 : 520)
         // Descripción corta bajo cada criterio de la tabla (máximo 100 caracteres), legible.
-        const desc = await page.$$eval('.hz-comparada .hz-crit-desc', (d) => d.map((x) => ({ t: x.textContent ?? '', fs: parseFloat(getComputedStyle(x).fontSize) })))
+        // Con poco alto (1280×720 y 1280×800) la descripción se oculta y queda en el title de la fila.
+        const desc = await page.$$eval('.hz-comparada .hz-crit-desc', (d) =>
+          d.map((x) => ({ t: x.textContent ?? '', fs: parseFloat(getComputedStyle(x).fontSize), visible: (x as HTMLElement).offsetHeight > 0, title: x.closest('th')!.title })),
+        )
         expect(desc).toHaveLength(6)
         for (const d of desc) {
           expect(d.t.length).toBeLessThanOrEqual(100)
-          expect(d.fs).toBeGreaterThanOrEqual(14)
+          if (d.visible) expect(d.fs).toBeGreaterThanOrEqual(14)
+          else expect(d.title).toContain(d.t)
         }
+        if (h <= 820) expect(desc.every((d) => !d.visible), 'descripción oculta con poco alto').toBe(true)
+        // QA por roles (Nicolai): las 6 filas de la tabla se ven enteras sin desplazar, y la lectura de los ejes también.
+        expect(await page.evaluate(filasDetallado), 'filas del Detallado').toEqual({ visibles: 6, total: 6 })
+        const ejes = page.locator('.hz-explica-breve:visible')
+        expect(await ejes.textContent()).toBe(LECTURA_EJES)
+        expect(await ejes.evaluate((x) => x.getBoundingClientRect().bottom <= innerHeight)).toBe(true)
       }
       // Nombres en la matriz: ninguno se solapa con otro, los de los fijos no tapan burbujas y nada sale del lienzo.
       for (const [tecla, nombre] of [['1', 'Ronda 1'], ['2', 'Ronda 2'], ['c', 'Comparación']]) {
@@ -354,6 +367,14 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
         if (capturas) await page.screenshot({ path: join(capturas, `tablero-${w}-pantalla-completa.png`) })
         await page.keyboard.press('f')
         await page.waitForSelector('.hz-pantalla-completa', { state: 'detached' })
+        // Detallado en pantalla completa: también caben las 6 filas.
+        await page.keyboard.press('d')
+        await page.waitForSelector('.hz-comparada')
+        await page.keyboard.press('f')
+        await page.waitForSelector('.hz-pantalla-completa', { timeout: 5000 })
+        await expect.poll(() => page.evaluate(filasDetallado), { timeout: 5000 }).toEqual({ visibles: 6, total: 6 })
+        await page.keyboard.press('f')
+        await page.waitForSelector('.hz-pantalla-completa', { state: 'detached' })
       }
       await page.context().close()
     },
@@ -367,6 +388,14 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     // El alcance se lee en el selector (el encabezado no lo repite mientras el selector está a la vista).
     await expect.poll(() => p.locator('.hz-alcance select').evaluate((s: HTMLSelectElement) => s.selectedOptions[0].textContent), { timeout: 5000 }).toBe(mesa.nombre)
     expect(new URL(p.url()).searchParams.get('mesa')).toBe(mesa.mesa_id)
+    // Nicolai: el selector suelta el foco al cambiar y nunca se come los atajos; M cambia el modo, no el alcance.
+    await p.locator('.hz-alcance select').focus()
+    await p.keyboard.press('m')
+    await expect.poll(() => new URL(p.url()).searchParams.get('modo')).toBe('detallado')
+    expect(new URL(p.url()).searchParams.get('mesa')).toBe(mesa.mesa_id)
+    expect(await p.locator('.hz-alcance select').inputValue()).toBe(mesa.mesa_id)
+    await p.getByRole('button', { name: 'Gráfica' }).click()
+    await expect.poll(() => new URL(p.url()).searchParams.get('modo')).toBe('grafica')
     const api = (await e.app.inject(`/api/tablero/${golden1.id}?alcance=mesa&mesa=${mesa.mesa_id}&t=${golden1.token}`)).json()
     const dib = await p.evaluate(() => {
       const svg = document.querySelector('svg.hz-matriz')!
@@ -390,7 +419,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     await p.context().close()
 
     const sinToken = await abrir(1366, 768, `/tablero/${golden1.id}`, '.hz-error-grande')
-    expect(await sinToken.locator('.hz-error-grande').textContent()).toContain('Pide al facilitador el enlace completo')
+    expect(await sinToken.locator('.hz-error-grande').textContent()).toContain('Pídele al facilitador el enlace completo')
     await sinToken.context().close()
   }, 60_000)
 
@@ -404,10 +433,18 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     const p = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}`, 'svg.hz-matriz', true)
     const estados: number[] = []
     p.on('response', (res) => res.url().includes('/api/tablero/') && estados.push(res.status()))
-    // D2: con la ronda abierta el tablero recibe fotos que se renuevan de 3 en 3 votos.
-    expect(await p.locator('.hz-vacio').textContent()).toContain('Aún no hay resultados en la ronda 1')
-    expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo, cada 3 votos')
-    expect(await p.locator('.hz-franja').textContent()).toBe('Ronda 1 · individual y en silencio')
+    // Decisión de Paola (20-oct): con la ronda 1 abierta el servidor puede mandarla oculta (`oculta`); entonces el
+    // tablero muestra la cortina con el avance por mesa en lugar de resultados. Sin ese campo, la foto de 3 en 3 (D2).
+    const oculta = async () =>
+      (await e.app.inject(`/api/tablero/${vivo.id}?alcance=sala&t=${vivo.token}`)).json().proyectos_vivos.some((v: { rondas: { oculta?: boolean }[] }) => v.rondas.some((r) => r.oculta))
+    if (await oculta()) {
+      expect(await p.locator('.hz-cortina').textContent()).toContain('Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.')
+      expect(await p.locator('.hz-tb-insignia-vivo').count()).toBe(0)
+    } else {
+      expect(await p.locator('.hz-vacio').textContent()).toContain('Aún no hay resultados en la ronda 1')
+      expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo: se actualiza cada 3 votos')
+    }
+    expect(await p.locator('.hz-franja').textContent()).toBe('Ronda 1 · Individual y en silencio')
     // Sin cambios: el servidor responde 304 y el <svg> sigue siendo el mismo nodo (sin parpadeo).
     await p.evaluate(() => ((window as unknown as { __svg: Element }).__svg = document.querySelector('svg.hz-matriz')!))
     await p.waitForTimeout(3000)
@@ -418,20 +455,30 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     const resp = Object.fromEntries(CRITERIOS.map((c) => [c, 7]))
     const [primero, ...resto] = vivo.tokens
     for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, primero, pr, 1, resp)).statusCode).toBe(200)
-    await expect
-      .poll(() => p.locator('.hz-vacio').textContent(), { timeout: 10_000, interval: 100 })
-      .toBe('Hacen falta al menos 3 votos para mostrar estos resultados')
+    const conCortina = await oculta()
+    if (conCortina) {
+      await expect.poll(() => p.locator('.hz-cortina-mesas').textContent(), { timeout: 10_000, interval: 100 }).toBe('Mesa 11 de 3 votaron')
+    } else {
+      await expect
+        .poll(() => p.locator('.hz-vacio').textContent(), { timeout: 10_000, interval: 100 })
+        .toBe('Hacen falta al menos 3 votos para mostrar estos resultados')
+    }
     expect(await p.locator('svg.hz-matriz circle.hz-r1').count()).toBe(0)
     await p.keyboard.press('d')
-    expect(await p.locator('.hz-comparada').textContent()).toContain('Faltan votos')
-    // D2: la foto de 3 en 3 la dice la insignia de la barra, también en Detallado.
-    expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo, cada 3 votos')
-    const mesa = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}&mesa=${s2.mesas[0].id}`, '.hz-vacio')
-    expect(await mesa.locator('.hz-vacio').textContent()).toBe('Hacen falta al menos 3 votos para mostrar esta mesa')
+    if (conCortina) {
+      await p.waitForSelector('.hz-lateral .hz-cortina')
+      expect(await p.locator('.hz-comparada').count()).toBe(0)
+    } else {
+      expect(await p.locator('.hz-comparada').textContent()).toContain('Faltan votos')
+      // D2: la foto de 3 en 3 la dice la insignia de la barra, también en Detallado.
+      expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo: se actualiza cada 3 votos')
+    }
+    const mesa = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}&mesa=${s2.mesas[0].id}`, conCortina ? '.hz-cortina' : '.hz-vacio')
+    if (!conCortina) expect(await mesa.locator('.hz-vacio').textContent()).toBe('Hacen falta al menos 3 votos para mostrar esta mesa')
     await mesa.context().close()
-    // En el celular (360 px), con «Faltan votos» en las celdas, nada se desborda (triage #5).
+    // En el celular (360 px), con «Faltan votos» en las celdas (o la cortina), nada se desborda (triage #5).
     const cel = await abrir(360, 740, `/tablero/${vivo.id}?t=${vivo.token}&modo=detallado`, '.hz-lateral')
-    await cel.waitForSelector('.hz-panel')
+    await cel.waitForSelector(conCortina ? '.hz-cortina' : '.hz-panel')
     expect(await cel.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'desborde a 360 px').toBeLessThanOrEqual(0)
     await cel.context().close()
 
@@ -454,14 +501,16 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     expect(tCierre).toBeLessThan(5000)
     if (capturas) await p.screenshot({ path: join(capturas, 'tablero-vivo-cerrada.png') })
 
-    // Ronda 2: la vista pasa sola a "Ronda 2"; al cerrar R2, sola a "Comparación".
+    // Ronda 2: mientras no tiene resultados la vista sigue en «Ronda 1» (Nicolai: no una matriz vacía); con los votos
+    // pasa sola a «Ronda 2»; al cerrar R2, sola a «Comparación» (no hubo elección a mano).
     const vistaActiva = () => p.locator('[aria-label="Vista de la matriz"] [aria-pressed="true"]').textContent()
     await accion(e, vivo.id, 'abrir_ronda_2')
-    await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Ronda 2')
-    expect(await p.locator('.hz-franja').textContent()).toBe('Ronda 2 · discusión en la mesa')
+    await expect.poll(() => p.locator('.hz-franja').textContent(), { timeout: 10_000, interval: 100 }).toBe('Ronda 2 · Discusión en la mesa')
+    expect(await vistaActiva()).toBe('Ronda 1')
     const resp2 = Object.fromEntries(CRITERIOS.map((c) => [c, 3]))
     for (const tk of vivo.tokens) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 2, resp2)).statusCode).toBe(200)
     await p.waitForSelector('svg.hz-matriz circle.hz-r2')
+    await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Ronda 2')
     // Registro cuadro a cuadro de las burbujas R2 para medir la animación R1 → R2 al cerrar la ronda.
     await p.evaluate(registrarCuadros)
     const t2 = Date.now()
@@ -483,8 +532,9 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     console.info(`[tablero e2e] animación R1 → R2: ${anim.duracion} ms, ${anim.cuadros} cuadros, intervalo mediano ${anim.mediana} ms, máximo ${anim.maximo} ms, arranques ${anim.arranques}`)
     // Una sola animación, que mueve las burbujas desde R1 hasta su punto final, sin saltos hacia atrás.
     expect(anim.arranques).toBe(1)
-    expect(anim.duracion).toBeGreaterThan(900)
-    expect(anim.duracion).toBeLessThan(2500)
+    // Nicolai (QA por roles): unos 2,5 s, con R1 quieto 0,6 s antes de moverse.
+    expect(anim.duracion).toBeGreaterThan(2000)
+    expect(anim.duracion).toBeLessThan(3300)
     expect(anim.recorrido, 'las burbujas se mueven').toBeGreaterThan(30)
     expect(anim.retroceso, 'el movimiento no retrocede').toBeLessThan(1.5)
     expect(anim.errorFinal, 'terminan en su punto R2').toBeLessThan(0.5)
@@ -494,6 +544,62 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     if (capturas) await p.screenshot({ path: join(capturas, 'tablero-vivo-comparacion.png') })
     await p.context().close()
   }, 60_000)
+
+  // QA por roles: el caso Bootcamp (4 mesas de 6 personas, votos realistas de tools/simulador) en un proyector de
+  // 1280×720. Los nombres de los vivos quedan pegados a su burbuja y nunca se solapan; ninguna guía de un fijo cruza un
+  // vivo; Gráfica y Detallado sin desplazar, con las 6 filas de la tabla y la lectura de los ejes a la vista.
+  it('caso Bootcamp (24 personas) a 1280×720: matriz legible, Detallado entero y lectura de los ejes', async () => {
+    const mesas = 4
+    const porMesa = 6
+    const sb = await crearSala(e, mesas, 'Bootcamp de demostración')
+    await accion(e, sb.id, 'abrir_inscripcion')
+    const personas: { token: string; n: number; mesa: number }[] = []
+    for (let m = 0; m < mesas; m++)
+      for (let i = 0; i < porMesa; i++) {
+        const n = m * porMesa + i + 1
+        const r = await inscribir(e, sb.mesas[m].codigo, `persona${n}.${sb.codigo.toLowerCase()}@example.com`, `Persona ${n}`)
+        expect(r.statusCode, r.body).toBe(201)
+        personas.push({ token: r.json().token, n, mesa: m })
+      }
+    const g = generadorRealista(2026, mesas)
+    for (const ronda of [1, 2] as const) {
+      await accion(e, sb.id, `abrir_ronda_${ronda}`)
+      for (const pe of personas) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, pe.token, pr, ronda, g.respuestas(pe.n, pe.mesa, pr, ronda))).statusCode).toBe(200)
+      await accion(e, sb.id, `cerrar_ronda_${ronda}`)
+    }
+    const p = await abrir(1280, 720, `/tablero/${sb.id}?t=${sb.token_tablero}`)
+    await p.evaluate(() => document.fonts.ready)
+    for (const modo of ['grafica', 'detallado'] as const) {
+      if (modo === 'detallado') {
+        await p.keyboard.press('d')
+        await p.waitForSelector('.hz-comparada')
+      }
+      for (const [tecla, nombre] of [['1', 'Ronda 1'], ['2', 'Ronda 2'], ['c', 'Comparación']]) {
+        await p.keyboard.press(tecla)
+        await expect.poll(() => p.locator('[aria-label="Vista de la matriz"] [aria-pressed="true"]').textContent()).toBe(nombre)
+        await p.waitForTimeout(150)
+        const solapes = await p.evaluate(solapesEtiquetas)
+        expect(solapes, `Bootcamp ${modo} ${nombre}: ${solapes.join('\n')}`).toEqual([])
+        const lejos = await p.evaluate(vivosPegados)
+        expect(lejos, `Bootcamp ${modo} ${nombre}: ${lejos.join('\n')}`).toEqual([])
+        const guias = await p.evaluate(guiasSobreVivos)
+        expect(guias, `Bootcamp ${modo} ${nombre}: ${guias.join('\n')}`).toEqual([])
+      }
+      expect(await p.evaluate(() => document.documentElement.scrollHeight - innerHeight), `Bootcamp ${modo}: sin desplazar`).toBeLessThanOrEqual(0)
+      expect(await p.evaluate(() => document.documentElement.scrollWidth - innerWidth), `Bootcamp ${modo}: sin desborde`).toBeLessThanOrEqual(0)
+      const ejes = p.locator('.hz-explica-breve:visible')
+      expect(await ejes.textContent()).toBe(LECTURA_EJES)
+      expect(await ejes.evaluate((x: HTMLElement) => x.offsetHeight > 0 && x.getBoundingClientRect().bottom <= innerHeight), `Bootcamp ${modo}: lectura de los ejes a la vista`).toBe(true)
+      const l = await p.evaluate(letrasMatriz)
+      expect(l.minimo, `Bootcamp ${modo}: letra de la matriz`).toBeGreaterThanOrEqual(20)
+      if (modo === 'detallado') expect(await p.evaluate(filasDetallado)).toEqual({ visibles: 6, total: 6 })
+      const fallas = await p.evaluate(contrasteAA)
+      expect(fallas, fallas.join('\n')).toEqual([])
+      if (capturas) await p.screenshot({ path: join(capturas, `tablero-bootcamp-1280x720-${modo}.png`) })
+    }
+    await p.context().close()
+  }, 120_000)
+
 
   // Capturas de referencia para la guía del facilitador (solo con HZ_CAPTURAS_GUIA=docs/capturas).
   const guia = process.env.HZ_CAPTURAS_GUIA ?? ''
@@ -627,7 +733,7 @@ async function modoGrafica(page: Page, w: number) {
   }
   // Si la explicación breve se ve, se ve entera y sin pesos ni fórmulas.
   if (graf.breve.visible) expect(graf.breve.cortada, 'explicación breve cortada').toBeLessThanOrEqual(0)
-  expect(graf.breve.texto).toContain('Eje X:')
+  expect(graf.breve.texto).toBe(LECTURA_EJES)
   expect(graf.breve.texto).not.toMatch(/%|—/)
   const fallas = await page.evaluate(contrasteAA)
   expect(fallas, fallas.join('\n')).toEqual([])
@@ -639,15 +745,19 @@ async function modoGrafica(page: Page, w: number) {
   const vb = await page.locator('svg.hz-matriz').getAttribute('viewBox')
   for (const k of ['+', '-', '0']) await page.keyboard.press(k)
   expect(await page.locator('svg.hz-matriz').getAttribute('viewBox')).toBe(vb)
-  // Clic sin arrastre: Detallado (y ?modo=detallado); otro clic (la matriz ahora es más angosta): de nuevo Gráfica.
-  // locator.click espera a que la matriz deje de cambiar de tamaño y comprueba que el clic le llegue a ella: con
-  // coordenadas medidas a mano, en una máquina lenta el segundo clic caía sobre el panel lateral que aún se abría.
+  // Nicolai (QA por roles): un clic en la matriz (como el que da foco a la ventana del proyector) no cambia de modo, y
+  // Esc fuera de la pantalla completa no hace nada.
   await page.locator('svg.hz-matriz').click()
-  await page.waitForSelector('.hz-lateral')
-  expect(new URL(page.url()).searchParams.get('modo')).toBe('detallado')
-  await page.locator('svg.hz-matriz').click()
-  await page.waitForSelector('.hz-lateral', { state: 'detached' })
-  expect(new URL(page.url()).searchParams.get('modo')).toBe('grafica')
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+  expect(new URL(page.url()).searchParams.get('modo') ?? 'grafica').toBe('grafica')
+  expect(await page.locator('.hz-lateral').count()).toBe(0)
+}
+
+/** Corre en el navegador: cuántas filas de la tabla del Detallado se ven enteras dentro de la ventana. */
+function filasDetallado() {
+  const filas = [...document.querySelectorAll('.hz-comparada tbody tr')].map((tr) => tr.getBoundingClientRect())
+  return { visibles: filas.filter((b) => b.height > 0 && b.top >= 0 && b.bottom <= innerHeight + 0.5).length, total: filas.length }
 }
 
 /** Corre en el navegador: tamaño de la matriz y letra efectiva (px en pantalla) de sus textos y de la leyenda. */
@@ -910,4 +1020,42 @@ function registrarCuadros() {
       errorFinal: Math.max(0, ...Object.values(ultimo.avance).map((x) => x.falta)),
     }
   }
+}
+
+/** Corre en el navegador: nombres de los vivos a más de una letra y media de su burbuja (QA por roles: pegados a ella). */
+function vivosPegados(): string[] {
+  const svg = document.querySelector('svg.hz-matriz')!
+  const fallas: string[] = []
+  for (const t of svg.querySelectorAll<SVGTextElement>('text.hz-etq:not(.hz-etq-fijo)')) {
+    const b = t.getBBox()
+    const fs = Number(t.getAttribute('font-size'))
+    for (const ancla of (t.dataset.ancla ?? '').split(' ').filter(Boolean)) {
+      const [id, ronda] = ancla.split('-')
+      const c = svg.querySelector<SVGCircleElement>(`circle.hz-r${ronda}[data-proyecto="${id}"]`)
+      if (!c) continue
+      const [cx, cy, r] = ['cx', 'cy', 'r'].map((k) => Number(c.getAttribute(k)))
+      const gap = Math.hypot(cx - Math.min(Math.max(cx, b.x), b.x + b.width), cy - Math.min(Math.max(cy, b.y), b.y + b.height)) - r
+      if (gap > fs * 1.5) fallas.push(`${t.textContent} a ${Math.round(gap)} px de su burbuja`)
+    }
+  }
+  return fallas
+}
+
+/** Corre en el navegador: guías de nombres de fijos que pasan por encima de una burbuja viva. */
+function guiasSobreVivos(): string[] {
+  const svg = document.querySelector('svg.hz-matriz')!
+  const vivos = [...svg.querySelectorAll<SVGCircleElement>('circle.hz-r1, circle.hz-r2')].map((c) => ['cx', 'cy', 'r'].map((k) => Number(c.getAttribute(k))))
+  const fijos = new Set([...svg.querySelectorAll<SVGCircleElement>('circle.hz-fijo')].map((c) => c.dataset.proyecto))
+  const fallas: string[] = []
+  for (const g of svg.querySelectorAll<SVGLineElement>('line.hz-guia')) {
+    if (!fijos.has(g.dataset.ancla)) continue
+    const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map((k) => Number(g.getAttribute(k)))
+    for (const [cx, cy, r] of vivos) {
+      const dx = x2 - x1
+      const dy = y2 - y1
+      const t = Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / (dx * dx + dy * dy || 1)))
+      if (Math.hypot(cx - (x1 + t * dx), cy - (y1 + t * dy)) < r - 0.5) fallas.push(`la guía de ${g.dataset.ancla} cruza un vivo`)
+    }
+  }
+  return fallas
 }

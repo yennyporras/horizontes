@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { calcularLayout, matrizSVG, radioPorTam, type Caja } from './matriz.js';
+import { ANIMACION, calcularLayout, formaTitulo, matrizSVG, radioPorTam, type Caja } from './matriz.js';
 import type { DatosTablero, Vista } from '../tipos';
 
 const mock: DatosTablero = JSON.parse(readFileSync(new URL('../../../mocks/GET_api_tablero.json', import.meta.url), 'utf8'));
@@ -28,7 +28,7 @@ test('dibuja 8 fijos, 2 vivos con R1, R2 y flecha', () => {
   assert.equal((svg.match(/class="hz-r1"/g) || []).length, 2);
   assert.equal((svg.match(/class="hz-r2"/g) || []).length, 2);
   assert.equal((svg.match(/class="hz-flecha"/g) || []).length, 2);
-  assert.ok(svg.includes(mock.ejes.x.titulo));
+  assert.ok(svg.includes(formaTitulo(mock.ejes.x.titulo)));
   assert.ok(svg.includes(mock.ejes.y.subtitulo!));
   for (const h of ['H1', 'H2', 'H3']) assert.ok(svg.includes(`>${h}</text>`));
 });
@@ -247,8 +247,8 @@ test('nombres pegados a su burbuja; los apartados llevan guía', () => {
       if (e.distancia > e.fs * 0.8) assert.ok(e.guia, `${e.texto} a ${Math.round(e.distancia)} px sin guía a ${ancho}px`);
       else assert.equal(e.guia, null);
     }
-    // Ningún nombre de un vivo queda a más de tres letras de su burbuja.
-    for (const e of L.etiquetas.filter((x) => x.prioridad)) assert.ok(e.distancia <= e.fs * 3, `${e.texto} a ${Math.round(e.distancia)} px a ${ancho}px`);
+    // QA por roles (jurado y Nicolai): el nombre de un vivo va pegado a su burbuja, a poco más de una letra como mucho.
+    for (const e of L.etiquetas.filter((x) => x.prioridad)) assert.ok(e.distancia <= e.fs * 1.3, `${e.texto} a ${Math.round(e.distancia)} px a ${ancho}px`);
   }
 });
 
@@ -317,4 +317,142 @@ test('el subtítulo del eje X no se sale del lienzo cuando el plano está corrid
     const medio = (texto.length * 0.6 * fs) / 2;
     assert.ok(x - medio >= 0 && x + medio <= ancho, `${ancho}px: subtítulo de ${Math.round(x - medio)} a ${Math.round(x + medio)}`);
   }
+});
+
+// ── QA por roles (20-oct): matriz legible a 6 m ──
+
+test('títulos de los ejes sin mayúsculas sostenidas: el texto de la semilla, pintado en forma de título', () => {
+  assert.equal(formaTitulo('TIME 2 MARKET'), 'Time 2 Market');
+  assert.equal(formaTitulo('VALUE GENERATION CAPACITY'), 'Value Generation Capacity');
+  assert.equal(formaTitulo('Distancia del core'), 'Distancia del core');
+  assert.equal(formaTitulo(''), '');
+  const svg = matrizSVG(mock, { ancho: 1280 });
+  const titulos = [...svg.matchAll(/<text class="hz-mz-texto hz-mz-titulo-eje"[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+  assert.deepEqual(titulos, ['Time 2 Market', 'Value Generation Capacity']);
+  assert.ok(!/letter-spacing/.test(svg));
+});
+
+test('extremos de los ejes marcados: «cerca» en 0 y «lejos» en 9, entre las marcas y el título', () => {
+  for (const [ancho, alto, esc, min] of [[314, 330, 1, 0], [875, 903, 1.45, 24], [1247, 571, 1.45, 20], [420, 300, 1, 0]]) {
+    const L = calcularLayout(mock, { ancho, alto, escalaTexto: esc, letraMin: min });
+    const svg = matrizSVG(mock, { ancho, alto, escalaTexto: esc, letraMin: min });
+    const extremos = [...svg.matchAll(/<text class="hz-mz-suave hz-mz-extremo"([^>]*)>([^<]*)<\/text>/g)];
+    assert.deepEqual(extremos.map((m) => m[2]), ['cerca', 'lejos', 'cerca', 'lejos'], `${ancho}px`);
+    const [cx, lx] = extremos.slice(0, 2).map((m) => Number(m[1].match(/ x="([\d.]+)"/)![1]));
+    assert.ok(Math.abs(cx - L.x0) < 1, 'X: «cerca» empieza en 0');
+    assert.ok(lx > L.sx(9) - 1 && lx <= L.x0 + L.P + 0.01, 'X: «lejos» termina en 9');
+    const [cy, ly] = extremos.slice(2).map((m) => Number(m[1].match(/translate\([\d.]+ ([\d.]+)\)/)![1]));
+    assert.ok(Math.abs(cy - (L.y0 + L.P)) < 1, 'Y: «cerca» empieza en 0');
+    assert.ok(ly <= L.sy(9) + 1 && ly >= L.y0 - 0.01, 'Y: «lejos» termina en 9');
+    // Fila y columna propias: entre las marcas y el título.
+    assert.ok(L.posEjes.extremoX > L.posEjes.marcaX && L.posEjes.extremoX < L.posEjes.tituloX, `${ancho}px fila X`);
+    assert.ok(L.posEjes.extremoY < L.posEjes.marcaY && L.posEjes.extremoY > L.posEjes.tituloY, `${ancho}px columna Y`);
+    for (const m of extremos) assert.ok(Number(m[1].match(/font-size="([\d.]+)"/)![1]) >= Math.min(min, L.letras.marca), 'letra mínima');
+  }
+});
+
+test('ninguna guía de un fijo cruza un vivo, con los vivos en cualquier punto', () => {
+  const pasos = [0.6, 2, 3.4, 4.8, 6.2, 7.6, 9];
+  const fallas: string[] = [];
+  let guias = 0;
+  for (const [ancho, alto, escalaTexto, letraMin] of [[905, 905, 1.45, 24], [655, 600, 1.45, 20], [314, 330, 1, 0]] as const) {
+    for (const x of pasos) {
+      for (const y of pasos) {
+        const datos = structuredClone(mock);
+        datos.proyectos_vivos.forEach((p, i) => {
+          p.rondas = [
+            { ...p.rondas[0], ronda: 1, eje_x: x, eje_y: Math.max(0.3, y - 0.8 - i) },
+            { ...p.rondas[1], ronda: 2, eje_x: Math.min(9.2, x + 0.5 * i), eje_y: y },
+          ];
+        });
+        const L = calcularLayout(datos, { ancho, alto, escalaTexto, letraMin });
+        const vivos = L.vivos.flatMap((v) => [v.r1, v.r2].filter((b) => b !== null));
+        for (const e of L.etiquetas.filter((x) => x.tipo === 'fijo' && x.guia)) {
+          const g = e.guia!;
+          guias++;
+          for (const c of vivos) {
+            const dx = g.x2 - g.x1;
+            const dy = g.y2 - g.y1;
+            const t = Math.max(0, Math.min(1, ((c.cx - g.x1) * dx + (c.cy - g.y1) * dy) / (dx * dx + dy * dy || 1)));
+            if (Math.hypot(c.cx - (g.x1 + t * dx), c.cy - (g.y1 + t * dy)) < c.r) fallas.push(`${ancho}px (${x},${y}): la guía de ${e.texto} cruza un vivo`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(guias > 0, 'el caso no tiene guías de fijos');
+  assert.deepEqual(fallas.slice(0, 10), [], `${fallas.length} guías cruzan un vivo`);
+});
+
+test('dos vivos en el mismo punto: se separan unos píxeles y se dibujan los dos aros', () => {
+  const datos = structuredClone(mock);
+  datos.proyectos_vivos.forEach((v) => {
+    v.rondas = [{ ...v.rondas[0], ronda: 1, eje_x: 6.4, eje_y: 6.6 }, { ...v.rondas[1], ronda: 2, eje_x: 7.8, eje_y: 4.4 }];
+  });
+  for (const [ancho, alto] of [[314, 330], [875, 903]]) {
+    const L = calcularLayout(datos, { ancho, alto });
+    for (const n of ['r1', 'r2'] as const) {
+      const [a, b] = L.vivos.map((v) => v[n]!);
+      const d = Math.hypot(a.cx - b.cx, a.cy - b.cy);
+      assert.ok(d >= 4 && d <= a.r, `${n} a ${ancho}px separadas ${d} px`);
+      assert.ok(a.separada && b.separada);
+      // El valor sigue siendo el del servidor.
+      assert.deepEqual(a.valor, b.valor);
+    }
+    const svg = matrizSVG(datos, { ancho, alto });
+    const cxs = (clase: string) => [...svg.matchAll(new RegExp(`<circle class="${clase}"[^>]* cx="([\\d.]+)"`, 'g'))].map((m) => m[1]);
+    assert.equal(new Set(cxs('hz-r1')).size, 2, 'dos aros R1');
+    assert.equal(new Set(cxs('hz-r2')).size, 2, 'dos burbujas R2');
+  }
+});
+
+test('flecha R1 → R2 visible aunque el movimiento sea pequeño: largo mínimo y punta grande con halo', () => {
+  const datos = structuredClone(mock);
+  datos.proyectos_vivos.forEach((v, i) => {
+    v.rondas = [{ ...v.rondas[0], ronda: 1, eje_x: 2 + i * 4, eje_y: 5 }, { ...v.rondas[1], ronda: 2, eje_x: 2.08 + i * 4, eje_y: 5.05 }];
+  });
+  for (const [ancho, alto] of [[314, 330], [1247, 571]]) {
+    const L = calcularLayout(datos, { ancho, alto });
+    for (const v of L.vivos) {
+      assert.ok(v.flecha, `${v.nombre} sin flecha a ${ancho}px`);
+      const largo = Math.hypot(v.flecha!.x2 - v.flecha!.x1, v.flecha!.y2 - v.flecha!.y1);
+      assert.ok(largo >= L.punta * 1.79, `${v.nombre}: flecha de ${largo} px`);
+      // Apunta hacia R2.
+      assert.ok(Math.abs(v.flecha!.x2 - v.r2!.cx) < 0.01 && Math.abs(v.flecha!.y2 - v.r2!.cy) < 0.01);
+    }
+    assert.ok(L.punta >= Math.max(8, L.fs * 0.75) - 1e-9);
+    const svg = matrizSVG(datos, { ancho, alto, idPrefijo: 'fl' });
+    assert.match(svg, /<path class="hz-mz-punta" [^>]*stroke-width="2"[^>]*paint-order="stroke"/);
+    assert.equal((svg.match(/class="hz-flecha"/g) || []).length, 2);
+  }
+  // Sin movimiento, sin flecha.
+  const quieto = structuredClone(mock);
+  quieto.proyectos_vivos.forEach((v) => (v.rondas[1] = { ...v.rondas[1], eje_x: v.rondas[0].eje_x, eje_y: v.rondas[0].eje_y }));
+  assert.equal(calcularLayout(quieto, { ancho: 800 }).vivos.filter((v) => v.flecha).length, 0);
+});
+
+test('animación R1 → R2 de 2,5 s: R1 quieto 0,6 s, 1,5 s de movimiento y la flecha y los nombres al final', () => {
+  assert.deepEqual(ANIMACION, { pausa: 600, mover: 1500, aparecer: 2000, total: 2500 });
+  const svg = matrizSVG(mock, { ancho: 900, animar: true, idPrefijo: 'an' });
+  assert.ok(svg.includes('#an .hz-anim-mov{animation:an-mover 1500ms cubic-bezier(.45,0,.25,1) 600ms both}'));
+  assert.ok(svg.includes('#an .hz-anim-apar{animation:an-aparecer 500ms ease-out 2000ms both}'));
+});
+
+test('cada mesa por separado (compacta): fijos como puntos sin nombre y ejes sin subtítulo', () => {
+  const L = calcularLayout(mock, { ancho: 600, alto: 420, compacta: true });
+  assert.equal(L.etiquetas.filter((e) => e.tipo === 'fijo').length, 0);
+  assert.equal(L.etiquetas.filter((e) => e.prioridad).length, 4);
+  const svg = matrizSVG(mock, { ancho: 600, alto: 420, compacta: true });
+  assert.equal((svg.match(/class="hz-fijo"/g) || []).length, mock.proyectos_fijos.length);
+  assert.ok(!svg.includes('hz-mz-subtitulo-eje'));
+  assert.ok(svg.includes('hz-mz-titulo-eje'));
+  // Sin subtítulos el plano gana alto.
+  assert.ok(L.P > calcularLayout(mock, { ancho: 600, alto: 420 }).P);
+});
+
+test('fondo para la descarga: un rectángulo del lienzo con el color de fondo del tema', () => {
+  const svg = matrizSVG(mock, { ancho: 800, fondo: true, idPrefijo: 'fd' });
+  assert.ok(svg.includes('<rect class="hz-mz-fondo" x="0" y="0" width="800" height="800"/>'));
+  assert.ok(svg.includes('#fd .hz-mz-fondo{fill:var(--hz-fondo)}'));
+  assert.ok(!matrizSVG(mock, { ancho: 800 }).includes('<rect class="hz-mz-fondo"'));
 });

@@ -5,11 +5,21 @@ import { nombreCortoCriterio } from '../shared/criterios'
 
 export const INTERVALO_POLLING_MS = 2500
 
-/** Vista por defecto: la ronda actual; tras cerrar la ronda 2, la comparación. */
-export function vistaPorDefecto(estado: EstadoSala | undefined, rondaActual?: number | null): Vista {
+/**
+ * Vista por defecto: la ronda actual; tras cerrar la ronda 2, la comparación. Con la ronda 2 abierta y todavía sin
+ * resultados que dibujar, la ronda 1 (QA por roles, Nicolai: abrir la ronda 2 dejaba el proyector con una matriz vacía).
+ */
+export function vistaPorDefecto(estado: EstadoSala | undefined, rondaActual?: number | null, datos?: DatosTablero | null): Vista {
   if (estado === 'r2_cerrada' || estado === 'cerrada') return 'comparacion'
-  if (estado === 'r2_abierta' || rondaActual === 2) return 2
+  if (estado === 'r2_abierta' || rondaActual === 2) return datos && !hayVotosEnRonda(datos, 2) ? 1 : 2
   return 1
+}
+
+/** Orden de las vistas para el control de presentaciones: → y Página siguiente avanzan, ← y Página anterior retroceden. */
+export const ORDEN_VISTAS: Vista[] = [1, 2, 'comparacion']
+export function vistaVecina(vista: Vista, paso: 1 | -1): Vista {
+  const i = ORDEN_VISTAS.indexOf(vista)
+  return ORDEN_VISTAS[Math.min(ORDEN_VISTAS.length - 1, Math.max(0, i + paso))]
 }
 
 export function rondaDe(vivo: ProyectoVivo, n: number): RondaVivo | null {
@@ -26,6 +36,34 @@ export function hayVotosEnRonda(datos: DatosTablero | null | undefined, n: numbe
 
 /** Votos mínimos por proyecto, ronda y alcance si el servidor no manda `minimo_votos` (acta del 16-oct, C3). */
 export const MINIMO_VOTOS = 3
+
+/**
+ * Ronda 1 oculta (decisión de Paola del 20-oct): con la ronda 1 abierta el tablero público no muestra promedios,
+ * distribución ni burbujas hasta que el alcance completo vote (precierre) o se cierre la ronda. Lo dice el servidor.
+ */
+export function rondaOculta(datos: DatosTablero | null | undefined, n: number): boolean {
+  return (datos?.proyectos_vivos ?? []).some((v) => !!rondaDe(v, n)?.oculta)
+}
+
+/** Texto de la cortina de la ronda 1. */
+export const TEXTO_OCULTA = 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.'
+
+/**
+ * Avance de la ronda en curso por mesa para la cortina: «Mesa 1», 4 de 6. En el alcance de una mesa, solo esa; sin el
+ * detalle por mesa (enlace público), el total del alcance. Las mesas sin inscritos no se listan.
+ */
+export function avanceCortina(datos: DatosTablero | null | undefined): { id: string; nombre: string; votaron: number; inscritos: number }[] {
+  const p = datos?.progreso
+  if (!p) return []
+  const fila = (id: string, nombre: string, m: { completos: number; inscritos: number }) => ({ id, nombre, votaron: Math.min(m.completos, m.inscritos), inscritos: m.inscritos })
+  const mesas = (p.por_mesa ?? []).filter((m) => m.inscritos > 0)
+  if (datos.alcance?.tipo === 'mesa') {
+    const m = mesas.find((x) => x.mesa_id === datos.alcance.mesa_id)
+    return [fila(datos.alcance.mesa_id ?? 'mesa', datos.alcance.mesa_nombre ?? m?.nombre ?? 'Mesa', m ?? p)]
+  }
+  if (mesas.length) return mesas.map((m) => fila(m.mesa_id, m.nombre, m))
+  return [fila('sala', 'Toda la sala', p)]
+}
 
 /** La ronda tiene votos, pero menos que el mínimo: el servidor no entrega sus promedios (anonimato). */
 export function bajoMinimoEnRonda(datos: DatosTablero | null | undefined, n: number): boolean {
@@ -83,8 +121,8 @@ export function votosRecibidos(datos: DatosTablero | null | undefined): string |
  * de proyección: por eso va como insignia neutra junto al estado y no como botón.
  */
 export const EN_VIVO = {
-  texto: `En vivo, cada ${VOTOS_POR_FOTO} votos`,
-  titulo: `La ronda sigue abierta: el resultado se actualiza cada ${VOTOS_POR_FOTO} votos nuevos y queda exacto al cerrarla.`,
+  texto: `En vivo: se actualiza cada ${VOTOS_POR_FOTO} votos`,
+  titulo: `La ronda sigue abierta: el resultado se actualiza cada ${VOTOS_POR_FOTO} votos nuevos. Al cerrar la ronda se muestra el resultado final.`,
 }
 
 /** Texto del estado vacío para la vista elegida, o null si hay algo que dibujar. */
@@ -98,9 +136,11 @@ export function mensajeVacio(datos: DatosTablero | null | undefined, vista: Vist
       : rondaEnCurso(datos?.sala?.estado) === n
         ? `Aún no hay resultados en la ronda ${n}. Se actualizan cada ${VOTOS_POR_FOTO} votos nuevos`
         : `Aún no hay votos en la ronda ${n}`
-  if (vista === 1) return r1 ? null : sinRonda(1)
+  // La ronda 1 oculta la explica la cortina (avance por mesa en grande), no un aviso.
+  const oculta = rondaOculta(datos, 1)
+  if (vista === 1) return r1 || oculta ? null : sinRonda(1)
   if (vista === 2) return r2 ? null : sinRonda(2)
-  if (!r1 && !r2) return sinRonda(1)
+  if (!r1 && !r2) return oculta ? null : sinRonda(1)
   if (!r2) return `${sinRonda(2)}. La comparación muestra solo la ronda 1.`
   return null
 }
@@ -190,7 +230,10 @@ export function esPreliminar(datos: DatosTablero | null | undefined): boolean {
 /** Insignia del encabezado: «Preliminar» en precierre, «En vivo, cada 3 votos» con la ronda abierta, nada al cerrar. */
 export function insigniaResultado(datos: DatosTablero | null | undefined): 'preliminar' | 'en_vivo' | null {
   if (esPreliminar(datos)) return 'preliminar'
-  return rondaAbierta(datos?.sala?.estado) ? 'en_vivo' : null
+  // Con la ronda 1 oculta no hay nada en vivo: la cortina dice cuándo se ve el resultado.
+  const enCurso = rondaEnCurso(datos?.sala?.estado)
+  if (enCurso && rondaOculta(datos, enCurso)) return null
+  return enCurso ? 'en_vivo' : null
 }
 
 const NOMBRES_ESTADO: Record<EstadoSala, string> = {
@@ -235,7 +278,7 @@ export type ResultadoPeticion =
   | { tipo: 'igual' }
   | { tipo: 'error'; status: number; codigo: string; mensaje: string }
 
-const SIN_PERMISO = 'Este enlace del tablero no tiene permiso. Pide al facilitador el enlace completo del tablero.'
+const SIN_PERMISO = 'Este enlace del tablero no tiene permiso. Pídele al facilitador el enlace completo del tablero.'
 const MENSAJES_STATUS: Record<number, string> = {
   401: SIN_PERMISO,
   403: SIN_PERMISO,
@@ -319,4 +362,37 @@ export function preguntaGuiadaActual(datos: DatosTablero | null | undefined): Vi
     pregunta: c.pregunta ?? null,
     rubrica: c.rubrica ?? [],
   }
+}
+
+// ── Convergencia R1 → R2 (QA por roles, 20-oct). La calcula el servidor; aquí solo se pone en palabras. ──
+
+/** Hay convergencia que mostrar: algún vivo la trae (solo llega con R1 y R2 visibles). */
+export function hayConvergencia(datos: DatosTablero | null | undefined): boolean {
+  return (datos?.proyectos_vivos ?? []).some((v) => !!v.convergencia)
+}
+
+/** «La discusión redujo la dispersión un 35 %» (o la aumentó, o no la cambió). */
+export function titularConvergencia(pct: number): string {
+  if (pct > 0) return `La discusión redujo la dispersión un ${pct} %`
+  if (pct < 0) return `La discusión aumentó la dispersión un ${Math.abs(pct)} %`
+  return 'La discusión no cambió la dispersión'
+}
+
+/** Cambio con signo y coma decimal: «+0,40», «−0,85», «0,00». */
+export function conSigno(d: number): string {
+  const r = Math.round(d * 100) / 100
+  if (r === 0) return fmt.format(0)
+  return `${r > 0 ? '+' : '−'}${fmt.format(Math.abs(r))}`
+}
+
+/** El movimiento en un eje, en palabras: los dos ejes miden distancia (al mercado y al core); bajar es acercarse. */
+export function movimientoEje(eje: 'x' | 'y', d: number): string {
+  const lugar = eje === 'x' ? 'mercado' : 'core'
+  if (Math.round(d * 100) === 0) return `no cambió su distancia al ${lugar}`
+  return d < 0 ? `se acercó al ${lugar}` : `se alejó del ${lugar}`
+}
+
+/** Proyectos cuyo criterio de mayor cambio R1 → R2 es este (para la marca «Mayor cambio» del Detallado). */
+export function mayorCambioEn(datos: DatosTablero | null | undefined, criterio: string): string[] {
+  return (datos?.proyectos_vivos ?? []).filter((v) => v.convergencia?.criterio_mayor_cambio === criterio).map((v) => v.nombre)
 }

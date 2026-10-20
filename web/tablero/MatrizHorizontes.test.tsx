@@ -53,15 +53,24 @@ describe('MatrizHorizontes', () => {
     expect(r.container.querySelector('.hz-anim-mov')).toBeNull()
     r.rerender(<MatrizHorizontes datos={mock} vista="comparacion" alto={600} />)
     expect(r.container.querySelector('.hz-anim-mov')).not.toBeNull()
-    expect(r.container.querySelector('style')!.textContent).toMatch(/-mover 1\.2s cubic-bezier\(\.22,\.8,\.3,1\) 0ms both/)
+    // Nicolai: R1 quieto 0,6 s, 1,5 s de movimiento y la flecha y los nombres hasta los 2,5 s.
+    expect(r.container.querySelector('style')!.textContent).toMatch(/-mover 1500ms cubic-bezier\(\.45,0,\.25,1\) 600ms both/)
+    expect(r.container.querySelector('style')!.textContent).toContain('-aparecer 500ms ease-out 2000ms both')
     // 400 ms después el encabezado cambia de alto: el SVG nuevo sigue la animación en 400 ms.
     reloj.mockReturnValue(1400)
     r.rerender(<MatrizHorizontes datos={mock} vista="comparacion" alto={604} />)
     expect(r.container.querySelector('svg')!.getAttribute('height')).toBe('604')
-    expect(r.container.querySelector('style')!.textContent).toContain('cubic-bezier(.22,.8,.3,1) -400ms both')
-    expect(r.container.querySelector('style')!.textContent).toContain('ease-out 500ms both')
+    expect(r.container.querySelector('style')!.textContent).toContain('cubic-bezier(.45,0,.25,1) 200ms both')
+    expect(r.container.querySelector('style')!.textContent).toContain('ease-out 1600ms both')
     // Al terminar se redibuja quieta.
-    act(() => vi.advanceTimersByTime(1600))
+    act(() => vi.advanceTimersByTime(2500))
+    expect(r.container.querySelector('.hz-anim-mov')).toBeNull()
+    // C otra vez en Comparación (repetirAnimacion cambia): la animación se repite desde R1.
+    reloj.mockReturnValue(9000)
+    r.rerender(<MatrizHorizontes datos={mock} vista="comparacion" alto={604} repetirAnimacion={1} />)
+    expect(r.container.querySelector('.hz-anim-mov')).not.toBeNull()
+    expect(r.container.querySelector('style')!.textContent).toContain('cubic-bezier(.45,0,.25,1) 600ms both')
+    act(() => vi.advanceTimersByTime(2500))
     expect(r.container.querySelector('.hz-anim-mov')).toBeNull()
     reloj.mockRestore()
     vi.useRealTimers()

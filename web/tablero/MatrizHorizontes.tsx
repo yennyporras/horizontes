@@ -1,9 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { matrizSVG } from './matriz/matriz.js'
+import { ANIMACION, matrizSVG } from './matriz/matriz.js'
 import type { DatosTablero, Vista } from './tipos'
 
-/** Animación R1 → R2: 1,2 s de movimiento y la flecha y las etiquetas aparecen hasta 1,4 s. */
-const DURACION_ANIMACION_MS = 1600
+/** Animación R1 → R2 (Nicolai): R1 quieto 0,6 s, 1,5 s de movimiento y la flecha y los nombres hasta los 2,5 s. */
+const DURACION_ANIMACION_MS = ANIMACION.total
 /** Deslizamiento al llegar una foto nueva de votos: 0,9 s y los nombres aparecen hasta 1,1 s. */
 const DURACION_CAMBIO_MS = 1200
 
@@ -32,6 +32,10 @@ export interface MatrizHorizontesProps {
   letraMin?: number
   /** Anima R1 → R2 cuando la vista cambia a Comparación (por defecto, sí). */
   animarComparacion?: boolean
+  /** Cada vez que cambia, en Comparación, la animación R1 → R2 se repite (tecla C del tablero). */
+  repetirAnimacion?: number
+  /** Cada mesa por separado: fijos como puntos sin nombre y ejes sin subtítulo. */
+  compacta?: boolean
   /** Modo Gráfica del tablero: con cada foto nueva de votos, las burbujas que cambiaron se deslizan (por defecto, no). */
   animarCambios?: boolean
   className?: string
@@ -41,7 +45,19 @@ export interface MatrizHorizontesProps {
  * Matriz de burbujas embebible (la usa el celular en la vista en vivo del participante).
  * Se redibuja al cambiar de tamaño; si los datos no cambian, el DOM no se toca.
  */
-export function MatrizHorizontes({ datos, vista = 'comparacion', alto, llenar = false, escalaTexto = 1, letraMin, animarComparacion = true, animarCambios = false, className }: MatrizHorizontesProps) {
+export function MatrizHorizontes({
+  datos,
+  vista = 'comparacion',
+  alto,
+  llenar = false,
+  escalaTexto = 1,
+  letraMin,
+  animarComparacion = true,
+  repetirAnimacion = 0,
+  compacta = false,
+  animarCambios = false,
+  className,
+}: MatrizHorizontesProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [tam, setTam] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
   const idPrefijo = 'hzm' + useId().replace(/[^a-zA-Z0-9]/g, '')
@@ -73,9 +89,11 @@ export function MatrizHorizontes({ datos, vista = 'comparacion', alto, llenar = 
   // (el encabezado cambia de alto al cerrar la ronda, llegan datos nuevos), sigue donde iba en vez de
   // volver a R1. Al terminar se redibuja sin ella para que el polling o un cambio de tamaño no la repitan.
   const [vistaPrevia, setVistaPrevia] = useState(vista)
+  const [repeticionPrevia, setRepeticionPrevia] = useState(repetirAnimacion)
   const [inicioAnimacion, setInicioAnimacion] = useState<number | null>(null)
-  if (vistaPrevia !== vista) {
+  if (vistaPrevia !== vista || repeticionPrevia !== repetirAnimacion) {
     setVistaPrevia(vista)
+    setRepeticionPrevia(repetirAnimacion)
     setInicioAnimacion(animarComparacion && vista === 'comparacion' ? performance.now() : null)
   }
   useEffect(() => {
@@ -112,11 +130,12 @@ export function MatrizHorizontes({ datos, vista = 'comparacion', alto, llenar = 
         idPrefijo,
         escalaTexto,
         letraMin,
+        compacta,
         animar: inicioAnimacion !== null,
         animarDesdeMs: inicioAnimacion === null ? 0 : performance.now() - inicioAnimacion,
         transicion: cambio ? { valores: cambio.valores, desdeMs: performance.now() - cambio.inicio } : undefined,
       }),
-    [datos, ancho, altoFinal, vista, idPrefijo, escalaTexto, letraMin, inicioAnimacion, cambio],
+    [datos, ancho, altoFinal, vista, idPrefijo, escalaTexto, letraMin, compacta, inicioAnimacion, cambio],
   )
 
   return (

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Distribucion } from '../shared/api/contrato'
-import { MINIMO_VOTOS, VOTOS_POR_FOTO, faltanVotos, nombreCorto } from './logica'
+import { MINIMO_VOTOS, TEXTO_OCULTA, VOTOS_POR_FOTO, faltanVotos, nombreCorto } from './logica'
 import { descripcionCriterio } from '../shared/criterios'
 import './como-voto.css'
 
@@ -13,7 +13,7 @@ export interface DatosComoVoto {
   proyectos_vivos: {
     id: string
     nombre: string
-    rondas: { ronda: number; n_votos: number; distribucion?: Record<string, Distribucion> | null; bajo_minimo?: boolean }[]
+    rondas: { ronda: number; n_votos: number; distribucion?: Record<string, Distribucion> | null; bajo_minimo?: boolean; oculta?: boolean }[]
   }[]
   minimo_votos?: number
   /** Si llega, con la ronda abierta el aviso dice que los conteos se renuevan cada 3 votos (D2). */
@@ -22,6 +22,24 @@ export interface DatosComoVoto {
 type RondaDatos = DatosComoVoto['proyectos_vivos'][number]['rondas'][number]
 
 const votos = (n: number) => (n === 1 ? '1 voto' : `${n} votos`)
+const personas = (n: number) => (n === 1 ? '1 persona' : `${n} personas`)
+
+/**
+ * Lectura rápida de una distribución (QA por roles, Nicolai): «Dividido» si hubo votos en 1 y en 9, o al menos un 25 %
+ * en cada extremo (1 y 3 de un lado, 7 y 9 del otro); «Se juntó» si en la ronda 2 un mismo valor reunió al menos el
+ * 60 %. Solo cuenta lo que manda el servidor; no toca promedios ni ejes.
+ */
+export function marcaDistribucion(dist: Distribucion | null | undefined, ronda: number): 'dividido' | 'junto' | null {
+  if (!dist) return null
+  const c = (k: keyof Distribucion) => dist[k] ?? 0
+  const total = c('1') + c('3') + c('5') + c('7') + c('9')
+  if (!total) return null
+  if (ronda === 2 && Math.max(c('1'), c('3'), c('5'), c('7'), c('9')) / total >= 0.6) return 'junto'
+  const bajo = (c('1') + c('3')) / total
+  const alto = (c('7') + c('9')) / total
+  if ((c('1') > 0 && c('9') > 0) || (bajo >= 0.25 && alto >= 0.25)) return 'dividido'
+  return null
+}
 
 /**
  * «Cómo votó la sala» (o la mesa): conteo de 1, 3, 5, 7 y 9 por criterio, R1 y R2, con la `distribucion`
@@ -39,7 +57,10 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
   const avisos = rondas
     .filter((n) => !conDatos.includes(n))
     .map((n) =>
-      datos.proyectos_vivos.some((p) => deRonda(p, n)?.bajo_minimo)
+      // Ronda 1 oculta en el tablero público (decisión de Paola del 20-oct): se ve al votar todos o al cerrar la ronda.
+      datos.proyectos_vivos.some((p) => deRonda(p, n)?.oculta)
+        ? TEXTO_OCULTA
+        : datos.proyectos_vivos.some((p) => deRonda(p, n)?.bajo_minimo)
         ? `${faltanVotos(minimo)} para mostrar ${datos.alcance.tipo === 'mesa' ? 'esta mesa' : 'estos resultados'} en la ronda ${n}.`
         : enCurso === n
           ? `Aún no hay resultados en la ronda ${n}. Se actualizan cada ${VOTOS_POR_FOTO} votos nuevos.`
@@ -54,6 +75,11 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
         <h2 id="hz-cv-t" className="hz-sub hz-cv-titulo">
           Cómo votó {quien}
         </h2>
+        {conDatos.length > 0 && (
+          <p className="hz-cv-rotulos">
+            <b>Valor</b> de 1 a 9; sobre cada barra, cuántas <b>personas</b>
+          </p>
+        )}
         {controles}
       </div>
       {avisos.map((a) => (
@@ -75,6 +101,16 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
                 {datos.criterios.map((c) => [
                   <p key={c.id} className="hz-cv-crit" style={{ gridColumn: `1 / span ${conDatos.length}` }} title={descripcionCriterio(c.id) ?? undefined}>
                     {nombreCorto(c.id, c.nombre)}
+                    {conDatos.map((n) => {
+                      const marca = marcaDistribucion(deRonda(p, n)?.distribucion?.[c.id], n)
+                      if (!marca) return null
+                      const texto = marca === 'junto' ? 'Se juntó' : 'Dividido'
+                      return (
+                        <span key={n} className={`hz-cv-etq hz-cv-etq-${marca}`}>
+                          {conDatos.length > 1 ? `${texto} en R${n}` : texto}
+                        </span>
+                      )
+                    })}
                   </p>,
                   ...conDatos.map((n) => (
                     <Barras key={`${c.id}${n}`} proyecto={p.nombre} criterio={nombreCorto(c.id, c.nombre)} n={n} r={deRonda(p, n)} criterioId={c.id} escala={escala} />
@@ -95,7 +131,7 @@ function CabRonda({ n, r }: { n: 1 | 2; r: RondaDatos | undefined }) {
     <div className="hz-cv-ronda">
       <p className={`hz-cv-ronda-t hz-cv-r${n}`}>
         <i className={`hz-cv-marca hz-cv-marca-r${n}`} aria-hidden="true" />R{n}
-        <span className="hz-cv-n"> · {votos(r?.n_votos ?? 0)}</span>
+        <span className="hz-cv-n"> · {personas(r?.n_votos ?? 0)}</span>
       </p>
       <p className="hz-cv-escala" aria-hidden="true">
         {ESCALA.map((k) => (

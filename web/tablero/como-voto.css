@@ -147,3 +147,32 @@
   font-weight: 600;
   color: var(--hz-tinta-2);
 }
+/* Rótulos de la escala: «Valor» (1 a 9) y «personas» (el número sobre cada barra). Marcas «Dividido» y «Se juntó». */
+.hz-cv .hz-cv-rotulos {
+  margin: 0;
+  font-size: 0.8em;
+  color: var(--hz-tinta-2);
+}
+.hz-cv-rotulos b {
+  color: var(--hz-tinta);
+}
+.hz-cv-etq {
+  display: inline-block;
+  margin-left: 0.5em;
+  padding: 0 0.45em;
+  font-size: max(14px, 0.85em);
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--hz-tinta);
+  background: var(--hz-superficie-3);
+  border-radius: 999px;
+}
+.hz-cv-etq-dividido {
+  color: var(--hz-alerta);
+  background: var(--hz-alerta-fondo);
+}
+.hz-cv-etq-junto {
+  color: var(--hz-ok);
+  background: var(--hz-ok-fondo);
+}
