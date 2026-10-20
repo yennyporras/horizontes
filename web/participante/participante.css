@@ -194,6 +194,18 @@
   .hzp-pie > .hz-barra-accion { box-shadow: none; }
 }
 
+/* Celular abierto en escritorio (triage #25): el resultado (matriz y tablas) sale de la columna de lectura y toma el
+   contenedor de página, centrado: la matriz grande y las tablas de los 2 proyectos lado a lado. Desde 1280 px. */
+@media (min-width: 80rem) {
+  .hzp-vista .hzp-resultado {
+    --hzp-ancho-resultado: calc(var(--hz-ancho-pagina) - 2 * var(--hz-margen-pagina));
+    width: var(--hzp-ancho-resultado);
+    margin-inline: calc(50% - var(--hzp-ancho-resultado) / 2);
+    grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--hz-sp-6); align-items: start;
+  }
+  .hzp-resultado > :not(.hzp-resultado__proyecto) { grid-column: 1 / -1; }
+  .hzp-resultado > .hzp-matriz { justify-self: center; width: 100%; }
+}
 /* Escritorio: las acciones de texto se alinean con el borde de la columna de lectura, como el resto de la página. */
 @media (min-width: 48rem) {
   .hzp-acciones { justify-self: start; justify-items: start; }
