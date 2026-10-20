@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ANIMACION, matrizSVG } from './matriz/matriz.js'
 import type { DatosTablero, Vista } from './tipos'
+import { viewBoxDe, type Encuadre } from './zoom'
 
 /** Animación R1 → R2 (Nicolai): R1 quieto 0,6 s, 1,5 s de movimiento y la flecha y los nombres hasta los 2,5 s. */
 const DURACION_ANIMACION_MS = ANIMACION.total
@@ -38,6 +39,8 @@ export interface MatrizHorizontesProps {
   compacta?: boolean
   /** Modo Gráfica del tablero: con cada foto nueva de votos, las burbujas que cambiaron se deslizan (por defecto, no). */
   animarCambios?: boolean
+  /** Zoom vectorial (tablero): parte visible del lienzo. Sin él, o en 1×, la matriz entera como siempre. */
+  encuadre?: Encuadre
   className?: string
 }
 
@@ -56,6 +59,7 @@ export function MatrizHorizontes({
   repetirAnimacion = 0,
   compacta = false,
   animarCambios = false,
+  encuadre,
   className,
 }: MatrizHorizontesProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -137,6 +141,15 @@ export function MatrizHorizontes({
       }),
     [datos, ancho, altoFinal, vista, idPrefijo, escalaTexto, letraMin, compacta, inicioAnimacion, cambio],
   )
+
+  // Zoom: solo cambia el viewBox del SVG ya dibujado (la letra sigue nítida). Se vuelve a poner tras cada redibujo.
+  useLayoutEffect(() => {
+    const el = ref.current?.querySelector('svg')
+    if (!el) return
+    const W = Number(el.getAttribute('width')) || ancho
+    const H = Number(el.getAttribute('height')) || altoFinal
+    el.setAttribute('viewBox', viewBoxDe(encuadre ?? { k: 1, x: 0, y: 0 }, W, H))
+  }, [svg, encuadre, ancho, altoFinal])
 
   return (
     <div
