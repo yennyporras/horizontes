@@ -1,5 +1,5 @@
-// Cambios del acta del 16-oct (R4): visibilidad por defecto, país y zona horaria por sala, aviso de datos por país,
-// IP de inscripción y voto (solo para el admin) y migración aditiva sobre una BD de R3.
+// Cambios del acta del 16-oct: visibilidad por defecto, país y zona horaria por sala, aviso de datos por país,
+// IP de inscripción y voto (solo para el admin) y migración aditiva sobre una BD anterior al acta.
 import { readFileSync } from 'node:fs'
 import { Writable } from 'node:stream'
 import { DatabaseSync } from 'node:sqlite'
@@ -49,7 +49,7 @@ describe('visibilidad por defecto (acta A2)', () => {
   })
 })
 
-describe('migración aditiva sobre una BD de R3', () => {
+describe('migración aditiva sobre una BD anterior al acta', () => {
   it('las salas existentes conservan su visibilidad y quedan en Colombia; participantes y votos sin IP', () => {
     const db = new DatabaseSync(':memory:')
     db.exec(MIGRACIONES[0])
