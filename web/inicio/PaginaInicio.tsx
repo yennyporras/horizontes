@@ -3,23 +3,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EncabezadoProducto, LogoEstratek, Rubrica, useTemaDocumento } from '../shared/ui'
+import { HORIZONTES, LECTURA_EJES, LECTURA_ESCALA } from '../shared/criterios'
 import { CORREO_ESTRATEK, EJES, RUBRICA_EJEMPLO, URL_POLITICA } from './contenido'
 import { EntradaMesa } from './EntradaMesa'
 import { MatrizIlustrada } from './MatrizIlustrada'
+import { PictogramaPaso, type IdPaso } from './Pictogramas'
 import './inicio.css'
 
-const TITULO = 'Horizontes · Taller de priorización de portafolio · Estratek'
+const TITULO = 'Horizontes · Priorización de portafolio por horizontes · Estratek'
 
-const PASOS: { titulo: string; texto: string; ronda?: 'r1' | 'r2' | 'r1r2' }[] = [
-  { titulo: 'Escanea el QR o escribe el código', texto: 'Cada mesa tiene su QR. Lo escaneas con la cámara del celular o escribes el código en esta página.' },
-  { titulo: 'Inscríbete', texto: 'Tu nombre, tu correo y tu autorización de datos. La app te asigna uno de los seis perfiles y los reparte para que en la mesa haya miradas distintas.' },
-  { titulo: 'Lee el caso y tu hoja', texto: 'El caso Foodsume es igual para todos. Tu hoja trae lo que solo sabe tu perfil sobre INSUMEX y NUTRIWHAT.' },
-  { titulo: 'Ronda 1, en silencio', texto: 'Calificas solo, con lo que sabes, los dos proyectos en seis criterios. Sin hablar con la mesa.', ronda: 'r1' },
-  { titulo: 'Ronda 2, con la mesa', texto: 'Ahora sí: la mesa comparte lo que dice cada hoja, discute los dos proyectos y cada quien vuelve a calificar.', ronda: 'r2' },
+const PASOS: { id: IdPaso; titulo: string; texto: string; ronda?: 'r1' | 'r2' }[] = [
+  { id: 'codigo', titulo: 'Escanea el QR o escribe el código', texto: 'Cada mesa tiene su QR. Lo escaneas con la cámara del celular o escribes el código en esta página.' },
+  { id: 'inscripcion', titulo: 'Inscríbete', texto: 'Tu nombre, tu correo y tu autorización de datos. La app te asigna uno de los seis perfiles y los reparte para que en la mesa haya miradas distintas.' },
+  { id: 'lectura', titulo: 'Lee el caso y tu hoja', texto: 'El caso Foodsume es igual para todos. Tu hoja trae lo que solo sabe tu perfil sobre INSUMEX y NUTRIWHAT.' },
   {
+    id: 'ronda1',
+    titulo: 'Ronda 1, en silencio',
+    texto: 'Calificas por tu cuenta, con lo que sabes, los dos proyectos en seis criterios. Sin hablar con la mesa.',
+    ronda: 'r1',
+  },
+  { id: 'ronda2', titulo: 'Ronda 2, con la mesa', texto: 'Ahora sí: la mesa comparte lo que dice cada hoja, discute los dos proyectos y cada quien vuelve a calificar.', ronda: 'r2' },
+  {
+    id: 'matriz',
     titulo: 'La matriz muestra el movimiento',
     texto: 'El tablero ubica los dos proyectos entre ocho fijos, muestra cuánto se movieron de una ronda a otra y el consolidado de la sala.',
-    ronda: 'r1r2',
   },
 ]
 
@@ -113,26 +120,6 @@ function MenuMovil() {
   )
 }
 
-function LaminaPaso({ indice, ronda }: { indice: number; ronda?: 'r1' | 'r2' | 'r1r2' }) {
-  const r = 34 + indice * 12
-  const punto = r * Math.SQRT1_2
-  return (
-    <svg className="in-paso__lamina" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-      <path className="in-paso__arco" d={`M0 100 L0 ${100 - r} A${r} ${r} 0 0 1 ${r} 100 Z`} />
-      <path className="in-paso__horizonte" d={`M0 ${100 - r} A${r} ${r} 0 0 1 ${r} 100`} />
-      {ronda === 'r1' && <circle className="in-r1-forma" cx={punto} cy={100 - punto} r="7" />}
-      {ronda === 'r2' && <circle className="in-r2-forma" cx={punto} cy={100 - punto} r="7" />}
-      {ronda === 'r1r2' && (
-        <>
-          <circle className="in-r1-forma" cx="72" cy="24" r="7" />
-          <path className="in-paso__flecha" d="M66 31 L48 50" />
-          <circle className="in-r2-forma" cx="40" cy="58" r="7" />
-        </>
-      )}
-    </svg>
-  )
-}
-
 function PruebaEscala() {
   const [valor, setValor] = useState<number | null>(null)
   return (
@@ -185,8 +172,8 @@ export default function PaginaInicio() {
               La mesa mueve el <span className="in-clave">portafolio</span>
             </h1>
             <p className="in-lead">
-              Horizontes es el taller de priorización de portafolio por horizontes de Estratek. Cada mesa califica dos proyectos con la
-              información repartida entre sus perfiles, los discute y ve en la matriz cuánto se movieron de una ronda a otra.
+              Horizontes es la herramienta de Estratek para priorizar el portafolio por horizontes. En el taller, cada mesa califica dos
+              proyectos con la información repartida entre sus perfiles, los discute y ve en la matriz cuánto se movieron de una ronda a otra.
             </p>
             <div className="in-acciones">
               <a className="hz-boton hz-boton--primario" href="#entrar">
@@ -226,8 +213,13 @@ export default function PaginaInicio() {
             <p className="in-bajada">Dos rondas y la misma matriz. Lo que cambia entre una y otra es la conversación de la mesa.</p>
             <ol className="in-pasos">
               {PASOS.map((p, i) => (
-                <li key={p.titulo} className="in-paso">
-                  <LaminaPaso indice={i} ronda={p.ronda} />
+                <li key={p.id} className="in-paso">
+                  <div className="in-paso__cabeza">
+                    <span className="in-paso__numero" aria-hidden="true">
+                      {i + 1}
+                    </span>
+                    <PictogramaPaso id={p.id} />
+                  </div>
                   <h3 className="in-h3">
                     {p.titulo}
                     {p.ronda === 'r1' && <span className="in-r1"> R1</span>}
@@ -250,10 +242,12 @@ export default function PaginaInicio() {
                 Cada persona califica INSUMEX y NUTRIWHAT, los dos proyectos vivos del caso Foodsume, en seis criterios. Los promedios ubican
                 cada proyecto en dos ejes.
               </p>
+              <p className="in-lectura">{LECTURA_EJES}</p>
               {EJES.map((eje) => (
                 <div key={eje.id} className="in-eje">
-                  <h3 className="in-h3">{eje.nombre}</h3>
-                  <p>{eje.lectura}</p>
+                  <h3 className="in-h3">
+                    {eje.nombre} <span className="in-eje__id">(eje {eje.id.toUpperCase()})</span>
+                  </h3>
                   <ul className="in-lista">
                     {eje.criterios.map((c) => (
                       <li key={c.id}>
@@ -263,10 +257,24 @@ export default function PaginaInicio() {
                   </ul>
                 </div>
               ))}
+              <div className="in-eje">
+                <h3 className="in-h3">Los tres horizontes</h3>
+                <p>La matriz los dibuja como cuartos de círculo desde el origen: entre más lejos, más nuevo es el negocio para la empresa.</p>
+                <ul className="in-horizontes">
+                  {HORIZONTES.map((h) => (
+                    <li key={h.id}>
+                      <span className="in-horizontes__id">{h.id}</span>
+                      <span>
+                        <strong>{h.nombre}:</strong> {h.texto}.
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
             <div className="in-texto">
               <h3 className="in-h3">La escala: 1, 3, 5, 7 y 9</h3>
-              <p>Cada número tiene su descripción en la rúbrica. En todos los criterios, 1 es lo más cercano y listo; 9, lo más lejano e incierto.</p>
+              <p>Cada número tiene su descripción en la rúbrica. En todos los criterios, {LECTURA_ESCALA}</p>
               <p>
                 Solo hay números impares: no existe un 4 o un 6 para quedarse a medias. Cada salto es una descripción distinta y hay que elegir
                 la que más se parece al proyecto.
@@ -313,16 +321,21 @@ export default function PaginaInicio() {
             <div className="in-texto">
               <ul className="in-lista in-lista--datos">
                 <li>
-                  <strong>Resultados anónimos.</strong> La matriz y las tablas muestran promedios de la mesa o de la sala. Nadie ve tu nombre ni
-                  tus calificaciones.
+                  <strong>Qué guardamos.</strong> Tu nombre, tu correo y tus calificaciones. Por seguridad, también la IP, el país y el
+                  navegador desde donde entras.
                 </li>
                 <li>
-                  <strong>Mínimo de 3 votos.</strong> Si una mesa o la sala tiene menos de 3 votos, su resultado no se muestra.
+                  <strong>Para qué.</strong> Para identificarte en tu mesa, evitar inscripciones dobles y devolverte el acceso si cambias de
+                  celular. No los usamos para publicidad ni los compartimos con terceros.
                 </li>
                 <li>
-                  <strong>Solo tu nombre y tu correo,</strong> con fines informativos del taller y con tu autorización. Los tratamos según la
-                  ley del país donde se hace el taller: en Colombia, la Ley 1581 de 2012; en Perú, la Ley 29733; en Guatemala, la política de
-                  Estratek.
+                  <strong>Quién ve qué.</strong> En el tablero y en los celulares nadie ve tu nombre ni tus calificaciones: solo promedios de al
+                  menos 3 personas. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo.
+                </li>
+                <li>
+                  <strong>Con tu autorización.</strong> Los tratamos según la ley del país donde se hace el taller: en Colombia, la Ley 1581
+                  de 2012; en Perú, la Ley 29733; en Guatemala, la política de Estratek. Si el taller es en Perú, los datos se guardan en
+                  servidores fuera del Perú.
                 </li>
               </ul>
               <p>Para conocer, actualizar o suprimir tus datos, escribe a Estratek:</p>
@@ -341,6 +354,20 @@ export default function PaginaInicio() {
             </div>
           </div>
         </section>
+
+        <section id="contacto" className="in-sec in-sec--comercial" aria-labelledby="in-contacto-titulo">
+          <div className="hz-pagina in-comercial">
+            <h2 id="in-contacto-titulo" className="in-h2">
+              ¿Quieres este taller para tu <span className="in-clave">equipo directivo</span>?
+            </h2>
+            <p className="in-comercial__texto">
+              Escríbenos a{' '}
+              <a className="in-enlace" href={`mailto:${CORREO_ESTRATEK}`}>
+                {CORREO_ESTRATEK}
+              </a>
+            </p>
+          </div>
+        </section>
       </main>
 
       <footer className="in-pie">
@@ -353,7 +380,7 @@ export default function PaginaInicio() {
           </p>
           <div className="in-pie__datos">
             <LogoEstratek className="in-pie__logo" />
-            <p>Un taller de Estratek S.A.S., Medellín, Colombia.</p>
+            <p>Una herramienta de Estratek S.A.S., Medellín, Colombia.</p>
             <p>
               <a href={`mailto:${CORREO_ESTRATEK}`}>{CORREO_ESTRATEK}</a>
             </p>

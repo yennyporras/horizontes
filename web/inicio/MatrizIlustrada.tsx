@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react'
-import seed from '../../data/seed_foodsume.json'
+import { LECTURA_EJES } from '../shared/criterios'
+import { GRAFICO } from './contenido'
 
 // Ilustración de la matriz (no son datos de ninguna sala): los horizontes de la semilla, ocho puntos fijos
 // y dos proyectos que se mueven de la ronda 1 (hueco, verde) a la ronda 2 (sólido, rojo).
-const { grafico } = seed.motor
+const grafico = GRAFICO
 const MAX = 9.5
 const X0 = 7
 const Y0 = 93
@@ -72,10 +73,13 @@ export function MatrizIlustrada() {
         })}
         <text className="in-matriz__eje" x={X0 + 1} y={99}>Time 2 Market</text>
         <text className="in-matriz__eje" transform={`translate(4.6 ${Y0 - 1}) rotate(-90)`}>Value Generation Capacity</text>
+        {/* Los extremos de los ejes (LECTURA_EJES): junto al origen, cerca; al final de cada eje, lejos. */}
+        <text className="in-matriz__extremo" x={100} y={99} textAnchor="end">lejos del mercado</text>
+        <text className="in-matriz__extremo" transform="translate(4.6 1) rotate(-90)" textAnchor="end">lejos del core</text>
       </svg>
       <figcaption>
         Ilustración. Cada mesa mueve sus dos proyectos de la <span className="in-r1">R1</span> a la <span className="in-r2">R2</span> entre
-        ocho proyectos fijos. Más cerca del origen, el horizonte H1; más lejos, el H3.
+        ocho proyectos fijos. {LECTURA_EJES} Más cerca del origen, el horizonte H1; más lejos, el H3.
       </figcaption>
     </figure>
   )
