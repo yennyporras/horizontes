@@ -1,6 +1,7 @@
 // Lógica de presentación del tablero. Solo lee lo que entrega el servidor: nunca recalcula el motor.
 import type { CriterioTablero, DatosTablero, EstadoSala, ProyectoVivo, RondaVivo, Vista } from './tipos'
 import type { Rubrica } from '../shared/api/contrato'
+import { nombreCortoCriterio } from '../shared/criterios'
 
 export const INTERVALO_POLLING_MS = 2500
 
@@ -206,18 +207,9 @@ export function nombreEstado(estado: EstadoSala | undefined): string {
   return (estado && NOMBRES_ESTADO[estado]) || 'Estado desconocido'
 }
 
-/** Nombre corto del criterio para el proyector; el nombre completo va en el title. */
-const CORTOS: Record<string, string> = {
-  alistamiento_tecnico: 'Alistamiento técnico',
-  conocimiento_cliente: 'Conocimiento del cliente',
-  regulacion: 'Regulación',
-  capacidades_organizacionales: 'Capacidades organizacionales',
-  alineacion_core: 'Alineación con el core',
-  inversion_requerida: 'Inversión requerida',
-}
-
+/** Nombre corto del criterio para el proyector (fuente única en web/shared/criterios.ts); el completo va en el title. */
 export function nombreCorto(id: string, nombre: string): string {
-  return CORTOS[id] ?? nombre
+  return nombreCortoCriterio(id, nombre)
 }
 
 export interface ParamsTablero {

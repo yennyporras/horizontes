@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, test } from 'vitest'
+import { DESCRIPCION_CRITERIO } from '../shared/criterios'
 import { cleanup, render, within } from '@testing-library/react'
 import mockJson from '../../mocks/GET_api_tablero.json'
 import { TablaComparada } from './TablaComparada'
@@ -58,7 +59,7 @@ test('cada criterio lleva su descripción corta bajo el nombre (máximo 100 cara
   const { container } = render(<TablaComparada datos={mock} vista="comparacion" />)
   const fila = within(container).getByRole('rowheader', { name: /^Alineación con el core/ })
   expect(fila.querySelector('.hz-crit-nombre')!.textContent).toBe('Alineación con el core')
-  expect(fila.querySelector('.hz-crit-desc')!.textContent).toBe('Qué tan cerca está el nuevo negocio del core actual de la organización.')
+  expect(fila.querySelector('.hz-crit-desc')!.textContent).toBe(DESCRIPCION_CRITERIO.alineacion_core)
   for (const d of container.querySelectorAll('.hz-crit-desc')) expect(d.textContent!.length).toBeLessThanOrEqual(100)
   expect(container.querySelectorAll('.hz-crit-desc')).toHaveLength(6)
 })

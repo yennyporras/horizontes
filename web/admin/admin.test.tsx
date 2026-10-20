@@ -567,7 +567,7 @@ describe('cambios del 19-oct en el panel', () => {
       'Regulación',
       'Capacidades organizacionales',
       'Alineación con el core',
-      'Inversión requerida',
+      'Inversión para probar',
       'Fecha',
     ])
     const ana = within(tabla).getAllByRole('rowheader', { name: 'Ana Pérez' })[0].parentElement!

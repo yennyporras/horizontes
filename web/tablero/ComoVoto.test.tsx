@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, test } from 'vitest'
+import { DESCRIPCION_CRITERIO } from '../shared/criterios'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import mockJson from '../../mocks/GET_api_tablero.json'
 import { ComoVoto } from './ComoVoto'
@@ -93,5 +94,5 @@ test('D2: con la ronda abierta y sin conteos, dice que se actualizan cada 3 voto
   cleanup()
   const { container } = render(<ComoVoto datos={mock} rondas={[1]} />)
   const reg = [...container.querySelectorAll('.hz-cv-crit')].find((p) => p.textContent === 'Regulación')!
-  expect(reg.getAttribute('title')).toBe('Qué tantas barreras legales o normativas hay para entrar al mercado.')
+  expect(reg.getAttribute('title')).toBe(DESCRIPCION_CRITERIO.regulacion)
 })
