@@ -220,6 +220,17 @@ export async function inscribirApi(e: Entorno, codigoMesa: string, nombre: strin
   return (d.token ?? d.error?.token)!
 }
 
+/**
+ * «Dar acceso de nuevo» del panel (D1): enlace personal de un solo uso. Devuelve la ruta con su `?acceso=`,
+ * para abrirla en el estático del e2e (la URL del servidor trae su BASE_URL).
+ */
+export async function darAcceso(e: Entorno, participanteId: string): Promise<string> {
+  const r = await json(e, 'POST', `/api/admin/participantes/${participanteId}/acceso`, {}, { cookie: e.cookie })
+  if (r.status !== 200) throw new Error(`acceso: ${r.status} ${JSON.stringify(r.datos)}`)
+  const url = new URL((r.datos as { url: string }).url)
+  return `${url.pathname}${url.search}`
+}
+
 export const TODO_5 = {
   alistamiento_tecnico: 5,
   conocimiento_cliente: 5,

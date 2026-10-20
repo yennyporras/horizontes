@@ -6,11 +6,23 @@ import { Boton, Campo } from '../shared/ui'
 // Código de mesa = código de la sala (HZ + 3) y número de mesa, como HZ7K2-1 (server/dominio/salas.ts).
 const FORMATO = /^[A-Z0-9]{3,10}-\d{1,3}$/
 
-/** Acepta el código solo o el enlace completo del QR (…/m/HZ7K2-1). Devuelve null si no tiene el formato. */
+/** Código de la sala pegado al número de la mesa, sin guion: HZ7K21 = HZ7K2 y mesa 1 (el código de sala es HZ y 3). */
+const SIN_GUION = /^(HZ[A-Z0-9]{3})(\d{1,3})$/
+
+/**
+ * Acepta el código solo o el enlace completo del QR (…/m/HZ7K2-1), y lo que se teclea en el celular: minúsculas,
+ * espacios alrededor del guion, un espacio en lugar del guion o el código sin guion. Devuelve null si no tiene el formato.
+ */
 export function codigoDeMesa(texto: string): string | null {
   const t = texto.trim()
   const enRuta = /\/m\/([^/?#\s]+)/i.exec(t)
-  const codigo = (enRuta ? enRuta[1] : t).toUpperCase()
+  let codigo = (enRuta ? enRuta[1] : t)
+    .toUpperCase()
+    // Guiones tipográficos que pone el teclado y espacios alrededor del guion.
+    .replace(/\s*[-\u2010-\u2015]\s*/g, '-')
+    .replace(/\s+/g, '-')
+  const junto = SIN_GUION.exec(codigo)
+  if (junto) codigo = `${junto[1]}-${junto[2]}`
   return FORMATO.test(codigo) ? codigo : null
 }
 
@@ -42,12 +54,19 @@ export function EntradaMesa() {
         navegar(`/m/${codigo}`)
         return
       }
-      const irMesa = <Link to={`/m/${codigo}`}>Ir a {info.mesa.nombre}</Link>
+      // El enlace a la mesa va al inicio de una frase o a mitad de otra: su texto cambia con la mayúscula.
+      const irMesa = (texto: string) => <Link to={`/m/${codigo}`}>{texto}</Link>
       setProblema(
         info.sala.estado === 'preparada' ? (
-          <>La inscripción de {info.mesa.nombre} todavía no abre. El facilitador la abrirá en unos minutos. {irMesa} y espera ahí: la pantalla se actualiza sola.</>
+          <>
+            La inscripción de {info.mesa.nombre} todavía no abre. El facilitador la abrirá en unos minutos. {irMesa(`Entra a ${info.mesa.nombre}`)} y espera
+            ahí: la pantalla se actualiza sola.
+          </>
         ) : (
-          <>{info.sala.nombre} ya terminó y no recibe más inscripciones. Si te inscribiste desde este celular, {irMesa} para ver el resultado.</>
+          <>
+            {info.sala.nombre} ya terminó y no recibe más inscripciones. Si te inscribiste desde este celular, {irMesa(`entra a ${info.mesa.nombre}`)} para
+            ver el resultado.
+          </>
         ),
       )
     } catch (err) {

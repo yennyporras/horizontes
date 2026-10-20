@@ -26,8 +26,13 @@ export function FaseRonda({ ronda }: { ronda: number }) {
 export interface MarcoProps {
   sala: string
   meta?: string
-  /** Avisos fijos arriba (sin conexión, precierre). */
+  /** Avisos arriba del contenido que explican la pantalla (ronda cerrada, acceso nuevo). */
   arriba?: ReactNode
+  /**
+   * Avisos que llegan solos (sin conexión, calificación guardada, por enviar): flotan encima de la barra inferior
+   * para no empujar el texto que se está leyendo.
+   */
+  flotantes?: ReactNode
   barra?: ReactNode
   notaBarra?: ReactNode
   /** Mueve el foco al título al cambiar de pantalla (lectores de pantalla y teclado). */
@@ -36,10 +41,10 @@ export interface MarcoProps {
 }
 
 /** Lo que la página pasa a cada pantalla: encabezado y avisos globales. */
-export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba'>
+export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba' | 'flotantes'>
 
 /** Página del celular: tema claro de Estratek, encabezado de producto y, debajo, la sala y la mesa. */
-export function Marco({ sala, meta, arriba, barra, notaBarra, claveFoco, children }: MarcoProps) {
+export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFoco, children }: MarcoProps) {
   useTemaDocumento('claro')
   const ref = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -62,7 +67,12 @@ export function Marco({ sala, meta, arriba, barra, notaBarra, claveFoco, childre
         {arriba}
         {children}
       </main>
-      {barra && <BarraAccion nota={notaBarra}>{barra}</BarraAccion>}
+      {(flotantes || barra) && (
+        <div className={barra ? 'hzp-pie' : 'hzp-pie hzp-pie--sin-barra'}>
+          {flotantes && <div className="hzp-flotantes">{flotantes}</div>}
+          {barra && <BarraAccion nota={notaBarra}>{barra}</BarraAccion>}
+        </div>
+      )}
     </div>
   )
 }
