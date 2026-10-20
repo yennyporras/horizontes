@@ -6,7 +6,8 @@ import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import type { RespuestaPersona } from '../tipos'
 import { descripcionCriterio } from '../../shared/criterios'
-import { CRITERIOS, PROYECTOS_VIVOS, fechaCorta, nombrePerfil, nombreProyecto, zonaSala } from '../textos'
+import { fechaCorta, zonaSala } from '../textos'
+import { nombrePerfil, nombreProyecto, useContenidoSala } from '../contenido'
 
 /**
  * Respuestas de cada persona por ronda (C19-3). Solo para administradores: la API responde 401/403 al resto
@@ -21,6 +22,8 @@ export function Respuestas() {
   const [ronda, setRonda] = useState('todas')
   const [proyecto, setProyecto] = useState('todos')
   const version = datos?.version
+  const contenido = useContenidoSala(datos)
+  const { criterios } = contenido
 
   // Se relee con cada cambio de la sala (un voto nuevo sube la versión).
   useEffect(() => {
@@ -77,7 +80,7 @@ export function Respuestas() {
                   <span>Proyecto</span>
                   <select value={proyecto} onChange={(e) => setProyecto(e.target.value)}>
                     <option value="todos">Los dos proyectos</option>
-                    {PROYECTOS_VIVOS.map((p) => (
+                    {contenido.proyectosVivos.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nombre}
                       </option>
@@ -110,7 +113,7 @@ export function Respuestas() {
                         <th scope="col">Perfil</th>
                         <th scope="col">Ronda</th>
                         <th scope="col">Proyecto</th>
-                        {CRITERIOS.map((c) => (
+                        {criterios.map((c) => (
                           <th key={c.id} scope="col" className="num" title={`${c.nombre}. ${descripcionCriterio(c.id) ?? ''}`.trim()}>
                             {c.corto}
                           </th>
@@ -132,12 +135,12 @@ export function Respuestas() {
                           <td data-label="Mesa" className="td-corto">
                             {f.mesa}
                           </td>
-                          <td data-label="Perfil">{nombrePerfil(f.perfil_id)}</td>
+                          <td data-label="Perfil">{nombrePerfil(contenido, f.perfil_id)}</td>
                           <td data-label="Ronda">
                             <span className={`ronda ronda--${f.ronda}`}>R{f.ronda}</span>
                           </td>
-                          <td data-label="Proyecto">{nombreProyecto(f.proyecto_id)}</td>
-                          {CRITERIOS.map((c) => (
+                          <td data-label="Proyecto">{nombreProyecto(contenido, f.proyecto_id)}</td>
+                          {criterios.map((c) => (
                             <td key={c.id} className="num crit" data-label={c.corto}>
                               {f.respuestas[c.id] ?? 'Sin dato'}
                             </td>
@@ -162,7 +165,7 @@ export function Respuestas() {
                 </div>
                 {/* Pedido del 20-oct: cada criterio con su descripción corta (web/shared/criterios.ts). */}
                 <dl className="leyenda-criterios" aria-label="Qué mide cada criterio">
-                  {CRITERIOS.map((c) => (
+                  {criterios.map((c) => (
                     <div key={c.id}>
                       <dt>
                         {c.corto}

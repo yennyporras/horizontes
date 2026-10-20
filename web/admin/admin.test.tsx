@@ -7,9 +7,9 @@ import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
 import { DESCRIPCION_CRITERIO } from '../shared/criterios'
+import { contenidoDe, ordenPreguntas } from './contenido'
 import {
   ACCIONES_POR_ESTADO,
-  ORDEN_PREGUNTAS,
   dominioDistinto,
   estadoMesa,
   faltan,
@@ -103,7 +103,10 @@ describe('textos del panel', () => {
     expect(textoEvento({ tipo: 'config', detalle: { cierre_programado_r1_at: null }, por: 'admin:qa' })).toBe('Configuración: cierre programado de la ronda 1 · qa')
     expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', mesa_id: 'm2' }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez pasó a Mesa 2 · paola')
     expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', activo: false }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez quedó inactivo · paola')
-    expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: 'insumex', criterio_id: 'regulacion' }, por: 'admin:jorge' })).toBe('Pregunta en pantalla: INSUMEX · Pregunta 3 de 6 · jorge')
+    const contenido = contenidoDe({ proyectos_vivos: [{ id: 'insumex', nombre: 'INSUMEX' }], perfiles: [{ id: 'financiero', nombre: 'Financiero' }] })
+    expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: 'insumex', criterio_id: 'regulacion' }, por: 'admin:jorge' }, { contenido })).toBe('Pregunta en pantalla: INSUMEX · Pregunta 3 de 6 · jorge')
+    expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', perfil_id: 'financiero' }, por: 'admin:paola' }, { ...ctx, contenido })).toBe('Ana Pérez ahora tiene el perfil Financiero · paola')
+    expect(textoEvento({ tipo: 'rubrica_editada', detalle: { criterio_id: 'inversion_requerida' }, por: 'admin:paola' })).toBe('Rúbrica editada: Inversión para probar · paola')
     expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: null, criterio_id: null }, por: 'admin:jorge' })).toBe('Pregunta quitada: vuelve la matriz · jorge')
     expect(textoEvento({ tipo: 'algo_nuevo', detalle: null, por: 'sistema' })).toBe('Algo nuevo')
     // Eventos nuevos del servidor (20-oct).
@@ -461,10 +464,12 @@ describe('cambios del 19-oct en el panel', () => {
   }
 
   it('textos: orden de las preguntas guiadas, programación y dominio', () => {
-    expect(ORDEN_PREGUNTAS).toHaveLength(12)
-    expect(ORDEN_PREGUNTAS[0]).toEqual({ proyecto_id: 'insumex', criterio_id: 'alistamiento_tecnico' })
-    expect(ORDEN_PREGUNTAS[6]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'alistamiento_tecnico' })
-    expect(ORDEN_PREGUNTAS[11]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'inversion_requerida' })
+    // Los proyectos vivos salen de la sala (contenido.ts), los criterios en el orden del motor.
+    const orden = ordenPreguntas(contenidoDe(null, { proyectosVivos: [{ id: 'insumex', nombre: 'INSUMEX' }, { id: 'nutriwhat', nombre: 'NUTRIWHAT' }] }))
+    expect(orden).toHaveLength(12)
+    expect(orden[0]).toEqual({ proyecto_id: 'insumex', criterio_id: 'alistamiento_tecnico' })
+    expect(orden[6]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'alistamiento_tecnico' })
+    expect(orden[11]).toEqual({ proyecto_id: 'nutriwhat', criterio_id: 'inversion_requerida' })
     // Solo lo programado, en el orden del taller (no en el de los campos).
     const lista = programaciones({
       cierre_programado_sala_at: '2030-01-10T18:00:00-05:00',

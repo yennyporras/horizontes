@@ -4,9 +4,15 @@ import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
 import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Participante, RubricasSala, SalaDetalle, SalaResumen } from '../tipos'
-import { ACCIONES_POR_ESTADO, CRITERIOS, LARGO_MINIMO_CLAVE, PERFILES, PROYECTOS_VIVOS, nombrePerfil, rondaAbierta } from '../textos'
+import { ACCIONES_POR_ESTADO, LARGO_MINIMO_CLAVE, rondaAbierta } from '../textos'
 import type { Respuesta } from '../api'
 import type { CriterioId } from '../../shared/api/contrato'
+
+// El simulador hace de servidor: él sí lee la semilla, como el servidor real. El panel no (QA por roles del 20-oct).
+const PERFILES: { id: string; nombre: string }[] = seed.perfiles
+const CRITERIOS = seed.motor.criterios.map((c) => ({ id: c.id as CriterioId, nombre: c.nombre }))
+const PROYECTOS_VIVOS = seed.plantilla.proyectos.filter((p) => p.modo === 'vivo').map((p) => ({ id: p.id, nombre: p.nombre }))
+const nombrePerfil = (id: string) => PERFILES.find((p) => p.id === id)?.nombre ?? id
 
 const CLAVE_DEMO = 'demo1234'
 const LLAVE_SESION = 'hz_admin_mock'
@@ -416,7 +422,8 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       // ETag fuerte entre comillas, como el servidor (RFC 9110): el navegador lo devuelve tal cual en If-None-Match.
       const etagSala = `"${s.version}"`
       if (etag && etag === etagSala) return { status: 304, body: null, etag: etagSala }
-      return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin }, etag: etagSala }
+      // Como el servidor: el detalle trae el catálogo de perfiles (no trae criterios ni proyectos vivos).
+      return { status: 200, body: { ...structuredClone(s), perfiles: PERFILES, admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin }, etag: etagSala }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
       const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)

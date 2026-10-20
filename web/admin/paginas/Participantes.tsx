@@ -7,7 +7,8 @@ import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import { useConfirmar } from '../componentes/Confirmar'
 import { DialogoAcceso, type Acceso } from '../componentes/AccesoDeNuevo'
 import type { Participante, RespuestaPersona, SalaDetalle } from '../tipos'
-import { PERFILES, nombrePerfil, rondaAbierta, zonaSala } from '../textos'
+import { rondaAbierta, zonaSala } from '../textos'
+import { nombrePerfil, useContenidoSala } from '../contenido'
 
 /**
  * Quiénes ya votaron en alguna ronda (QA-A-09): mover o desactivar a esas personas cambia resultados y precierre, así
@@ -41,6 +42,8 @@ export function Participantes() {
   const [acceso, setAcceso] = useState<{ p: Participante; datos: Acceso } | null>(null)
   const [dialogo, confirmar] = useConfirmar()
   const votaron = useVotaron(salaId, datos?.version)
+  const contenido = useContenidoSala(datos)
+  const perfiles = contenido.perfiles
   const yaVoto = (p: Participante) => (votaron ? votaron.has(p.id) : p.completo_ronda)
 
   const editar = async (p: Participante, cambio: { perfil_id?: string; mesa_id?: string; activo?: boolean }, texto: string) => {
@@ -121,7 +124,7 @@ export function Participantes() {
               <DialogoAcceso nombre={acceso.p.nombre} participanteId={acceso.p.id} zona={zonaSala(d.sala.config)} inicial={acceso.datos} alCerrar={() => setAcceso(null)} />
             )}
             <AvisoPrivado>Nombre, correo, mesa, perfil, país e IP de cada inscrito. Para gestionar la sala, no para mostrarla.</AvisoPrivado>
-            <Resumen d={d} />
+            <Resumen d={d} perfiles={perfiles} />
             <section className="panel" aria-labelledby="t-lista">
               <h2 id="t-lista">Inscritos</h2>
               <p className="pista" id="ayuda-acceso">
@@ -197,9 +200,9 @@ export function Participantes() {
                               aria-label={`Perfil de ${p.nombre}`}
                               value={p.perfil_id}
                               disabled={guardando === p.id}
-                              onChange={(e) => editar(p, { perfil_id: e.target.value }, `${p.nombre} ahora tiene el perfil ${nombrePerfil(e.target.value)}.`)}
+                              onChange={(e) => editar(p, { perfil_id: e.target.value }, `${p.nombre} ahora tiene el perfil ${nombrePerfil(contenido, e.target.value)}.`)}
                             >
-                              {PERFILES.map((pf) => (
+                              {perfiles.map((pf) => (
                                 <option key={pf.id} value={pf.id}>
                                   {pf.nombre}
                                 </option>
@@ -258,7 +261,7 @@ export function Participantes() {
 }
 
 /** Perfiles por mesa: ayuda a ver si el balance quedó parejo antes de reasignar. */
-function Resumen({ d }: { d: SalaDetalle }) {
+function Resumen({ d, perfiles }: { d: SalaDetalle; perfiles: { id: string; nombre: string }[] }) {
   if (d.mesas.length === 0) return null
   return (
     <section className="panel" aria-labelledby="t-perfiles">
@@ -268,7 +271,7 @@ function Resumen({ d }: { d: SalaDetalle }) {
           <thead>
             <tr>
               <th scope="col">Mesa</th>
-              {PERFILES.map((p) => (
+              {perfiles.map((p) => (
                 <th key={p.id} scope="col" className="num">
                   {p.nombre}
                 </th>
@@ -282,7 +285,7 @@ function Resumen({ d }: { d: SalaDetalle }) {
             {d.mesas.map((m) => (
               <tr key={m.id}>
                 <th scope="row">{m.nombre}</th>
-                {PERFILES.map((p) => (
+                {perfiles.map((p) => (
                   <td key={p.id} className="num" data-label={p.nombre}>
                     {m.perfiles[p.id] ?? 0}
                   </td>

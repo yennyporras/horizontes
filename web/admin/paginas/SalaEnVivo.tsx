@@ -8,15 +8,13 @@ import { ComoVoto } from '../../tablero'
 import type { CriterioId } from '../../shared/api/contrato'
 import { descripcionCriterio } from '../../shared/criterios'
 import type { Accion, PreguntaGuiada, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
+import { nombreCriterio, nombreProyecto, numeroPregunta, ordenPreguntas, useContenidoSala, type ContenidoSala } from '../contenido'
 import {
   ACCIONES,
   CONFIRMACIONES,
-  CRITERIOS,
   ES_DESTRUCTIVA,
   MODOS_TABLERO,
-  ORDEN_PREGUNTAS,
   PASO_SIGUIENTE,
-  PROYECTOS_VIVOS,
   QUE_PASA,
   TECLAS_TABLERO,
   ZONAS,
@@ -28,8 +26,6 @@ import {
   faltan,
   fechaHora,
   estadoMesa,
-  nombreProyecto,
-  numeroPregunta,
   programaciones,
   rondaAbierta,
   rutaApiTablero,
@@ -58,6 +54,7 @@ export function SalaEnVivo() {
   const { salaId } = useParams()
   const { datos, error, refrescar } = useSala(salaId)
   const [verResultado, setVerResultado] = useState<string | null>(null)
+  const contenido = useContenidoSala(datos)
 
   return (
     <ConSala titulo="Sala en vivo" datos={datos} error={error}>
@@ -65,14 +62,14 @@ export function SalaEnVivo() {
         <>
           <Cifras d={d} />
           <Control d={d} salaId={d.sala.id} refrescar={refrescar} verResultado={verResultado} setVerResultado={setVerResultado} />
-          {d.sala.config.modo_preguntas === 'guiado' && <PreguntaEnPantalla d={d} refrescar={refrescar} />}
+          {d.sala.config.modo_preguntas === 'guiado' && <PreguntaEnPantalla d={d} contenido={contenido} refrescar={refrescar} />}
           {verResultado && rondaAbierta(d.sala.estado) && (
             <ResultadoPreliminar key={verResultado} d={d} mesaId={verResultado === 'sala' ? undefined : verResultado} ronda={rondaAbierta(d.sala.estado)!} />
           )}
           <VerEnVivo d={d} refrescar={refrescar} />
           {d.sala.ronda_actual ? <ComoVotoSala d={d} /> : null}
           <Mesas d={d} />
-          <Eventos d={d} />
+          <Eventos d={d} contenido={contenido} />
         </>
       )}
     </ConSala>
@@ -250,7 +247,6 @@ function Programado({ d }: { d: SalaDetalle }) {
   )
 }
 
-const nombreCriterio = (id: string) => CRITERIOS.find((c) => c.id === id)?.nombre ?? id
 const mismaPregunta = (a: PreguntaGuiada, b: PreguntaGuiada) => a.proyecto_id === b.proyecto_id && a.criterio_id === b.criterio_id
 
 /**
@@ -258,11 +254,13 @@ const mismaPregunta = (a: PreguntaGuiada, b: PreguntaGuiada) => a.proyecto_id ==
  * los proyectos vivos y, en cada uno, los 6 criterios; la lista salta a cualquiera. QA-A-07: «Quitar la pregunta»
  * vuelve a mostrar la matriz en el tablero. QA-A-08: la numeración es la del tablero, «Pregunta N de 6» por proyecto.
  */
-function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<void> }) {
+function PreguntaEnPantalla({ d, contenido, refrescar }: { d: SalaDetalle; contenido: ContenidoSala; refrescar: () => Promise<void> }) {
   const ronda = rondaAbierta(d.sala.estado)
   const actual = d.sala.pregunta_guiada ?? null
-  const indice = actual ? ORDEN_PREGUNTAS.findIndex((q) => mismaPregunta(q, actual)) : -1
-  const [elegida, setElegida] = useState<PreguntaGuiada>(actual ?? ORDEN_PREGUNTAS[0])
+  const orden = ordenPreguntas(contenido)
+  const indice = actual ? orden.findIndex((q) => mismaPregunta(q, actual)) : -1
+  const [elegida, setElegida] = useState<PreguntaGuiada | null>(actual)
+  const vista = elegida ?? orden[0] ?? null
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
@@ -293,26 +291,26 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
             {actual ? (
               <>
                 <p className="pista">
-                  {numeroPregunta(actual).texto} · {nombreProyecto(actual.proyecto_id)} · ronda {ronda}
+                  {numeroPregunta(actual, contenido.criterios).texto} · {nombreProyecto(contenido, actual.proyecto_id)} · ronda {ronda}
                 </p>
                 <p className="pregunta-actual__titulo">
-                  {nombreProyecto(actual.proyecto_id)} · {nombreCriterio(actual.criterio_id)}
+                  {nombreProyecto(contenido, actual.proyecto_id)} · {nombreCriterio(contenido, actual.criterio_id)}
                 </p>
-                <p>{CRITERIOS.find((c) => c.id === actual.criterio_id)?.pregunta}</p>
+                <p>{contenido.criterios.find((c) => c.id === actual.criterio_id)?.pregunta}</p>
               </>
             ) : (
               <p>Sin pregunta en pantalla: el tablero muestra la matriz y los celulares esperan. Usa Siguiente para empezar.</p>
             )}
           </div>
           <div className="acciones">
-            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || indice <= 0} onClick={() => void mostrar(ORDEN_PREGUNTAS[indice - 1])}>
+            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || indice <= 0} onClick={() => void mostrar(orden[indice - 1])}>
               Anterior
             </button>
             <button
               className="hz-boton hz-boton--secundario"
               type="button"
-              disabled={enviando || indice === ORDEN_PREGUNTAS.length - 1}
-              onClick={() => void mostrar(ORDEN_PREGUNTAS[indice + 1])}
+              disabled={enviando || orden.length === 0 || indice === orden.length - 1}
+              onClick={() => void mostrar(orden[indice + 1])}
             >
               Siguiente
             </button>
@@ -323,11 +321,12 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
           <p id="quitar-pregunta" className="pista">
             Quitar la pregunta vuelve a mostrar la matriz en el tablero. Los votos no cambian.
           </p>
+          {vista && (
           <div className="fila-form">
             <label className="campo">
               <span>Proyecto</span>
-              <select value={elegida.proyecto_id} onChange={(e) => setElegida({ ...elegida, proyecto_id: e.target.value })}>
-                {PROYECTOS_VIVOS.map((p) => (
+              <select value={vista.proyecto_id} onChange={(e) => setElegida({ ...vista, proyecto_id: e.target.value })}>
+                {contenido.proyectosVivos.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nombre}
                   </option>
@@ -336,18 +335,19 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
             </label>
             <label className="campo">
               <span>Pregunta</span>
-              <select value={elegida.criterio_id} onChange={(e) => setElegida({ ...elegida, criterio_id: e.target.value as CriterioId })}>
-                {CRITERIOS.map((c, i) => (
+              <select value={vista.criterio_id} onChange={(e) => setElegida({ ...vista, criterio_id: e.target.value as CriterioId })}>
+                {contenido.criterios.map((c, i) => (
                   <option key={c.id} value={c.id}>
                     {i + 1}. {c.nombre}
                   </option>
                 ))}
               </select>
             </label>
-            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || (actual !== null && mismaPregunta(elegida, actual))} onClick={() => void mostrar(elegida)}>
+            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || (actual !== null && mismaPregunta(vista, actual))} onClick={() => void mostrar(vista)}>
               Mostrar esta pregunta
             </button>
           </div>
+          )}
           {error && (
             <p className="alerta alerta--error" role="alert">
               {error}
@@ -727,9 +727,9 @@ function Mesas({ d }: { d: SalaDetalle }) {
 const PRIMEROS_EVENTOS = 15
 
 /** QA-A-15: bitácora legible, lo más reciente arriba, sin repeticiones; muestra 15 y deja ver el resto. */
-function Eventos({ d }: { d: SalaDetalle }) {
+function Eventos({ d, contenido }: { d: SalaDetalle; contenido: ContenidoSala }) {
   const [todos, setTodos] = useState(false)
-  const lineas = bitacora(d.eventos, { mesas: d.mesas, participantes: d.participantes })
+  const lineas = bitacora(d.eventos, { mesas: d.mesas, participantes: d.participantes, contenido })
   const visibles = todos ? lineas : lineas.slice(0, PRIMEROS_EVENTOS)
   const zona = zonaSala(d.sala.config)
   return (

@@ -1,23 +1,12 @@
-import seed from '../../data/seed_foodsume.json'
-import { nombreCorto } from '../tablero/logica'
 import type { CriterioId } from '../shared/api/contrato'
 import type { Accion, EstadoSala, Pais, ZonaHoraria } from './tipos'
+import { CONTENIDO_VACIO, nombreCriterio, nombrePerfil, nombreProyecto, numeroPregunta, type ContenidoSala } from './contenido'
 
 /**
  * Largo mínimo de una clave de administrador. Es el que exige el servidor (LARGO_MINIMO_CLAVE en
  * server/dominio/admins.ts); el panel no importa el servidor, así que una prueba verifica que coincidan.
  */
 export const LARGO_MINIMO_CLAVE = 8
-
-export const PERFILES: { id: string; nombre: string }[] = seed.perfiles
-
-/** Los 6 criterios de la plantilla, en el orden del motor (el mismo de la hoja de votación). */
-export const CRITERIOS = seed.motor.criterios.map((c) => ({ id: c.id as CriterioId, nombre: c.nombre, corto: nombreCorto(c.id, c.nombre), pregunta: c.pregunta }))
-
-/** Los proyectos vivos que califica la sala (INSUMEX y NUTRIWHAT), en el orden de la plantilla. */
-export const PROYECTOS_VIVOS = seed.plantilla.proyectos.filter((p) => p.modo === 'vivo').map((p) => ({ id: p.id, nombre: p.nombre }))
-
-export const nombreProyecto = (id: string) => seed.plantilla.proyectos.find((p) => p.id === id)?.nombre ?? id
 
 /** País de la sala (acta del 16-oct, C4) con su zona horaria por defecto. */
 export const PAISES: Record<Pais, { nombre: string; zona: ZonaHoraria }> = {
@@ -49,8 +38,6 @@ export function horaLocalAIso(valor: string, zona: ZonaHoraria = 'America/Bogota
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(valor)) return null
   return `${valor}:00-${String(-ZONAS[zona].horas).padStart(2, '0')}:00`
 }
-
-export const nombrePerfil = (id: string) => PERFILES.find((p) => p.id === id)?.nombre ?? id
 
 export const ESTADOS: Record<EstadoSala, string> = {
   preparada: 'Preparada',
@@ -337,6 +324,8 @@ const enumerar = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0
 export interface ContextoEvento {
   mesas?: { id: string; nombre: string }[]
   participantes?: { id: string; nombre: string }[]
+  /** Criterios, proyectos vivos y perfiles de la sala (contenido.ts). */
+  contenido?: ContenidoSala
 }
 
 /**
@@ -348,6 +337,7 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
   const mesa = (id: unknown) => ctx.mesas?.find((m) => m.id === id)?.nombre
   const persona = (id: unknown) => ctx.participantes?.find((p) => p.id === id)?.nombre
   const ronda = typeof d.ronda === 'number' ? d.ronda : null
+  const c = ctx.contenido ?? CONTENIDO_VACIO
   const por = ev.por === 'sistema' || ev.por === 'participante' ? '' : ev.por === 'programado' ? ' · a la hora programada' : ` · ${ev.por.replace(/^admin:/, '')}`
   let t = TEXTO_EVENTO[ev.tipo] ?? `${ev.tipo.charAt(0).toUpperCase()}${ev.tipo.slice(1).replace(/_/g, ' ')}`
 
@@ -382,7 +372,7 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
       const quien = persona(d.participante_id ?? d.id) ?? 'Un participante'
       const cambios: string[] = []
       if (d.mesa_id !== undefined) cambios.push(`pasó a ${mesa(d.mesa_id) ?? 'otra mesa'}`)
-      if (typeof d.perfil_id === 'string') cambios.push(`ahora tiene el perfil ${nombrePerfil(d.perfil_id)}`)
+      if (typeof d.perfil_id === 'string') cambios.push(`ahora tiene el perfil ${nombrePerfil(c, d.perfil_id)}`)
       if (d.activo === false) cambios.push('quedó inactivo')
       if (d.activo === true) cambios.push('volvió a estar activo')
       t = cambios.length ? `${quien} ${enumerar(cambios)}` : `${quien}: datos editados`
@@ -391,14 +381,14 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
     case 'pregunta_guiada':
       t =
         typeof d.proyecto_id === 'string' && typeof d.criterio_id === 'string'
-          ? `Pregunta en pantalla: ${nombreProyecto(d.proyecto_id)} · ${numeroPregunta({ proyecto_id: d.proyecto_id, criterio_id: d.criterio_id as CriterioId }).texto}`
+          ? `Pregunta en pantalla: ${nombreProyecto(c, d.proyecto_id)} · ${numeroPregunta({ criterio_id: d.criterio_id as CriterioId }, c.criterios).texto}`
           : 'Pregunta quitada: vuelve la matriz'
       break
     case 'mesas_agregadas':
       if (typeof d.cantidad === 'number') t = d.cantidad === 1 ? 'Se agregó 1 mesa' : `Se agregaron ${d.cantidad} mesas`
       break
     case 'rubrica_editada':
-      if (typeof d.criterio_id === 'string') t = `Rúbrica editada: ${CRITERIOS.find((c) => c.id === d.criterio_id)?.nombre ?? d.criterio_id}`
+      if (typeof d.criterio_id === 'string') t = `Rúbrica editada: ${nombreCriterio(c, d.criterio_id)}`
       break
     case 'acceso_reemitido': {
       const quien = persona(d.participante_id)
@@ -446,15 +436,6 @@ export function bitacora(eventos: { at: string; tipo: string; detalle?: Record<s
   }
   return lineas
 }
-
-/** QA-A-08: número de la pregunta dentro de su proyecto, como el tablero: «Pregunta 3 de 6». */
-export function numeroPregunta(p: { proyecto_id: string; criterio_id: CriterioId }): { n: number; de: number; texto: string } {
-  const n = CRITERIOS.findIndex((c) => c.id === p.criterio_id) + 1
-  return { n, de: CRITERIOS.length, texto: `Pregunta ${n} de ${CRITERIOS.length}` }
-}
-
-/** Orden de las preguntas en modo guiado (C19-5): los proyectos vivos y, en cada uno, los 6 criterios. */
-export const ORDEN_PREGUNTAS = PROYECTOS_VIVOS.flatMap((p) => CRITERIOS.map((c) => ({ proyecto_id: p.id, criterio_id: c.id })))
 
 /** Aperturas y cierres programados de la sala (C19-4), en el orden del taller, para Sala en vivo. */
 export function programaciones(c: Partial<Record<CampoProgramado, string | null>>): { texto: string; at: string }[] {

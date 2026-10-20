@@ -13,7 +13,8 @@ import { recordarSala, salaRecordada, olvidarSala } from './memoria'
 import { useSala } from './useSala'
 import { moverProgramacion } from './paginas/Configuracion'
 import { semaforo } from './paginas/Salud'
-import { conPunto, confirmacionCierreRonda, nombreEnsayo, numeroPregunta, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE } from './textos'
+import { conPunto, confirmacionCierreRonda, nombreEnsayo, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE } from './textos'
+import { numeroPregunta } from './contenido'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
 
 function montar(ruta: string) {

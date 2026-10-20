@@ -31,6 +31,10 @@ export type ZonaHoraria = 'America/Bogota' | 'America/Lima' | 'America/Guatemala
 // Config, programación (C19-4), modo de preguntas (C19-5) y respuestas por persona (C19-3): tipos del contrato.
 export type { Config as ConfigSala, ModoPreguntas, PreguntaGuiada, RespuestaPersona } from '../shared/api/contrato'
 
+/** QA por roles del 20-oct (migración 8): una sala es un taller con cliente o un ensayo; los ensayos no cuentan en las métricas. */
+export type TipoSala = 'taller' | 'ensayo'
+export type Sector = 'alimentos' | 'energia' | 'financiero' | 'comercio' | 'salud' | 'manufactura' | 'otro'
+
 export interface SalaResumen {
   id: string
   codigo: string
@@ -39,6 +43,32 @@ export interface SalaResumen {
   ronda_actual?: number
   creada_at: string
   mesas?: number
+  /** Personas activas inscritas (lista de salas). */
+  inscritos?: number
+  /** Sin el campo (servidor anterior a la migración 8), la sala se trata como taller. */
+  tipo?: TipoSala
+  empresa?: string | null
+  sector?: Sector | null
+}
+
+/** GET /api/admin/metricas: solo salas `tipo = 'taller'`. */
+export interface Metricas {
+  talleres: number
+  personas: number
+  /** Personas con los 2 vivos votados en la ronda 2. */
+  completaron_r2: number
+  /** Códigos de país (CO, PE, GT). */
+  paises: string[]
+}
+
+/** «Resumen del taller» del detalle de la sala (de los eventos). Minutos de la apertura al cierre; null si no se cerró. */
+export interface ResumenTaller {
+  minutos_r1: number | null
+  minutos_r2: number | null
+  inscritos: number
+  completaron_r1: number
+  completaron_r2: number
+  accesos_nuevos: number
 }
 
 export interface Mesa {
@@ -84,6 +114,12 @@ export interface SalaDetalle {
   admin_actual: AdminYo
   servidor_at?: DetalleContrato['servidor_at']
   base_url?: DetalleContrato['base_url']
+  /** Perfiles del catálogo de la sala (el servidor ya los manda). */
+  perfiles?: { id: string; nombre: string }[]
+  /** Opcionales: si el servidor no los manda, el panel los toma de las rúbricas y las hojas de la sala (contenido.ts). */
+  criterios?: { id: string; nombre: string; pregunta?: string }[]
+  proyectos_vivos?: { id: string; nombre: string }[]
+  resumen?: ResumenTaller
 }
 
 /** GET /api/admin/salas/{id}/rubricas y respuesta del PUT de un criterio. */
