@@ -5,7 +5,8 @@
 // Marca Estratek: también el login, Salud y Administradores, y que el foco con teclado se vea en la barra y en el contenido.
 // QA del 20-oct: un solo botón principal (el paso que sigue), confirmaciones con el foco en Cancelar, Montserrat en los
 // botones, áreas táctiles de 48 px, «Dar acceso de nuevo» (D1), menú plegable en el celular y, a 360, 768, 1280, 1440 y
-// 1920 px, que la barra superior, el contenido y el pie compartan exactamente los mismos bordes.
+// 1920 px, que la barra superior, el contenido y el pie compartan exactamente los mismos bordes, y cada sección sin
+// desborde también a 768 y 1280 px.
 // Uso: PWCORE=<ruta a playwright-core> [CHROME=<ejecutable>] node QA-tests/recorrido_admin.cjs <url> <usuario> <clave> <carpeta-capturas>
 const { chromium } = require(process.env.PWCORE)
 const BASE = process.argv[2] || 'http://localhost:3999'
@@ -107,6 +108,7 @@ async function irA(p, seccion) {
 ;(async () => {
   const b = await chromium.launch({ args: ['--disable-gpu'], executablePath: process.env.CHROME })
   const errores = []
+  let ultimaSala = null
   for (const [ancho, alto] of [[360, 780], [1920, 1080]]) {
     const ctx = await b.newContext({ viewport: { width: ancho, height: alto } })
     const p = await ctx.newPage()
@@ -123,6 +125,7 @@ async function irA(p, seccion) {
     await p.getByRole('button', { name: 'Crear sala' }).click()
     await p.getByRole('heading', { name: 'Sala en vivo' }).waitFor()
     const salaId = p.url().match(/salas\/([^/]+)\/vivo/)[1]
+    ultimaSala = salaId
     const estado = (t) => p.locator('.estado', { hasText: t }).first().waitFor({ timeout: 10000 })
     /** QA-A-01: lo que se pulsa es siempre el único botón principal. Si pide confirmación, el foco debe estar en Cancelar (QA-A-02). */
     const pulsar = async (n, t, confirmar) => {
@@ -231,6 +234,19 @@ async function irA(p, seccion) {
       if (ancho >= 1440 && ref.der - ref.izq > 1280) errores.push(`${ancho}: ${nombre}: el contenido mide ${ref.der - ref.izq} px, más que el ancho de página`)
       console.log(`${ancho}px ${nombre}: ${partes.map(([k, v]) => `${k} ${v.izq}-${v.der}`).join(' · ')}`)
       await p.screenshot({ path: `${OUT}/bordes-${nombre}-${ancho}.png` })
+    }
+    // 768 y 1280 px (regla del 20-oct): cada sección sin desborde, con contraste, fuente y 48 px.
+    if ((ancho === 768 || ancho === 1280) && ultimaSala) {
+      for (const s of SECCIONES) {
+        await p.goto(`${BASE}/admin/salas/${ultimaSala}/${s}`)
+        await p.getByRole('heading', { level: 1 }).waitFor()
+        await revisar(p, s, ancho, errores)
+      }
+      for (const s of ['salud', 'administradores']) {
+        await p.goto(`${BASE}/admin/${s}`)
+        await p.getByRole('heading', { level: 1 }).waitFor()
+        await revisar(p, s, ancho, errores)
+      }
     }
     await ctx.close()
   }

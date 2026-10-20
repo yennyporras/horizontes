@@ -123,8 +123,8 @@
    el contenido y el pie, así los tres comparten bordes. Aquí solo el aire vertical. */
 .hz-admin .marco { min-height: 100vh; display: flex; flex-direction: column; }
 .hz-admin .contenido { flex: 1; padding-block: var(--hz-sp-6) var(--hz-sp-12); }
-.hz-admin .pie { padding-block: var(--hz-sp-4) var(--hz-sp-6); border-top: 1px solid var(--hz-borde); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
-.hz-admin .pie p { margin: 0; }
+.hz-admin .pie { padding-block: 0 var(--hz-sp-6); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin .pie p { margin: 0; padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-borde); }
 .hz-admin .pie__flecha { color: var(--hz-accion); font-weight: var(--hz-fw-display); }
 .hz-admin .contenido > * { min-width: 0; }
 
@@ -536,3 +536,9 @@
 /* Las franjas de aviso van de borde a borde y su texto arranca en el borde del contenido. */
 .hz-admin .aviso-mock,
 .hz-admin .aviso-dominio { padding-inline: max(var(--hz-margen-pagina), calc((100% - var(--hz-ancho-pagina)) / 2 + var(--hz-margen-pagina))); }
+
+/* Pulcritud (20-oct): los nombres de las filas no se parten en dos líneas en escritorio; las URL de las tarjetas de QR en 14 px. */
+@media (min-width: 641px) {
+  .hz-admin .tabla-tarjetas tbody th { min-width: 12ch; }
+}
+.hz-admin .qr-tarjeta .url { font-size: var(--hz-fs-14); }
