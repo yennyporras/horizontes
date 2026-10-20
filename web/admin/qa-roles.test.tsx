@@ -93,3 +93,98 @@ describe('el panel sin la semilla (fuga de datos del caso)', () => {
     expect([...perfil.options].map((o) => o.textContent)).toContain('Estratégica')
   })
 })
+
+describe('Salas: cifras de los talleres, tipo de sala, empresa y sector (inversionista)', () => {
+  const cifras = () =>
+    Object.fromEntries(
+      within(screen.getByRole('region', { name: 'Cifras de los talleres' }))
+        .getAllByRole('listitem')
+        .map((li) => [li.querySelector('.kpi__rotulo')!.textContent, li.querySelector('.cifra')!.textContent]),
+    )
+
+  it('la franja muestra talleres, personas, completaron la ronda 2 y países, sin contar los ensayos', async () => {
+    await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+    await responderMock('POST', '/api/admin/salas', { nombre: 'Ensayo de Paola', mesas: 1, tipo: 'ensayo' })
+    await responderMock('POST', '/api/admin/salas', { nombre: 'Taller Perú', mesas: 1 })
+    const sala = ((await responderMock('GET', '/api/admin/salas')).body as { id: string; nombre: string }[]).find((s) => s.nombre === 'Taller Perú')!
+    await responderMock('PATCH', `/api/admin/salas/${sala.id}/config`, { pais: 'PE', zona_horaria: 'America/Lima' })
+    await responderMock('POST', '/api/admin/logout')
+    montar('/admin/login')
+    await entrar()
+    await screen.findByRole('region', { name: 'Cifras de los talleres' })
+    expect(cifras()).toEqual({ Talleres: '2', Personas: '12', 'Completaron la ronda 2': '0', Países: '2' })
+    expect(screen.getByText('Colombia y Perú')).toBeTruthy()
+    expect(screen.getByText('Solo talleres con cliente: los ensayos y las demostraciones no cuentan.')).toBeTruthy()
+  })
+
+  it('cada sala dice cuántas personas tiene y los ensayos llevan su insignia', async () => {
+    montar('/admin/login')
+    await entrar()
+    const tarjeta = (nombre: RegExp) => screen.getByRole('heading', { level: 2, name: nombre }).closest('li') as HTMLElement
+    const demo = tarjeta(/^Taller Horizontes demo$/)
+    expect(within(demo).getByText(/· 12 personas ·/)).toBeTruthy()
+    expect(within(demo).queryByText('Ensayo')).toBeNull()
+    expect(within(demo).getByText('Empresa ABC · Alimentos')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicar Taller Horizontes demo para ensayo' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    fireEvent.click(nav().getByRole('link', { name: 'Salas' }))
+    await screen.findByRole('heading', { level: 2, name: /^Taller Horizontes demo \(ensayo\)/ })
+    const copia = tarjeta(/^Taller Horizontes demo \(ensayo\)/)
+    expect(within(copia).getByText('Ensayo').className).toContain('etiqueta--ensayo')
+    expect(within(copia).getByText(/· 0 personas ·/)).toBeTruthy()
+  })
+
+  it('Nueva sala: placeholder sin marcas, tipo, empresa cliente y sector opcionales que llegan al servidor', async () => {
+    montar('/admin/login')
+    await entrar()
+    const nombre = screen.getByLabelText('Nombre del taller') as HTMLInputElement
+    expect(nombre.placeholder).toBe('Ej.: Taller Horizontes, Empresa ABC')
+    expect([...(screen.getByLabelText('Tipo') as HTMLSelectElement).options].map((o) => o.textContent)).toEqual(['Taller con cliente', 'Ensayo'])
+    expect([...(screen.getByLabelText('Sector (opcional)') as HTMLSelectElement).options].map((o) => o.value)).toEqual([
+      '',
+      'alimentos',
+      'energia',
+      'financiero',
+      'comercio',
+      'salud',
+      'manufactura',
+      'otro',
+    ])
+    fireEvent.change(nombre, { target: { value: 'Taller de prueba' } })
+    fireEvent.change(screen.getByLabelText('Tipo'), { target: { value: 'ensayo' } })
+    fireEvent.change(screen.getByLabelText('Empresa cliente (opcional)'), { target: { value: '  Compañía XYZ ' } })
+    fireEvent.change(screen.getByLabelText('Sector (opcional)'), { target: { value: 'energia' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Crear sala' }))
+    await screen.findByRole('heading', { name: 'Sala en vivo' })
+    const nueva = ((await responderMock('GET', '/api/admin/salas')).body as { nombre: string; tipo: string; empresa: string; sector: string }[]).find((s) => s.nombre === 'Taller de prueba')!
+    expect([nueva.tipo, nueva.empresa, nueva.sector]).toEqual(['ensayo', 'Compañía XYZ', 'energia'])
+  })
+
+  it('Configuración cambia el tipo, la empresa y el sector, con el aviso junto a los campos', async () => {
+    await abrirDemo()
+    fireEvent.click(nav().getByRole('link', { name: 'Configuración' }))
+    const seccion = await screen.findByRole('region', { name: 'Tipo y cliente' })
+    const tipo = within(seccion).getByLabelText('Tipo') as HTMLSelectElement
+    expect(tipo.value).toBe('taller')
+    fireEvent.change(tipo, { target: { value: 'ensayo' } })
+    expect((await within(seccion).findByRole('status')).textContent).toBe('La sala quedó como ensayo: no cuenta en las cifras de Salas.')
+    fireEvent.change(within(seccion).getByLabelText('Sector (opcional)'), { target: { value: 'salud' } })
+    await within(seccion).findByText('El sector quedó como Salud.')
+    const empresa = within(seccion).getByLabelText('Empresa cliente (opcional)') as HTMLInputElement
+    expect(empresa.value).toBe('Empresa ABC')
+    expect(empresa.getAttribute('maxlength')).toBe('80')
+    expect((within(seccion).getByRole('button', { name: 'Guardar empresa' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(empresa, { target: { value: 'Otra Empresa' } })
+    fireEvent.click(within(seccion).getByRole('button', { name: 'Guardar empresa' }))
+    await within(seccion).findByText('La empresa cliente quedó como «Otra Empresa».')
+    const lista = (await responderMock('GET', '/api/admin/salas')).body as { id: string; tipo: string; empresa: string; sector: string }[]
+    expect(lista.find((s) => s.id === 's_demo')).toMatchObject({ tipo: 'ensayo', empresa: 'Otra Empresa', sector: 'salud' })
+  })
+
+  it('el simulador rechaza como el servidor una empresa de más de 80 caracteres o un sector fuera de la lista', async () => {
+    await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+    expect((await responderMock('PATCH', '/api/admin/salas/s_demo/config', { empresa: 'x'.repeat(81) })).status).toBe(422)
+    expect((await responderMock('PATCH', '/api/admin/salas/s_demo/config', { sector: 'mineria' })).status).toBe(422)
+    expect((await responderMock('POST', '/api/admin/salas', { nombre: 'X', mesas: 1, tipo: 'otro' })).status).toBe(422)
+  })
+})

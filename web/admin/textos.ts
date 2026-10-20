@@ -1,5 +1,5 @@
 import type { CriterioId } from '../shared/api/contrato'
-import type { Accion, EstadoSala, Pais, ZonaHoraria } from './tipos'
+import type { Accion, EstadoSala, Pais, Sector, TipoSala, ZonaHoraria } from './tipos'
 import { CONTENIDO_VACIO, nombreCriterio, nombrePerfil, nombreProyecto, numeroPregunta, type ContenidoSala } from './contenido'
 
 /**
@@ -14,6 +14,29 @@ export const PAISES: Record<Pais, { nombre: string; zona: ZonaHoraria }> = {
   PE: { nombre: 'Perú', zona: 'America/Lima' },
   GT: { nombre: 'Guatemala', zona: 'America/Guatemala' },
 }
+
+/** QA por roles del 20-oct (inversionista): los ensayos no cuentan en las métricas del negocio. */
+export const TIPOS_SALA: Record<TipoSala, string> = {
+  taller: 'Taller con cliente',
+  ensayo: 'Ensayo',
+}
+
+/** Sectores de la empresa cliente (lista del contrato, migración 8). */
+export const SECTORES: Record<Sector, string> = {
+  alimentos: 'Alimentos',
+  energia: 'Energía',
+  financiero: 'Financiero',
+  comercio: 'Comercio',
+  salud: 'Salud',
+  manufactura: 'Manufactura',
+  otro: 'Otro',
+}
+
+/** Largo máximo del nombre de la empresa cliente (el que valida el servidor). */
+export const LARGO_MAXIMO_EMPRESA = 80
+
+/** Nombre del país por su código; si no es uno de los tres, el código. */
+export const nombrePais = (codigo: string) => PAISES[codigo as Pais]?.nombre ?? codigo
 
 // Ninguna de las tres zonas tiene horario de verano: el desfase es fijo.
 export const ZONAS: Record<ZonaHoraria, { nombre: string; horas: number }> = {
@@ -315,10 +338,13 @@ const CAMPO_CONFIG: Record<string, string> = {
   apertura_programada_r2_at: 'apertura programada de la ronda 2',
   cierre_programado_r2_at: 'cierre programado de la ronda 2',
   cierre_programado_ronda_at: 'cierre programado de la ronda',
+  tipo: 'tipo de sala',
+  empresa: 'empresa cliente',
+  sector: 'sector',
 }
 
 /** «a, b y c». */
-const enumerar = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`)
+export const enumerar = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`)
 
 /** Lo que la bitácora necesita de la sala para decir nombres en vez de identificadores. */
 export interface ContextoEvento {

@@ -3,7 +3,7 @@
 import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
-import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Participante, RubricasSala, SalaDetalle, SalaResumen } from '../tipos'
+import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Metricas, Participante, RubricasSala, SalaDetalle, SalaResumen, Sector, TipoSala } from '../tipos'
 import { ACCIONES_POR_ESTADO, LARGO_MINIMO_CLAVE, rondaAbierta } from '../textos'
 import type { Respuesta } from '../api'
 import type { CriterioId } from '../../shared/api/contrato'
@@ -111,6 +111,7 @@ function derivar(s: SalaDetalle) {
 function inicial(): Estado {
   const base = structuredClone(detalleBase) as SalaDetalle
   base.sala.config = { ...CONFIG_19OCT, ...base.sala.config }
+  base.sala = { ...base.sala, tipo: 'taller', empresa: 'Empresa ABC', sector: 'alimentos' }
   base.mesas = [1, 2, 3].map((i) => mesa(base.sala.codigo, i))
   base.participantes = NOMBRES.map(
     (nombre, i): Participante => ({
@@ -165,8 +166,42 @@ function filaPublica(a: AdminInterno): AdminFila {
 }
 
 function resumen(s: SalaDetalle): SalaResumen {
-  const { config: _config, url_tablero: _u, ...resto } = s.sala
-  return { ...resto, mesas: s.mesas.length }
+  const { config: _config, url_tablero: _u, pregunta_guiada: _p, ...resto } = s.sala
+  return { ...resto, mesas: s.mesas.length, inscritos: s.participantes.filter((p) => p.activo).length }
+}
+
+const TIPOS: TipoSala[] = ['taller', 'ensayo']
+const SECTORES_VALIDOS: Sector[] = ['alimentos', 'energia', 'financiero', 'comercio', 'salud', 'manufactura', 'otro']
+
+/** Como el servidor (migración 8): tipo, empresa (hasta 80 caracteres) y sector de la lista, todos opcionales. */
+function datosCliente(b: Record<string, unknown>): { cambio: Partial<Pick<SalaResumen, 'tipo' | 'empresa' | 'sector'>> } | { error: Respuesta } {
+  const cambio: Partial<Pick<SalaResumen, 'tipo' | 'empresa' | 'sector'>> = {}
+  if (b.tipo !== undefined) {
+    if (!TIPOS.includes(b.tipo as TipoSala)) return { error: error(422, 'DATOS_INVALIDOS', 'El tipo de sala debe ser taller o ensayo.') }
+    cambio.tipo = b.tipo as TipoSala
+  }
+  if (b.empresa !== undefined) {
+    const e = b.empresa === null ? '' : String(b.empresa).trim()
+    if (e.length > 80) return { error: error(422, 'DATOS_INVALIDOS', 'El nombre de la empresa admite hasta 80 caracteres.') }
+    cambio.empresa = e || null
+  }
+  if (b.sector !== undefined) {
+    if (b.sector !== null && !SECTORES_VALIDOS.includes(b.sector as Sector)) return { error: error(422, 'DATOS_INVALIDOS', 'Ese sector no está en la lista.') }
+    cambio.sector = (b.sector as Sector | null) ?? null
+  }
+  return { cambio }
+}
+
+/** GET /api/admin/metricas: solo talleres con cliente; completaron la ronda 2 quienes votaron los 2 vivos en R2. */
+function metricas(): Metricas {
+  const talleres = estado.salas.filter((s) => (s.sala.tipo ?? 'taller') === 'taller')
+  const activos = talleres.flatMap((s) => s.participantes.filter((p) => p.activo).map((p) => ({ p, s })))
+  return {
+    talleres: talleres.length,
+    personas: activos.length,
+    completaron_r2: activos.filter(({ p, s }) => (s.sala.ronda_actual ?? 0) === 2 && p.completo_ronda).length,
+    paises: [...new Set(talleres.map((s) => s.sala.config.pais ?? 'CO'))],
+  }
 }
 
 function tocar(s: SalaDetalle, tipo: string, por: string, detalle: Record<string, unknown> = {}) {
@@ -196,6 +231,8 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
   const nombre = String(b.nombre ?? '').trim()
   const n = Number(b.mesas)
   if (!nombre || !(n >= 1 && n <= 20)) return error(422, 'DATOS_INVALIDOS', 'Escribe un nombre y entre 1 y 20 mesas.')
+  const cliente = datosCliente(b)
+  if ('error' in cliente) return cliente.error
   const codigo = Math.random().toString(36).slice(2, 7).toUpperCase()
   const nueva = structuredClone(estado.salas[0])
   nueva.sala = {
@@ -206,6 +243,10 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
     estado: 'preparada',
     ronda_actual: 0,
     creada_at: new Date().toISOString(),
+    tipo: 'taller',
+    empresa: null,
+    sector: null,
+    ...cliente.cambio,
     // Acta del 16-oct, C5: toda sala nueva o duplicada muestra los resultados de la sala tras votar.
     config: {
       alcance_resultados: 'sala',
@@ -412,6 +453,8 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (metodo === 'POST') return crearSala(b, por)
   }
 
+  if (metodo === 'GET' && camino === '/api/admin/metricas') return ok(metricas())
+
   const m = /^\/api\/admin\/salas\/([^/]+)(\/.*)?$/.exec(camino)
   if (m) {
     const s = salaPorId(m[1])
@@ -426,7 +469,11 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       return { status: 200, body: { ...structuredClone(s), perfiles: PERFILES, admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin }, etag: etagSala }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
-      const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
+      // Como el servidor: duplicar para ensayo crea una sala `tipo: 'ensayo'` con la misma empresa y sector.
+      const r = crearSala(
+        { nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1, tipo: 'ensayo', empresa: s.sala.empresa ?? null, sector: s.sala.sector ?? null },
+        por,
+      )
       // Como el servidor: la copia lleva las rúbricas de la original.
       if (r.status === 201) estado.rubricas[estado.salas[estado.salas.length - 1].sala.id] = structuredClone(estado.rubricas[s.sala.id] ?? rubricasIniciales())
       return r
@@ -437,9 +484,14 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (r) return rubricas(metodo, s, r[1], b, por)
     if (metodo === 'GET' && resto.startsWith('/export/')) return ok(csv(s, resto.slice('/export/'.length)))
     if (metodo === 'PATCH' && resto === '/config') {
-      const rechazo = validarConfig(s.sala.config, b)
+      // Tipo, empresa y sector (migración 8) van en la sala, no en la configuración.
+      const { tipo: _t, empresa: _e, sector: _s, ...config } = b
+      const cliente = datosCliente(b)
+      if ('error' in cliente) return cliente.error
+      const rechazo = validarConfig(s.sala.config, config)
       if (rechazo) return rechazo
-      Object.assign(s.sala.config, b)
+      Object.assign(s.sala, cliente.cambio)
+      Object.assign(s.sala.config, config)
       // Como el servidor: cambiar el modo borra la pregunta guiada.
       if ('modo_preguntas' in b) s.sala.pregunta_guiada = null
       tocar(s, 'config', por, b)
