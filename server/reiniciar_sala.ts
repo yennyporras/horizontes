@@ -28,7 +28,7 @@ try {
   if (!process.argv.includes('--confirmar')) {
     console.log('Nada cambió. Repite con --confirmar para reiniciar.')
   } else {
-    const respaldo = respaldarBd(db, config.dbPath, `${sala.id}_antes_reinicio_limpio`, Date.now(), sala.zona_horaria)
+    const respaldo = respaldarBd(db, config.dbPath, sala.id, 'antes_reinicio_limpio', Date.now(), sala.zona_horaria)
     console.log(`Respaldo: ${respaldo ?? '(BD en memoria, sin respaldo)'}`)
     const r = reiniciarSalaLimpia(db, sala.id, Date.now())
     console.log(`Listo: sala en estado ${r.sala.estado}. Borrados: ${JSON.stringify(r.borrados)}.`)
