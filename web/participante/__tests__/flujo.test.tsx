@@ -530,7 +530,7 @@ describe('estados de la sala', () => {
     expect(screen.queryByText('Preliminar')).toBeNull()
     // P3: tu calificación de INSUMEX en R1 (mis_votos) junto al promedio; en NUTRIWHAT no votaste.
     const [insumex, nutriwhat] = screen.getAllByRole('table')
-    expect(within(insumex).getByRole('rowheader', { name: 'Regulación' }).closest('tr')!.textContent).toContain('Tu calificación: Tú 7')
+    expect(within(insumex).getByRole('rowheader', { name: /^Regulación/ }).closest('tr')!.textContent).toContain('Tu calificación: Tú 7')
     expect(within(nutriwhat).queryByText(/Tu calificación/)).toBeNull()
   })
 

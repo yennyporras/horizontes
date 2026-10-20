@@ -115,6 +115,7 @@
 .hzp-tabla td, .hzp-tabla thead th + th { text-align: right; width: 3.25rem; padding-left: var(--hz-sp-2); }
 /* P3: tu calificación debajo del promedio, más chica y en otro tono para no confundirla con él. */
 .hzp-tabla__promedio, .hzp-tabla__mia { display: block; }
+.hz .hzp-tabla__desc { display: block; margin-top: 2px; font-size: var(--hz-fs-12); font-weight: var(--hz-fw-texto); line-height: 1.35; color: var(--hz-tinta-2); }
 .hz .hzp-tabla__mia { font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); white-space: nowrap; }
 
 /* Matriz del tablero dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
