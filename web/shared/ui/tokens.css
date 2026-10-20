@@ -90,6 +90,10 @@
   --hz-ls-titulo: -0.01em;
   --hz-ls-display: -0.02em;
   --hz-medida: 34rem;
+  /* Ancho de página estándar de la familia Estratek (§5, 20-oct): el del panel. Encabezado, contenido y pie
+     comparten los mismos bordes; el margen lateral crece con la pantalla (16, 24 y 32 px). */
+  --hz-ancho-pagina: 1280px;
+  --hz-margen-pagina: 1rem;
 
   /* Espaciado (§5): retícula de 8 con medio paso de 4. 20 y 96 se conservan. */
   --hz-sp-1: 0.25rem;
@@ -218,3 +222,7 @@
   /* Foco (§5): contorno de 2 px separado 2 px. Este anillo en sombra es para quien lo necesite como box-shadow. */
   --hz-foco: 0 0 0 2px var(--hz-fondo), 0 0 0 4px var(--hz-foco-color);
 }
+
+/* Margen lateral de la página estándar: 16 px en celular, 24 px en tableta y 32 px en escritorio ancho. */
+@media (min-width: 48rem) { :root { --hz-margen-pagina: 1.5rem; } }
+@media (min-width: 80rem) { :root { --hz-margen-pagina: 2rem; } }
