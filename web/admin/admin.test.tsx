@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
+import { CLAVE_RECORRIDO } from './componentes/Recorrido'
 import {
   ACCIONES_POR_ESTADO,
   ORDEN_PREGUNTAS,
@@ -43,6 +44,8 @@ beforeEach(() => {
   reiniciarMock({ simularVotos: false })
   // Cada prueba empieza como un navegador que nunca abrió una sala.
   localStorage.removeItem('hz_admin_sala')
+  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
+  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
   usarTransporte(responderMock)
 })
 afterEach(cleanup)

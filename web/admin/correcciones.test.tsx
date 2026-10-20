@@ -14,6 +14,7 @@ import { useSala } from './useSala'
 import { moverProgramacion } from './paginas/Configuracion'
 import { semaforo } from './paginas/Salud'
 import { conPunto, confirmacionCierreRonda, nombreEnsayo, numeroPregunta, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE } from './textos'
+import { CLAVE_RECORRIDO } from './componentes/Recorrido'
 
 function montar(ruta: string) {
   return render(
@@ -66,6 +67,8 @@ function espiar(interceptar?: (metodo: string, ruta: string) => ReturnType<Trans
 beforeEach(() => {
   reiniciarMock({ simularVotos: false })
   localStorage.removeItem('hz_admin_sala')
+  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
+  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
   usarTransporte(responderMock)
   document.title = ''
 })
