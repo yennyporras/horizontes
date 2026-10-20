@@ -71,6 +71,7 @@ export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
     const ids = 'SELECT id FROM participantes WHERE sala_id = ?'
     const borrados = {
       votos: Number(ejecutar(db, 'DELETE FROM votos WHERE sala_id = ?', sala.id).changes),
+      fotos: Number(ejecutar(db, 'DELETE FROM fotos_agregado WHERE sala_id = ?', sala.id).changes),
       consentimientos: Number(ejecutar(db, `DELETE FROM consentimientos WHERE participante_id IN (${ids})`, sala.id).changes),
       accesos: Number(ejecutar(db, 'DELETE FROM accesos_participante WHERE sala_id = ?', sala.id).changes),
       participantes: Number(ejecutar(db, 'DELETE FROM participantes WHERE sala_id = ?', sala.id).changes),

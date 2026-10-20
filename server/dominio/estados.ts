@@ -3,8 +3,9 @@
 import { type Db, ejecutar, todos, transaccion } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { CRITERIOS } from '../../shared/motor/motor.js'
-import { preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
-import { type EstadoSala, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
+import { borrarFotos, fijarFotosExactas } from './fotos.js'
+import { contenido, preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
+import { type EstadoSala, type SalaFila, cargarSala, mesasDeSala, registrarEvento, tocar } from './salas.js'
 import { DESFASES, PAISES, type ZonaHoraria, ZONA_POR_PAIS, isoEnZona, isoUtc } from './util.js'
 
 export const ACCIONES = [
@@ -98,6 +99,7 @@ export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: num
         throw new ErrorApi(409, 'TRANSICION_INVALIDA', 'No hay votos de esa ronda para reiniciar en el estado actual de la sala.')
       }
       const borrados = ejecutar(db, 'DELETE FROM votos WHERE sala_id = ? AND ronda = ?', s.id, ronda).changes
+      borrarFotos(db, s.id, ronda)
       registrarEvento(db, s.id, ahora, 'reinicio', por, { ronda, votos_borrados: Number(borrados) })
       tocar(db, s.id)
       return cargarSala(db, s.id)
@@ -107,6 +109,19 @@ export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: num
       throw new ErrorApi(409, 'TRANSICION_INVALIDA', `No se puede ${accion.replace(/_/g, ' ')}: la sala está ${NOMBRE_ESTADO[s.estado]}.`)
     }
     const hacia = typeof t.hacia === 'function' ? t.hacia(s) : t.hacia
+    // D2: al reabrir una ronda, la foto de partida es el resultado exacto que se mostró con la ronda cerrada; si no,
+    // la primera foto nueva podría diferir del exacto en un solo voto.
+    if (accion === 'reabrir_ronda') {
+      fijarFotosExactas(
+        db,
+        s.id,
+        s.ronda_actual,
+        s.version,
+        contenido(db, s.id).pesos,
+        vivos(db, s.id).map((p) => p.id),
+        mesasDeSala(db, s.id).map((m) => m.id),
+      )
+    }
     const sets: string[] = ['estado = ?']
     const params: unknown[] = [hacia]
     if (t.ronda) {

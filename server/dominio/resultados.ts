@@ -1,5 +1,6 @@
 import { type Db, todos } from '../db/index.js'
-import { CRITERIOS, type Entradas, type Pesos, agregar, calcularPunto } from '../../shared/motor/motor.js'
+import { type Entradas, type Pesos, calcularPunto } from '../../shared/motor/motor.js'
+import { VOTOS_POR_ACTUALIZACION, agregadoPublicado, votosDelAlcance } from './fotos.js'
 import type { CriterioSemilla } from './semilla.js'
 import { type MesaFila, type SalaFila, mesasDeSala } from './salas.js'
 import { isoEnZona } from './util.js'
@@ -146,50 +147,37 @@ export type Alcance = { tipo: 'sala' } | { tipo: 'mesa'; mesa: MesaFila }
  */
 export const MINIMO_VOTOS = 3
 
-function votosPorProyecto(db: Db, salaId: string, ronda: number, mesaId?: string): Map<string, Entradas[]> {
-  const columnas = CRITERIOS.map((c) => `v.${c}`).join(', ')
-  const filtroMesa = mesaId ? 'AND p.mesa_id = ?' : ''
-  const params: unknown[] = mesaId ? [salaId, ronda, mesaId] : [salaId, ronda]
-  const filas = todos<Entradas & { proyecto_id: string }>(
-    db,
-    `SELECT v.proyecto_id, ${columnas}
-       FROM votos v JOIN participantes p ON p.id = v.participante_id
-      WHERE v.sala_id = ? AND v.ronda = ? AND p.activo = 1 ${filtroMesa}`,
-    ...params,
-  )
-  const m = new Map<string, Entradas[]>()
-  for (const f of filas) {
-    const { proyecto_id, ...e } = f
-    if (!m.has(proyecto_id)) m.set(proyecto_id, [])
-    m.get(proyecto_id)!.push(e as Entradas)
-  }
-  return m
-}
-
 export interface OpcionesTablero {
   alcance: Alcance
   /** Rondas a incluir en proyectos_vivos[].rondas (las demás no se envían). */
   rondas: number[]
   preliminar: boolean
+  /** `progreso.por_mesa`: solo en el tablero; las vistas del participante no lo llevan (D2). Por defecto true. */
+  porMesa?: boolean
   sufijoVersion?: string
 }
 
-// Caché de tableros por (sala, version, alcance, rondas, preliminar): con 40 celulares y el proyector
-// haciendo polling, la mayoría de lecturas caen entre dos escrituras. `version` sube con cada escritura.
-const cacheTablero = new WeakMap<Db, Map<string, ReturnType<typeof calcularTablero>>>()
+// Caché por sala y alcance: la vista de un alcance es la misma para el proyector y para cada celular que la consulta;
+// solo cambia `version` (la ETag lleva el sufijo de quien pregunta). Al subir la versión de la sala se descarta todo lo
+// de esa sala, así la caché no crece con los participantes ni se vacía de golpe.
+const cacheTablero = new WeakMap<Db, Map<string, { version: number; vistas: Map<string, ReturnType<typeof calcularTablero>> }>>()
 
 export function construirTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
   const alcance = op.alcance.tipo === 'mesa' ? op.alcance.mesa.id : 'sala'
-  const clave = `${sala.id}|${sala.version}|${alcance}|${op.rondas.join(',')}|${op.preliminar}|${op.sufijoVersion ?? ''}`
-  const m = mapaDe(cacheTablero, db)
-  let t = m.get(clave)
+  const clave = `${alcance}|${op.rondas.join(',')}|${op.preliminar}|${op.porMesa !== false}`
+  const porSala = mapaDe(cacheTablero, db)
+  let c = porSala.get(sala.id)
+  if (!c || c.version !== sala.version) porSala.set(sala.id, (c = { version: sala.version, vistas: new Map() }))
+  let t = c.vistas.get(clave)
   if (!t) {
-    if (m.size > 500) m.clear()
     t = calcularTablero(db, sala, op)
-    m.set(clave, t)
+    c.vistas.set(clave, t)
   }
-  return t
+  return { version: `v-${sala.version}${op.sufijoVersion ?? ''}`, ...t }
 }
+
+/** Vistas en caché de una sala (pruebas: la caché es por alcance, no por participante). */
+export const vistasEnCache = (db: Db, salaId: string) => mapaDe(cacheTablero, db).get(salaId)?.vistas.size ?? 0
 
 function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
   const c = contenido(db, sala.id)
@@ -197,17 +185,17 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
   const mesas = mesasDeSala(db, sala.id)
   const prog = progreso(db, sala, mesas)
   const mesaId = op.alcance.tipo === 'mesa' ? op.alcance.mesa.id : undefined
-  const porRonda = new Map(op.rondas.map((r) => [r, votosPorProyecto(db, sala.id, r, mesaId)]))
+  const porRonda = new Map(op.rondas.map((r) => [r, votosDelAlcance(db, sala.id, r, mesaId)]))
+  const vacia = (r: number) => ({ ronda: r, n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null })
 
   return {
-    version: `v-${sala.version}${op.sufijoVersion ?? ''}`,
     sala: { id: sala.id, nombre: sala.nombre, estado: sala.estado, ronda_actual: sala.ronda_actual, pregunta_guiada: preguntaGuiada(sala) },
     alcance:
       op.alcance.tipo === 'mesa'
         ? { tipo: 'mesa', mesa_id: op.alcance.mesa.id, mesa_nombre: op.alcance.mesa.nombre }
         : { tipo: 'sala', mesa_id: null, mesa_nombre: null },
     config: configPublica(sala),
-    progreso: { inscritos: prog.inscritos, completos: prog.completos, precierre: prog.precierre, por_mesa: prog.por_mesa },
+    progreso: { inscritos: prog.inscritos, completos: prog.completos, precierre: prog.precierre, ...(op.porMesa === false ? {} : { por_mesa: prog.por_mesa }) },
     ejes: c.ejes,
     grafico: c.grafico,
     // Pregunta y rúbrica solo en modo guiado (el tablero muestra la pregunta en grande): en automático el payload
@@ -228,17 +216,23 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
         modo: 'vivo',
         tam: p.tam,
         rondas: op.rondas.map((r) => {
-          const a = agregar(porRonda.get(r)?.get(p.id) ?? [], c.pesos)
-          if (!a) return { ronda: r, n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null }
+          // D2: con la ronda abierta, la última foto del alcance (se renueva de 3 en 3); con la ronda cerrada, el exacto.
+          const { agregado: a, n_votos } = agregadoPublicado(
+            db,
+            { salaId: sala.id, alcance: mesaId ?? 'sala', ronda: r, proyectoId: p.id, versionSala: sala.version },
+            porRonda.get(r)?.get(p.id) ?? [],
+            c.pesos,
+            rondaCerrada(sala, r),
+          )
+          if (n_votos === 0) return vacia(r)
           // SPEC §7: nunca respuestas individuales. Con pocos votos en el alcance, el promedio delata cada respuesta.
-          if (a.n_votos < MINIMO_VOTOS) {
-            return { ronda: r, n_votos: a.n_votos, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null, bajo_minimo: true }
-          }
+          if (!a || a.n_votos < MINIMO_VOTOS) return { ...vacia(r), n_votos, bajo_minimo: true }
           return { ronda: r, n_votos: a.n_votos, promedios: a.promedios, distribucion: a.distribucion, t2m: a.t2m, eje_x: a.eje_x, eje_y: a.eje_y, total: a.total }
         }),
       })),
     preliminar: op.preliminar,
     minimo_votos: MINIMO_VOTOS,
+    votos_por_actualizacion: VOTOS_POR_ACTUALIZACION,
   }
 }
 
