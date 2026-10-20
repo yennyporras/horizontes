@@ -49,7 +49,7 @@ Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado el 19-oct a
 3. **Prueba en staging (10 min).** Entra a `https://staging-horizontes.estratek.com.co/admin` con `paola`, cambia la clave, crea una sala de 2 mesas, elige el país, escanea un QR con el celular, inscríbete, vota, mira el tablero y cierra la sala.
 4. **Producción clonando staging.** En `horizontes-staging` → **Resource Operations** → *Clone* al ambiente `production` (créalo antes en el proyecto si no existe). En la copia, que se llamará `horizontes-prod`:
    - **Domains** = `https://horizontes.estratek.com.co`.
-   - **Environment Variables**: `APP_ENV` = `production`, `BASE_URL` = `https://horizontes.estratek.com.co`, `SUPERADMIN_CLAVE` distinta a la de staging, `SESSION_SECRET` distinto si existe.
+   - **Environment Variables**: `APP_ENV` = `production`, `BASE_URL` = `https://horizontes.estratek.com.co`, `SUPERADMIN_CLAVE` distinta a la de staging.
    - **Persistent Storage**: cambia el volumen a `horizontes-datos-prod` en `/data`. Nunca compartas el volumen con staging.
    - **Advanced**: apaga *Auto Deploy*.
    - **Save** y **Deploy**. Igual que en staging: *Running (healthy)* y `curl -fsS https://horizontes.estratek.com.co/api/health`.

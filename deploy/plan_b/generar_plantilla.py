@@ -21,7 +21,7 @@ if '--rubricas' in sys.argv:
         c['rubrica'] = rubricas.get(c['id'], c['rubrica'])
 SALIDA = Path(__file__).with_name('Plantilla_Horizontes_Shot_Nutresa.xlsx')
 
-AZUL = '1C4587'
+AZUL = '141414'
 CAB = PatternFill('solid', fgColor=AZUL)
 SUAVE = PatternFill('solid', fgColor='EAF2FB')
 BLANCO = Font(color='FFFFFF', bold=True, name='Montserrat')
