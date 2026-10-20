@@ -31,11 +31,19 @@ const ORDEN_PROGRAMADO: { campo: keyof ConfigSala; etapa: string; nombre: string
   { campo: 'cierre_programado_sala_at', etapa: 'sala', nombre: 'el cierre de la sala' },
 ]
 
+/**
+ * Hora del «servidor» en la zona de la sala como la escribe el servidor real (`HH:MM:SS`, con cero a la izquierda):
+ * `toLocaleTimeString` daba «3:08:24» antes de las 10 de la mañana.
+ */
+export function horaEnZona(ms: number, zona: string): string {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: zona, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(ms)
+}
+
 /** Como el servidor (S2): 422 HORA_PASADA y 422 ORDEN_INVALIDO, con sus mensajes. */
 function validarConfig(actual: ConfigSala, cambio: Record<string, unknown>): Respuesta | null {
   for (const [campo, v] of Object.entries(cambio)) {
     if (/_at$/.test(campo) && typeof v === 'string' && Date.parse(v) <= Date.now()) {
-      const hora = new Date().toLocaleTimeString('es-CO', { timeZone: actual.zona_horaria ?? 'America/Bogota', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      const hora = horaEnZona(Date.now(), actual.zona_horaria ?? 'America/Bogota')
       return error(422, 'HORA_PASADA', `Esa hora ya pasó. En el servidor son las ${hora}; elige una hora posterior.`)
     }
   }
