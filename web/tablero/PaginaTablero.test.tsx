@@ -24,6 +24,8 @@ function Ubicacion() {
 const modoEnUrl = () => new URLSearchParams(screen.getByTestId('url').textContent ?? '').get('modo')
 /** Botones de la vista (Ronda 1, Ronda 2, Comparación): el grupo tiene su nombre. */
 const vistaPulsada = () => document.querySelector('[aria-label="Vista de la matriz"] [aria-pressed="true"]')?.textContent
+/** La matriz está en pantalla completa (la del navegador o el respaldo de jsdom, que no tiene la API). */
+const enPantalla = () => document.querySelector('.hz-lienzo, .hz-mesas-lienzo')?.hasAttribute('data-pantalla') ?? false
 
 function montar(ruta: string) {
   return render(
@@ -196,7 +198,14 @@ describe('PaginaTablero', () => {
     await waitFor(() => expect(document.querySelectorAll('svg.hz-matriz').length).toBe(3))
     expect(document.querySelectorAll('svg.hz-matriz .hz-etq-fijo')).toHaveLength(0)
     expect(document.querySelectorAll('svg.hz-matriz circle.hz-fijo').length).toBe(3 * mock.proyectos_fijos.length)
-    expect(screen.getByRole('button', { name: 'Pantalla completa F' })).toBeTruthy()
+    // Pantalla completa: solo las matrices de la página, sin la leyenda ni la barra; «Salir» la cierra.
+    fireEvent.click(screen.getByRole('button', { name: 'Pantalla completa F' }))
+    await waitFor(() => expect(enPantalla()).toBe(true))
+    const cuadro = document.querySelector<HTMLElement>('.hz-mesas-lienzo')!
+    expect(cuadro.querySelectorAll('svg.hz-matriz').length).toBe(3)
+    expect(cuadro.querySelector('.hz-leyenda, .hz-cab')).toBeNull()
+    fireEvent.click(within(cuadro).getByRole('button', { name: 'Salir Esc' }))
+    await waitFor(() => expect(enPantalla()).toBe(false))
   })
 
   test('una tecla sostenida no repite el atajo (F no entra y sale de la pantalla completa sin parar)', async () => {
@@ -204,10 +213,10 @@ describe('PaginaTablero', () => {
     await screen.findByRole('heading', { name: mock.sala.nombre })
     const main = document.querySelector('main')!
     fireEvent.keyDown(window, { key: 'f' })
-    await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
+    await waitFor(() => expect(enPantalla()).toBe(true))
     fireEvent.keyDown(window, { key: 'f', repeat: true })
     fireEvent.keyDown(window, { key: 'm', repeat: true })
-    expect(main.className).toContain('hz-pantalla-completa')
+    expect(enPantalla()).toBe(true)
     expect(main.dataset.modo).toBe('grafica')
   })
 
@@ -299,27 +308,41 @@ describe('PaginaTablero', () => {
     await waitFor(() => expect(vistaPulsada()).toBe('Ronda 2'))
     fireEvent.keyDown(window, { key: '1' })
     await waitFor(() => expect(vistaPulsada()).toBe('Ronda 1'))
-    // jsdom no tiene requestFullscreen: F igual quita los controles del encabezado.
+    // jsdom no tiene requestFullscreen: F igual pone la matriz sola sobre toda la ventana (respaldo).
     const main = document.querySelector('main')!
     fireEvent.keyDown(window, { key: 'f' })
-    await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
-    expect(document.querySelector('.hz-cab-vista')!.textContent).toBe('Ronda 1')
-    expect(screen.getByRole('button', { name: 'Salir de pantalla completa F' })).toBeTruthy()
+    await waitFor(() => expect(enPantalla()).toBe(true))
+    const lienzo = document.querySelector<HTMLElement>('.hz-lienzo')!
+    expect(lienzo.className).toContain('hz-lienzo-completo')
+    // Solo la matriz: el botón «Salir» va dentro del lienzo; la barra, la leyenda y la columna quedan fuera.
+    expect(within(lienzo).getByRole('button', { name: 'Salir Esc' })).toBeTruthy()
+    for (const sel of ['.hz-cab', '.hz-leyenda', '.hz-columna', '.hz-pie-matriz']) expect(lienzo.querySelector(sel)).toBeNull()
+    expect(lienzo.querySelector('svg.hz-matriz')).toBeTruthy()
+    // Las teclas de vista siguen dentro de la pantalla completa (C repite la animación).
+    fireEvent.keyDown(window, { key: 'c' })
+    await waitFor(() => expect(vistaPulsada()).toBe('Comparación'))
+    fireEvent.keyDown(window, { key: '2' })
+    await waitFor(() => expect(vistaPulsada()).toBe('Ronda 2'))
+    expect(enPantalla()).toBe(true)
     // En pantalla completa, Esc sale (no cambia de modo).
     fireEvent.keyDown(window, { key: 'Escape' })
-    await waitFor(() => expect(main.className).not.toContain('hz-pantalla-completa'))
+    await waitFor(() => expect(enPantalla()).toBe(false))
     expect(main.dataset.modo).toBe('grafica')
-    // En Detallado, la pantalla completa lleva el panel; el botón lo dice, entra y sale.
+    // En Detallado también va solo la matriz (sin el panel); el mismo botón entra y «Salir» sale.
     fireEvent.keyDown(window, { key: 'd' })
     await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Pantalla completa con detalle F' }))
-    await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
-    expect(document.querySelector('.hz-lateral')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Salir de pantalla completa F' }))
-    await waitFor(() => expect(main.className).not.toContain('hz-pantalla-completa'))
+    fireEvent.click(screen.getByRole('button', { name: 'Pantalla completa F' }))
+    await waitFor(() => expect(enPantalla()).toBe(true))
+    expect(document.querySelector('.hz-lienzo')!.querySelector('.hz-lateral, .hz-tabla')).toBeNull()
+    // G y D no la cierran: la matriz es el mismo elemento en los dos modos.
+    fireEvent.keyDown(window, { key: 'g' })
+    await waitFor(() => expect(main.dataset.modo).toBe('grafica'))
+    expect(enPantalla()).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Salir Esc' }))
+    await waitFor(() => expect(enPantalla()).toBe(false))
   })
 
-  test('pantalla completa con la API del navegador: sobre el tablero, y sin zoom por porcentaje', async () => {
+  test('pantalla completa con la API del navegador: sobre el lienzo de la matriz, con zoom vectorial', async () => {
     const pedir = vi.fn(function (this: HTMLElement) {
       Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: this })
       document.dispatchEvent(new Event('fullscreenchange'))
@@ -335,19 +358,46 @@ describe('PaginaTablero', () => {
     try {
       montar('/tablero/s_demo?t=tok')
       await screen.findByRole('heading', { name: mock.sala.nombre })
+      const lienzo = document.querySelector<HTMLElement>('.hz-lienzo')!
+      const caja = () => document.querySelector('svg.hz-matriz')!.getAttribute('viewBox')!
+      const entera = caja()
+      // Sin pantalla completa y sin foco, la rueda no toca la matriz (la página se desplaza como siempre).
+      fireEvent.wheel(lienzo, { deltaY: -200 })
+      expect(caja()).toBe(entera)
       fireEvent.keyDown(window, { key: 'f' })
       await waitFor(() => expect(pedir).toHaveBeenCalledTimes(1))
-      expect(pedir.mock.contexts[0]).toBe(document.querySelector('main'))
-      await waitFor(() => expect(document.querySelector('main')!.className).toContain('hz-pantalla-completa'))
+      expect(pedir.mock.contexts[0]).toBe(lienzo)
+      await waitFor(() => expect(enPantalla()).toBe(true))
+      expect(lienzo.className).not.toContain('hz-lienzo-completo')
+      // Rueda: acerca (viewBox más chico, misma proporción); «Ver entera» aparece; 0 vuelve a 1×.
+      fireEvent.wheel(lienzo, { deltaY: -300 })
+      await waitFor(() => expect(caja()).not.toBe(entera))
+      const [, , w0] = entera.split(' ').map(Number)
+      const [, , w1] = caja().split(' ').map(Number)
+      expect(w1).toBeLessThan(w0)
+      expect(lienzo.dataset.zoom).toBeTruthy()
+      expect(within(lienzo).getByRole('button', { name: 'Ver entera 0' })).toBeTruthy()
+      fireEvent.keyDown(window, { key: '0' })
+      await waitFor(() => expect(caja()).toBe(entera))
+      expect(within(lienzo).queryByRole('button', { name: 'Ver entera 0' })).toBeNull()
+      // Doble clic acerca al doble; el botón «Ver entera» la deja entera.
+      fireEvent.doubleClick(lienzo)
+      await waitFor(() => expect(lienzo.dataset.zoom).toBe('2'))
+      fireEvent.click(within(lienzo).getByRole('button', { name: 'Ver entera 0' }))
+      await waitFor(() => expect(caja()).toBe(entera))
+      // Al salir, la vista normal queda como siempre (sin zoom).
+      fireEvent.wheel(lienzo, { deltaY: -300 })
+      await waitFor(() => expect(caja()).not.toBe(entera))
       fireEvent.keyDown(window, { key: 'f' })
       await waitFor(() => expect(salir).toHaveBeenCalledTimes(1))
-      await waitFor(() => expect(document.querySelector('main')!.className).not.toContain('hz-pantalla-completa'))
-      // Pedido de Paola (20-oct): sin controles de zoom ni teclas +, − y 0.
-      expect(screen.queryByRole('group', { name: 'Zoom de la matriz' })).toBeNull()
-      const svg = document.querySelector('svg.hz-matriz')!
-      const caja = svg.getAttribute('viewBox')
-      for (const key of ['+', '-', '0']) fireEvent.keyDown(window, { key })
-      expect(svg.getAttribute('viewBox')).toBe(caja)
+      await waitFor(() => expect(enPantalla()).toBe(false))
+      await waitFor(() => expect(caja()).toBe(entera))
+      // Fuera de la pantalla completa, con el foco en la matriz, la rueda también acerca.
+      lienzo.focus()
+      fireEvent.wheel(lienzo, { deltaY: -300 })
+      await waitFor(() => expect(caja()).not.toBe(entera))
+      fireEvent.keyDown(window, { key: '0' })
+      await waitFor(() => expect(caja()).toBe(entera))
     } finally {
       delete (HTMLElement.prototype as { requestFullscreen?: unknown }).requestFullscreen
       delete (document as { exitFullscreen?: unknown }).exitFullscreen
@@ -427,9 +477,11 @@ describe('PaginaTablero', () => {
     expect(bloque.textContent).toContain('¿Qué tantas barreras de entrada tiene el mercado?')
     expect([...bloque.querySelectorAll('.hz-tb-rubrica li')].map((li) => li.textContent)).toEqual(['9Nivel 9', '7Nivel 7', '5Nivel 5', '3Nivel 3', '1Nivel 1'])
     expect(document.querySelector('svg.hz-matriz')).toBeNull()
-    // En Detallado, el panel lateral sigue al lado (progreso y promedios); F también sirve sin matriz.
+    // En Detallado, el panel lateral sigue al lado (progreso y promedios). Sin matriz no hay pantalla completa.
     await verDatos()
-    expect(screen.getByRole('button', { name: 'Pantalla completa con detalle F' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Pantalla completa/ })).toBeNull()
+    fireEvent.keyDown(window, { key: 'f' })
+    expect(document.querySelector('[data-pantalla]')).toBeNull()
     expect(screen.getByRole('progressbar')).toBeTruthy()
     cleanup()
     // Modo automático o sin pregunta elegida: la matriz de siempre.
@@ -662,25 +714,6 @@ describe('PaginaTablero: QA por roles', () => {
     // El botón «Teclas» también la abre.
     fireEvent.click(screen.getByRole('button', { name: 'Teclas ?' }))
     expect(await screen.findByRole('dialog', { name: 'Teclas del tablero' })).toBeTruthy()
-  })
-
-  test('F11: con la ventana del tamaño de la pantalla, los controles se ocultan igual', async () => {
-    const pantalla = { width: 1280, height: 720, availHeight: 680 }
-    vi.stubGlobal('screen', pantalla)
-    servir(structuredClone(mock))
-    montar('/tablero/s_demo?t=tok')
-    await screen.findByRole('heading', { name: mock.sala.nombre })
-    const main = document.querySelector('main')!
-    expect(main.className).not.toContain('hz-pantalla-completa')
-    Object.assign(window, { innerWidth: 1280, innerHeight: 720 })
-    act(() => void window.dispatchEvent(new Event('resize')))
-    await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
-    // Se sale con F11: el botón de pantalla completa no haría nada y no se muestra.
-    expect(screen.queryByRole('button', { name: /pantalla completa/i })).toBeNull()
-    Object.assign(window, { innerWidth: 1280, innerHeight: 640 })
-    act(() => void window.dispatchEvent(new Event('resize')))
-    await waitFor(() => expect(main.className).not.toContain('hz-pantalla-completa'))
-    Object.assign(window, { innerWidth: 1024, innerHeight: 768 })
   })
 
   test('sin conexión: los primeros 20 s un punto discreto «Reconectando» en la barra; después, el aviso', async () => {

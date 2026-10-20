@@ -118,6 +118,20 @@ describe('MatrizHorizontes', () => {
     expect(container.querySelector('svg')!.getAttribute('height')).toBe('400')
   })
 
+  test('zoom vectorial: el encuadre solo cambia el viewBox (mismo dibujo, letra nítida); sin él, la matriz entera', () => {
+    const r = render(<MatrizHorizontes datos={mock} alto={600} />)
+    const svg = () => r.container.querySelector('svg')!
+    const W = Number(svg().getAttribute('width'))
+    expect(svg().getAttribute('viewBox')).toBe(`0 0 ${W} 600`)
+    const dibujo = svg().innerHTML
+    r.rerender(<MatrizHorizontes datos={mock} alto={600} encuadre={{ k: 2, x: 0.25, y: 0.5 }} />)
+    expect(svg().getAttribute('viewBox')).toBe(`${W * 0.25} 300 ${W / 2} 300`)
+    expect(svg().getAttribute('width')).toBe(String(W))
+    expect(svg().innerHTML).toBe(dibujo)
+    r.rerender(<MatrizHorizontes datos={mock} alto={600} encuadre={{ k: 1, x: 0, y: 0 }} />)
+    expect(svg().getAttribute('viewBox')).toBe(`0 0 ${W} 600`)
+  })
+
   test('ayudas exportadas para la pantalla del participante', () => {
     expect(mensajeVacio(null, 1)).toBe('Aún no hay votos en la ronda 1')
     expect(['preliminar', 'en_vivo', null]).toContain(insigniaResultado(mock))
