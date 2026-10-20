@@ -147,3 +147,24 @@ describe('B-2: regenerar el token del tablero', () => {
     expect((await regenerar('s_noexiste')).statusCode).toBe(404)
   })
 })
+
+describe('textos del servidor (20-oct)', () => {
+  it('sesión inválida del celular: pide acceso de nuevo al facilitador (D1), no volver a escanear el QR', async () => {
+    const msg = 'Tu sesión no es válida. Pídele al facilitador que te dé acceso de nuevo.'
+    const sin = await e.app.inject('/api/yo')
+    expect([sin.statusCode, sin.json().error]).toEqual([401, { codigo: 'TOKEN_REQUERIDO', mensaje: msg }])
+    const mala = await e.app.inject({ url: '/api/yo', headers: { 'x-participante-token': 'no-existe' } })
+    expect([mala.statusCode, mala.json().error]).toEqual([401, { codigo: 'TOKEN_INVALIDO', mensaje: msg }])
+  })
+
+  it('la programación nombra «la apertura de la inscripción», como el botón del panel', async () => {
+    const s = await crearSala(e, 1)
+    const r = await e.app.inject({
+      method: 'PATCH',
+      url: `/api/admin/salas/${s.id}/config`,
+      headers: { cookie: e.cookie },
+      payload: { apertura_programada_sala_at: '2026-10-20T16:00:00-05:00', apertura_programada_r1_at: '2026-10-20T15:00:00-05:00' },
+    })
+    expect([r.statusCode, r.json().error.mensaje]).toEqual([422, 'La apertura de la inscripción debe ser antes que la apertura de la ronda 1.'])
+  })
+})
