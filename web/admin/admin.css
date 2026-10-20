@@ -63,7 +63,8 @@
 
 /* ── Barra superior carbón: EncabezadoProducto con la navegación y la cuenta ──
    El contenedor lleva data-tema="carbon"; la línea del degradado la pone .hz-producto. En celular van la marca y
-   la cuenta arriba y el menú debajo en una fila deslizable; desde 1440 px, todo en una fila. */
+   la cuenta arriba y el menú debajo. Igual en todos los anchos: la página no pasa de 1280 px y el menú con la cuenta
+   no caben en una sola fila (antes, desde 1440 px, la cuenta saltaba a una segunda fila bajo el menú). */
 .hz-admin .cabecera .hz-producto__fila { flex-wrap: wrap; gap: var(--hz-sp-2) var(--hz-sp-6); }
 .hz-admin .cabecera .hz-producto__extra { display: contents; }
 .hz-admin .cabecera .hz-producto__marca { order: 1; }
@@ -113,10 +114,6 @@
   .hz-admin .usuario__nombre { display: none; }
   .hz-admin .usuario { column-gap: var(--hz-sp-1); }
   .hz-admin .usuario .hz-boton { padding-inline: var(--hz-sp-2); }
-}
-@media (min-width: 1440px) {
-  .hz-admin .nav { order: 2; flex: 1; flex-basis: auto; }
-  .hz-admin .usuario { order: 3; margin-left: auto; }
 }
 
 /* Ancho de página común de la familia Estratek (20-oct): .hz-pagina (--hz-ancho-pagina, 1280 px) en la fila de la barra,
