@@ -139,3 +139,13 @@
   .hzp-pie { position: static; margin-top: var(--hz-sp-4); }
   .hzp-pie > .hz-barra-accion { box-shadow: none; }
 }
+
+/* Escritorio: el resultado usa el ancho de la página (las tablas de los 2 proyectos lado a lado bajo la matriz)
+   y las acciones de texto se alinean con el borde del contenido, como el resto de la página. */
+@media (min-width: 64rem) {
+  .hzp-resultado { grid-template-columns: repeat(2, minmax(0, var(--hz-medida))); column-gap: var(--hz-sp-6); align-items: start; }
+  .hzp-resultado > :not(.hzp-resultado__proyecto) { grid-column: 1 / -1; }
+}
+@media (min-width: 48rem) {
+  .hzp-vista .hz-contenido > .hz-boton--fantasma, .hzp-acciones { justify-self: start; justify-items: start; }
+}
