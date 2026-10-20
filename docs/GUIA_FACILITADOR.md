@@ -45,7 +45,7 @@ Cuándo usarlo en la plenaria:
 - Con alcance de una mesa, cada empresa ve su propia dispersión. Con menos de 3 votos no aparece ("Hace falta al menos 3 votos..."): nadie deduce el voto de otro.
 
 ## Si algo pasa
-- **Alguien cambió de celular o borró la sesión:** que vuelva a escanear el QR y use *Ya me inscribí: recuperar mi sesión* con el mismo correo. Conserva su mesa, perfil y votos.
+- **Alguien cambió de celular o borró la sesión:** en *Participantes*, busca a la persona y usa **Dar acceso de nuevo**. Sale un QR y un enlace personal que sirven una sola vez durante 15 minutos: que lo escanee o lo abra en su celular. Conserva su mesa, perfil y votos, y cualquier otra sesión suya se cierra. Con el mismo correo ya no se recupera (protege a quien ya está inscrito). Con la sala cerrada no se da acceso.
 - **Se quedó sin señal al votar:** el voto queda guardado en el celular y se envía solo cuando vuelve la señal.
 - **Persona en la mesa equivocada o perfil repetido:** **Participantes** → cambia mesa o perfil.
 - **Alguien se fue:** **Participantes** → desactivar. Sus votos dejan de contar y la mesa puede llegar al precierre.

@@ -200,4 +200,9 @@ CREATE TABLE fotos_agregado (
   PRIMARY KEY (sala_id, alcance, ronda, proyecto_id)
 );
 `,
+  // S-12 (20-oct): el token del tablero queda con una sola fuente, `token_tablero` (el panel necesita volver a mostrar el
+  // enlace, así que el hash al lado no protegía nada). La columna del hash no se borra (migraciones aditivas): queda vacía.
+  `
+UPDATE salas SET token_tablero_hash = '';
+`,
 ]
