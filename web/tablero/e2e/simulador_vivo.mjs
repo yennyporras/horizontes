@@ -1,4 +1,4 @@
-// Aceptación R2: con el simulador de T1 corriendo, el tablero se actualiza en < 5 s y lo dibujado
+// Aceptación en vivo: con el simulador del servidor corriendo, el tablero se actualiza en < 5 s y lo dibujado
 // coincide con lo que calcula el servidor (que el simulador verifica de forma independiente).
 // Espera la sala nueva del simulador, abre su tablero a 1920 px y cada 200 ms compara los puntos
 // del SVG con los de la API. Mide cuánto tarda el dibujo en alcanzar cada cambio de la API.

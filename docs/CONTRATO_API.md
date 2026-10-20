@@ -2,7 +2,7 @@
 
 JSON en UTF-8. Fechas ISO-8601 con el desfase de la zona horaria de la sala (`config.zona_horaria`: `America/Bogota` y `America/Lima` -05:00, `America/Guatemala` -06:00; sin sala, Bogotá). Errores: `{"error":{"codigo":"RONDA_CERRADA","mensaje":"La ronda 1 ya se cerró."}}` con el HTTP adecuado.
 Polling: toda respuesta GET de estado trae `version` y header `ETag`. El cliente manda `If-None-Match`; si no hubo cambios → `304`. Intervalo 2,5 s.
-Ejemplos completos de respuesta en `mocks/`. T2, T3 y T4 trabajan contra esos mocks hasta que T1 publique la API real.
+Ejemplos completos de respuesta en `mocks/`; `npm run dev` sirve la web contra esos mocks, sin la API real.
 
 ## Autenticación
 - Participante: header `X-Participante-Token` (se recibe al inscribirse; el servidor guarda solo el hash).

@@ -1,6 +1,6 @@
 # Despliegue · Horizontes en Hostinger (Coolify)
 
-Dueño: T4. Fuente: guías del IRMI `C:\Users\ypaol\irmi\docs\operacion\despliegue-staging.md` y `despliegue-produccion.md` (13-oct-2026). Ningún secreto real va en este archivo ni en el repo: los valores se escriben solo en Coolify.
+Responsable: equipo de infraestructura. Fuente: guías del IRMI `C:\Users\ypaol\irmi\docs\operacion\despliegue-staging.md` y `despliegue-produccion.md` (13-oct-2026). Ningún secreto real va en este archivo ni en el repo: los valores se escriben solo en Coolify.
 
 ## 1. Cómo se despliega el IRMI (lo que ya existe)
 
@@ -42,12 +42,12 @@ No toques otros registros (el correo de Google Workspace depende de ellos). Veri
 - **Build Pack:** `Dockerfile`, ubicación `/deploy/Dockerfile`, base `/`. Mismo patrón del IRMI: build de la web (participante, tablero y admin) servida como estáticos por el mismo servidor Fastify, un solo puerto `3000`. Ver `deploy/README.md` y `tools/deploy.sh`.
 - **Ports Exposes:** `3000`. Sin *Ports Mappings*.
 - **Advanced:** Force HTTPS. Certificado Let's Encrypt automático cuando el DNS responda.
-- **Healthcheck:** `GET /api/health` → 200, puerto 3000, intervalo 30 s, timeout 10 s, 3 reintentos, start period 60 s. (T1 publica la ruta; si cambia, se ajusta aquí.)
+- **Healthcheck:** `GET /api/health` → 200, puerto 3000, intervalo 30 s, timeout 10 s, 3 reintentos, start period 60 s. (La ruta la publica el servidor; si cambia, se ajusta aquí.)
 - **Réplicas:** 1. El polling y los cierres programados asumen un solo proceso.
 
 ### 2.4 Base de datos
 
-T1 fijó **SQLite** (`node:sqlite`) en `docs/STACK.md`. Se usa la segunda opción; la de Postgres queda como referencia por si se cambia el stack.
+El equipo fijó **SQLite** (`node:sqlite`) en `docs/STACK.md`. Se usa la segunda opción; la de Postgres queda como referencia por si se cambia el stack.
 
 - **Postgres (mismo stack del IRMI, recomendado):** + New → Databases → PostgreSQL, imagen `postgres:17-alpine`, sin acceso público. Copia la *Postgres URL (internal)* a `DATABASE_URL`. Migraciones y semilla `data/seed_foodsume.json` al arrancar.
 - **SQLite (vigente):** *Persistent Storage → Volume Mount* `horizontes-datos-<ambiente>` en `/data`. La imagen ya trae `DB_PATH=/data/horizontes.sqlite`. Debe ser volumen, no bind mount. Un volumen distinto por ambiente.
@@ -65,9 +65,9 @@ El dominio de producción que usa `tools/deploy.sh` (y con él `BASE_URL`) sale 
 | `BASE_URL` | `https://staging-horizontes.estratek.com.co` | `https://horizontes.estratek.com.co` | Sin `/` final. Se usa en las URL y QR de las mesas. |
 | `TZ` | `America/Bogota` | `America/Bogota` | Hora del proceso y de los logs. Cada sala usa además la zona de su país (Colombia, Perú o Guatemala), que el admin elige en Configuración. |
 | `DB_PATH` | `/data/horizontes.sqlite` (ya en la imagen) | igual, en el volumen de prod | Nunca compartir la base ni el volumen entre ambientes. |
-| `SESSION_SECRET` | `openssl rand -hex 32` | otro distinto | Solo si T1 firma la cookie `hz_admin` con secreto (ver `docs/STACK.md`). Si cambia, los admins vuelven a iniciar sesión. |
+| `SESSION_SECRET` | `openssl rand -hex 32` | otro distinto | Solo si el servidor firma la cookie `hz_admin` con secreto (ver `docs/STACK.md`). Si cambia, los admins vuelven a iniciar sesión. |
 | `SUPERADMIN_USUARIO` | `paola` | `paola` | Se crea la primera vez que arranca sobre una base vacía. |
-| `SUPERADMIN_CLAVE` | ≥ 12 caracteres | otra distinta | Solo cuenta la primera vez. Después, se cambia desde el panel o con el script de restablecer de T1. |
+| `SUPERADMIN_CLAVE` | ≥ 12 caracteres | otra distinta | Solo cuenta la primera vez. Después, se cambia desde el panel o con el script de restablecer del servidor. |
 | `POLITICA_PRIVACIDAD_URL` | `https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/` | igual | Ver `docs/CONSENTIMIENTO.md`. |
 | `TRUST_PROXY_HOPS` | `1` | `1` | IP real detrás del proxy de Coolify: evidencia del consentimiento y registro interno de cada inscripción y voto (acta A1 y P4). |
 | `CIERRES_INTERVALO_MS` | no aplica | no aplica | El servidor usa 15 s fijos (no lee esta variable). |
@@ -102,11 +102,11 @@ Por eso la app corre con **1 réplica** y `TZ=America/Bogota`.
    curl -sI https://staging-horizontes.estratek.com.co/admin | head -1   # 200 y certificado válido
    ```
 6. Entrar a `/admin` con el superadmin, cambiar la clave, crear una sala de prueba con 2 mesas, inscribir desde un celular por QR, votar y cerrar ronda.
-7. Correr `/qa-my-app:init` sobre staging (R2-T4).
+7. Correr el recorrido de QA (`QA-tests/recorrido_integrado.cjs`) sobre staging.
 
 ## 4. Producción
 
-1. Staging verde y `/qa-my-app:run-all` aprobado.
+1. Staging verde y el recorrido de QA aprobado.
 2. *Resource Operations* → clonar app y BD al ambiente `production`.
 3. Cambiar en `horizontes-prod`: `APP_ENV`, `BASE_URL`, `DATABASE_URL`/volumen (los de prod), `SESSION_SECRET`, `SUPERADMIN_CLAVE`. Auto Deploy apagado.
 4. **Deploy** manual. Mismas comprobaciones del paso 3 con `horizontes.estratek.com.co`.

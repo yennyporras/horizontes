@@ -1,4 +1,4 @@
-// Endurecimiento (R3): cabeceras de seguridad, errores 4xx de Fastify con forma de contrato,
+// Endurecimiento: cabeceras de seguridad, errores 4xx de Fastify con forma de contrato,
 // validación estricta de inscripción y votos, límite de votos por participante y logs sin datos personales.
 import { Writable } from 'node:stream'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'

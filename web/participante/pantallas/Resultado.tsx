@@ -8,7 +8,7 @@ export const textoAlcance = (r: Resultados | null, alcance: 'mesa' | 'sala') => 
 
 /**
  * SPEC §7 y acta A1: ningún resultado muestra respuestas individuales. Con 1 voto el promedio ES esa respuesta;
- * con 2, quien votó despeja la del otro (otro = 2 · promedio − propia). Por eso 3 (R4_CONTRATO C3).
+ * con 2, quien votó despeja la del otro (otro = 2 · promedio − propia). Por eso 3 (acta del 16-oct, C3).
  * Manda `minimo_votos` del servidor; ocultar no es recalcular.
  */
 export const MIN_VOTOS = 3
@@ -51,7 +51,7 @@ function usarEscalaTexto(): number {
 }
 
 /**
- * Resultado del alcance (mesa o sala): matriz de T3 (solo props) y promedio por criterio.
+ * Resultado del alcance (mesa o sala): matriz del tablero (solo props) y promedio por criterio.
  * Solo muestra lo que calcula el servidor; el celular nunca recalcula.
  * C19-3 (P3): con `misVotos` (los de `/api/yo`, solo de esta persona) cada promedio lleva debajo «Tu calificación».
  */

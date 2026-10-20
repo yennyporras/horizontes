@@ -1,5 +1,5 @@
-// Tipos del contrato de API v1 (docs/CONTRATO_API.md). Dueño: T1. Solo lectura para T2, T3 y T4.
-// Los campos opcionales se agregaron después de R0 (ver docs/DECISIONES.md, prefijo CONTRATO:).
+// Tipos del contrato de API v1 (docs/CONTRATO_API.md). Responsable: equipo del servidor. Solo lectura para el celular, el tablero y el panel.
+// Los campos opcionales se agregaron después de la primera versión (ver docs/DECISIONES.md, prefijo CONTRATO:).
 
 export type CriterioId =
   | 'alistamiento_tecnico'

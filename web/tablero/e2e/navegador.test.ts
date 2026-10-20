@@ -118,7 +118,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
     golden1 = { id: s1.id, token: s1.token_tablero }
 
     // Vite y Chromium cargan la CPU: dentro de tools/test.sh esperan a que avancen los demás archivos
-    // (≈ 30 s sin esta prueba) para no vencer los tiempos de las pruebas de jsdom de otras áreas.
+    // (≈ 30 s sin esta prueba) para no vencer los tiempos de las pruebas de jsdom del resto de la suite.
     // Corriendo solo este archivo: HZ_E2E_ESPERA_MS=0.
     await new Promise((r) => setTimeout(r, Number(process.env.HZ_E2E_ESPERA_MS ?? 25_000)))
     await e.app.listen({ port: 0, host: '127.0.0.1' })
@@ -133,7 +133,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () =>
         strictPort: false,
         host: '127.0.0.1',
         proxy: { '/api': { target: api, changeOrigin: true } },
-        // En un worktree node_modules puede ser un enlace: sin su ruta real Vite no sirve la Montserrat.
+        // node_modules puede ser un enlace simbólico: sin su ruta real Vite no sirve la Montserrat.
         fs: { allow: [RAIZ, realpathSync(join(RAIZ, 'node_modules'))] },
       },
     })

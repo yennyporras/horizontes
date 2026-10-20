@@ -135,7 +135,7 @@ export const POLITICA_ESTRATEK = 'https://estratek.com.co/politica-de-privacidad
 export const CORREO_DATOS = 'info@estratek.com.co'
 
 /**
- * Norma y autoridad por país de la sala (acta P4, R4_CONTRATO C6). Guatemala no tiene ley general de datos:
+ * Norma y autoridad por país de la sala (acta del 16-oct, P4 y C6). Guatemala no tiene ley general de datos:
  * aplica la política de Estratek. El texto de la casilla lo sirve el servidor; ver docs/CONSENTIMIENTO.md §5.
  */
 export const LEY_DATOS: Record<Pais, { norma: string; autoridad?: string }> = {

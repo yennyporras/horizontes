@@ -20,7 +20,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
   }, 30_000)
 
   it('2 rondas completas con resiliencia, precierre y comparación R1→R2', async () => {
-    const sala = await crearSala(e, 'Ensayo e2e T2')
+    const sala = await crearSala(e, 'Ensayo e2e celular')
     const mesa = sala.mesas[0].codigo
     // Este recorrido prueba «Voto registrado» y el resultado de la mesa. Por defecto (C5) una sala nueva muestra
     // el consolidado de la sala en vivo; eso lo prueba el segundo caso.
@@ -271,7 +271,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
   it('por defecto (acta A2, C5): tras votar ve el consolidado de la sala en vivo, sin la fila Total', async () => {
     // Sin tocar la configuración: una sala nueva nace con alcance «sala» y vista «en vivo».
-    const sala = await crearSala(e, 'En vivo e2e T2')
+    const sala = await crearSala(e, 'En vivo e2e celular')
     await accion(e, sala.id, 'abrir_ronda_1')
     const otro = await inscribirApi(e, sala.mesas[1].codigo, 'Caro Díaz', 'caro.e2e@empresa.com')
     await votarApi(e, otro, 'insumex', 1)
@@ -307,7 +307,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
   }, 120_000)
 
   it('modo guiado (C19-5, P1): ve solo la pregunta del facilitador, envía al completar el proyecto y corrige', async () => {
-    const sala = await crearSala(e, 'Guiado e2e T2')
+    const sala = await crearSala(e, 'Guiado e2e celular')
     // La pregunta guiada se borra con cada cambio de estado o de modo: primero el modo y la ronda, después la pregunta.
     await configurar(e, sala.id, { modo_preguntas: 'guiado' })
     await accion(e, sala.id, 'abrir_ronda_1')

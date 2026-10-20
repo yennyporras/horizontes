@@ -1,4 +1,4 @@
-// Pendientes de R1 que otras terminales dejaron a T1: rayas en la semilla, duplicar sala, assets.
+// Textos sin rayas en la semilla, duplicar sala, health y archivos estáticos.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { semilla, sinRayas } from '../../server/dominio/semilla'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir } from './ayuda'

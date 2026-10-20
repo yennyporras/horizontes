@@ -1,4 +1,4 @@
-# Tablero (T3)
+# Tablero
 
 Ruta: `/tablero/:sala?mesa=&t=`. Con `t` (token de tablero) aparece el selector de alcance; sin `mesa`, el alcance es la sala.
 
