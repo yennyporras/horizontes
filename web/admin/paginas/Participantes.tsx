@@ -1,11 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { api } from '../api'
+import { api, lista } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
-import type { Participante, SalaDetalle } from '../tipos'
-import { PERFILES, nombrePerfil, rondaAbierta } from '../textos'
+import { useConfirmar } from '../componentes/Confirmar'
+import { DialogoAcceso, type Acceso } from '../componentes/AccesoDeNuevo'
+import type { Participante, RespuestaPersona, SalaDetalle } from '../tipos'
+import { PERFILES, nombrePerfil, rondaAbierta, zonaSala } from '../textos'
+
+/**
+ * Quiénes ya votaron en alguna ronda (QA-A-09): mover o desactivar a esas personas cambia resultados y precierre, así
+ * que se confirma antes. Se lee de Respuestas con cada cambio de la sala; si no se puede leer, se usa «completó la
+ * ronda» del detalle.
+ */
+function useVotaron(salaId: string | undefined, version: string | undefined) {
+  const [ids, setIds] = useState<Set<string> | null>(null)
+  useEffect(() => {
+    if (!salaId || !version) return
+    let vigente = true
+    api
+      .get<unknown>(`/api/admin/salas/${salaId}/respuestas`)
+      .then((r) => vigente && setIds(new Set(lista<RespuestaPersona>(r, 'respuestas').map((f) => f.participante_id))))
+      .catch(() => vigente && setIds(null))
+    return () => {
+      vigente = false
+    }
+  }, [salaId, version])
+  return ids
+}
 
 /** Lista por mesa con perfil y estado de la ronda. Nunca muestra respuestas (SPEC §9). */
 export function Participantes() {
@@ -15,6 +38,10 @@ export function Participantes() {
   const [buscar, setBuscar] = useState('')
   const [aviso, setAviso] = useState<{ tono: 'exito' | 'error'; texto: string } | null>(null)
   const [guardando, setGuardando] = useState<string | null>(null)
+  const [acceso, setAcceso] = useState<{ p: Participante; datos: Acceso } | null>(null)
+  const [dialogo, confirmar] = useConfirmar()
+  const votaron = useVotaron(salaId, datos?.version)
+  const yaVoto = (p: Participante) => (votaron ? votaron.has(p.id) : p.completo_ronda)
 
   const editar = async (p: Participante, cambio: { perfil_id?: string; mesa_id?: string; activo?: boolean }, texto: string) => {
     setAviso(null)
@@ -30,10 +57,56 @@ export function Participantes() {
     }
   }
 
+  const mover = async (d: SalaDetalle, p: Participante, mesaId: string) => {
+    const nombreMesa = (id: string) => d.mesas.find((m) => m.id === id)?.nombre ?? id
+    const origen = nombreMesa(p.mesa_id)
+    const destino = nombreMesa(mesaId)
+    if (
+      yaVoto(p) &&
+      !(await confirmar(
+        `¿Mover a ${p.nombre} a ${destino}?`,
+        `${p.nombre} ya votó. Sus votos se mueven con la persona: dejan de contar en ${origen} y pasan a contar en ${destino}. El avance y el precierre de las dos mesas se recalculan.`,
+        'Sí, mover',
+        { tono: 'primario' },
+      ))
+    )
+      return
+    await editar(p, { mesa_id: mesaId }, `${p.nombre} pasó a ${destino}.`)
+  }
+
+  const cambiarActivo = async (p: Participante) => {
+    if (
+      p.activo &&
+      yaVoto(p) &&
+      !(await confirmar(
+        `¿Desactivar a ${p.nombre}?`,
+        `${p.nombre} ya votó. Al desactivarla, sus votos dejan de contar en los promedios de la sala y de su mesa, y la mesa puede llegar al precierre sin ella. Puedes activarla de nuevo cuando quieras.`,
+        'Sí, desactivar',
+        { tono: 'primario' },
+      ))
+    )
+      return
+    await editar(p, { activo: !p.activo }, p.activo ? `${p.nombre} quedó inactivo: sus votos no cuentan en los promedios.` : `${p.nombre} volvió a estar activo.`)
+  }
+
+  const darAcceso = async (p: Participante) => {
+    setAviso(null)
+    setGuardando(p.id)
+    try {
+      const datosAcceso = await api.post<Acceso>(`/api/admin/participantes/${encodeURIComponent(p.id)}/acceso`)
+      setAcceso({ p, datos: datosAcceso })
+    } catch (e) {
+      setAviso({ tono: 'error', texto: e instanceof Error ? `No pudimos dar acceso a ${p.nombre}. ${e.message}` : `No pudimos dar acceso a ${p.nombre}.` })
+    } finally {
+      setGuardando(null)
+    }
+  }
+
   return (
     <ConSala titulo="Participantes" datos={datos} error={error}>
       {(d) => {
         const ronda = rondaAbierta(d.sala.estado) ?? (d.sala.ronda_actual || null)
+        const cerrada = d.sala.estado === 'cerrada'
         const nombreMesa = (id: string) => d.mesas.find((m) => m.id === id)?.nombre ?? id
         const q = buscar.trim().toLowerCase()
         const filas = d.participantes
@@ -43,10 +116,19 @@ export function Participantes() {
 
         return (
           <>
+            {dialogo}
+            {acceso && (
+              <DialogoAcceso nombre={acceso.p.nombre} participanteId={acceso.p.id} zona={zonaSala(d.sala.config)} inicial={acceso.datos} alCerrar={() => setAcceso(null)} />
+            )}
             <AvisoPrivado>Nombre, correo, mesa, perfil, país e IP de cada inscrito. Para gestionar la sala, no para mostrarla.</AvisoPrivado>
             <Resumen d={d} />
             <section className="panel" aria-labelledby="t-lista">
               <h2 id="t-lista">Inscritos</h2>
+              <p className="pista" id="ayuda-acceso">
+                {cerrada
+                  ? 'Con la sala cerrada ya no se puede dar acceso de nuevo.'
+                  : '«Dar acceso de nuevo» es para quien cambió de celular o borró la sesión: genera un QR personal que sirve una vez y vence en 15 minutos. A una persona desactivada, actívala primero.'}
+              </p>
               <div className="fila-form">
                 <label className="campo">
                   <span>Mesa</span>
@@ -84,21 +166,23 @@ export function Participantes() {
                         <th scope="col">Perfil</th>
                         <th scope="col">{ronda ? `Ronda ${ronda}` : 'Ronda'}</th>
                         <th scope="col">País · IP</th>
-                        <th scope="col">Acción</th>
+                        <th scope="col">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filas.map((p) => (
                         <tr key={p.id} className={p.activo ? undefined : 'inactivo'} aria-busy={guardando === p.id}>
                           <th scope="row">{p.nombre}</th>
-                          <td data-label="Correo" className="td-largo">{p.correo}</td>
+                          <td data-label="Correo" className="td-largo">
+                            {p.correo}
+                          </td>
                           <td data-label="Mesa">
                             <select
                               className="chico"
                               aria-label={`Mesa de ${p.nombre}`}
                               value={p.mesa_id}
                               disabled={guardando === p.id}
-                              onChange={(e) => editar(p, { mesa_id: e.target.value }, `${p.nombre} pasó a ${nombreMesa(e.target.value)}.`)}
+                              onChange={(e) => void mover(d, p, e.target.value)}
                             >
                               {d.mesas.map((m) => (
                                 <option key={m.id} value={m.id}>
@@ -132,20 +216,28 @@ export function Participantes() {
                             )}
                           </td>
                           <td data-label="País · IP">{p.ip ? `${p.pais ?? ''} ${p.ip}`.trim() : 'Sin registro'}</td>
-                          <td data-label="Acción">
-                            <button
-                              className="hz-boton hz-boton--secundario hz-boton--chico"
-                              disabled={guardando === p.id}
-                              onClick={() =>
-                                editar(
-                                  p,
-                                  { activo: !p.activo },
-                                  p.activo ? `${p.nombre} quedó inactivo: sus votos no cuentan en los promedios.` : `${p.nombre} volvió a estar activo.`,
-                                )
-                              }
-                            >
-                              {p.activo ? 'Desactivar' : 'Activar'}
-                            </button>
+                          <td data-label="Acciones">
+                            <span className="acciones acciones--fila">
+                              <button
+                                type="button"
+                                className="hz-boton hz-boton--secundario hz-boton--chico"
+                                disabled={guardando === p.id || cerrada || !p.activo}
+                                aria-label={`Dar acceso de nuevo a ${p.nombre}`}
+                                aria-describedby="ayuda-acceso"
+                                onClick={() => void darAcceso(p)}
+                              >
+                                Dar acceso de nuevo
+                              </button>
+                              <button
+                                type="button"
+                                className="hz-boton hz-boton--secundario hz-boton--chico"
+                                disabled={guardando === p.id}
+                                aria-label={`${p.activo ? 'Desactivar' : 'Activar'} a ${p.nombre}`}
+                                onClick={() => void cambiarActivo(p)}
+                              >
+                                {p.activo ? 'Desactivar' : 'Activar'}
+                              </button>
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -153,7 +245,10 @@ export function Participantes() {
                   </table>
                 </div>
               )}
-              <p className="pista">Qué calificó cada persona está en Respuestas, solo para administradores; ningún tablero lo muestra. País e IP son registro interno: solo salen en este panel y en el export.</p>
+              <p className="pista nota-tabla">
+                Qué calificó cada persona está en Respuestas, solo para administradores; ningún tablero lo muestra. País e IP son registro interno: solo salen en este panel y en el
+                export.
+              </p>
             </section>
           </>
         )
