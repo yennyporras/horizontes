@@ -15,7 +15,7 @@ const MESA = {
   sala: { id: 's_demo', nombre: 'Taller Horizontes demo', estado: 'inscripcion' },
   mesa: { id: 'm1', nombre: 'Mesa 1' },
   inscripcion_abierta: true,
-  consentimiento: { version: 'estratek-v1', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
+  consentimiento: { version: 'hz-1.2', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
 }
 const TODAS = { alistamiento_tecnico: 3, conocimiento_cliente: 3, regulacion: 3, capacidades_organizacionales: 3, alineacion_core: 3, inversion_requerida: 3 }
 

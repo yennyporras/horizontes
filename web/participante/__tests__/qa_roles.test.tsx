@@ -169,6 +169,16 @@ describe('2. ronda 1 sin resultados en vivo (decisión 1 de Paola)', () => {
     expect(screen.getByText(TEXTO_R1_OCULTA)).toBeTruthy()
     expect(container.textContent).not.toMatch(/Hacen falta/)
   })
+
+  it('con `oculta` y `bajo_minimo` a la vez (contrato final del servidor) manda `oculta`', () => {
+    const y = yoBase as unknown as Yo
+    const r = resultadosOcultos()
+    for (const p of r.proyectos_vivos) for (const x of p.rondas) Object.assign(x, { n_votos: 2, bajo_minimo: true })
+    const { container } = render(<ResultadoAlcance resultados={r} criterios={y.criterios} alcance="mesa" />)
+    expect(screen.getByText(TEXTO_R1_OCULTA)).toBeTruthy()
+    expect(container.textContent).not.toMatch(/Hacen falta/)
+    expect(container.querySelector('.hzp-matriz')).toBeNull()
+  })
 })
 
 describe('3. aviso de datos hz-1.2 (decisión 2 de Paola)', () => {

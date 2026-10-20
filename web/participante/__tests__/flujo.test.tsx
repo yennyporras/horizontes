@@ -16,7 +16,7 @@ const MESA = {
   sala: { id: 's_demo', nombre: 'Taller Horizontes demo', estado: 'inscripcion' },
   mesa: { id: 'm1', nombre: 'Mesa 1' },
   inscripcion_abierta: true,
-  consentimiento: { version: 'estratek-v1', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
+  consentimiento: { version: 'hz-1.2', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
 }
 
 const clonar = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
@@ -115,7 +115,7 @@ describe('antes de inscribirse', () => {
     ]
     for (const c of casos) {
       const texto = `Autorizo a Estratek S.A.S. (${c.pais ?? 'CO'}).`
-      const mesa = { ...MESA, sala: { ...MESA.sala, pais: c.pais }, consentimiento: { ...MESA.consentimiento, version: 'hz-1.1', texto_autorizacion: texto } }
+      const mesa = { ...MESA, sala: { ...MESA.sala, pais: c.pais }, consentimiento: { ...MESA.consentimiento, version: 'hz-1.2', texto_autorizacion: texto } }
       servidor(() => ({ status: 200, body: mesa }))
       montar()
       await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
@@ -164,7 +164,7 @@ describe('antes de inscribirse', () => {
     fireEvent.click(boton)
 
     expect(await screen.findByRole('heading', { name: 'Tu perfil: Conocimiento del cliente' })).toBeTruthy()
-    expect(cuerpo).toEqual({ codigoMesa: CODIGO, nombre: 'Ana Pérez', correo: 'ana@empresa.com', consentimiento: { aceptado: true, version: 'estratek-v1' } })
+    expect(cuerpo).toEqual({ codigoMesa: CODIGO, nombre: 'Ana Pérez', correo: 'ana@empresa.com', consentimiento: { aceptado: true, version: 'hz-1.2' } })
     expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBe('tok-nuevo')
 
     fireEvent.click(screen.getByRole('button', { name: 'Leer el caso' }))
