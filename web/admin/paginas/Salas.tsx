@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api, lista } from '../api'
 import type { SalaResumen } from '../tipos'
-import { ESTADOS, fechaHora } from '../textos'
+import { ESTADOS, fechaHora, nombreEnsayo } from '../textos'
+import { useTituloPagina } from './EncabezadoSala'
 
 export function Salas() {
   const [salas, setSalas] = useState<SalaResumen[] | null>(null)
@@ -14,6 +15,8 @@ export function Salas() {
   const [duplicando, setDuplicando] = useState<string | null>(null)
   const [errorDuplicar, setErrorDuplicar] = useState<string | null>(null)
   const navegar = useNavigate()
+  useTituloPagina('Salas')
+  const claveCambiada = Boolean((useLocation().state as { claveCambiada?: boolean } | null)?.claveCambiada)
 
   const cargar = () =>
     api
@@ -50,12 +53,12 @@ export function Salas() {
     setErrorDuplicar(null)
     setDuplicando(s.id)
     try {
-      const r = await api.post<{ id?: string; sala?: { id: string } }>(`/api/admin/salas/${s.id}/duplicar`, { nombre: `${s.nombre} (ensayo)` })
+      const r = await api.post<{ id?: string; sala?: { id: string } }>(`/api/admin/salas/${s.id}/duplicar`, { nombre: nombreEnsayo(s.nombre) })
       const id = r?.id ?? r?.sala?.id
       if (id) navegar(`/admin/salas/${id}/vivo`)
       else await cargar()
     } catch (err) {
-      setErrorDuplicar(err instanceof Error ? `No pudimos duplicar "${s.nombre}". ${err.message}` : 'No pudimos duplicar la sala.')
+      setErrorDuplicar(err instanceof Error ? `No pudimos duplicar «${s.nombre}». ${err.message}` : 'No pudimos duplicar la sala.')
     } finally {
       setDuplicando(null)
     }
@@ -63,7 +66,12 @@ export function Salas() {
 
   return (
     <>
-      <h1>Salas</h1>
+      <h1 tabIndex={-1}>Salas</h1>
+      {claveCambiada && (
+        <p className="alerta alerta--exito" role="status">
+          Tu clave quedó cambiada.
+        </p>
+      )}
       <section className="panel" aria-labelledby="t-nueva">
         <h2 id="t-nueva">Nueva sala</h2>
         <form className="fila-form" onSubmit={crear}>
