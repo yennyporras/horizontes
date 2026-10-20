@@ -13,7 +13,7 @@ import { recordarSala, salaRecordada, olvidarSala } from './memoria'
 import { useSala } from './useSala'
 import { moverProgramacion } from './paginas/Configuracion'
 import { semaforo } from './paginas/Salud'
-import { conPunto, confirmacionCierreRonda, nombreEnsayo, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE } from './textos'
+import { conPunto, confirmacionCierreRonda, nombreEnsayo, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE, TECLAS_TABLERO } from './textos'
 import { numeroPregunta } from './contenido'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
 
@@ -76,6 +76,32 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+})
+
+describe('teclas del tablero en Sala en vivo', () => {
+  it('F lleva a la pantalla completa de la matriz, 0 la muestra entera y la rueda o el pellizco acercan', () => {
+    expect(TECLAS_TABLERO.map((t) => [t.teclas.join(' o '), t.texto])).toEqual([
+      ['F', 'Pantalla completa de la matriz (entra y sale)'],
+      ['0', 'Ver la matriz entera'],
+      ['Rueda del mouse o Pellizco', 'Acerca o aleja la matriz en pantalla completa; arrastrar la mueve'],
+      ['G', 'Gráfica: solo la matriz'],
+      ['D', 'Detallado: la matriz con los promedios'],
+      ['M', 'Cambia entre Gráfica y Detallado'],
+      ['V', 'Promedios o «Cómo votó»'],
+      ['1', 'Ronda 1'],
+      ['2', 'Ronda 2'],
+      ['C', 'Comparación; otra vez, repite la animación'],
+      ['→ o ←', 'Vista siguiente o anterior, también con el control de presentaciones'],
+      ['?', 'La ayuda de teclas en el tablero'],
+    ])
+  })
+
+  it('Sala en vivo las muestra en su lista', async () => {
+    await abrirDemo()
+    expect(await screen.findByText('Ver la matriz entera')).toBeTruthy()
+    expect(screen.getByText('Pantalla completa de la matriz (entra y sale)')).toBeTruthy()
+    expect(screen.getByText('Rueda del mouse', { selector: 'kbd' })).toBeTruthy()
+  })
 })
 
 describe('textos y utilidades de las correcciones', () => {

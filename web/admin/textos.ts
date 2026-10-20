@@ -252,7 +252,10 @@ export const MODOS_TABLERO: { modo: ModoTablero; nombre: string; tecla: string; 
  * de un párrafo. Los mismos textos de la ayuda del tablero (tecla ?), en el orden en que se usan durante el taller.
  */
 export const TECLAS_TABLERO: { teclas: string[]; texto: string }[] = [
-  { teclas: ['F'], texto: 'Pantalla completa (entra y sale)' },
+  // 21-oct (feat/matriz-pantalla-completa): la pantalla completa lleva solo la matriz, con zoom.
+  { teclas: ['F'], texto: 'Pantalla completa de la matriz (entra y sale)' },
+  { teclas: ['0'], texto: 'Ver la matriz entera' },
+  { teclas: ['Rueda del mouse', 'Pellizco'], texto: 'Acerca o aleja la matriz en pantalla completa; arrastrar la mueve' },
   { teclas: ['G'], texto: 'Gráfica: solo la matriz' },
   { teclas: ['D'], texto: 'Detallado: la matriz con los promedios' },
   { teclas: ['M'], texto: 'Cambia entre Gráfica y Detallado' },
