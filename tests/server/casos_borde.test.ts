@@ -125,8 +125,13 @@ describe('participante desactivado', () => {
 
     let t = await tablero(s)
     expect(t.progreso).toMatchObject({ inscritos: 2, completos: 2, precierre: true })
+    // D2: con la ronda abierta sigue la foto de los 3 votos (su celular la vio al votar): quitar un solo voto la
+    // renovaría con exactamente ese voto de diferencia.
+    expect(nVotos(t, 1)).toEqual([3, 3])
+    // Al cerrar la ronda, el exacto: quedan 2 votos activos, menos del mínimo de 3 (cada uno despejaría el del otro).
+    await accion(e, s.id, 'cerrar_ronda_1')
+    t = await tablero(s)
     expect(nVotos(t, 1)).toEqual([2, 2])
-    // Quedan 2 votos activos, menos del mínimo de 3: cada uno despejaría el voto del otro, así que se oculta.
     expect(t.proyectos_vivos[0].rondas[0]).toMatchObject({ bajo_minimo: true, promedios: null, eje_x: null })
 
     // Volver a inscribirse con el mismo correo no lo reactiva ni le da sesión; tampoco se le da acceso de nuevo desactivado.

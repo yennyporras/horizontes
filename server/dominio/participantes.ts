@@ -283,6 +283,8 @@ export function resultadosParticipante(db: Db, sala: SalaFila, p: ParticipanteFi
     alcance: sala.alcance_resultados === 'sala' ? { tipo: 'sala' } : { tipo: 'mesa', mesa },
     rondas,
     preliminar: v.preliminar,
+    // D2: cuántos hay inscritos en cada mesa no es del participante.
+    porMesa: false,
     sufijoVersion: `-r${ronda}-${p.id}`,
   })
 }
