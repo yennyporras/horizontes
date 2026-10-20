@@ -61,7 +61,7 @@ export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFo
   }, [claveFoco])
   return (
     <div className="hz hz-vista hzp-vista" data-tema="claro" lang="es-CO">
-      <EncabezadoProducto />
+      <EncabezadoProducto href="/" />
       <div className="hzp-contexto hz-pagina">
         <p className="hzp-contexto__sala">{sala}</p>
         {meta && <p className="hzp-contexto__meta">{meta}</p>}
