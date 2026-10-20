@@ -14,7 +14,7 @@ Una página. Lo que tienes que hacer, en orden, para que el taller corra sin sus
 
 ## En el salón
 Todo lo que se ve en vivo está en un solo lugar: **Sala en vivo → Ver en vivo**. Cada enlace se abre en otra pestaña y se actualiza solo.
-- **Proyector:** *Tablero de la sala* (ya trae su clave; no compartas el enlace). El público ve solo la matriz. Tecla **F** para pantalla completa; **1**, **2** y **C** cambian entre ronda 1, ronda 2 y comparación.
+- **Proyector:** *Tablero de la sala*, en uno de sus dos modos según el evento (ya trae su clave; no compartas el enlace). *En vivo, pantalla completa* muestra solo la matriz moviéndose; *Con tabla* suma el progreso y los promedios. Tecla **F** para pantalla completa; **V** y **T** cambian de modo; **1**, **2** y **C** cambian entre ronda 1, ronda 2 y comparación.
 - **Una mesa:** elige la mesa y abre *Tablero de Mesa N*, para seguir su avance o proyectarla sola.
 - **Lo que ve un celular:** elige la mesa y abre *Vista previa del celular*. Es solo para mirar: **no te inscribas ni votes ahí**, porque contarías como participante y cambiarías el avance y los resultados de la mesa.
 - Datos: un clic en la matriz, el botón *Ver datos* o la tecla **M** muestran el panel con el progreso y los promedios; otro clic o **M** vuelven a la matriz sola, y **Esc** vuelve a los datos. **D** abre *Cómo votó* (dispersión) y alterna con *Promedios*.

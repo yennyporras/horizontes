@@ -234,10 +234,13 @@ describe('panel admin contra el simulador', () => {
     await screen.findByText('Inscripción abierta', { selector: '.estado' })
     expect(principales()).toEqual(['Abrir ronda 1'])
     const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
-    for (const nombre of ['Tablero de la sala', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
+    for (const nombre of ['En vivo, pantalla completa', 'Con tabla', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
       const href = within(enVivo).getByRole('link', { name: nombre }).getAttribute('href') ?? ''
       expect(href.startsWith('/')).toBe(true)
     }
+    // Dos modos de proyección del tablero de la sala, a elegir por evento (pedido de Nicolai, 20-oct).
+    const modo = (n: string) => new URL(within(enVivo).getByRole('link', { name: n }).getAttribute('href')!, 'http://x').searchParams.get('modo')
+    expect([modo('En vivo, pantalla completa'), modo('Con tabla')]).toEqual(['vivo', 'tabla'])
   })
 
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {

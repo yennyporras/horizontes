@@ -32,6 +32,7 @@ import {
   rutaApiTablero,
   urlTableroSala,
   urlVistaPrevia,
+  conModo,
   zonaSala,
 } from '../textos'
 
@@ -496,11 +497,18 @@ function VerEnVivo({ d }: { d: SalaDetalle }) {
       <ul className="en-vivo">
         {tableroSala && (
           <li>
-            <a className="hz-boton hz-boton--secundario" href={tableroSala} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
-              Tablero de la sala
-            </a>
+            <p className="en-vivo__titulo">Tablero de la sala</p>
+            <div className="acciones">
+              <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'vivo') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
+                En vivo, pantalla completa
+              </a>
+              <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'tabla') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
+                Con tabla
+              </a>
+            </div>
             <p id="ayuda-tablero-sala" className="pista">
-              El que se proyecta: la matriz de toda la sala. En el tablero, F pone pantalla completa y 1, 2 y C cambian entre ronda 1, ronda 2 y comparación.
+              El que se proyecta, con la matriz de toda la sala. Elige el modo según el evento: en vivo muestra solo la matriz moviéndose; con tabla suma el progreso y los promedios. En el
+              tablero, F pone pantalla completa, V y T cambian de modo y 1, 2 y C cambian entre ronda 1, ronda 2 y comparación.
             </p>
           </li>
         )}
