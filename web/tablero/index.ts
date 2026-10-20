@@ -1,4 +1,4 @@
-// Entrada pública de T3 para otras áreas (T2 vista en vivo y resultados).
+// Entrada pública del tablero para otras áreas (vista en vivo y resultados del celular).
 export { MatrizHorizontes } from './MatrizHorizontes'
 export type { MatrizHorizontesProps } from './MatrizHorizontes'
 export type { DatosTablero, Vista } from './tipos'

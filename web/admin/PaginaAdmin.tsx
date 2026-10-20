@@ -1,4 +1,4 @@
-// T4: panel admin (salas, mesas y QR, rondas, configuración, participantes, export, admins).
+// Panel admin (salas, mesas y QR, rondas, configuración, participantes, export, admins).
 import { useTemaDocumento } from '../shared/ui'
 import './admin.css'
 import { SesionProvider } from './sesion'

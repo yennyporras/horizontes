@@ -1,5 +1,5 @@
 // Cliente del participante para el contrato v1 (docs/CONTRATO_API.md).
-// Provisional hasta que T1 publique web/shared/api/: misma forma, solo cambia el import.
+// Transporte propio del celular con la misma forma de web/shared/api/ (ver docs/DECISIONES.md).
 // Los tipos del 19-oct (modo de preguntas y pregunta guiada) ya vienen del contrato compartido.
 import type { ModoPreguntas, PreguntaGuiada } from '../shared/api/contrato'
 
@@ -8,7 +8,7 @@ export type { ModoPreguntas, PreguntaGuiada }
 export type EstadoSala = 'preparada' | 'inscripcion' | 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cerrada' | 'cerrada'
 export type Valor = 1 | 3 | 5 | 7 | 9
 
-/** País de la sala (R4_CONTRATO C4 y C6): define la ley que cita el aviso de datos. Sin dato, Colombia. */
+/** País de la sala (acta del 16-oct, C4 y C6): define la ley que cita el aviso de datos. Sin dato, Colombia. */
 export type Pais = 'CO' | 'PE' | 'GT'
 
 export interface Mesa {
@@ -81,7 +81,7 @@ export interface RondaVivo {
   t2m: number | null
   eje_x: number | null
   eje_y: number | null
-  /** eje X + eje Y, calculado en el servidor (R4_CONTRATO C1). null sin votos o bajo el mínimo. */
+  /** eje X + eje Y, calculado en el servidor (acta del 16-oct, C1). null sin votos o bajo el mínimo. */
   total?: number | null
   /** Hay votos, pero menos que `minimo_votos`: el servidor no entrega promedios ni punto. */
   bajo_minimo?: boolean
@@ -98,7 +98,7 @@ export interface Resultados {
   proyectos_fijos?: { id: string; nombre: string; eje_x: number; eje_y: number; tam?: number }[]
   proyectos_vivos: { id: string; nombre: string; tam?: number; rondas: RondaVivo[] }[]
   preliminar?: boolean
-  /** Votos mínimos por proyecto, ronda y alcance para mostrar resultados (R4_CONTRATO C3: 3). */
+  /** Votos mínimos por proyecto, ronda y alcance para mostrar resultados (acta del 16-oct, C3: 3). */
   minimo_votos?: number
 }
 

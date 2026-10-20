@@ -317,7 +317,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-producto__extra { display: flex; align-items: center; gap: var(--hz-sp-2); min-width: 0; }
 
 /* ── Blindaje ante estilos globales de otras áreas ─────
-   tablero.css (T3) define .hz-cifra, .hz-insignia y .hz-progreso sin alcance y se carga en toda la SPA.
+   tablero.css define .hz-cifra, .hz-insignia y .hz-progreso sin alcance y se carga en toda la SPA.
    Dentro de .hz (páginas del participante) mandan los valores de este sistema de diseño. */
 .hz .hz-cifra { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
 .hz .hz-progreso { padding: 0; background: none; border-radius: 0; }

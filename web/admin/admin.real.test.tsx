@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Panel admin contra la API real de T1 (Fastify en memoria con BD SQLite :memory: y reloj simulado).
+// Panel admin contra la API real (Fastify en memoria con BD SQLite :memory: y reloj simulado).
 // El transporte del panel se conecta a app.inject y guarda la cookie de sesión como lo haría el navegador.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'

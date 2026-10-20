@@ -15,7 +15,7 @@ import { usarYo } from './usarYo'
 // La muestra del sistema de diseño trae el mock de /api/yo: se carga aparte para no inflar el bundle.
 const MuestraUI = lazy(() => import('../shared/ui/MuestraUI').then((m) => ({ default: m.MuestraUI })))
 
-// T2: flujo del participante (DISENO §8). Ruta /m/:codigo; /m/_ui es la muestra del sistema de diseño.
+// Flujo del participante (DISENO §8). Ruta /m/:codigo; /m/_ui es la muestra del sistema de diseño.
 export default function PaginaMesa() {
   const { codigo = '' } = useParams()
   if (codigo === '_ui')

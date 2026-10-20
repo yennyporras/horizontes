@@ -18,7 +18,7 @@ for (const [w, h] of tamaños) {
     scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
     lateral: (() => { const a = document.querySelector('.hz-lateral'); return a ? [a.clientHeight, a.scrollHeight, a.clientWidth] : null })(),
   }))
-  await page.screenshot({ path: `${salida}/${process.env.PREFIJO ?? 't3'}-${w}.png`, fullPage: w < 1100 })
+  await page.screenshot({ path: `${salida}/${process.env.PREFIJO ?? 'tablero'}-${w}.png`, fullPage: w < 1100 })
   console.log(w, JSON.stringify(info), errores.join(' | '))
   await page.close()
 }
