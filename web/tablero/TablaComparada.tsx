@@ -1,16 +1,31 @@
 import type { CriterioId, DatosTablero, RondaVivo, Vista } from './tipos'
-import { cifraRonda, claseCifra, mostrarR2, nombreCorto, rondaDe } from './logica'
+import { cifraRonda, claseCifra, mayorCambioEn, mostrarR2, nombreCorto, rondaDe, titularConvergencia } from './logica'
 import { descripcionCriterio } from '../shared/criterios'
 
-/** Nombre del criterio y, debajo, su descripción corta (pedido de Paola, 20-oct; máximo 100 caracteres). */
-export function NombreCriterio({ id, nombre }: { id: string; nombre: string }) {
+/**
+ * Nombre del criterio y, debajo, su descripción corta (pedido de Paola, 20-oct; máximo 100 caracteres). Con poco alto
+ * (proyector de 1280×720 u 800) la descripción se oculta (CSS) y queda en el title de la fila. En Comparación, la marca
+ * «Mayor cambio» dice en qué proyectos este fue el criterio que más se movió de R1 a R2 (lo calcula el servidor).
+ */
+export function NombreCriterio({ id, nombre, mayorCambio = [], variosProyectos = false }: { id: string; nombre: string; mayorCambio?: string[]; variosProyectos?: boolean }) {
   const desc = descripcionCriterio(id)
   return (
     <>
-      <span className="hz-crit-nombre">{nombreCorto(id, nombre)}</span>
+      <span className="hz-crit-nombre">
+        {nombreCorto(id, nombre)}
+        {mayorCambio.length > 0 && (
+          <span className="hz-mayor-cambio">Mayor cambio{variosProyectos ? `: ${mayorCambio.join(' y ')}` : ''}</span>
+        )}
+      </span>
       {desc && <span className="hz-crit-desc">{desc}</span>}
     </>
   )
+}
+
+/** Title de la fila de un criterio: el nombre completo de la semilla y la descripción con los dos polos. */
+export function tituloCriterio(id: string, nombre: string): string {
+  const desc = descripcionCriterio(id)
+  return desc ? `${nombre}. ${desc}` : nombre
 }
 
 /** Encabezado de columna de una ronda: «R1» verde con aro hueco, «R2» rojo con punto sólido (se lee sin color). */
@@ -31,10 +46,11 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
   const conR2 = mostrarR2(datos)
   const vivos = datos.proyectos_vivos.map((p) => ({ p, r1: rondaDe(p, 1), r2: rondaDe(p, 2) }))
   const foco = (n: 1 | 2) => vista === n || vista === 'comparacion'
+  const comparacion = vista === 'comparacion'
   const fila = (c: { id: CriterioId; nombre: string }, valor: (r: RondaVivo | null) => number | null | undefined) => (
     <tr key={c.id}>
-      <th scope="row" title={c.nombre}>
-        <NombreCriterio id={c.id} nombre={c.nombre} />
+      <th scope="row" title={tituloCriterio(c.id, c.nombre)}>
+        <NombreCriterio id={c.id} nombre={c.nombre} mayorCambio={comparacion ? mayorCambioEn(datos, c.id) : []} variosProyectos={vivos.length > 1} />
       </th>
       {vivos.map(({ p, r1, r2 }) => [
         <td key={`${p.id}1`} className={claseCifra(r1, valor(r1), foco(1), 'hz-ini')}>
@@ -55,6 +71,10 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
       <h2 id="hz-comparada-t" className="hz-sub">
         Promedios por criterio
       </h2>
+      {/* Comparación con convergencia: el titular del servidor en una línea sobre la tabla. */}
+      {comparacion && typeof datos.convergencia_alcance?.reduccion_pct === 'number' && (
+        <p className="hz-movio-linea">{titularConvergencia(datos.convergencia_alcance.reduccion_pct)}</p>
+      )}
       <table className="hz-tabla">
         <caption className="hz-oculto">Promedio {conR2 ? 'de la ronda 1 y la ronda 2' : 'de la ronda 1'} por criterio y proyecto</caption>
         <thead>
@@ -63,7 +83,7 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
             {vivos.map(({ p }) => (
               <th key={p.id} scope="colgroup" colSpan={conR2 ? 2 : 1} className="hz-col-proy">
                 {p.nombre}
-                <span className="hz-panel-meta"> TAM {p.tam}</span>
+                <span className="hz-panel-meta"> TAM {p.tam} de 10</span>
               </th>
             ))}
           </tr>

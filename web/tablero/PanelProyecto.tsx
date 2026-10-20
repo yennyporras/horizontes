@@ -1,5 +1,5 @@
 import type { DatosTablero, ProyectoVivo, RondaVivo, Vista } from './tipos'
-import { ColRonda, NombreCriterio } from './TablaComparada'
+import { ColRonda, NombreCriterio, tituloCriterio } from './TablaComparada'
 import { cifraRonda, claseCifra, delta, mostrarR2, rondaDe } from './logica'
 
 /** Móvil y tableta: un panel por proyecto con R1, R2 y el cambio por criterio (sin fila «Total», preentrega del 19-oct). */
@@ -10,8 +10,8 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
   const idTitulo = `hz-panel-${proyecto.id}`
   const fila = (c: { id: string; nombre: string }, valor: (r: RondaVivo | null) => number | null | undefined) => (
     <tr key={c.id}>
-      <th scope="row" title={c.nombre}>
-        <NombreCriterio id={c.id} nombre={c.nombre} />
+      <th scope="row" title={tituloCriterio(c.id, c.nombre)}>
+        <NombreCriterio id={c.id} nombre={c.nombre} mayorCambio={vista === 'comparacion' && proyecto.convergencia?.criterio_mayor_cambio === c.id ? [proyecto.nombre] : []} />
       </th>
       <td className={claseCifra(r1, valor(r1), vista === 1 || vista === 'comparacion')}>{cifraRonda(r1, valor(r1))}</td>
       {conR2 && (
@@ -28,7 +28,7 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
       <header className="hz-panel-cab">
         <h2 id={idTitulo}>{proyecto.nombre}</h2>
         <span className="hz-panel-meta">
-          {proyecto.sector ? `${proyecto.sector} · ` : ''}TAM {proyecto.tam}
+          {proyecto.sector ? `${proyecto.sector} · ` : ''}TAM {proyecto.tam} de 10
         </span>
       </header>
       <table className="hz-tabla">
