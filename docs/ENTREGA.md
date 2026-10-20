@@ -25,10 +25,10 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 - Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.1`. Sin autorización no hay inscripción.
 - Votación 1-3-5-7-9 en 6 criterios, 2 rondas, precierre cuando todos votan, cierres programados en la hora del país de la sala.
 - Resultados anónimos: tablas con los 6 criterios y su descripción corta (sin fila «Total» desde la preentrega del 19-oct); mínimo de 3 votos para mostrar un alcance; con la ronda abierta, el resultado se renueva cada 3 votos nuevos y al cerrarla queda el exacto; por defecto toda la sala ve el consolidado apenas vota.
-- Tablero con dos modos de proyección (en vivo, solo la gráfica; o con tabla) y pantalla completa con F.
+- Tablero con dos modos de proyección, *Gráfica* (solo la matriz) y *Detallado* (con progreso y promedios), y pantalla completa con F.
 - Recuperar la sesión: la da el facilitador con *Dar acceso de nuevo* en **Participantes** (enlace de un solo uso, 15 minutos). Nadie entra solo con el correo.
 - Guía de uso para administradores, un paso por sección en el orden del menú (primera visita y botón *Guía de uso*). El menú sigue el orden del taller: preparar, conducir, después y sistema.
-- «Cómo votó la sala» (o la mesa): cuántos votos tuvo cada valor 1, 3, 5, 7 y 9 por criterio, en R1 y R2, en el tablero (botón *Cómo votó* o tecla **D**) y en **Sala en vivo** del panel. Es lo que alimenta la conversación de la plenaria.
+- «Cómo votó la sala» (o la mesa): cuántos votos tuvo cada valor 1, 3, 5, 7 y 9 por criterio, en R1 y R2, en el tablero (botón *Cómo votó* o tecla **V**) y en **Sala en vivo** del panel. Es lo que alimenta la conversación de la plenaria.
 - Registro interno solo para el admin: país e IP de cada inscripción y voto en el panel y en `inscritos.csv` / `votos.csv`.
 - Panel: salas, duplicar para ensayo, mesas y QR (hoja A4 imprimible), participantes, **hojas de los 6 perfiles** (solo lectura), configuración (visibilidad, país, zona horaria, cierres, rúbricas), exportar, administradores, salud.
 - Plan B en papel y Excel (`docs/PLAN_B.md`), guía del facilitador de una página (`docs/GUIA_FACILITADOR.md`).
