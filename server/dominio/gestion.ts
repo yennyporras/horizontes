@@ -70,7 +70,7 @@ export function detalleSala(db: Db, idOCodigo: string, baseUrl: string) {
   const sala = cargarSala(db, idOCodigo)
   const ronda = rondaReferencia(sala)
   const nVivos = vivos(db, sala.id).length
-  // IP y país del primer aviso aceptado: los inscritos antes de R4 no tienen participantes.ip, su consentimiento sí.
+  // IP y país del primer aviso aceptado: los inscritos antes del 19-oct no tienen participantes.ip, su consentimiento sí.
   const participantes = todos<ParticipanteFila & { votos: number; consentimiento_at: string | null; ip_aviso: string | null; pais: string }>(
     db,
     `SELECT p.*,
@@ -203,7 +203,7 @@ export function exportInscritos(db: Db, salaId: string) {
     sala.id,
   )
   return csv([
-    // `ip` y `pais` (del aviso aceptado) al final (R4): quien ya lee el archivo por posición no se rompe.
+    // `ip` y `pais` (del aviso aceptado) al final (acta del 16-oct): quien ya lee el archivo por posición no se rompe.
     ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'politica_url', 'ip', 'pais'],
     ...filas.map((p) => [
       p.nombre,
@@ -232,7 +232,7 @@ export function exportVotos(db: Db, salaId: string) {
   )
   return csv([
     // `activo`: los votos de desactivados no cuentan en la matriz; con esta columna Excel cuadra con el tablero.
-    // `ip` (del último guardado del voto) y `pais` (del aviso aceptado) al final (R4).
+    // `ip` (del último guardado del voto) y `pais` (del aviso aceptado) al final (acta del 16-oct).
     ['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', ...CRITERIOS, 'activo', 'ip', 'pais'],
     ...filas.map((f) => [
       sha256(`${sala.id}:${f.participante_id}`).slice(0, 12),
