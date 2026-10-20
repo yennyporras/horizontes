@@ -9,6 +9,8 @@
 // desborde también a 768 y 1280 px.
 // Auditoría final del 20-oct: secciones en el orden del menú (preparar, conducir, después), la guía de uso con un paso
 // por sección en ese mismo orden, y en cada fila de formulario las etiquetas y las cajas a la misma altura.
+// QA por roles del 20-oct: cifras de los talleres y tipo de sala en Salas, «Ver quién falta» y teclas con <kbd> en
+// «Proyectar el tablero», «Resumen del taller» con la ronda 2 cerrada y resultados.csv y la matriz en Exportar.
 // Uso: PWCORE=<ruta a playwright-core> [CHROME=<ejecutable>] node QA-tests/recorrido_admin.cjs <url> <usuario> <clave> <carpeta-capturas>
 const { chromium } = require(process.env.PWCORE)
 const BASE = process.argv[2] || 'http://localhost:3999'
@@ -168,7 +170,10 @@ async function irA(p, seccion) {
     await focoVisible(p, 'salas', ancho, errores)
     await guiaEnOrden(p, ancho, errores)
     const nombre = `Recorrido ${ancho}px ${Date.now() % 100000}`
+    if (!(await p.getByRole('region', { name: 'Cifras de los talleres' }).count())) errores.push(`${ancho}: Salas sin las cifras de los talleres`)
     await p.getByLabel('Nombre del taller').fill(nombre); await p.getByLabel('Mesas').fill('2')
+    // El recorrido es un ensayo: no debe sumar en las cifras del negocio.
+    await p.getByLabel('Tipo').selectOption('ensayo')
     await p.getByRole('button', { name: 'Crear sala' }).click()
     await p.getByRole('heading', { name: 'Sala en vivo' }).waitFor()
     // Sala preparada: el panel recuerda preparar la sala en el orden del menú antes de abrir la inscripción.
@@ -203,6 +208,13 @@ async function irA(p, seccion) {
     await pulsar('Abrir ronda 1', 'Ronda 1 abierta')
     for (const t of toks.slice(0, 3)) for (const pr of ['insumex', 'nutriwhat']) await api('PUT', '/api/votos', { proyecto_id: pr, ronda: 1, respuestas: R }, { 'x-participante-token': t })
     await p.locator('#t-precierre', { hasText: 'Todos votaron en Mesa 1' }).waitFor({ timeout: 10000 })
+    // Ronda abierta: Mesas justo después del control, «Ver quién falta» en la Mesa 2 y el aviso de la ronda 1 oculta en el tablero.
+    const orden = await p.evaluate(() => [...document.querySelectorAll('#contenido section[aria-labelledby] > h2')].map((h) => h.textContent))
+    if (orden[0] !== 'Control de la sala' || orden[1] !== 'Mesas') errores.push(`${ancho}: con la ronda abierta las secciones van ${JSON.stringify(orden.slice(0, 3))}`)
+    if (!(await p.getByRole('link', { name: 'Ver quién falta en Mesa 2' }).count())) errores.push(`${ancho}: falta «Ver quién falta» en la Mesa 2`)
+    if (!(await p.getByText(/^Con la ronda 1 abierta, el tablero muestra cuántos votaron/).count())) errores.push(`${ancho}: sin el aviso de la ronda 1 en Proyectar el tablero`)
+    const teclas = await p.locator('.teclas__lista kbd').allTextContents()
+    if (teclas.join(' ') !== 'F G D M V 1 2 C → ← ?') errores.push(`${ancho}: teclas del tablero ${JSON.stringify(teclas)}`)
     await p.getByRole('button', { name: 'Ver resultado de Mesa 1' }).click()
     await p.getByRole('heading', { name: /Resultado preliminar · Mesa 1/ }).waitFor()
     await revisar(p, 'vivo-precierre', ancho, errores)
@@ -229,6 +241,8 @@ async function irA(p, seccion) {
     }
     await p.goto(`${BASE}/admin/salas/${salaId}/vivo`)
     await pulsar('Cerrar ronda 2', 'Ronda 2 cerrada')
+    await p.getByRole('region', { name: 'Resumen del taller' }).waitFor({ timeout: 10000 }).catch(() => errores.push(`${ancho}: sin «Resumen del taller» con la ronda 2 cerrada`))
+    await revisar(p, 'vivo-resumen', ancho, errores)
     // QA-A-01: con la ronda 2 cerrada, el paso que sigue es cerrar la sala.
     await pulsar('Cerrar sala', 'Sala cerrada', 'Sí, cerrar la sala')
     for (const s of ['salud', 'administradores']) {
@@ -236,6 +250,12 @@ async function irA(p, seccion) {
       await p.getByRole('heading', { level: 1 }).waitFor()
       await revisar(p, s, ancho, errores)
     }
+    // Exportar: lo del cliente (resultados.csv sin datos personales) y la matriz en SVG.
+    await p.goto(`${BASE}/admin/salas/${salaId}/export`)
+    const res = await p.evaluate(async (id) => { const r = await fetch(`/api/admin/salas/${id}/export/resultados.csv`); return { status: r.status, texto: await r.text() } }, salaId)
+    if (res.status !== 200 || /@|ejemplo\.co/.test(res.texto)) errores.push(`${ancho}: resultados.csv respondió ${res.status} o trae datos personales`)
+    const [descarga] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), p.getByRole('button', { name: 'Descargar matriz (SVG)' }).click()])
+    if (!descarga || !/-matriz\.svg$/.test(descarga.suggestedFilename())) errores.push(`${ancho}: «Descargar matriz (SVG)» no descargó la matriz`)
 
     // Rol admin (C19-2): crea la cuenta si falta y recorre la misma sala desde un navegador sin sala recordada.
     const cuentas = await p.evaluate(async () => (await (await fetch('/api/admin/admins')).json()).admins)
