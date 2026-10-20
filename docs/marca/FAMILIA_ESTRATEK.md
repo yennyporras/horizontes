@@ -1,6 +1,6 @@
 # Familia Estratek · Línea gráfica v1
 
-Fuente única de la identidad visual de las herramientas de Estratek: Horizontes, IRMI, Building y Motor Comercial. Aprobada por Paola el 19-oct-2026. Piloto: Horizontes. Propuesta visual: https://claude.ai/artifact/TsY5hzPFrVssiham1rKBS1
+Fuente única de la identidad visual de las herramientas de Estratek: Horizontes, IRMI, Building y Motor Comercial. Aprobada por Paola el 19-oct-2026. Piloto: Horizontes.
 
 Los colores de marca son **exactos** de estratek.com.co: kit de Elementor 1641, CSS adicional del tema y clase `.fondo-estratek`. No se inventan colores de marca. Los derivados (superficies, estados, azul profundo) existen solo para cumplir contraste AA y se documentan aquí.
 

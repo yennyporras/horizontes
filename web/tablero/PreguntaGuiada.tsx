@@ -1,6 +1,6 @@
 import type { VistaPregunta } from './logica'
 
-/** Modo guiado (C19-5, T3): la pregunta que eligió el facilitador, con su rúbrica, en grande para el proyector. */
+/** Modo guiado (C19-5): la pregunta que eligió el facilitador, con su rúbrica, en grande para el proyector. */
 export function PreguntaGuiada({ p }: { p: VistaPregunta }) {
   return (
     <section className="hz-guiada" aria-labelledby="hz-guiada-titulo" aria-live="polite">

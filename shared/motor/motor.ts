@@ -57,7 +57,7 @@ export interface Agregado extends Punto {
   distribucion: Distribucion
 }
 
-/** Alias con el nombre del prompt R0: inputs (promedios) y pesos → {t2m, eje_x, eje_y, total}. */
+/** Alias con el nombre de la especificación original: inputs (promedios) y pesos → {t2m, eje_x, eje_y, total}. */
 export const calcular = calcularPunto
 
 /** Promedio simple por criterio. `null` si no hay votos. */

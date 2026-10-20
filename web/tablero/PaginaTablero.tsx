@@ -32,7 +32,7 @@ const DETALLES: { id: Detalle; texto: string }[] = [
 /** Rondas del bloque «Cómo votó»: las de la vista; en Comparación, R1 y R2 cuando ya hay ronda 2. */
 const rondasDe = (vista: Vista, conR2: boolean): (1 | 2)[] => (vista === 'comparacion' ? (conR2 ? [1, 2] : [1]) : [vista])
 
-// T3: /tablero/:sala?mesa=&t= · modo proyector (1920 px) y legible en 1366 y 360 px.
+// Tablero: /tablero/:sala?mesa=&t= · modo proyector (1920 px) y legible en 1366 y 360 px.
 export default function PaginaTablero() {
   const { sala = '' } = useParams()
   const [params, setParams] = useSearchParams()
@@ -73,7 +73,7 @@ export default function PaginaTablero() {
   }, [])
 
   const escalaTexto = useEscalaProyector()
-  // Zoom de la matriz (T1): el lienzo se guarda en estado porque se monta cuando llegan los datos.
+  // Zoom de la matriz (C19-6): el lienzo se guarda en estado porque se monta cuando llegan los datos.
   const [lienzo, setLienzo] = useState<HTMLDivElement | null>(null)
   const zoom = useZoomMatriz(lienzo, alternarMatriz)
   const pantalla = usePantallaCompleta({ onVista: setElegida, onDetalle: alternarDetalle, onZoom: zoom.accion, onMatriz: alternarMatriz })

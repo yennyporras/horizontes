@@ -1,6 +1,6 @@
 import { ZOOM_MAX, ZOOM_MIN, type AccionZoom, type Encuadre } from './zoom'
 
-/** Botones −, + y «Ver todo» del zoom de la matriz (T1); las teclas son −, + y 0. */
+/** Botones −, + y «Ver todo» del zoom de la matriz (C19-6); las teclas son −, + y 0. */
 export function ControlesZoom({ encuadre, onAccion }: { encuadre: Encuadre; onAccion: (a: AccionZoom) => void }) {
   return (
     <div className="hz-zoom" role="group" aria-label="Zoom de la matriz">

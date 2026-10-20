@@ -1,6 +1,6 @@
 # deploy · Horizontes
 
-Dueña: T4. Guía completa de infraestructura en `docs/DESPLIEGUE.md`; aquí va lo operativo del pipeline.
+Responsable: equipo de infraestructura. Guía completa de infraestructura en `docs/DESPLIEGUE.md`; aquí va lo operativo del pipeline.
 
 ## Archivos
 | Archivo | Para qué |
@@ -42,11 +42,11 @@ PWCORE=... CHROME=... node QA-tests/recorrido_integrado.cjs http://localhost:399
 ## Coolify (resumen; detalle en docs/DESPLIEGUE.md §2)
 - App `horizontes-staging`: repo de Horizontes en GitHub, rama `main`, Build Pack **Dockerfile**, *Dockerfile Location* `/deploy/Dockerfile`, *Base Directory* `/`, puerto `3000`, 1 réplica.
 - *Persistent Storage* → Volume Mount `horizontes-datos-staging` en `/data` (la base es `DB_PATH=/data/horizontes.sqlite`, ya fijada en la imagen).
-- Variables (Runtime): `BASE_URL`, `POLITICA_PRIVACIDAD_URL`, `SUPERADMIN_USUARIO`, `SUPERADMIN_CLAVE` y las que T1 agregue (ver `docs/STACK.md`). `PORT`, `HOST`, `TZ` y `DB_PATH` ya vienen en la imagen.
+- Variables (Runtime): `BASE_URL`, `POLITICA_PRIVACIDAD_URL`, `SUPERADMIN_USUARIO`, `SUPERADMIN_CLAVE` y las demás de `docs/STACK.md`. `PORT`, `HOST`, `TZ` y `DB_PATH` ya vienen en la imagen.
 - Dominio `https://staging-horizontes.estratek.com.co`, Force HTTPS.
 
 ## Credenciales
-Ya existe el remoto `origin` (`github.com/yennyporras/horizontes`, con `main`). Faltan (ver `docs/BLOQUEOS.md`): conectar ese repo a la GitHub App de Coolify y crear las apps (`horizontes-staging`, `horizontes`), token de API de Coolify, UUID de las apps y registros DNS. Paola: `cp deploy/env.deploy.ejemplo deploy/.env.deploy`, llenarlo, `tools/deploy.sh diagnostico` hasta que todo diga `[ok]`, y luego `tools/deploy.sh staging`.
+Ya existe el remoto `origin` (`github.com/yennyporras/horizontes`, con `main`). Faltan (ver `docs/ENTREGA.md` §5): conectar ese repo a la GitHub App de Coolify y crear las apps (`horizontes-staging`, `horizontes`), token de API de Coolify, UUID de las apps y registros DNS. Paola: `cp deploy/env.deploy.ejemplo deploy/.env.deploy`, llenarlo, `tools/deploy.sh diagnostico` hasta que todo diga `[ok]`, y luego `tools/deploy.sh staging`.
 
 ## Respaldo de SQLite
 *Scheduled Task* de la app, diario `0 8 * * *` (3:00 a. m. Bogotá):

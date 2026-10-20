@@ -1,6 +1,6 @@
 # Entrega · Horizontes
 
-Qué recibe Estratek, dónde está, qué falta y qué hace Paola para ponerlo en producción. Estado al 19-oct, R4 (cambios del acta del 16-oct).
+Qué recibe Estratek, dónde está, qué falta y qué hace Paola para ponerlo en producción. Estado al 19-oct (cambios del acta del 16-oct y pedidos del 19-oct).
 
 ## 1. Qué es
 App web del taller "Portafolio por Horizontes" (caso Foodsume). Los participantes se inscriben con el QR de su mesa, leen el caso y su hoja de perfil, califican INSUMEX y NUTRIWHAT en 6 criterios (1, 3, 5, 7, 9) en 2 rondas (R1 individual y en silencio, R2 con discusión), y la matriz de burbujas muestra cómo se mueven sobre 8 proyectos fijos: R1 en verde y R2 en rojo.
@@ -33,7 +33,7 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 ## 5. Lo que hace Paola, en orden
 
 ### 5.1 Antes de producción (hoy)
-Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado desde aquí el 19-oct a las 14:35: el DNS de `staging-horizontes.estratek.com.co` ya apunta al VPS, pero `https://staging-horizontes.estratek.com.co/api/health` responde **503 con un certificado no válido** y por HTTP **404**. Eso es el proxy de Coolify diciendo que no tiene una app sana detrás de ese dominio. Por eso el orden es: primero staging en verde, después producción clonándolo.
+Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado el 19-oct a las 14:35: el DNS de `staging-horizontes.estratek.com.co` ya apunta al VPS, pero `https://staging-horizontes.estratek.com.co/api/health` responde **503 con un certificado no válido** y por HTTP **404**. Eso es el proxy de Coolify diciendo que no tiene una app sana detrás de ese dominio. Por eso el orden es: primero staging en verde, después producción clonándolo.
 
 1. **Texto legal.** Lee los tres textos de autorización (CO, PE, GT) en `docs/CONSENTIMIENTO.md` y confirma o corrige. Confirma también en qué país está el VPS (Hostinger → **VPS** → **Resumen** → ubicación): si no es Colombia, avisa para agregar el párrafo de transferencia internacional.
 2. **Revisar staging en Coolify** (Projects → `Horizontes` → `staging` → `horizontes-staging`):
@@ -95,16 +95,16 @@ Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado desde aquí
 ## 7. Qué garantiza (SPEC §11) y con qué evidencia
 | Criterio | Evidencia | Estado |
 |---|---|---|
-| 40 celulares, 4 mesas, 2 rondas, p95 < 500 ms, sin errores | Simulador de T1 contra la imagen de producción (R3: 0 errores, p95 entre 231 y 457 ms) | En local. Falta repetirlo en staging |
+| 40 celulares, 4 mesas, 2 rondas, p95 < 500 ms, sin errores | Simulador de carga contra la imagen de producción (16-oct: 0 errores, p95 entre 231 y 457 ms) | En local. Falta repetirlo en staging |
 | Puntos = cálculo independiente (golden) | `tests/golden/motor_golden.json` al 100 % en `tools/test.sh` | Verde |
-| Precierre solo con todos los activos, preliminar, sin cerrar | e2e de T1, T2 y T4; recorrido en navegador | Verde |
-| Cierre programado a la hora (± 15 s) | e2e de T1 con reloj real | Verde |
-| Cambios de visibilidad en el celular en < 5 s | e2e de T1 y T3 | Verde |
-| Sin consentimiento no hay inscripción; versión y política guardadas | Pruebas de T1 y T2; `docs/CONSENTIMIENTO.md` | Verde |
-| Admin normal no ve gestión de admins (403) | Pruebas de T1 y del panel contra la API real | Verde |
-| Resultados anónimos, mínimo 3 votos, «Total» (acta) | Pruebas de T1, T2, T3 y del panel; `docs/TRIAGE.md` | Ver la pasada R4 en TRIAGE |
+| Precierre solo con todos los activos, preliminar, sin cerrar | e2e del servidor, del celular y del panel; recorrido en navegador | Verde |
+| Cierre programado a la hora (± 15 s) | e2e del servidor con reloj real | Verde |
+| Cambios de visibilidad en el celular en < 5 s | e2e del servidor y del tablero | Verde |
+| Sin consentimiento no hay inscripción; versión y política guardadas | Pruebas del servidor y del celular; `docs/CONSENTIMIENTO.md` | Verde |
+| Admin normal no ve gestión de admins (403) | Pruebas del servidor y del panel contra la API real | Verde |
+| Resultados anónimos, mínimo 3 votos, «Total» (acta) | Pruebas del servidor, del celular, del tablero y del panel; `docs/TRIAGE.md` | Verde (pasada 4 de TRIAGE y su integración) |
 
-Pruebas integradas al 19-oct 14:15 (`tools/test.sh` sobre las 4 ramas): 436 de 441 en verde; las 4 rojas son pruebas e2e del celular que aún esperan «Voto registrado» en vez de la vista en vivo por defecto (TRIAGE #31, T2). Recorrido en navegador a 360 y 1920 px en verde.
+Pruebas integradas al 19-oct 14:15 (`tools/test.sh` sobre las ramas de las 4 áreas): 436 de 441 en verde; las 4 rojas eran pruebas e2e del celular que aún esperaban «Voto registrado» en vez de la vista en vivo por defecto (TRIAGE #31). Tras la integración del 19-oct: 457 de 458 en verde, 1 omitida. Recorrido en navegador a 360 y 1920 px en verde.
 
 ## 8. Pendientes conocidos
 - Staging sano y producción: sección 5.1 (solo Paola, en Coolify y Hostinger).

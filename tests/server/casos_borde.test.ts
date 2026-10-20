@@ -1,4 +1,4 @@
-// Casos borde del taller (R3): inscripción tardía en R2, participante desactivado, doble pestaña,
+// Casos borde del taller: inscripción tardía en R2, participante desactivado, doble pestaña,
 // reloj del cliente desfasado y reinicio de ronda. Todo por la API pública con el reloj simulado.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { type Entorno, RESPUESTAS_5, T0, accion, crearEntorno, crearSala, inscribir, votar } from './ayuda'

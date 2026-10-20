@@ -129,7 +129,7 @@ CREATE TABLE eventos (
 );
 CREATE INDEX ix_eventos_sala ON eventos (sala_id, id);
 `,
-  // R4 (acta del 16-oct): país y zona horaria por sala; IP de la inscripción y del último voto (solo para el admin);
+  // Acta del 16-oct: país y zona horaria por sala; IP de la inscripción y del último voto (solo para el admin);
   // país del aviso aceptado (los tres textos comparten versión y el admin puede cambiar el país de la sala).
   // SQLite no cambia el DEFAULT de una columna existente: la visibilidad por defecto de las salas nuevas
   // (alcance 'sala', vista 'en_vivo') la fija CONFIG_POR_DEFECTO en el código; las salas existentes no cambian.
@@ -152,7 +152,7 @@ CREATE TABLE rubricas_plantilla (
   PRIMARY KEY (plantilla, criterio_id)
 );
 `,
-  // Cambios del 19-oct (docs/CAMBIOS_19OCT_CONTRATO.md S2 y S4): apertura y cierre programados por sala y por ronda,
+  // Cambios del 19-oct (docs/DECISIONES.md, pedidos del 19-oct, S2 y S4): apertura y cierre programados por sala y por ronda,
   // modo de preguntas y pregunta guiada. `cierre_programado_ronda_at` queda como columna sin uso: la API lo sirve como
   // alias del cierre de la ronda abierta (o de la siguiente). Lo que tenía programado pasa a la ronda que habría cerrado.
   `

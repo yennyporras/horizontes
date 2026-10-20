@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// Voz y tono de Estratek: cero rayas y nada de las palabras que la guía prohíbe, en todo texto de T2.
+// Voz y tono de Estratek: cero rayas y nada de las palabras que la guía prohíbe, en todo texto del celular.
 const PROHIBIDAS = [
   'profundizar',
   'robusto',
@@ -31,7 +31,7 @@ function fuentes(dir: string): string[] {
 
 const archivos = [...fuentes('web/participante'), ...fuentes('web/shared/ui')]
 
-describe('voz y tono en los textos de T2', () => {
+describe('voz y tono en los textos del celular', () => {
   it.each(archivos)('%s', (archivo) => {
     const texto = readFileSync(archivo, 'utf8')
     expect(texto).not.toMatch(/[—–]/)

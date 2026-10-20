@@ -62,7 +62,7 @@ export interface Participante {
   activo: boolean
   completo_ronda: boolean
   consentimiento_at: string
-  /** R4_CONTRATO C8: solo en el panel, nunca en vistas públicas. */
+  /** Acta del 16-oct, C8: solo en el panel, nunca en vistas públicas. */
   ip?: string | null
   pais?: string
 }
@@ -76,7 +76,7 @@ export interface Evento {
 
 export interface SalaDetalle {
   version: string
-  /** url_tablero es opcional (CONTRATO: agregado por T4); si falta, se deriva del tablero de una mesa. */
+  /** url_tablero es opcional (CONTRATO: agregado para el panel); si falta, se deriva del tablero de una mesa. */
   sala: SalaResumen & { config: Config; url_tablero?: string; pregunta_guiada?: PreguntaGuiada | null }
   mesas: Mesa[]
   participantes: Participante[]
@@ -116,7 +116,7 @@ export interface RondaVivo {
   promedios: Record<string, number> | null
   /** Conteo de 1, 3, 5, 7 y 9 por criterio (bloque «Cómo votó»); null sin votos o bajo el mínimo. */
   distribucion?: Record<string, Record<'1' | '3' | '5' | '7' | '9', number>> | null
-  /** R4_CONTRATO C1: eje X + eje Y, calculado en el servidor; null sin votos o bajo el mínimo. */
+  /** Acta del 16-oct, C1: eje X + eje Y, calculado en el servidor; null sin votos o bajo el mínimo. */
   total?: number | null
   bajo_minimo?: boolean
 }

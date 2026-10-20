@@ -1,5 +1,5 @@
 /*
- * Tablero (T3) en el tema carbón de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md §3): el elemento raíz
+ * Tablero en el tema carbón de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md §3): el elemento raíz
  * lleva data-tema="carbon" y aquí solo se usan los tokens semánticos --hz-* de web/shared/ui/tokens.css.
  * El azul de acción (--hz-accion) va como texto solo sobre el fondo o la superficie 1 (sobre la 2 no llega a AA);
  * como relleno, con --hz-sobre-accion encima. El degradado de marca es solo la línea bajo el encabezado y la
@@ -207,7 +207,7 @@ body:has(> #root > .hz-tablero) {
 .hz-lienzo svg {
   display: block;
 }
-/* Zoom (T1): sin zoom, el dedo sigue desplazando la página en vertical; con zoom, arrastra la matriz. */
+/* Zoom (C19-6): sin zoom, el dedo sigue desplazando la página en vertical; con zoom, arrastra la matriz. */
 .hz-lienzo {
   touch-action: pan-y;
 }
@@ -265,7 +265,7 @@ body:has(> #root > .hz-tablero) {
   color: var(--hz-tinta-2);
 }
 
-/* Qué significa cada eje y cada punto (T2): dos o tres líneas bajo la matriz, sin pesos ni fórmulas. */
+/* Qué significa cada eje y cada punto (C19-7): dos o tres líneas bajo la matriz, sin pesos ni fórmulas. */
 .hz-explica {
   margin: 0.35em 0 0;
   font-size: 0.8em;
@@ -282,7 +282,7 @@ body:has(> #root > .hz-tablero) {
   gap: 0.4em;
 }
 
-/* Pregunta guiada (T3): la pregunta del facilitador, en grande, en lugar de la matriz. */
+/* Pregunta guiada (C19-5): la pregunta del facilitador, en grande, en lugar de la matriz. */
 .hz-guiada {
   min-width: 0;
   padding: 1em 1.2em;

@@ -168,7 +168,7 @@ function Visibilidad({ d, guardar }: PropsSeccion) {
   )
 }
 
-/** País de la sala: define la ley que cita el aviso de datos y la hora de los cierres (R4_CONTRATO C4 y C6). */
+/** País de la sala: define la ley que cita el aviso de datos y la hora de los cierres (acta del 16-oct, C4 y C6). */
 function PaisSala({ d, guardar }: PropsSeccion) {
   const c = d.sala.config
   const pais = c.pais ?? 'CO'

@@ -1,7 +1,7 @@
 import type { DatosTablero } from './tipos'
 
 /**
- * Bajo la matriz (C19-7, T2): qué significa cada eje y cada punto, en lenguaje simple. Sin pesos ni
+ * Bajo la matriz (C19-7): qué significa cada eje y cada punto, en lenguaje simple. Sin pesos ni
  * fórmulas: la ponderación no se explica en el taller (preentrega del 19-oct).
  */
 export function ExplicacionMatriz({ datos }: { datos: DatosTablero }) {

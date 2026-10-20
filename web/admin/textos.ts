@@ -13,7 +13,7 @@ export const PROYECTOS_VIVOS = seed.plantilla.proyectos.filter((p) => p.modo ===
 
 export const nombreProyecto = (id: string) => seed.plantilla.proyectos.find((p) => p.id === id)?.nombre ?? id
 
-/** País de la sala (R4_CONTRATO C4) con su zona horaria por defecto. */
+/** País de la sala (acta del 16-oct, C4) con su zona horaria por defecto. */
 export const PAISES: Record<Pais, { nombre: string; zona: ZonaHoraria }> = {
   CO: { nombre: 'Colombia', zona: 'America/Bogota' },
   PE: { nombre: 'Perú', zona: 'America/Lima' },
