@@ -65,13 +65,18 @@ Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado el 19-oct a
     HZ_ADMIN_CLAVE='<tu clave>' node QA-tests/hoja_qr_pdf.cjs https://horizontes.estratek.com.co paola <CÓDIGO DE SALA> hoja-qr.pdf
     ```
     Cuatro mesas por hoja. El script avisa si los QR apuntan a otro dominio distinto del que le pasaste (señal de un `BASE_URL` mal puesto en Coolify).
-11. **Plan B impreso:** papeletas (`deploy/plan_b/papeleta.html`, 2 por persona) y la plantilla Excel en el portátil (`docs/PLAN_B.md`). Opcional: el formulario en línea de respaldo (lo crea Paola en la cuenta de Estratek).
+11. **Simulacro de demostración** (para mostrar el flujo completo sin gente): crea una sala con 4 mesas de 6 personas de ejemplo (`@example.com`), las inscribe y corre las dos rondas; la sala queda con la ronda 2 cerrada para explorar el panel y el tablero. Desde la carpeta del repo, con un admin que ya cambió su clave temporal (la clave se pide oculta):
+    ```sh
+    npx tsx tools/simulacro_demo.ts --url https://horizontes.estratek.com.co --usuario <admin> --nombre "Bootcamp España"
+    ```
+    Opcionales: `--mesas 4` y `--por-mesa 6`. Al final imprime los enlaces del panel y del tablero.
+12. **Plan B impreso:** papeletas (`deploy/plan_b/papeleta.html`, 2 por persona) y la plantilla Excel en el portátil (`docs/PLAN_B.md`). Opcional: el formulario en línea de respaldo (lo crea Paola en la cuenta de Estratek).
 
 ### 5.3 Después (cuando se pueda)
-12. **Dominio `horizontes.com.co`:** `docs/DESPLIEGUE.md` §6 (compra, DNS, dominio en Coolify, `BASE_URL`, `HZ_DOMINIO_PROD` y reimpresión de QR).
-13. **GitHub corporativo:** `docs/MIGRACION_GITHUB.md` (transferir o espejar, `git remote set-url`, GitHub App de Coolify, accesos y protección de `main`).
-14. **Pendiente para Sebastian:** decidir si la narrativa del caso Foodsume se adapta a Perú o a textos neutros. Hoy va el documento 2026 tal cual (Colombia), por decisión de Paola del 19-oct.
-15. **Ya confirmado por Paola (19-oct), sin preguntas abiertas:** los 6 perfiles con sus 12 hojas, los rangos de inversión de la semilla, el mapeo de los 8 proyectos fijos y las rúbricas editables por cualquier admin.
+13. **Dominio `horizontes.com.co`:** `docs/DESPLIEGUE.md` §6 (compra, DNS, dominio en Coolify, `BASE_URL`, `HZ_DOMINIO_PROD` y reimpresión de QR).
+14. **GitHub corporativo:** `docs/MIGRACION_GITHUB.md` (transferir o espejar, `git remote set-url`, GitHub App de Coolify, accesos y protección de `main`).
+15. **Pendiente para Sebastian:** decidir si la narrativa del caso Foodsume se adapta a Perú o a textos neutros. Hoy va el documento 2026 tal cual (Colombia), por decisión de Paola del 19-oct.
+16. **Ya confirmado por Paola (19-oct), sin preguntas abiertas:** los 6 perfiles con sus 12 hojas, los rangos de inversión de la semilla, el mapeo de los 8 proyectos fijos y las rúbricas editables por cualquier admin.
 
 ## 6. Lista de verificación del día del taller
 **La víspera**
