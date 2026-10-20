@@ -41,7 +41,10 @@ CREATE TABLE salas (
   token_tablero_hash          VARCHAR(255) NOT NULL,          -- sin uso desde la migración 7 (20-oct, S-12): vacía
   token_tablero               VARCHAR(64)  NOT NULL,          -- única fuente del token del tablero (?t=); en claro porque el panel vuelve a mostrar el enlace
   version                     INTEGER      NOT NULL DEFAULT 1, -- sube con cada cambio
-  creada_at                   DATETIME     NOT NULL
+  creada_at                   DATETIME     NOT NULL,
+  tipo                        VARCHAR(7)   NOT NULL DEFAULT 'taller', -- taller|ensayo (migración 8, 20-oct): ensayo no cuenta en las métricas; duplicar crea ensayo
+  empresa                     VARCHAR(80)  NULL,             -- empresa cliente, opcional (migración 8)
+  sector                      VARCHAR(12)  NULL              -- alimentos|energia|financiero|comercio|salud|manufactura|otro, opcional (migración 8)
 );
 
 CREATE TABLE mesas (
@@ -105,6 +108,7 @@ CREATE TABLE consentimientos (
   ip              VARCHAR(45), user_agent VARCHAR(255),
   pais            VARCHAR(2)  NOT NULL DEFAULT 'CO'  -- país del aviso aceptado (acta del 16-oct)
 );
+CREATE INDEX ix_consentimientos_participante ON consentimientos (participante_id);  -- migración 8
 
 CREATE TABLE votos (
   participante_id VARCHAR(16) NOT NULL REFERENCES participantes(id),
@@ -174,4 +178,7 @@ CREATE TABLE eventos (                      -- auditoría y bitácora visible al
 - Votos de participantes con `activo = false` no cuentan para promedios ni para precierre.
 - Horas programadas en UTC ISO. Desde el 20-oct (S-7, S-8) la API solo acepta ISO con zona y año de 4 dígitos, y los vencimientos se comparan en milisegundos, no como texto. Se aplican y se consumen (NULL) a su hora, o se descartan si la transición no vale en ese momento; la transición manual consume la suya. La migración 4 pasó el `cierre_programado_ronda_at` que hubiera a `cierre_programado_r1_at` (sala sin ronda o con R1 abierta) o a `cierre_programado_r2_at` (lo demás) y dejó la columna en NULL.
 - La pregunta guiada se borra con cualquier cambio de estado de la sala, al cambiar `modo_preguntas` y en el reinicio limpio (que también borra la programación y vuelve a `automatico`).
+- Migración 8 (20-oct): las salas que ya existían quedan `taller`, sin empresa ni sector. `tipo` y `sector` llevan CHECK con los valores permitidos.
+- R1 oculta (20-oct): la caché del tablero guarda la vista completa; la máscara de la ronda 1 (`oculta`) se aplica al responder según quién pide y si el alcance está en precierre. La convergencia se calcula al armar la vista, desde la distribución publicada (la foto con la ronda abierta), no desde los votos al día.
+- Modo demo (20-oct): no tiene tabla propia. Es una sala `ensayo` normal; los pasos pendientes viven en temporizadores del proceso y se pierden si el servidor se reinicia (la sala queda donde iba).
 - `contenido_sala.criterios_json` es la copia de los criterios de cada sala: al crearla sale de la semilla con las rúbricas de `rubricas_plantilla` encima; al duplicarla, de la sala original. El admin cambia sus textos de rúbrica mientras la sala no tenga votos. Reiniciar una ronda o la sala no la toca.

@@ -13,6 +13,7 @@
     "test": "vitest run",
     "seed": "tsx server/seed.ts",
     "sala:reiniciar": "tsx server/reiniciar_sala.ts",
+    "admin:restablecer": "tsx server/restablecer_superadmin.ts",
     "simular": "tsx tools/simulador/index.ts",
     "simular:golden": "tsx tools/simulador/index.ts --golden",
     "ensayo": "tsx tools/simulador/index.ts --ensayo",

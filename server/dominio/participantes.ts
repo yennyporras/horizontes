@@ -219,7 +219,7 @@ export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ctx: ContextoPe
   }
   const proyectoId = typeof d.proyecto_id === 'string' ? d.proyecto_id : ''
   if (!vivos(db, p.sala_id).some((x) => x.id === proyectoId)) {
-    throw new ErrorApi(422, 'PROYECTO_INVALIDO', 'Solo se votan INSUMEX y NUTRIWHAT.')
+    throw new ErrorApi(422, 'PROYECTO_INVALIDO', 'Ese proyecto no se califica en esta sala.')
   }
 
   return transaccion(db, () => {

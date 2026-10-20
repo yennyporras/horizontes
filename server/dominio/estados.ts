@@ -5,7 +5,7 @@ import { ErrorApi } from '../http.js'
 import { CRITERIOS } from '../../shared/motor/motor.js'
 import { borrarFotos, fijarFotosExactas } from './fotos.js'
 import { contenido, preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
-import { type EstadoSala, type SalaFila, cargarSala, mesasDeSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
+import { type EstadoSala, type SalaFila, cargarSala, clasificacionValida, mesasDeSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
 import { DESFASES, PAISES, type ZonaHoraria, ZONA_POR_PAIS, isoEnZona, isoUtc } from './util.js'
 
 export const ACCIONES = [
@@ -81,6 +81,19 @@ const NOMBRE_ESTADO: Record<EstadoSala, string> = {
   cerrada: 'cerrada',
 }
 
+/** Cómo se nombra cada acción en un mensaje: con artículo y tildes («No se puede abrir la inscripción: …»). */
+const NOMBRE_ACCION: Record<Accion, string> = {
+  abrir_inscripcion: 'abrir la inscripción',
+  abrir_ronda_1: 'abrir la ronda 1',
+  cerrar_ronda_1: 'cerrar la ronda 1',
+  abrir_ronda_2: 'abrir la ronda 2',
+  cerrar_ronda_2: 'cerrar la ronda 2',
+  reabrir_ronda: 'reabrir la ronda',
+  reiniciar_ronda: 'reiniciar la ronda',
+  cerrar_sala: 'cerrar la sala',
+  reabrir_sala: 'reabrir la sala',
+}
+
 export interface OpcionesAccion {
   /** Solo para reiniciar_ronda: qué ronda reiniciar (por defecto la actual). Llega del cuerpo sin validar. */
   ronda?: unknown
@@ -110,7 +123,7 @@ export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: num
     }
     const t = TRANSICIONES[accion as Exclude<Accion, 'reiniciar_ronda'>]
     if (!t.desde.includes(s.estado)) {
-      throw new ErrorApi(409, 'TRANSICION_INVALIDA', `No se puede ${accion.replace(/_/g, ' ')}: la sala está ${NOMBRE_ESTADO[s.estado]}.`)
+      throw new ErrorApi(409, 'TRANSICION_INVALIDA', `No se puede ${NOMBRE_ACCION[accion as Accion]}: la sala está ${NOMBRE_ESTADO[s.estado]}.`)
     }
     const hacia = typeof t.hacia === 'function' ? t.hacia(s) : t.hacia
     // D2: al reabrir una ronda, la foto de partida es el resultado exacto que se mostró con la ronda cerrada; si no,
@@ -160,6 +173,10 @@ export interface CambiosConfig {
   modo_preguntas?: unknown
   pais?: unknown
   zona_horaria?: unknown
+  /** QA por roles (20-oct, migración 8): `taller` o `ensayo`, empresa cliente y sector. */
+  tipo?: unknown
+  empresa?: unknown
+  sector?: unknown
 }
 
 /**
@@ -247,6 +264,7 @@ export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ah
     if (!['automatico', 'guiado'].includes(cambios.modo_preguntas as string)) throw new ErrorApi(422, 'CONFIG_INVALIDA', 'modo_preguntas debe ser "automatico" o "guiado".')
     poner('modo_preguntas', cambios.modo_preguntas)
   }
+  for (const [col, v] of Object.entries(clasificacionValida(cambios))) poner(col, v)
   // Programación: el alias de ronda escribe en la ronda abierta (o la siguiente); el campo propio de la ronda, si llega, manda.
   const actual = cargarSala(db, salaId)
   const programada: Partial<Record<ColumnaProgramada, string | null>> = {}

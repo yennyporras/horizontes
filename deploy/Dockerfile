@@ -21,7 +21,7 @@ COPY mocks ./mocks
 COPY tests ./tests
 COPY tools ./tools
 # typecheck + build de la SPA (participante, tablero y admin) hacia dist/web
-RUN npx tsc --noEmit && npx vite build && mkdir -p shared
+RUN npx tsc --noEmit && npx vite build
 
 # ─── Etapa 2: solo dependencias de producción ────────────────────────────────
 FROM ${NODE_IMAGE} AS deps
@@ -41,10 +41,10 @@ COPY --from=build /app/shared ./shared
 COPY --from=build /app/data ./data
 COPY --from=build /app/dist/web ./dist/web
 
-# Usuario sin privilegios, dueño de /data (volumen persistente de la base SQLite).
+# Usuario sin privilegios, dueño de /data (volumen persistente de la base SQLite). Sin curl: el HEALTHCHECK y el
+# chequeo de Coolify (prueba curl y luego wget) usan el wget de busybox que ya trae Alpine.
 RUN addgroup -S horizontes && adduser -S horizontes -G horizontes && \
-    mkdir -p /data && chown -R horizontes:horizontes /data && \
-    apk add --no-cache curl
+    mkdir -p /data && chown -R horizontes:horizontes /data
 
 VOLUME ["/data"]
 

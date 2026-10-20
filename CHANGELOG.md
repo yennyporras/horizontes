@@ -2,6 +2,37 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versiones con [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+Auditoría final del 20-oct (una sola apariencia clara) y QA por roles del 20-oct (inversionista, jurado, empresa cliente, facilitador, participante, editora, CEO y CTO).
+
+### Agregado
+- Ronda 1 sin resultados en vivo (decisión de Paola): mientras la ronda 1 está abierta, el tablero y los celulares muestran solo cuántos votaron; los promedios y las burbujas de R1 aparecen cuando todo el alcance votó o al cerrar la ronda. El panel sí ve el preliminar. La ronda 2 sigue en vivo de 3 en 3.
+- Convergencia R1 → R2 calculada en el servidor: dispersión por proyecto y ronda, cuánto se redujo, el criterio que más cambió y el movimiento en cada eje, más el promedio del alcance. El tablero la dice en palabras.
+- `resultados.csv` sin datos personales (promedios, t2m y ejes por alcance, ronda y proyecto, solo con 3 votos o más): el archivo que se le puede entregar al cliente.
+- Salas con tipo (taller o ensayo), empresa cliente y sector. Duplicar crea un ensayo. Cifras del negocio en Salas (talleres, personas, quiénes completaron la ronda 2 y países, sin ensayos) y resumen del taller en el detalle (minutos de cada ronda, completitud y accesos de nuevo).
+- Modo demo para la cuenta superadministradora: una sala «Demostración» que se juega sola en cerca de un minuto, con 24 personas de ejemplo.
+- `npm run admin:restablecer` para recuperar la cuenta superadministradora si se pierde su clave.
+- Celular: el caso abre con el aviso de caso ficticio y los 2 proyectos que se califican; pregunta compacta con la lectura de la escala bajo la pregunta; «Leer mi hoja»; cierre personal al final.
+- Tablero: matriz legible a 6 m (nombres pegados a su burbuja, extremos de los ejes, flecha visible) y marcas en «Cómo votó». Panel: descargar la matriz como SVG.
+- Landing: imagen para compartir de 1200x630 (og:image y twitter:card), horizontes explicados, bloque comercial y pasos con número y pictograma. README en formato vitrina.
+
+### Cambiado
+- Una sola apariencia en toda la app: fondo claro con la barra superior carbón y la línea del degradado (landing y tablero dejan el tema carbón).
+- Aviso de datos `hz-1.2`, fiel a lo que pasa: nombra todos los datos que se guardan (también IP, país y navegador), para qué, quién ve qué (el equipo que facilita sí ve las calificaciones con el nombre) y, en Perú, que los datos se guardan fuera del país. «Inscribirme» siempre activo.
+- Descripciones de criterio con los dos polos de la escala y nombres cortos únicos en todas las tablas.
+- Tablero: modos **Gráfica** y **Detallado** (antes «En vivo» y «Con tabla»), tecla V para «Cómo votó».
+- Panel: menú en el orden del taller y «Guía de uso» en lugar de «Recorrido»; la clave pide el mismo mínimo que el servidor; regla única del usuario admin (3 a 30 caracteres) compartida con el servidor.
+- QR de las mesas en carbón. Mensajes del servidor con artículo y tildes («No se puede abrir la inscripción: …», «Ese proyecto no se califica en esta sala.»).
+- `docs/DESPLIEGUE.md` reescrito para SQLite, con «Caída en pleno taller» y «Restaurar un respaldo» paso a paso.
+
+### Corregido
+- El panel ya no arma el detalle de la sala en cada consulta si no cambió (304 con ETag).
+- `robots.txt` deja leer la imagen para compartir y el ícono a las vistas previas de LinkedIn y X.
+- Celular: precierre del alcance de resultados, «Tú» en las dos rondas de la comparación, textos que dicen lo que pasa y espacio final medido del pie fijo.
+- Tablero: subtítulo del eje X dentro de la matriz angosta y leyenda de Todas las mesas en letra de proyector. Panel: diagramación de las secciones de 360 a 1920 px.
+- Dockerfile sin `curl` ni carpetas sobrantes.
+
 ## [1.2.0] · 2026-10-20
 
 Auditoría de calidad y seguridad del 20-oct, pedidos de Nicolai para el proyector y pedidos de Paola sobre la marca y el panel.
@@ -30,7 +61,7 @@ Auditoría de calidad y seguridad del 20-oct, pedidos de Nicolai para el proyect
 - El simulador del panel y sus datos de ejemplo ya no se publican en producción.
 
 ### Seguridad
-- `@fastify/static` 10 por los avisos de `npm audit`. Cambiar la clave cierra las demás sesiones del admin. El token del tablero se guarda solo como hash.
+- `@fastify/static` 10 por los avisos de `npm audit`. Cambiar la clave cierra las demás sesiones del admin. El token del tablero tiene una sola fuente (`token_tablero`, en claro porque el panel vuelve a mostrar el enlace), se compara en tiempo constante y se puede cambiar desde «Ver en vivo»; el hash que había al lado no protegía nada y quedó vacío (migración 7). Esta línea decía antes, por error, que se guardaba solo como hash.
 
 ## [1.1.0] · 2026-10-19
 

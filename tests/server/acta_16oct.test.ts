@@ -112,13 +112,13 @@ describe('aviso de datos según el país (C6)', () => {
     ['CO', 'Ley 1581 de 2012'],
     ['PE', 'Ley 29733'],
     ['GT', 'Guatemala'],
-  ])('%s: GET /api/mesas trae país, versión hz-1.1 y el texto que cita %s; el consentimiento guarda el hash de ese texto', async (pais, cita) => {
+  ])('%s: GET /api/mesas trae país, versión hz-1.2 y el texto que cita %s; el consentimiento guarda el hash de ese texto', async (pais, cita) => {
     const s = await crearSala(e, 1)
     await config(s.id, { pais })
     await accion(e, s.id, 'abrir_inscripcion')
     const m = (await e.app.inject(`/api/mesas/${s.mesas[0].codigo}`)).json()
     expect(m.sala.pais).toBe(pais)
-    expect(m.consentimiento.version).toBe('hz-1.1')
+    expect(m.consentimiento.version).toBe('hz-1.2')
     expect(m.consentimiento.texto_autorizacion).toContain(cita)
     expect(m.consentimiento.texto_autorizacion).not.toContain('—')
     const r = await inscribir(e, s.mesas[0].codigo, `aviso-${pais}@x.co`)
@@ -195,7 +195,7 @@ describe('IP real de inscripción y voto (C7, C8)', () => {
   })
 })
 
-describe('aviso de datos hz-1.1', () => {
+describe('aviso de datos hz-1.2', () => {
   it('el texto que sirve el servidor es el de docs/CONSENTIMIENTO.md §5.1, por país', () => {
     const doc = readFileSync(new URL('../../docs/CONSENTIMIENTO.md', import.meta.url), 'utf8')
     for (const texto of Object.values(TEXTOS_AUTORIZACION)) {
@@ -204,5 +204,21 @@ describe('aviso de datos hz-1.1', () => {
       expect(texto).toContain('info@estratek.com.co')
     }
     expect(TEXTOS_AUTORIZACION.PE).toContain('acceso, rectificación, cancelación y oposición')
+  })
+
+  it('decisión 2 de Paola: nombra todos los datos, para qué, quién ve qué y, solo en Perú, que se guardan fuera del país', () => {
+    expect(VERSION_CONSENTIMIENTO).toBe('hz-1.2')
+    for (const texto of Object.values(TEXTOS_AUTORIZACION)) {
+      for (const dato of ['mi nombre', 'mi correo', 'mis calificaciones', 'la IP', 'el país', 'el navegador']) expect(texto).toContain(dato)
+      for (const fin of ['identificarme en mi mesa', 'evitar inscripciones dobles', 'devolverme el acceso si cambio de celular']) expect(texto).toContain(fin)
+      expect(texto).toContain('No se usan para publicidad ni se entregan a terceros.')
+      expect(texto).toContain('solo se muestran promedios de 3 o más personas')
+      expect(texto).toContain('el equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre')
+      expect(texto).not.toMatch(/[—–]/)
+      expect(texto).not.toContain('fines informativos')
+    }
+    expect(TEXTOS_AUTORIZACION.PE).toContain('Mis datos se guardan en servidores fuera del Perú.')
+    expect(TEXTOS_AUTORIZACION.CO).not.toContain('fuera del')
+    expect(TEXTOS_AUTORIZACION.GT).not.toContain('fuera del')
   })
 })
