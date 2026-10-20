@@ -33,7 +33,7 @@ import {
 } from '../dominio/gestion.js'
 import { autenticarParticipante, hojasDeSala, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
-import { type CambioRubrica, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
+import { type CambioRubrica, borrarRubricaPlantilla, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
 import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala, tokenTableroValido } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
 import { isoEnZona } from '../dominio/util.js'
@@ -63,8 +63,9 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   const { db, ahora } = op
 
   // Chequeo perezoso: los cierres programados vencidos se aplican antes de responder cualquier petición.
+  // El healthcheck no: debe ser barato y responder 503 propio si la BD falla.
   app.addHook('onRequest', async (req) => {
-    if (req.url.startsWith('/api/')) op.revisarCierres()
+    if (req.url.startsWith('/api/') && req.routeOptions.url !== '/api/health') op.revisarCierres()
   })
 
   // Límite por IP en las rutas abiertas. Todos los celulares del taller salen por la IP del wifi:
@@ -236,7 +237,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     const sala = cargarSala(db, req.params.id)
     const accion = String(req.body?.accion ?? '')
     // Respaldo antes de que la sala reciba datos (arranque) y antes de borrar votos (reinicio de ronda).
-    // Solo si la acción aplica en el estado actual: un clic repetido que termina en 409 no gasta la rotación de 30 respaldos.
+    // Solo si la acción aplica en el estado actual: un clic repetido que termina en 409 no gasta la rotación de respaldos de la sala.
     if ((accion === 'abrir_inscripcion' || accion === 'abrir_ronda_1') && sala.estado === 'preparada') op.respaldar?.(sala.id, 'inicio')
     if (accion === 'reiniciar_ronda' && sala.estado !== 'cerrada' && sala.ronda_actual >= 1) op.respaldar?.(sala.id, 'antes_reinicio')
     const s = aplicarAccion(db, sala.id, accion, ahora(), por(req), { ronda: req.body?.ronda })
@@ -254,6 +255,11 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   app.put<{ Params: { id: string; criterio: string }; Body: CambioRubrica }>('/api/admin/salas/:id/rubricas/:criterio', async (req) =>
     editarRubrica(db, req.params.id, req.params.criterio, req.body ?? {}, ahora(), por(req)),
+  )
+
+  // Quita la rúbrica guardada para las salas nuevas: vuelven a la de la semilla en ese criterio (idempotente).
+  app.delete<{ Params: { criterio: string }; Querystring: { plantilla?: unknown } }>('/api/admin/rubricas-plantilla/:criterio', async (req) =>
+    borrarRubricaPlantilla(db, req.params.criterio, req.query.plantilla),
   )
 
   // Solo lectura: el facilitador lee las 6 hojas de cada proyecto vivo, aunque la sala aún no las revele.
