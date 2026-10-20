@@ -305,7 +305,8 @@ describe('Sala en vivo (Nicolai, inversionista y decisión de Paola sobre la ron
     const proyectar = screen.getByRole('region', { name: 'Proyectar el tablero' })
     expect(screen.queryByRole('region', { name: 'Ver en vivo' })).toBeNull()
     const teclas = [...proyectar.querySelectorAll('.teclas__lista kbd')].map((k) => k.textContent)
-    expect(teclas).toEqual(['F', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
+    expect(teclas).toEqual(['F', '0', 'Rueda del mouse', 'Pellizco', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
+    expect(within(proyectar.querySelector('.teclas__lista') as HTMLElement).getByText('Pantalla completa de la matriz (entra y sale)')).toBeTruthy()
     expect(within(proyectar.querySelector('.teclas__lista') as HTMLElement).getByText('Comparación; otra vez, repite la animación')).toBeTruthy()
     expect(within(proyectar).getByText(/^Con la ronda 1 abierta, el tablero muestra cuántos votaron, pero no los resultados: aparecen cuando todos hayan votado o al cerrar la ronda\./)).toBeTruthy()
     // Las teclas ya no van en un párrafo.
