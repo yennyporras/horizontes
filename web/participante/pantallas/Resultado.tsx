@@ -119,11 +119,17 @@ export function ResultadoAlcance({
           )
         }
         const mia = (ronda: number, criterio: string) => misVotos.find((v) => v.proyecto_id === p.id && v.ronda === ronda)?.respuestas[criterio as keyof Voto['respuestas']]
-        const conMias = visibles.some((r) => criterios.some((c) => mia(r.ronda, c.id) !== undefined))
+        // `mis_votos` trae solo la ronda actual: en la comparación, «Tú» va solo en la ronda 2 y el texto lo dice.
+        const rondasMias = visibles.filter((r) => criterios.some((c) => mia(r.ronda, c.id) !== undefined)).map((r) => r.ronda)
+        const conMias = rondasMias.length > 0
+        const textoMias =
+          rondasMias.length === visibles.length
+            ? 'Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.'
+            : `Debajo de cada promedio de la ronda ${rondasMias.join(' y ')} va tu calificación (Tú). Solo la ves en tu celular.`
         return (
           <article key={p.id} className="hzp-resultado__proyecto">
             <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
-            {conMias && <p className="hzp-resultado__pie">Debajo de cada promedio va tu calificación (Tú). Solo la ves en tu celular.</p>}
+            {conMias && <p className="hzp-resultado__pie">{textoMias}</p>}
             {/* Acta A3 y A4: solo los 6 criterios. Preentrega 19-oct: sin la fila Total («esa fila de total no dice nada»). */}
             <table className="hzp-tabla">
               <caption className="hz-visual-oculto">Promedio por criterio de {p.nombre}</caption>

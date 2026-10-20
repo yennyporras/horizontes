@@ -101,7 +101,13 @@ function usarEnvio({ yo, codigo, token, onGuardado, onSinSenal, onSesionVencida,
         setError('Tu sesión se cerró. Lo que marcaste está guardado en este celular. Pídele al facilitador que te dé acceso de nuevo y guarda otra vez.')
         onSesionVencida()
       } else if (ea.codigo === 'RESPUESTA_INVALIDA') setError('Una de las respuestas no es válida. Vuelve a elegir y guarda de nuevo.')
-      else if (ea.codigo === 'RONDA_CERRADA') setError(`La ronda ${ronda} ya se cerró. Tu última calificación guardada es la que cuenta.`)
+      // Solo se dice que cuenta una calificación anterior si la hay.
+      else if (ea.codigo === 'RONDA_CERRADA')
+        setError(
+          votoDe(yo, proyecto.id)
+            ? `La ronda ${ronda} ya se cerró. Cuenta tu última calificación guardada de ${proyecto.nombre}.`
+            : `La ronda ${ronda} ya se cerró y tu calificación de ${proyecto.nombre} no alcanzó a guardarse.`,
+        )
       else if (ea.codigo === 'RONDA_NO_ACTIVA') setError(`La ronda ${ronda} todavía no está abierta.`)
       else setError('No pudimos guardar tu calificación. Vuelve a intentarlo en unos segundos.')
     } finally {
@@ -356,13 +362,14 @@ export interface GuiadaProps extends EnvioProps {
  * la ronda siga abierta: con el proyecto completo, el cambio se reenvía.
  */
 export function PreguntaGuiada(props: GuiadaProps) {
-  const { yo, marco, children } = props
+  const { yo, marco, children, porEnviar = [] } = props
   const g = yo.sala.pregunta_guiada
   const vivos = proyectosVivos(yo)
   const proyecto = g ? vivos.find((p) => p.id === g.proyecto_id) : undefined
   const indice = proyecto && g ? yo.criterios.findIndex((c) => c.id === g.criterio_id) : -1
   if (!proyecto || indice < 0) {
-    const hechos = vivos.filter((p) => votoDe(yo, p.id)).length
+    // Lo que espera en la cola también cuenta como hecho, igual que en la lista de proyectos.
+    const hechos = vivos.filter((p) => votoDe(yo, p.id) || porEnviar.includes(p.id)).length
     return (
       <Marco {...marco} claveFoco="guiada-espera">
         <h1 className="hz-titulo">Espera la pregunta del facilitador</h1>

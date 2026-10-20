@@ -60,7 +60,7 @@ function Caso({ yo }: { yo: Yo }) {
       <Md texto={caso.descripcion_md} />
       <h2 className="hz-subtitulo">La situación</h2>
       <Md texto={caso.situacion_md} />
-      <h2 className="hz-subtitulo">Los 10 proyectos del portafolio</h2>
+      <h2 className="hz-subtitulo">Los {portafolio.length} proyectos del portafolio</h2>
       <ul className="hzp-proyectos">
         {portafolio.map((p) => (
           <li key={p.id} className={['hzp-proyecto', p.modo === 'vivo' && 'hzp-proyecto--vivo'].filter(Boolean).join(' ')}>
@@ -84,8 +84,9 @@ function TuHoja({ yo }: { yo: Yo }) {
     <div className="hzp-lectura">
       <h2 className="hz-subtitulo">Tu hoja como {perfil.nombre}</h2>
       {propias.length === 0 && <Aviso tono="info">Tu hoja aún no está disponible. Pídele al facilitador que revise tu perfil.</Aviso>}
-      {propias.map((h, i) => (
-        <Hoja key={h.proyecto_id} titulo={h.proyecto} activa={i === 0}>
+      {/* Todas son del perfil propio: ninguna se destaca sobre la otra. */}
+      {propias.map((h) => (
+        <Hoja key={h.proyecto_id} titulo={h.proyecto}>
           <Md texto={h.texto} />
         </Hoja>
       ))}
