@@ -307,7 +307,7 @@ describe('Sala en vivo', () => {
     await abrirDemo()
     vencida = true
     fireEvent.click(nav().getByText('Participantes'))
-    expect(await screen.findByRole('heading', { name: 'Panel de administración' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Panel del facilitador' })).toBeTruthy()
     expect(screen.getByText('Tu sesión terminó. Vuelve a entrar para seguir donde ibas.')).toBeTruthy()
     expect(screen.queryByText(/Se perdió la conexión/)).toBeNull()
   })
@@ -366,7 +366,7 @@ describe('Participantes', () => {
     fireEvent.click(boton('Desactivar a Ana Pérez'))
     const desactivar = await screen.findByRole('dialog', { name: '¿Desactivar a Ana Pérez?' })
     fireEvent.click(within(desactivar).getByRole('button', { name: 'Sí, desactivar' }))
-    expect(await screen.findByText(/Ana Pérez quedó inactivo/)).toBeTruthy()
+    expect(await screen.findByText('Desactivaste a Ana Pérez: sus calificaciones no cuentan en los promedios.')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Mesa de Luis Gómez'), { target: { value: 'm3' } })
     expect(await screen.findByText('Luis Gómez pasó a Mesa 3.')).toBeTruthy()
@@ -526,11 +526,11 @@ describe('Login, cuenta y navegación', () => {
     await entrar()
     fireEvent.click(nav().getByText('Administradores'))
     const usuario = await screen.findByLabelText('Usuario')
-    expect(document.getElementById('regla-usuario')?.textContent).toBe('Entre 3 y 30 caracteres: minúsculas, números, punto o guion. Sin espacios ni tildes.')
+    expect(document.getElementById('regla-usuario')?.textContent).toBe('Entre 3 y 30 caracteres: minúsculas, números, punto, guion o guion bajo. Sin espacios ni tildes.')
     fireEvent.change(usuario, { target: { value: 'Admin Con Espacio' } })
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Admin' } })
     fireEvent.click(boton('Crear administrador'))
-    expect((await screen.findByRole('alert')).textContent).toBe('Ese usuario no sirve. Entre 3 y 30 caracteres: minúsculas, números, punto o guion. Sin espacios ni tildes.')
+    expect((await screen.findByRole('alert')).textContent).toBe('Ese usuario no sirve. Entre 3 y 30 caracteres: minúsculas, números, punto, guion o guion bajo. Sin espacios ni tildes.')
     expect(usuario.getAttribute('aria-invalid')).toBe('true')
     expect(screen.queryByRole('rowheader', { name: 'Admin' })).toBeNull()
   })
@@ -567,7 +567,7 @@ describe('Login, cuenta y navegación', () => {
 describe('Ancho de página común (pedido del 20-oct)', () => {
   it('la barra, el contenido y el pie usan el mismo contenedor .hz-pagina, también en el login', async () => {
     montar('/admin/login')
-    await screen.findByRole('heading', { name: 'Panel de administración' })
+    await screen.findByRole('heading', { name: 'Panel del facilitador' })
     const login = [document.querySelector('.hz-producto__fila'), screen.getByRole('main'), screen.getByRole('contentinfo')]
     for (const el of login) expect(el?.classList.contains('hz-pagina')).toBe(true)
     await entrar()
@@ -585,8 +585,8 @@ describe('Mesas y QR, Respuestas, Exportar', () => {
     const llamadas = espiar()
     await abrirDemo()
     fireEvent.click(nav().getByText('Mesas y QR'))
-    await screen.findByRole('heading', { name: 'Hoja de QR' })
-    expect([...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)).toEqual(['Imprimir hoja de QR'])
+    await screen.findByRole('heading', { name: 'QR de las mesas' })
+    expect([...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)).toEqual(['Imprimir los QR'])
     expect(boton('Agregar').className).toContain('hz-boton--secundario')
     expect(screen.getAllByText('Escanea para entrar')).toHaveLength(3)
     expect(document.querySelector('.qr-tarjeta code')).toBeNull()

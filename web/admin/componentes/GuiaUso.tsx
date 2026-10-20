@@ -66,7 +66,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     seccion: 'Mesas y QR',
     hace: (
       <p>
-        Imprime la hoja de QR, cuatro mesas por página, y pon cada QR en su mesa. Si llega más gente de la esperada, agrega
+        Pulsa «Imprimir los QR», cuatro mesas por página, y pon cada QR en su mesa. Si llega más gente de la esperada, agrega
         mesas al final de la sección.
       </p>
     ),
@@ -116,7 +116,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     titulo: 'Salud',
     seccion: 'Salud',
     hace: <p>Antes de empezar, confirma que el servidor responde: «Todo bien», «Lento» o «No responde».</p>,
-    espera: <p>Si el servidor no responde por más de 3 minutos, pasa al plan B.</p>,
+    espera: <p>Si el servidor no responde por más de 3 minutos, pasa al plan B en papel (plantillas que entrega Estratek).</p>,
   },
   {
     titulo: 'Administradores',

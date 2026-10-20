@@ -18,7 +18,7 @@ const LENTO_MS = 500
  * p95, modos ni versiones vacías; la versión solo aparece si el servidor la dice.
  */
 export function semaforo(estado: { ok?: unknown } | null, error: string | null, ms: number | null): { tono: 'exito' | 'aviso' | 'error'; titulo: string; texto: string } {
-  if (error) return { tono: 'error', titulo: 'No responde', texto: `El servidor no responde. ${error} Si sigue así más de 3 minutos, pasa al plan B.` }
+  if (error) return { tono: 'error', titulo: 'No responde', texto: `El servidor no responde. ${error} Si sigue así más de 3 minutos, pasa al plan B en papel (plantillas que entrega Estratek).` }
   if (!estado) return { tono: 'aviso', titulo: 'Revisando…', texto: 'Estamos preguntándole al servidor cómo está.' }
   if (!estado.ok) return { tono: 'aviso', titulo: 'Con problemas', texto: 'El servidor responde, pero dice que algo no está bien. Avísale al equipo técnico.' }
   if (ms !== null && ms > LENTO_MS) return { tono: 'aviso', titulo: 'Lento', texto: `El servidor responde, pero tarda ${ms} ms. Puede ser el wifi del salón.` }
@@ -54,6 +54,8 @@ export function Salud() {
   const ms = tipico(tiempos)
   const ultimo = salud.ultimoError
   const version = estado && (estado.version ?? estado.commit ?? estado.source_commit)
+  // Un commit completo (40 caracteres) se muestra corto, como en GitHub.
+  const versionCorta = version ? (/^[0-9a-f]{40}$/i.test(String(version)) ? String(version).slice(0, 7) : String(version)) : null
   const s = semaforo(estado, error, ms)
 
   return (
@@ -78,6 +80,12 @@ export function Salud() {
           <span className="kpi__rotulo">Consultas medidas</span>
           <span className="cifra">{tiempos.length}</span>
         </li>
+        <li className="kpi">
+          <span className="kpi__rotulo">Versión instalada</span>
+          <span className="cifra cifra--texto" title={version ? String(version) : undefined}>
+            {versionCorta ?? 'Sin dato'}
+          </span>
+        </li>
       </ul>
       <section className="panel" aria-labelledby="t-error">
         <h2 id="t-error">Último error</h2>
@@ -88,7 +96,7 @@ export function Salud() {
         ) : (
           <p className="vacio">Sin errores desde que abriste el panel.</p>
         )}
-        <p className="pista">Todo bien es responder en menos de medio segundo. {version ? `Versión instalada: ${String(version)}.` : ''}</p>
+        <p className="pista">«Todo bien» significa que el servidor responde en menos de medio segundo.</p>
       </section>
     </>
   )

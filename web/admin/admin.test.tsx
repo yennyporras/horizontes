@@ -102,7 +102,7 @@ describe('textos del panel', () => {
     expect(textoEvento({ tipo: 'config', detalle: { pais: 'GT', zona_horaria: 'America/Guatemala' }, por: 'admin:qa' })).toBe('Configuración: país y zona horaria · qa')
     expect(textoEvento({ tipo: 'config', detalle: { cierre_programado_r1_at: null }, por: 'admin:qa' })).toBe('Configuración: cierre programado de la ronda 1 · qa')
     expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', mesa_id: 'm2' }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez pasó a Mesa 2 · paola')
-    expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', activo: false }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez quedó inactivo · paola')
+    expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', activo: false }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez dejó de contar en los promedios · paola')
     const contenido = contenidoDe({ proyectos_vivos: [{ id: 'insumex', nombre: 'INSUMEX' }], perfiles: [{ id: 'financiero', nombre: 'Financiero' }] })
     expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: 'insumex', criterio_id: 'regulacion' }, por: 'admin:jorge' }, { contenido })).toBe('Pregunta en pantalla: INSUMEX · Pregunta 3 de 6 · jorge')
     expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', perfil_id: 'financiero' }, por: 'admin:paola' }, { ...ctx, contenido })).toBe('Ana Pérez ahora tiene el perfil Financiero · paola')
@@ -155,7 +155,7 @@ describe('textos del panel', () => {
 describe('panel admin contra el simulador', () => {
   it('sin sesión manda al login', async () => {
     montar('/admin/salas')
-    expect(await screen.findByRole('heading', { name: 'Panel de administración' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Panel del facilitador' })).toBeTruthy()
   })
 
   it('el admin normal no ve Administradores y la ruta le muestra sin permiso', async () => {
@@ -268,7 +268,10 @@ describe('panel admin contra el simulador', () => {
     // QA-A-27: semáforo en lenguaje llano, sin jerga (p95, modo).
     expect(await screen.findByText('Todo bien')).toBeTruthy()
     expect(screen.getByText(/^El servidor responde/)).toBeTruthy()
-    expect(screen.getByText(/Versión instalada: simulador\./)).toBeTruthy()
+    // Paula (QA por roles): la versión de /api/health como cifra y qué significa «Todo bien».
+    const version = screen.getByText('Versión instalada').parentElement as HTMLElement
+    expect(within(version).getByText('simulador')).toBeTruthy()
+    expect(screen.getByText('«Todo bien» significa que el servidor responde en menos de medio segundo.')).toBeTruthy()
     expect(screen.queryByText(/p95|Modo:/)).toBeNull()
   })
 
@@ -549,7 +552,7 @@ describe('cambios del 19-oct en el panel', () => {
     const mesas = await screen.findByLabelText('Mesas')
     expect(document.getElementById(mesas.getAttribute('aria-describedby')!)?.textContent).toBe('Recomendado: una mesa por cada 6 personas (hay 6 perfiles por mesa).')
     fireEvent.click(nav().getByText('Mesas y QR'))
-    expect(await screen.findByText('Imprime el QR de cada mesa y ponlo en su mesa, así cada persona entra a la suya. Proyecta un QR solo si a una mesa le falta su hoja.')).toBeTruthy()
+    expect(await screen.findByText('Imprime el QR de cada mesa y ponlo en su mesa, así cada persona entra a la suya. Proyecta un QR solo si a una mesa le falta el suyo.')).toBeTruthy()
     fireEvent.click(nav().getByText('Participantes'))
     expect(await screen.findByText('Solo administradores. No se proyecta.')).toBeTruthy()
   })

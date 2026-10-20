@@ -196,6 +196,7 @@
 }
 .hz-admin .kpi__rotulo { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
 .hz-admin .cifra { font-size: var(--hz-fs-32); font-weight: var(--hz-fw-cifra); line-height: 1.1; color: var(--hz-tinta); font-variant-numeric: tabular-nums; }
+.hz-admin .cifra--texto { font-size: var(--hz-fs-20); overflow-wrap: anywhere; }
 .hz-admin .cuenta { font-variant-numeric: tabular-nums; font-weight: var(--hz-fw-etiqueta); }
 
 /* ── Botones: los comunes (.hz-boton). El panel usa el disabled nativo; se ve igual que aria-disabled.
@@ -626,7 +627,9 @@
 }
 .hz-admin .guia-uso__progreso { height: 4px; margin-block: var(--hz-sp-3) var(--hz-sp-4); border-radius: var(--hz-r-pill); background: var(--hz-superficie-2); overflow: hidden; }
 .hz-admin .guia-uso__progreso span { display: block; height: 100%; background: var(--hz-grad-marca); transition: width .2s ease; }
+/* El foco programático del título (al abrir o cambiar de paso) no pinta contorno; con teclado sí (:focus-visible). */
 .hz-admin .guia-uso h2 { margin-top: 0; outline-offset: 4px; }
+.hz-admin .guia-uso h2:focus:not(:focus-visible) { outline: none; }
 .hz-admin .guia-uso__texto { display: grid; gap: var(--hz-sp-3); }
 .hz-admin .guia-uso__texto p { margin: 0; max-width: 60ch; }
 .hz-admin .guia-uso__espera {

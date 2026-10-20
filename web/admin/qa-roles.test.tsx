@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // QA por roles del 20-oct (inversionista, Nicolai, Paula, empresa cliente, jurado y Paola CTO), en el panel y contra el
 // simulador: métricas y tipo de sala, modo demo, Sala en vivo, Exportar, el panel sin la semilla y los textos.
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -12,6 +12,10 @@ import { reiniciarMock, responderMock } from './mock/servidor'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
 import { CRITERIOS_BASE, contenidoDe } from './contenido'
 import { svgDescargable } from './paginas/Exportar'
+import { REGLA_USUARIO, RE_USUARIO_ADMIN, usuarioValido } from './paginas/Administradores'
+import { semaforo } from './paginas/Salud'
+import { PASOS_GUIA } from './componentes/GuiaUso'
+import { estadoMesa } from './textos'
 import tableroEjemplo from '../../mocks/GET_api_tablero.json'
 import type { SalaDetalle } from './tipos'
 
@@ -434,5 +438,83 @@ describe('Exportar (empresa cliente y Nicolai)', () => {
     const svg = svgDescargable(tableroEjemplo, 'r2_cerrada', 2, estilo)
     expect(svg).toContain('#C62828')
     expect(svg).toContain('<rect width="100%" height="100%" fill="#FFFFFF"/>')
+  })
+})
+
+describe('textos (Paula) y reglas compartidas con el servidor', () => {
+  it('la regla del usuario admin es la del servidor: 3 a 30 caracteres, minúsculas, números, punto, guion o guion bajo', () => {
+    // Si el servidor ya publica la regla en shared/, se compara con esa; si no, con la de server/dominio/admins.ts.
+    const raiz = join(__dirname, '..', '..')
+    const compartida = join(raiz, 'shared', 'reglas', 'usuario.ts')
+    const fuente = existsSync(compartida) ? readFileSync(compartida, 'utf8') : readFileSync(join(raiz, 'server', 'dominio', 'admins.ts'), 'utf8')
+    const m = /\/\^\[a-z0-9\._-\]\{(\d+),(\d+)\}\$\//.exec(fuente)
+    expect(m, 'la regla del usuario en el servidor').not.toBeNull()
+    const [min, max] = [Number(m![1]), Number(m![2])]
+    expect(RE_USUARIO_ADMIN.source).toBe('^[a-z0-9._-]{3,30}$')
+    expect(min).toBe(3)
+    // El panel nunca acepta un usuario que el servidor rechace (con la regla del servidor de 3 a 30, son iguales).
+    expect(max).toBeGreaterThanOrEqual(30)
+    for (const u of ['ana', 'ana.perez', 'ana_perez-2', 'a'.repeat(30)]) expect(usuarioValido(u)).toBe(true)
+    for (const u of ['an', 'Ana', 'ana perez', 'añá', 'a'.repeat(31)]) expect(usuarioValido(u)).toBe(false)
+    expect(REGLA_USUARIO).toBe('Entre 3 y 30 caracteres: minúsculas, números, punto, guion o guion bajo. Sin espacios ni tildes.')
+  })
+
+  it('«Todos votaron» en vez de «Precierre» y fórmulas sin género al desactivar', async () => {
+    expect(estadoMesa('r1_abierta', { inscritos: 3, precierre: true })).toEqual({ texto: 'Todos votaron', tono: 'exito' })
+    await abrirDemo()
+    expect(document.body.textContent).not.toMatch(/[Pp]recierre/)
+    fireEvent.click(nav().getByRole('link', { name: 'Configuración' }))
+    await screen.findByRole('region', { name: 'Qué ven los participantes' })
+    expect(screen.getByText(/Al cerrar la ronda se muestra el resultado final\./)).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/[Pp]recierre|queda el exacto/)
+    fireEvent.click(nav().getByRole('link', { name: 'Participantes' }))
+    // Luis Gómez no ha votado: se desactiva sin confirmar.
+    fireEvent.click(await screen.findByRole('button', { name: 'Desactivar a Luis Gómez' }))
+    expect(await screen.findByText('Desactivaste a Luis Gómez: sus calificaciones no cuentan en los promedios.')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'Activar a Luis Gómez' }))
+    expect(await screen.findByText('Activaste de nuevo a Luis Gómez.')).toBeTruthy()
+    expect(screen.getByText(/solo salen en este panel y en los archivos de Exportar\./)).toBeTruthy()
+  })
+
+  it('Mesas y QR: «QR de las mesas» e «Imprimir los QR»; el login dice «Panel del facilitador»', async () => {
+    await abrirDemo()
+    fireEvent.click(nav().getByRole('link', { name: 'Mesas y QR' }))
+    const qr = await screen.findByRole('region', { name: 'QR de las mesas' })
+    expect(within(qr).getByRole('button', { name: 'Imprimir los QR' })).toBeTruthy()
+    expect(within(qr).getByText(/si a una mesa le falta el suyo\.$/)).toBeTruthy()
+    cleanup()
+    montar('/admin/login')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Panel del facilitador' })).toBeTruthy()
+  })
+
+  it('Respuestas ordena los nombres en orden natural (Persona 10 después de Persona 7) y muestra la fecha completa', async () => {
+    await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+    for (const [i, id] of ['p_1', 'p_4', 'p_7'].entries()) await responderMock('PATCH', `/api/admin/participantes/${id}`, { nombre: `Persona ${[10, 7, 2][i]}` })
+    await responderMock('POST', '/api/admin/logout')
+    await abrirDemo()
+    fireEvent.click(nav().getByRole('link', { name: 'Respuestas' }))
+    await screen.findByRole('heading', { level: 1, name: 'Respuestas por persona' })
+    const nombres = (await screen.findAllByRole('rowheader')).map((th) => th.textContent)
+    const personas = nombres.filter((n) => n?.startsWith('Persona'))
+    expect([...new Set(personas)]).toEqual(['Persona 2', 'Persona 7', 'Persona 10'])
+    const fecha = within(screen.getAllByRole('row')[1]).getByText(/2026/)
+    // Con año (antes «20 de oct», cortada); la hora va en la misma celda.
+    expect(fecha.closest('td')!.textContent).toMatch(/2026.*\d{1,2}:\d{2}/)
+  })
+
+  it('Salud: plan B en papel y la guía de uso con la misma frase', async () => {
+    expect(semaforo(null, 'Sin conexión.', null).texto).toMatch(/pasa al plan B en papel \(plantillas que entrega Estratek\)\.$/)
+    expect(PASOS_GUIA.find((p) => p.titulo === 'Salud')).toBeTruthy()
+    montar('/admin/login')
+    await entrar()
+    fireEvent.click(screen.getByRole('button', { name: 'Guía de uso' }))
+    const dialogo = await screen.findByRole('dialog')
+    while (!within(dialogo).queryByRole('heading', { name: 'Salud' })) fireEvent.click(within(dialogo).getByRole('button', { name: 'Siguiente' }))
+    expect(within(dialogo).getByText('Si el servidor no responde por más de 3 minutos, pasa al plan B en papel (plantillas que entrega Estratek).')).toBeTruthy()
+  })
+
+  it('el foco del título de la guía solo pinta contorno con :focus-visible', () => {
+    const css = readFileSync(join(__dirname, 'admin.css'), 'utf8')
+    expect(css).toContain('.hz-admin .guia-uso h2:focus:not(:focus-visible) { outline: none; }')
   })
 })

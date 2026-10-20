@@ -145,7 +145,7 @@ function Visibilidad({ d, guardar, aviso }: PropsSeccion) {
           >
             Resultado en vivo <span className="etiqueta">Por defecto</span>
             {/* D2: el consolidado en vivo se renueva de 3 en 3 votos. */}
-            <small>Apenas vota, cada persona ve el resultado consolidado. Se renueva cada 3 votos nuevos, así nadie deduce el voto de otro; al cerrar la ronda queda el exacto.</small>
+            <small>Apenas vota, cada persona ve el resultado consolidado. Se renueva cada 3 votos nuevos, así nadie deduce el voto de otro. Al cerrar la ronda se muestra el resultado final.</small>
           </Opcion>
           <Opcion
             type="radio"
@@ -154,7 +154,7 @@ function Visibilidad({ d, guardar, aviso }: PropsSeccion) {
             onChange={() => guardar({ vista_participante: 'registrado' }, 'Tras votar, el participante ve «Voto registrado».', 'vista')}
           >
             Voto registrado
-            <small>Ven el progreso de su mesa hasta que cierres la ronda o llegue el precierre.</small>
+            <small>Ven el progreso de su mesa hasta que todos en su mesa voten o cierres la ronda.</small>
           </Opcion>
           <AvisoEn aviso={aviso} lugar="vista" />
         </fieldset>

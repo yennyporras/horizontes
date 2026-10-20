@@ -71,7 +71,7 @@ export function Participantes() {
       yaVoto(p) &&
       !(await confirmar(
         `¿Mover a ${p.nombre} a ${destino}?`,
-        `${p.nombre} ya votó. Sus votos se mueven con la persona: dejan de contar en ${origen} y pasan a contar en ${destino}. El avance y el precierre de las dos mesas se recalculan.`,
+        `${p.nombre} ya votó. Sus votos se mueven con la persona: dejan de contar en ${origen} y pasan a contar en ${destino}. El avance de las dos mesas se recalcula.`,
         'Sí, mover',
         { tono: 'primario' },
       ))
@@ -86,13 +86,13 @@ export function Participantes() {
       yaVoto(p) &&
       !(await confirmar(
         `¿Desactivar a ${p.nombre}?`,
-        `${p.nombre} ya votó. Al desactivarla, sus votos dejan de contar en los promedios de la sala y de su mesa, y la mesa puede llegar al precierre sin ella. Puedes activarla de nuevo cuando quieras.`,
+        `${p.nombre} ya votó. Si desactivas a esta persona, sus calificaciones dejan de contar en los promedios de la sala y de su mesa, y su mesa puede llegar a «Todos votaron» sin contarla. Puedes activarla de nuevo cuando quieras.`,
         'Sí, desactivar',
         { tono: 'primario' },
       ))
     )
       return
-    await editar(p, { activo: !p.activo }, p.activo ? `${p.nombre} quedó inactivo: sus votos no cuentan en los promedios.` : `${p.nombre} volvió a estar activo.`)
+    await editar(p, { activo: !p.activo }, p.activo ? `Desactivaste a ${p.nombre}: sus calificaciones no cuentan en los promedios.` : `Activaste de nuevo a ${p.nombre}.`)
   }
 
   const darAcceso = async (p: Participante) => {
@@ -119,7 +119,7 @@ export function Participantes() {
           .filter((p) => filtroMesa === 'todas' || p.mesa_id === filtroMesa)
           .filter((p) => !soloPendientes || (p.activo && !p.completo_ronda))
           .filter((p) => !q || p.nombre.toLowerCase().includes(q) || p.correo.toLowerCase().includes(q))
-          .sort((a, b) => nombreMesa(a.mesa_id).localeCompare(nombreMesa(b.mesa_id), 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es'))
+          .sort((a, b) => nombreMesa(a.mesa_id).localeCompare(nombreMesa(b.mesa_id), 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
 
         return (
           <>
@@ -260,8 +260,8 @@ export function Participantes() {
                 </div>
               )}
               <p className="pista nota-tabla">
-                Qué calificó cada persona está en Respuestas, solo para administradores; ningún tablero lo muestra. País e IP son registro interno: solo salen en este panel y en el
-                export.
+                Qué calificó cada persona está en Respuestas, solo para administradores; ningún tablero lo muestra. País e IP son registro interno: solo salen en este panel y en los
+                archivos de Exportar.
               </p>
             </section>
           </>

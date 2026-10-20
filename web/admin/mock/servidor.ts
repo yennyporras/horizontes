@@ -5,6 +5,7 @@ import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
 import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Metricas, Participante, RubricasSala, SalaDetalle, SalaResumen, Sector, TipoSala } from '../tipos'
 import { ACCIONES_POR_ESTADO, LARGO_MINIMO_CLAVE, rondaAbierta } from '../textos'
+import { REGLA_USUARIO, RE_USUARIO_ADMIN } from '../paginas/Administradores'
 import type { Respuesta } from '../api'
 import type { CriterioId } from '../../shared/api/contrato'
 
@@ -403,6 +404,8 @@ function admins(metodo: string, camino: string, b: Record<string, unknown>, a: A
   if (metodo === 'GET') return ok(estado.admins.map(filaPublica))
   if (metodo === 'POST') {
     if (!b.usuario || !b.nombre || !b.clave_temporal) return error(422, 'DATOS_INVALIDOS', 'Usuario, nombre y clave temporal son obligatorios.')
+    // Como el servidor: una sola regla del usuario (3 a 30 caracteres).
+    if (!RE_USUARIO_ADMIN.test(String(b.usuario))) return error(422, 'DATOS_INVALIDOS', `Ese usuario no sirve. ${REGLA_USUARIO}`)
     if (String(b.clave_temporal).length < LARGO_MINIMO_CLAVE) return error(422, 'CLAVE_INVALIDA', `La clave debe tener al menos ${LARGO_MINIMO_CLAVE} caracteres.`)
     if (estado.admins.some((x) => x.usuario === b.usuario)) return error(409, 'USUARIO_EXISTE', 'Ese usuario ya existe.')
     const nuevo: AdminInterno = {

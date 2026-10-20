@@ -6,7 +6,7 @@ import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import type { RespuestaPersona } from '../tipos'
 import { descripcionCriterio } from '../../shared/criterios'
-import { fechaCorta, zonaSala } from '../textos'
+import { fechaHora, zonaSala } from '../textos'
 import { nombrePerfil, nombreProyecto, useContenidoSala } from '../contenido'
 
 /**
@@ -50,7 +50,7 @@ export function Respuestas() {
           .filter((f) => mesa === 'todas' || f.mesa_id === mesa)
           .filter((f) => ronda === 'todas' || String(f.ronda) === ronda)
           .filter((f) => proyecto === 'todos' || f.proyecto_id === proyecto)
-          .sort((a, b) => a.mesa.localeCompare(b.mesa, 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es') || a.ronda - b.ronda || a.proyecto_id.localeCompare(b.proyecto_id))
+          .sort((a, b) => a.mesa.localeCompare(b.mesa, 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }) || a.ronda - b.ronda || a.proyecto_id.localeCompare(b.proyecto_id))
         return (
           <>
             <AvisoPrivado>Aquí se ve qué calificó cada persona. Los tableros y los celulares solo muestran promedios anónimos.</AvisoPrivado>
@@ -145,10 +145,10 @@ export function Respuestas() {
                               {f.respuestas[c.id] ?? 'Sin dato'}
                             </td>
                           ))}
-                          {/* Día y hora pueden ir en dos líneas, nunca partidos por dentro: la tabla cabe en 1280 px. */}
+                          {/* Paula (QA por roles): la fecha completa, con año; día y hora pueden ir en dos líneas, nunca partidos por dentro. */}
                           <td data-label="Fecha">
                             <span>
-                              {fechaCorta(f.actualizado_at, zona)
+                              {fechaHora(f.actualizado_at, zona)
                                 .split(/(?<=,)\s+/)
                                 .map((parte, i) => (
                                   <span key={i} className="sin-corte">

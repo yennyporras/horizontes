@@ -310,7 +310,7 @@ export const decimal = (n: number | null | undefined, d = 2) =>
 export const fechaHora = (iso: string | null, zona: ZonaHoraria = 'America/Bogota') =>
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, dateStyle: 'medium', timeStyle: 'short' }) : 'Sin definir'
 
-/** Fecha corta sin año para tablas densas (Respuestas): «20 de oct, 6:54 a. m.». El export trae la fecha completa. */
+/** Fecha corta sin año: «20 de oct, 6:54 a. m.». Los archivos de Exportar traen la fecha completa. */
 export const fechaCorta = (iso: string | null, zona: ZonaHoraria = 'America/Bogota') =>
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'Sin definir'
 
@@ -418,8 +418,9 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
       const cambios: string[] = []
       if (d.mesa_id !== undefined) cambios.push(`pasó a ${mesa(d.mesa_id) ?? 'otra mesa'}`)
       if (typeof d.perfil_id === 'string') cambios.push(`ahora tiene el perfil ${nombrePerfil(c, d.perfil_id)}`)
-      if (d.activo === false) cambios.push('quedó inactivo')
-      if (d.activo === true) cambios.push('volvió a estar activo')
+      // Paula (QA por roles): fórmulas sin género.
+      if (d.activo === false) cambios.push('dejó de contar en los promedios')
+      if (d.activo === true) cambios.push('volvió a contar en los promedios')
       t = cambios.length ? `${quien} ${enumerar(cambios)}` : `${quien}: datos editados`
       break
     }

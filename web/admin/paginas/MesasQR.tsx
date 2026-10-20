@@ -80,13 +80,13 @@ export function MesasQR() {
       {(d) => (
         <>
           <section className="panel no-imprimir" aria-labelledby="t-hoja">
-            <h2 id="t-hoja">Hoja de QR</h2>
+            <h2 id="t-hoja">QR de las mesas</h2>
             <p>
-              <strong>Imprime el QR de cada mesa y ponlo en su mesa, así cada persona entra a la suya. Proyecta un QR solo si a una mesa le falta su hoja.</strong>
+              <strong>Imprime el QR de cada mesa y ponlo en su mesa, así cada persona entra a la suya. Proyecta un QR solo si a una mesa le falta el suyo.</strong>
             </p>
             <div className="acciones">
               <button className="hz-boton hz-boton--primario" type="button" onClick={() => window.print()} disabled={d.mesas.length === 0} aria-describedby="ayuda-hoja">
-                Imprimir hoja de QR
+                Imprimir los QR
               </button>
             </div>
             <p id="ayuda-hoja" className="pista">
