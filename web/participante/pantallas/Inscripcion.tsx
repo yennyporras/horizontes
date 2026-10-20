@@ -1,35 +1,47 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Aviso, Boton, Campo, Casilla } from '../../shared/ui'
 import { ErrorApi, inscribirse, type Mesa, type Pais } from '../api'
 import { Marco } from '../Comun'
-import { guardarDatos, leerDatos } from '../sesion'
 
 const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+/** Igual que el servidor: sin espacios de más, entre 2 y 120 caracteres. */
+export const NOMBRE_MIN = 2
+export const NOMBRE_MAX = 120
+const limpiarNombre = (n: string) => n.trim().replace(/\s+/g, ' ')
+
+/** El servidor ya no entrega la sesión de un correo inscrito (decisión D1 del 20-oct): el acceso nuevo lo da el facilitador. */
+export const TEXTO_CORREO_INSCRITO =
+  'Este correo ya está inscrito en esta sala. Si es tuyo y perdiste la sesión, pídele al facilitador que te dé acceso de nuevo.'
+
+type Errores = { nombre?: string; correo?: string }
 
 export interface InscripcionProps {
   codigo: string
   mesa: Mesa
-  onInscrito: (token: string, yaInscrito: boolean) => void
-  /** Inscripción cerrada: solo recupera la sesión de quien ya se inscribió con ese correo. */
-  recuperar?: boolean
-  /** Por qué se recupera (sesión vencida): aviso arriba del formulario. */
-  motivo?: string
+  onInscrito: (token: string) => void
 }
 
 /** 8.1 Inscripción con el componente de consentimiento (patrón del IRMI, texto de Estratek). */
-export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: InscripcionProps) {
-  // Solo al recuperar la sesión el formulario llega lleno; una inscripción nueva nunca muestra datos de otra persona.
-  const [nombre, setNombre] = useState(() => (recuperar ? (leerDatos(codigo)?.nombre ?? '') : ''))
-  const [correo, setCorreo] = useState(() => (recuperar ? (leerDatos(codigo)?.correo ?? '') : ''))
+export function Inscripcion({ codigo, mesa, onInscrito }: InscripcionProps) {
+  const [nombre, setNombre] = useState('')
+  const [correo, setCorreo] = useState('')
   const [acepta, setAcepta] = useState(false)
-  const [errores, setErrores] = useState<{ nombre?: string; correo?: string }>({})
+  const [errores, setErrores] = useState<Errores>({})
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  // Cada envío con errores sube este número: el foco va al primer campo inválido cuando ya está pintado como inválido.
+  const [enfocarError, setEnfocarError] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
 
+  useEffect(() => {
+    if (enfocarError) formRef.current?.querySelector<HTMLInputElement>('[aria-invalid="true"]')?.focus()
+  }, [enfocarError])
+
   const validar = () => {
-    const e: { nombre?: string; correo?: string } = {}
-    if (!nombre.trim()) e.nombre = 'Escribe tu nombre.'
+    const e: Errores = {}
+    const n = limpiarNombre(nombre)
+    if (!n) e.nombre = 'Escribe tu nombre.'
+    else if (n.length < NOMBRE_MIN || n.length > NOMBRE_MAX) e.nombre = `Escribe tu nombre (entre ${NOMBRE_MIN} y ${NOMBRE_MAX} caracteres).`
     if (!CORREO.test(correo.trim())) e.correo = 'Escribe un correo válido, por ejemplo ana@empresa.com.'
     setErrores(e)
     return e
@@ -38,29 +50,29 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: Ins
   const enviar = async (ev?: FormEvent) => {
     ev?.preventDefault()
     if (enviando || !acepta) return
+    // Un intento nuevo reemplaza el error del anterior.
+    setErrorEnvio(null)
     const e = validar()
     if (e.nombre || e.correo) {
-      formRef.current?.querySelector<HTMLInputElement>('[aria-invalid="true"]')?.focus()
+      setEnfocarError((n) => n + 1)
       return
     }
     setEnviando(true)
-    setErrorEnvio(null)
     try {
-      const datos = { nombre: nombre.trim(), correo: correo.trim().toLowerCase() }
-      const r = await inscribirse({ codigoMesa: codigo, ...datos, version: mesa.consentimiento.version })
-      guardarDatos(codigo, datos)
-      onInscrito(r.token, r.yaInscrito)
+      const r = await inscribirse({ codigoMesa: codigo, nombre: limpiarNombre(nombre), correo: correo.trim().toLowerCase(), version: mesa.consentimiento.version })
+      onInscrito(r.token)
     } catch (err) {
       const ea = err instanceof ErrorApi ? err : null
-      if (ea?.codigo === 'CONSENTIMIENTO_REQUERIDO') setErrorEnvio('Marca la autorización de tratamiento de datos para continuar.')
+      const delServidor = (ea?.cuerpo as { error?: { mensaje?: string } } | null | undefined)?.error?.mensaje
+      if (ea?.codigo === 'CONSENTIMIENTO_REQUERIDO') setErrorEnvio(delServidor || 'Marca la autorización de tratamiento de datos para continuar.')
+      else if (ea?.codigo === 'CORREO_YA_INSCRITO') setErrorEnvio(delServidor || TEXTO_CORREO_INSCRITO)
       else if (ea?.esRed) setErrorEnvio('Sin conexión. Revisa la señal e intenta de nuevo. Lo que escribiste sigue aquí.')
-      else if (ea?.codigo === 'INSCRIPCION_CERRADA' || ea?.codigo === 'SALA_CERRADA')
-        setErrorEnvio(
-          recuperar
-            ? 'No encontramos ese correo en esta sala. Escríbelo igual que cuando te inscribiste.'
-            : 'La inscripción de esta sala está cerrada. Pregúntale al facilitador.',
-        )
-      else if (ea && ea.status < 500 && ea.message) setErrorEnvio(ea.message)
+      else if (ea?.codigo === 'INSCRIPCION_CERRADA' || ea?.codigo === 'SALA_CERRADA') setErrorEnvio('La inscripción de esta sala está cerrada. Pregúntale al facilitador.')
+      else if (ea?.status === 422 && delServidor && /nombre|correo/i.test(delServidor)) {
+        // Un dato que el servidor rechaza va en su campo, igual que los errores del celular.
+        setErrores(/nombre/i.test(delServidor) ? { nombre: delServidor } : { correo: delServidor })
+        setEnfocarError((n) => n + 1)
+      } else if (ea && ea.status < 500 && delServidor) setErrorEnvio(delServidor)
       else setErrorEnvio('Algo falló de nuestro lado. Vuelve a intentarlo en unos segundos.')
       setEnviando(false)
     }
@@ -74,24 +86,21 @@ export function Inscripcion({ codigo, mesa, onInscrito, recuperar, motivo }: Ins
       notaBarra={!acepta ? 'Para inscribirte necesitamos tu autorización de tratamiento de datos.' : undefined}
       barra={
         <Boton bloque deshabilitado={!acepta} cargando={enviando} textoCargando="Inscribiendo…" onClick={() => void enviar()}>
-          {recuperar ? 'Recuperar mi sesión' : 'Inscribirme'}
+          Inscribirme
         </Boton>
       }
     >
-      <h1 className="hz-titulo">{recuperar ? 'Recupera tu sesión' : 'Te damos la bienvenida al taller Horizontes'}</h1>
+      <h1 className="hz-titulo">Te damos la bienvenida al taller Horizontes</h1>
       <p className="hz-texto-2">
-        {recuperar
-          ? `Escribe el correo con el que te inscribiste en ${mesa.sala.nombre} y retomas donde ibas.`
-          : `Estás en ${mesa.mesa.nombre} de ${mesa.sala.nombre}. Inscríbete para recibir el caso y tu hoja de información.`}
+        Estás en {mesa.mesa.nombre} de {mesa.sala.nombre}. Inscríbete para recibir el caso y tu hoja de información.
       </p>
-      {motivo && <Aviso tono="info">{motivo}</Aviso>}
       <form ref={formRef} className="hzp-form" noValidate onSubmit={enviar}>
         <Campo
           etiqueta="Tu nombre"
           ayuda="Así te verá el facilitador en la lista de tu mesa."
           autoComplete="name"
           value={nombre}
-          maxLength={80}
+          maxLength={NOMBRE_MAX}
           error={errores.nombre}
           onChange={(e) => setNombre(e.target.value)}
           onBlur={() => errores.nombre && validar()}
@@ -135,18 +144,30 @@ export const POLITICA_ESTRATEK = 'https://estratek.com.co/politica-de-privacidad
 export const CORREO_DATOS = 'info@estratek.com.co'
 
 /**
- * Norma y autoridad por país de la sala (acta del 16-oct, P4 y C6). Guatemala no tiene ley general de datos:
- * aplica la política de Estratek. El texto de la casilla lo sirve el servidor; ver docs/CONSENTIMIENTO.md §5.
+ * Norma, derechos y autoridad por país de la sala (acta del 16-oct, P4 y C6). Guatemala no tiene ley general de datos:
+ * aplica la política de Estratek. Los derechos se nombran como los nombra la norma del país, igual que la casilla
+ * que sirve el servidor (en Perú, los derechos ARCO de la Ley 29733). Ver docs/CONSENTIMIENTO.md §5.
  */
-export const LEY_DATOS: Record<Pais, { norma: string; autoridad?: string }> = {
-  CO: { norma: 'La Ley 1581 de 2012 de Colombia y la política de Estratek.', autoridad: 'la Superintendencia de Industria y Comercio' },
-  PE: { norma: 'La Ley 29733 de Perú y la política de Estratek.', autoridad: 'la Autoridad Nacional de Protección de Datos Personales' },
-  GT: { norma: 'La Política de Tratamiento de Datos Personales de Estratek.' },
+export const LEY_DATOS: Record<Pais, { norma: string; derechos: string; autoridad?: string }> = {
+  CO: {
+    norma: 'La Ley 1581 de 2012 de Colombia y la política de Estratek.',
+    derechos: 'Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización.',
+    autoridad: 'la Superintendencia de Industria y Comercio',
+  },
+  PE: {
+    norma: 'La Ley 29733 de Perú y la política de Estratek.',
+    derechos: 'Acceso, rectificación, cancelación y oposición sobre tus datos, y revocar esta autorización.',
+    autoridad: 'la Autoridad Nacional de Protección de Datos Personales',
+  },
+  GT: {
+    norma: 'La Política de Tratamiento de Datos Personales de Estratek.',
+    derechos: 'Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización.',
+  },
 }
 
 /** Aviso de privacidad corto, resumido de la política de Estratek, con la norma del país de la sala. */
 function AvisoDatos({ pais }: { pais: Pais }) {
-  const { norma, autoridad } = LEY_DATOS[pais] ?? LEY_DATOS.CO
+  const { norma, derechos, autoridad } = LEY_DATOS[pais] ?? LEY_DATOS.CO
   return (
     <dl className="hzp-aviso-datos">
       <div>
@@ -168,8 +189,8 @@ function AvisoDatos({ pais }: { pais: Pais }) {
       <div>
         <dt>Tus derechos</dt>
         <dd>
-          Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización. Escribe a <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>: respondemos en
-          máximo 10 días hábiles.{autoridad && ` También puedes acudir a ${autoridad}.`}
+          {derechos} Escribe a <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>: respondemos en máximo 10 días hábiles.
+          {autoridad && ` También puedes acudir a ${autoridad}.`}
         </dd>
       </div>
     </dl>

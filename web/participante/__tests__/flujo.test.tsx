@@ -6,6 +6,8 @@ import yoBase from '../../../mocks/GET_api_yo.json'
 import tablero from '../../../mocks/GET_api_tablero.json'
 import PaginaMesa from '../PaginaMesa'
 import { AVANCE_MS } from '../pantallas/Votacion'
+import { PIDE_ACCESO } from '../PaginaMesa'
+import { TEXTO_CORREO_INSCRITO } from '../pantallas/Inscripcion'
 import type { PreguntaGuiada, Yo } from '../api'
 
 const CODIGO = 'HZ7K2-1'
@@ -79,20 +81,20 @@ describe('antes de inscribirse', () => {
     expect(await screen.findByRole('heading', { name: 'El taller ya terminó' })).toBeTruthy()
   })
 
-  it('con la inscripción cerrada permite recuperar la sesión por correo', async () => {
-    servidor((url) => {
-      if (url.startsWith('/api/mesas/')) return { status: 200, body: { ...MESA, inscripcion_abierta: false, sala: { ...MESA.sala, estado: 'r2_cerrada' } } }
-      if (url === '/api/inscripcion') return { status: 409, body: { error: { codigo: 'INSCRIPCION_CERRADA', mensaje: 'Cerrada' } } }
-      return { status: 404 }
-    })
+  it('con la inscripción cerrada pide al facilitador «Dar acceso de nuevo» en vez de recuperar por correo (D1)', async () => {
+    servidor((url) => (url.startsWith('/api/mesas/') ? { status: 200, body: { ...MESA, inscripcion_abierta: false, sala: { ...MESA.sala, estado: 'r2_cerrada' } } } : { status: 404 }))
     montar()
-    fireEvent.click(await screen.findByRole('button', { name: 'Ya me inscribí: recuperar mi sesión' }))
-    expect(await screen.findByRole('heading', { name: 'Recupera tu sesión' })).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Tu nombre'), { target: { value: 'Ana' } })
-    fireEvent.change(screen.getByLabelText('Tu correo'), { target: { value: 'otro@empresa.com' } })
-    fireEvent.click(screen.getByRole('checkbox'))
-    fireEvent.click(screen.getByRole('button', { name: 'Recuperar mi sesión' }))
-    expect(await screen.findByText('No encontramos ese correo en esta sala. Escríbelo igual que cuando te inscribiste.')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'El taller ya terminó' })).toBeTruthy()
+    expect(screen.getByText('¿Ya te inscribiste y perdiste la sesión?')).toBeTruthy()
+    expect(screen.getByText(PIDE_ACCESO)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /recuperar/i })).toBeNull()
+    expect(screen.queryByLabelText('Tu correo')).toBeNull()
+    // Con la sala cerrada no hay acceso nuevo: no se ofrece.
+    cleanup()
+    servidor((url) => (url.startsWith('/api/mesas/') ? { status: 200, body: { ...MESA, inscripcion_abierta: false, sala: { ...MESA.sala, estado: 'cerrada' } } } : { status: 404 }))
+    montar()
+    await screen.findByRole('heading', { name: 'El taller ya terminó' })
+    expect(screen.queryByText('¿Ya te inscribiste y perdiste la sesión?')).toBeNull()
   })
 
   it('aviso de datos con la norma del país de la sala y el texto de autorización del servidor (acta P4)', async () => {
@@ -163,11 +165,10 @@ describe('antes de inscribirse', () => {
     expect(screen.getByRole('heading', { name: 'Tu hoja como Conocimiento del cliente' })).toBeTruthy()
   })
 
-  it('correo repetido (409) recupera la sesión sin error', async () => {
+  it('correo repetido (409 CORREO_YA_INSCRITO): muestra el mensaje y no entra (D1)', async () => {
     servidor((url) => {
       if (url.startsWith('/api/mesas/')) return { status: 200, body: MESA }
-      if (url === '/api/inscripcion')
-        return { status: 409, body: { error: { codigo: 'CORREO_YA_INSCRITO', mensaje: 'Ya inscrito' }, token: 'tok-viejo', participante: yoBase.participante } }
+      if (url === '/api/inscripcion') return { status: 409, body: { error: { codigo: 'CORREO_YA_INSCRITO', mensaje: 'Ese correo ya está inscrito. Pídele al facilitador que te dé acceso de nuevo.' } } }
       return { status: 200, body: yoBase, headers: { ETag: 'v1' } }
     })
     montar()
@@ -176,9 +177,19 @@ describe('antes de inscribirse', () => {
     fireEvent.change(screen.getByLabelText('Tu correo'), { target: { value: 'ana@empresa.com' } })
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: 'Inscribirme' }))
-    expect(await screen.findByText('Este correo ya estaba en la mesa. Retomas donde ibas.')).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: /Tu perfil es/ })).toBeNull()
-    expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBe('tok-viejo')
+    expect(await screen.findByText('Ese correo ya está inscrito. Pídele al facilitador que te dé acceso de nuevo.')).toBeTruthy()
+    expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBeNull()
+    expect(llamadas.some((l) => l.url === '/api/yo')).toBe(false)
+    // Sin mensaje del servidor, el del celular.
+    cleanup()
+    servidor((url) => (url.startsWith('/api/mesas/') ? { status: 200, body: MESA } : { status: 409, body: { error: { codigo: 'CORREO_YA_INSCRITO' } } }))
+    montar()
+    await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
+    fireEvent.change(screen.getByLabelText('Tu nombre'), { target: { value: 'Ana' } })
+    fireEvent.change(screen.getByLabelText('Tu correo'), { target: { value: 'ana@empresa.com' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Inscribirme' }))
+    expect(await screen.findByText(TEXTO_CORREO_INSCRITO)).toBeTruthy()
   })
 })
 
@@ -356,7 +367,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
     expect(cola[0]).toMatchObject({ proyecto_id: 'insumex', ronda: 1 })
     conSenal = true
     window.dispatchEvent(new Event('online'))
-    expect(await screen.findByText('Volvió la señal: enviamos tu calificación de INSUMEX.')).toBeTruthy()
+    expect(await screen.findByText('Enviamos tu calificación de INSUMEX.')).toBeTruthy()
     expect(localStorage.getItem(`hz_cola:${CODIGO}`)).toBeNull()
     expect(screen.queryByText('1 calificación por enviar')).toBeNull()
   })
@@ -526,7 +537,7 @@ describe('estados de la sala', () => {
   it('en ronda 2 con revelar_hojas muestra las 6 hojas con la propia primero', async () => {
     const yo = yoCon((y) => {
       y.config.revelar_hojas = true
-      y.contenido.hojas = ['cliente', 'regulacion', 'financiero'].map((perfil_id) => ({
+      y.contenido.hojas = (['cliente', 'regulacion', 'financiero'] as const).map((perfil_id) => ({
         proyecto_id: 'insumex',
         proyecto: 'INSUMEX',
         perfil_id,
@@ -545,30 +556,16 @@ describe('estados de la sala', () => {
     expect(titulos[0]).toContain('Tu hoja')
   })
 
-  it('token vencido: recupera la sesión con el correo ya escrito y vuelve a donde iba', async () => {
-    let inscrito = false
-    servidor((url) => {
-      if (url === '/api/yo') return inscrito ? { status: 200, body: yoBase } : { status: 401, body: { error: { codigo: 'TOKEN_INVALIDO', mensaje: 'x' } } }
-      if (url === '/api/inscripcion') {
-        inscrito = true
-        return { status: 409, body: { error: { codigo: 'CORREO_YA_INSCRITO', mensaje: 'Ya' }, token: 'tok-2', participante: yoBase.participante } }
-      }
-      return { status: 200, body: MESA }
-    })
+  it('token vencido o reemplazado: pide al facilitador «Dar acceso de nuevo», sin formulario de correo (D1)', async () => {
+    servidor((url) => (url === '/api/yo' ? { status: 401, body: { error: { codigo: 'TOKEN_INVALIDO', mensaje: 'x' } } } : { status: 200, body: MESA }))
     conToken()
-    localStorage.setItem(`hz_datos:${CODIGO}`, JSON.stringify({ nombre: 'Ana Pérez', correo: 'ana@empresa.com' }))
     sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:nutriwhat')
     montar()
     expect(await screen.findByRole('heading', { name: 'Tu sesión ya no está activa' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Recuperar mi sesión' }))
-    expect(await screen.findByRole('heading', { name: 'Recupera tu sesión' })).toBeTruthy()
-    expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBeNull()
-    expect((screen.getByLabelText(/Tu correo/) as HTMLInputElement).value).toBe('ana@empresa.com')
-    fireEvent.click(screen.getByRole('checkbox'))
-    fireEvent.click(screen.getByRole('button', { name: 'Recuperar mi sesión' }))
-    // Vuelve a la pantalla en la que iba (calificar NUTRIWHAT), sin la bienvenida.
-    expect(await screen.findByRole('heading', { name: 'NUTRIWHAT' })).toBeTruthy()
-    expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBe('tok-2')
+    expect(screen.getByText(/«Dar acceso de nuevo»/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Recuperar/ })).toBeNull()
+    expect(screen.queryByLabelText('Tu correo')).toBeNull()
+    expect(llamadas.some((l) => l.url === '/api/inscripcion')).toBe(false)
   })
 
   it('ningún texto de las pantallas lleva rayas', async () => {
