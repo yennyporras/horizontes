@@ -20,6 +20,8 @@ const votarAmbos = async (token: string, ronda: number, r: object = RESPUESTAS_5
   expect((await votar(e, token, 'insumex', ronda, r)).statusCode).toBe(200)
   expect((await votar(e, token, 'nutriwhat', ronda, r)).statusCode).toBe(200)
 }
+const darAcceso = (id: string) => e.app.inject({ method: 'POST', url: `/api/admin/participantes/${id}/acceso`, headers: { cookie: e.cookie }, payload: {} })
+const canjear = (acceso: string) => e.app.inject({ method: 'POST', url: '/api/acceso', payload: { acceso } })
 const nVotos = (t: any, ronda: number) => t.proyectos_vivos.map((p: any) => p.rondas.find((r: any) => r.ronda === ronda)?.n_votos)
 
 async function sala(estado: 'r1_abierta' | 'r2_abierta', mesas = 1) {
@@ -82,16 +84,20 @@ describe('inscripción tardía en R2', () => {
     expect(res.proyectos_vivos[0].rondas.map((r: any) => r.ronda)).toEqual([1, 2])
   })
 
-  it('con la R2 cerrada ya no se inscribe nadie nuevo, pero quien estaba recupera su sesión', async () => {
+  it('con la R2 cerrada ya no se inscribe nadie; quien estaba vuelve con el acceso que le da el facilitador', async () => {
     const s = await sala('r2_abierta')
     const a = await inscrito(s.mesas[0].codigo, 'a@correo.co')
     await accion(e, s.id, 'cerrar_ronda_2')
     const nuevo = await inscribir(e, s.mesas[0].codigo, 'nuevo@correo.co')
     expect(nuevo.statusCode).toBe(409)
     expect(nuevo.json().error.codigo).toBe('INSCRIPCION_CERRADA')
+    // Con la inscripción cerrada, el mismo correo tampoco dice si estaba inscrito.
     const rec = await inscribir(e, s.mesas[0].codigo, 'a@correo.co')
-    expect(rec.statusCode).toBe(409)
-    expect(rec.json().participante.id).toBe(a.participante.id)
+    expect(rec.json()).toEqual({ error: { codigo: 'INSCRIPCION_CERRADA', mensaje: expect.any(String) } })
+    const acceso = (await darAcceso(a.participante.id)).json()
+    const canje = await canjear(new URL(acceso.url).searchParams.get('acceso')!)
+    expect(canje.statusCode).toBe(200)
+    expect(canje.json().participante.id).toBe(a.participante.id)
   })
 })
 
@@ -123,10 +129,13 @@ describe('participante desactivado', () => {
     // Quedan 2 votos activos, menos del mínimo de 3: cada uno despejaría el voto del otro, así que se oculta.
     expect(t.proyectos_vivos[0].rondas[0]).toMatchObject({ bajo_minimo: true, promedios: null, eje_x: null })
 
-    // Recuperar sesión con el mismo correo no lo reactiva: eso solo lo hace el admin.
+    // Volver a inscribirse con el mismo correo no lo reactiva ni le da sesión; tampoco se le da acceso de nuevo desactivado.
     const rec = await inscribir(e, s.mesas[0].codigo, 'b@correo.co')
     expect(rec.statusCode).toBe(409)
-    expect((await yo(rec.json().token)).json().participante.activo).toBe(false)
+    expect(rec.json()).not.toHaveProperty('token')
+    const acc = await darAcceso(b.participante.id)
+    expect(acc.statusCode).toBe(409)
+    expect(acc.json().error.codigo).toBe('PARTICIPANTE_INACTIVO')
 
     await editar(b.participante.id, { activo: true })
     t = await tablero(s)
@@ -172,17 +181,15 @@ describe('doble pestaña', () => {
     expect(x.json().mis_votos).toEqual(z.json().mis_votos)
   })
 
-  it('inscribirse dos veces a la vez con el mismo correo deja un solo participante', async () => {
+  it('inscribirse dos veces a la vez con el mismo correo deja un solo participante y una sola sesión', async () => {
     const s = await sala('r1_abierta')
     const rs = await Promise.all([inscribir(e, s.mesas[0].codigo, 'doble@correo.co'), inscribir(e, s.mesas[0].codigo, 'DOBLE@correo.co')])
     expect(rs.map((r) => r.statusCode).sort()).toEqual([201, 409])
-    expect(rs[0].json().participante.id).toBe(rs[1].json().participante.id)
     expect((await detalle(s.id)).participantes).toHaveLength(1)
-    // Solo el último token sirve: la otra pestaña queda con sesión vencida y debe recuperarla.
-    const ultimo = rs.find((r) => r.statusCode === 409)!.json().token
-    const primero = rs.find((r) => r.statusCode === 201)!.json().token
-    expect((await yo(ultimo)).statusCode).toBe(200)
-    expect((await yo(primero)).statusCode).toBe(401)
+    // La otra pestaña recibe solo el error: la sesión es la de la primera.
+    const repetida = rs.find((r) => r.statusCode === 409)!.json()
+    expect(repetida).toEqual({ error: { codigo: 'CORREO_YA_INSCRITO', mensaje: expect.any(String) } })
+    expect((await yo(rs.find((r) => r.statusCode === 201)!.json().token)).statusCode).toBe(200)
   })
 })
 

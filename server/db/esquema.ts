@@ -170,4 +170,18 @@ UPDATE salas SET cierre_programado_r2_at = cierre_programado_ronda_at
  WHERE cierre_programado_ronda_at IS NOT NULL AND NOT (estado = 'r1_abierta' OR ronda_actual = 0);
 UPDATE salas SET cierre_programado_ronda_at = NULL;
 `,
+  // D1 (20-oct): «Dar acceso de nuevo». El facilitador genera un enlace personal de un solo uso que vence a los 15 min;
+  // se guarda solo el hash. Reemplaza la recuperación de la sesión con solo el correo.
+  `
+CREATE TABLE accesos_participante (
+  token_hash      VARCHAR(64) PRIMARY KEY,
+  participante_id VARCHAR(16) NOT NULL REFERENCES participantes(id),
+  sala_id         VARCHAR(16) NOT NULL,
+  creado_at       DATETIME    NOT NULL,
+  vence_at        DATETIME    NOT NULL,
+  usado_at        DATETIME    NULL,
+  por             VARCHAR(60) NOT NULL
+);
+CREATE INDEX ix_accesos_participante ON accesos_participante (participante_id);
+`,
 ]
