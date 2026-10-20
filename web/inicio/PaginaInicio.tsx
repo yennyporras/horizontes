@@ -1,5 +1,5 @@
 // Landing pública de la raíz `/`. Qué es Horizontes, cómo se entra a una mesa, cómo funciona y dónde está el panel.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EncabezadoProducto, Rubrica, useTemaDocumento } from '../shared/ui'
 import logoEstratek from '../shared/ui/marca/estratek-logo-blanco.png'
@@ -23,6 +23,15 @@ const PASOS: { titulo: string; texto: string; ronda?: 'r1' | 'r2' | 'r1r2' }[] =
   },
 ]
 
+/** Secciones de la landing: el menú de escritorio y el del celular son la misma lista. */
+const SECCIONES = [
+  { href: '#entrar', texto: 'Entrar a tu mesa' },
+  { href: '#como-funciona', texto: 'Cómo funciona' },
+  { href: '#que-se-evalua', texto: 'Qué se evalúa' },
+  { href: '#facilitadores', texto: 'Facilitadores' },
+  { href: '#privacidad', texto: 'Tus datos' },
+]
+
 /** Título de la raíz mientras la página está montada. La description y Open Graph van en web/index.html. */
 function useTitulo() {
   useEffect(() => {
@@ -40,6 +49,56 @@ function Firma() {
     <span className="in-firma" aria-hidden="true">
       »
     </span>
+  )
+}
+
+/**
+ * Menú del celular: por debajo de 64 rem las secciones y «Ingresar al panel» no caben en el encabezado.
+ * Botón de 48 px que abre la lista debajo del encabezado; se cierra al elegir, con Escape o con el mismo botón.
+ */
+function MenuMovil() {
+  const [abierto, setAbierto] = useState(false)
+  const boton = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!abierto) return
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setAbierto(false)
+      boton.current?.focus()
+    }
+    document.addEventListener('keydown', alTeclear)
+    return () => document.removeEventListener('keydown', alTeclear)
+  }, [abierto])
+  const cerrar = () => setAbierto(false)
+  return (
+    <>
+      <button
+        ref={boton}
+        type="button"
+        className="hz-boton hz-boton--secundario in-menu__boton"
+        aria-expanded={abierto}
+        aria-controls="in-menu"
+        onClick={() => setAbierto((a) => !a)}
+      >
+        {abierto ? 'Cerrar menú' : 'Menú'}
+      </button>
+      <nav id="in-menu" className="in-menu" aria-label="Menú" hidden={!abierto}>
+        <ul>
+          {SECCIONES.map((s) => (
+            <li key={s.href}>
+              <a href={s.href} onClick={cerrar}>
+                {s.texto}
+              </a>
+            </li>
+          ))}
+          <li>
+            <Link to="/admin" onClick={cerrar}>
+              Ingresar al panel
+            </Link>
+          </li>
+        </ul>
+      </nav>
+    </>
   )
 }
 
@@ -94,16 +153,17 @@ export default function PaginaInicio() {
       <EncabezadoProducto href="#inicio" className="in-nav">
         <nav className="in-nav__secciones" aria-label="Secciones">
           <ul>
-            <li><a href="#entrar">Entrar a tu mesa</a></li>
-            <li><a href="#como-funciona">Cómo funciona</a></li>
-            <li><a href="#que-se-evalua">Qué se evalúa</a></li>
-            <li><a href="#facilitadores">Facilitadores</a></li>
-            <li><a href="#privacidad">Tus datos</a></li>
+            {SECCIONES.map((s) => (
+              <li key={s.href}>
+                <a href={s.href}>{s.texto}</a>
+              </li>
+            ))}
           </ul>
         </nav>
         <Link className="hz-boton hz-boton--secundario in-nav__panel" to="/admin">
           Ingresar al panel
         </Link>
+        <MenuMovil />
       </EncabezadoProducto>
 
       <main id="contenido">
@@ -118,7 +178,7 @@ export default function PaginaInicio() {
             </p>
             <div className="in-acciones">
               <a className="hz-boton hz-boton--primario" href="#entrar">
-                Entrar a mi mesa
+                Escribir el código de mi mesa
               </a>
               <a className="in-avance" href="#como-funciona">
                 Ver cómo funciona
@@ -139,7 +199,7 @@ export default function PaginaInicio() {
               <p>Lo más rápido es escanear el QR de tu mesa con la cámara del celular. Si no puedes, escribe aquí el código.</p>
               <p>
                 Te inscribes con tu nombre y tu correo, y das tu autorización de tratamiento de datos. No creas cuenta ni contraseña: el
-                celular recuerda tu sesión y, si la pierdes, la recuperas con el mismo correo.
+                celular recuerda tu sesión y, si la pierdes, el facilitador te da acceso de nuevo.
               </p>
             </div>
             <EntradaMesa />
@@ -252,7 +312,11 @@ export default function PaginaInicio() {
                 </a>
               </p>
               <p>
-                Para conocer, actualizar o suprimir tus datos, escribe a <a href={`mailto:${CORREO_ESTRATEK}`}>{CORREO_ESTRATEK}</a>.
+                Para conocer, actualizar o suprimir tus datos, escribe a{' '}
+                <a className="in-enlace" href={`mailto:${CORREO_ESTRATEK}`}>
+                  {CORREO_ESTRATEK}
+                </a>
+                .
               </p>
             </div>
           </div>
