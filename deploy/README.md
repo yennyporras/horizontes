@@ -53,5 +53,5 @@ Ya existe el remoto `origin` (`github.com/yennyporras/horizontes`, con `main`). 
 ```sh
 node -e "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync(process.env.DB_PATH);d.exec(\"VACUUM INTO '/data/respaldo-\"+new Date().toISOString().slice(0,10)+\".sqlite'\")"
 ```
-`VACUUM INTO` copia la base en caliente sin depender del binario `sqlite3` (Alpine no lo trae).
+`VACUUM INTO` copia la base en caliente sin depender del binario `sqlite3` (Alpine no lo trae). Además, el servidor guarda por su cuenta un respaldo de cada sala al empezar, antes de reiniciar una ronda y al cerrarla, en `/data/respaldos/`. Cómo restaurar uno, qué hacer si se cae en pleno taller y cómo restablecer la cuenta superadministradora: `docs/DESPLIEGUE.md` §6.
 Para conservar 7 días, en la misma tarea: `find /data -name 'respaldo-*.sqlite' -mtime +7 -delete`.
