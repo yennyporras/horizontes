@@ -107,7 +107,8 @@ describe('panel admin contra la API real', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    const tabla = screen.getByRole('table', { name: 'INSUMEX' })
+    // La tabla llega con la consulta del tablero, después del título: se espera.
+    const tabla = await screen.findByRole('table', { name: 'INSUMEX' })
     // Preentrega 19-oct: los 6 criterios, sin fila «Total».
     expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
     expect(within(tabla).getAllByRole('rowheader')).toHaveLength(6)
