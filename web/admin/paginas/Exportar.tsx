@@ -4,8 +4,7 @@ import { consultar, usaMocks } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
-import { COLORES, matrizSVG } from '../../tablero/matriz/matriz.js'
-import { vistaPorDefecto } from '../../tablero'
+import { svgMatriz, vistaPorDefecto } from '../../tablero'
 import type { SalaDetalle } from '../tipos'
 import { rutaApiTablero, urlTableroSala } from '../textos'
 
@@ -37,22 +36,13 @@ const REGISTRO_INTERNO: Archivo[] = [
 ]
 
 /** Lee un token de color (`var(--hz-x)`) en el panel, para que el SVG descargado no dependa de la hoja de estilos. */
-function colorResuelto(valor: string, estilo: CSSStyleDeclaration): string {
-  const m = /^var\((--[\w-]+)\)$/.exec(valor)
-  if (!m) return valor
-  return estilo.getPropertyValue(m[1]).trim() || valor
-}
-
 /**
- * SVG de la matriz de la sala para descargar: la misma función del tablero (`matrizSVG`) con los datos del tablero de
- * la sala, los colores del tema resueltos y un fondo, así se abre igual fuera de la app.
+ * SVG de la matriz de la sala para descargar: `svgMatriz` del tablero (fondo, sin animación, colores del tema escritos)
+ * con la vista que corresponde al estado de la sala.
  */
 export function svgDescargable(datos: unknown, estado: SalaDetalle['sala']['estado'], ronda: number | undefined, estilo?: CSSStyleDeclaration): string {
-  const colores = Object.fromEntries(Object.entries(COLORES).map(([k, v]) => [k, typeof v === 'string' && estilo ? colorResuelto(v, estilo) : v]))
   const vista = vistaPorDefecto(estado, ronda)
-  const svg = matrizSVG(datos as Parameters<typeof matrizSVG>[0], { ancho: 1600, vista, idPrefijo: 'hz-matriz-export', colores })
-  const fondo = typeof colores.halo === 'string' && !colores.halo.startsWith('var(') ? colores.halo : '#FFFFFF'
-  return svg.replace(/^(<svg[^>]*>)/, `$1<rect width="100%" height="100%" fill="${fondo}"/>`)
+  return svgMatriz(datos as Parameters<typeof svgMatriz>[0], { vista, tokens: estilo ? (n) => estilo.getPropertyValue(n).trim() : undefined })
 }
 
 function descargar(contenido: string, tipo: string, nombre: string) {

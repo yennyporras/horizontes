@@ -423,7 +423,9 @@ describe('Exportar (empresa cliente y Nicolai)', () => {
         r.onload = () => ok(String(r.result))
         r.readAsText(blobs[0])
       })
-      expect(svg).toMatch(/^<svg[^>]*><rect width="100%" height="100%" fill="/)
+      // Con fondo propio (svgMatriz del tablero): se abre igual fuera de la app.
+      expect(svg).toMatch(/^<svg[^>]*>/)
+      expect(svg).toContain('class="hz-mz-fondo"')
       expect(svg).toContain('INSUMEX')
     } finally {
       URL.createObjectURL = crear
@@ -437,7 +439,7 @@ describe('Exportar (empresa cliente y Nicolai)', () => {
     const estilo = { getPropertyValue: (n: string) => valores[n] ?? '' } as unknown as CSSStyleDeclaration
     const svg = svgDescargable(tableroEjemplo, 'r2_cerrada', 2, estilo)
     expect(svg).toContain('#C62828')
-    expect(svg).toContain('<rect width="100%" height="100%" fill="#FFFFFF"/>')
+    expect(svg).toContain('.hz-mz-fondo{fill:#FFFFFF}')
   })
 })
 
