@@ -108,9 +108,17 @@ describe('panel admin contra la API real', () => {
     expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
     expect(within(tabla).getAllByRole('rowheader')).toHaveLength(6)
 
-    await pasar('Cerrar ronda 1', 'Ronda 1 cerrada')
+    // QA-A-06: la persona de la Mesa 2 no votó: cerrar la ronda lo advierte y pide confirmación.
+    fireEvent.click(boton('Cerrar ronda 1'))
+    const aviso = await screen.findByRole('dialog', { name: '¿Cerrar la ronda 1 con 1 persona sin terminar?' })
+    expect(within(aviso).getByText(/1 persona de 3 no ha terminado de votar/)).toBeTruthy()
+    expect(document.activeElement?.textContent).toBe('Cancelar')
+    fireEvent.click(within(aviso).getByRole('button', { name: 'Sí, cerrar la ronda 1' }))
+    await screen.findByText('Ronda 1 cerrada', { selector: '.estado' }, { timeout: 3000 })
     await pasar('Abrir ronda 2', 'Ronda 2 abierta')
-    await pasar('Cerrar ronda 2', 'Ronda 2 cerrada')
+    fireEvent.click(boton('Cerrar ronda 2'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, cerrar la ronda 2' }))
+    await screen.findByText('Ronda 2 cerrada', { selector: '.estado' }, { timeout: 3000 })
     fireEvent.click(boton('Cerrar sala'))
     fireEvent.click(await screen.findByRole('button', { name: 'Sí, cerrar la sala' }))
     await screen.findByText('Sala cerrada', { selector: '.estado' })
@@ -126,11 +134,11 @@ describe('panel admin contra la API real', () => {
     // Acta A2 (C5): la sala nace mostrando toda la sala, en vivo tras votar. Se cambia a mesa y registrado, y se vuelve a sala.
     const sala = (await screen.findByLabelText(/Todos ven la sala completa/)) as HTMLInputElement
     expect(sala.checked).toBe(true)
-    expect((screen.getByLabelText(/Tablero en vivo/) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText(/Resultado en vivo/) as HTMLInputElement).checked).toBe(true)
     fireEvent.click(screen.getByLabelText(/Cada mesa ve su resultado/))
     await screen.findByText('Ahora cada mesa ve solo su resultado.')
     fireEvent.click(screen.getByLabelText(/Voto registrado/))
-    await screen.findByText('Tras votar, el participante ve "Voto registrado".')
+    await screen.findByText('Tras votar, el participante ve «Voto registrado».')
     const r0 = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
     expect(r0.json().sala.config).toMatchObject({ alcance_resultados: 'mesa', vista_participante: 'registrado' })
     await waitFor(() => expect(sala.checked).toBe(false))
@@ -169,7 +177,7 @@ describe('panel admin contra la API real', () => {
     await screen.findByText('Carla Ruiz pasó a Mesa 2.')
     fireEvent.change(screen.getByLabelText('Perfil de Carla Ruiz'), { target: { value: 'regulacion' } })
     await screen.findByText(/Carla Ruiz ahora tiene el perfil/)
-    fireEvent.click(boton('Desactivar'))
+    fireEvent.click(boton('Desactivar a Carla Ruiz'))
     await screen.findByText(/Carla Ruiz quedó inactivo/)
     const p = e.db.prepare('SELECT mesa_id, perfil_id, activo FROM participantes WHERE correo = ?').get('carla@x.co') as Record<string, unknown>
     expect(p).toMatchObject({ mesa_id: mesas[1].id, perfil_id: 'regulacion', activo: 0 })
@@ -277,7 +285,8 @@ describe('panel admin contra la API real', () => {
     const resp = (v: number) => ({ alistamiento_tecnico: v, conocimiento_cliente: v, regulacion: v, capacidades_organizacionales: v, alineacion_core: v, inversion_requerida: v })
     // Con 2 votos por proyecto la sala está bajo el mínimo: aviso, sin barras.
     for (const [i, v] of [1, 9].entries()) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[i], p, 1, resp(v))).statusCode).toBe(200)
-    expect(await screen.findByText('Hace falta al menos 3 votos para mostrar estos resultados en la ronda 1.', {}, { timeout: 5000 })).toBeTruthy()
+    // El texto viene del componente del tablero; la concordancia («Hacen falta», F-12) la corrige esa área.
+    expect(await screen.findByText(/^Hacen? falta al menos 3 votos para mostrar estos resultados en la ronda 1\.$/, {}, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryAllByRole('img', { name: /ronda 1:/ })).toHaveLength(0)
     for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[2], p, 1, resp(9))).statusCode).toBe(200)
     const barra = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })
@@ -339,7 +348,7 @@ describe('cambios del 19-oct contra la API real', () => {
       ['Hojas', () => screen.findByRole('region', { name: 'INSUMEX' })],
       ['Configuración', () => screen.findByRole('region', { name: 'Rúbricas' })],
       ['Exportar', () => screen.findByRole('heading', { name: 'Inscritos' })],
-      ['Salud', () => screen.findByText('En línea')],
+      ['Salud', () => screen.findByText('Todo bien')],
     ]
     for (const [seccion, ver] of esperado) {
       fireEvent.click(nav().getByText(seccion))
@@ -386,7 +395,10 @@ describe('cambios del 19-oct contra la API real', () => {
     await e.app.inject({ method: 'GET', url: '/api/health' })
     fireEvent.click(nav().getByText('Sala en vivo'))
     await screen.findByText('Ronda 1 abierta', { selector: '.estado' }, { timeout: 5000 })
-    expect(screen.getAllByText(/Apertura programada aplicada · automático/)).toHaveLength(2)
+    // QA-A-15: la bitácora dice qué se abrió a la hora programada, sin repetirlo con «Apertura programada aplicada».
+    expect(await screen.findByText('Ronda 1 abierta · a la hora programada')).toBeTruthy()
+    expect(screen.getByText('Inscripción abierta · a la hora programada')).toBeTruthy()
+    expect(screen.queryByText(/Apertura programada aplicada/)).toBeNull()
   }, 20_000)
 
   // A4 (C19-5)
@@ -406,11 +418,11 @@ describe('cambios del 19-oct contra la API real', () => {
     const seccion = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
     const siguiente = (await seccion.findByRole('button', { name: 'Siguiente' }, { timeout: 5000 })) as HTMLButtonElement
     fireEvent.click(siguiente)
-    expect(await seccion.findByText('Pregunta 1 de 12 · ronda 1')).toBeTruthy()
+    expect(await seccion.findByText('Pregunta 1 de 6 · INSUMEX · ronda 1')).toBeTruthy()
     expect((await yo()).sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'alistamiento_tecnico' })
     await waitFor(() => expect(siguiente.disabled).toBe(false))
     fireEvent.click(siguiente)
-    expect(await seccion.findByText('Pregunta 2 de 12 · ronda 1')).toBeTruthy()
+    expect(await seccion.findByText('Pregunta 2 de 6 · INSUMEX · ronda 1')).toBeTruthy()
     expect((await yo()).sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'conocimiento_cliente' })
   }, 20_000)
 
