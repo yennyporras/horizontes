@@ -255,3 +255,97 @@ describe('modo demo (jurado)', () => {
     }
   })
 })
+
+/** Títulos de las secciones de Sala en vivo, en el orden de la página. */
+const secciones = () => [...document.querySelectorAll('#contenido section[aria-labelledby] > h2')].map((h) => h.textContent)
+
+describe('Sala en vivo (Nicolai, inversionista y decisión de Paola sobre la ronda 1)', () => {
+  it('con la ronda abierta, Mesas va justo después del control y cada mesa con gente pendiente tiene «Ver quién falta»', async () => {
+    await abrirDemo()
+    const orden = secciones()
+    expect(orden.slice(0, 2)).toEqual(['Control de la sala', 'Mesas'])
+    const mesas = screen.getByRole('region', { name: 'Mesas' })
+    // Mesa 1 terminó (Todos votaron); en Mesa 2 y Mesa 3 falta gente.
+    expect(within(mesas).queryByRole('link', { name: 'Ver quién falta en Mesa 1' })).toBeNull()
+    expect(within(mesas).getAllByText('Todos votaron')).toHaveLength(1)
+    const enlace = within(mesas).getByRole('link', { name: 'Ver quién falta en Mesa 2' })
+    expect(enlace.getAttribute('href')).toBe('/admin/salas/s_demo/participantes?mesa=m2&pendientes=1')
+    fireEvent.click(enlace)
+    await screen.findByRole('heading', { level: 1, name: 'Participantes' })
+    expect((screen.getByLabelText('Mesa') as HTMLSelectElement).value).toBe('m2')
+    expect((screen.getByLabelText('Solo pendientes') as HTMLInputElement).checked).toBe(true)
+    const filas = within(screen.getByRole('region', { name: 'Inscritos' })).getAllByRole('rowheader').map((th) => th.textContent)
+    expect(filas).toEqual(['Camila Ortiz', 'Diego Castro', 'Luis Gómez', 'Sofía Mejía'])
+    expect(within(screen.getByRole('region', { name: 'Inscritos' })).queryAllByText('Completo')).toHaveLength(0)
+  })
+
+  it('Participantes filtra «Solo pendientes» y, si ya terminaron todos, lo dice', async () => {
+    await abrirDemo()
+    fireEvent.click(nav().getByRole('link', { name: 'Participantes' }))
+    const inscritos = await screen.findByRole('region', { name: 'Inscritos' })
+    expect(within(inscritos).getAllByRole('rowheader')).toHaveLength(12)
+    const casilla = within(inscritos).getByLabelText('Solo pendientes') as HTMLInputElement
+    expect(casilla.checked).toBe(false)
+    expect(document.getElementById(casilla.getAttribute('aria-describedby')!)?.textContent).toBe('Quienes siguen activos y no han terminado la ronda 1.')
+    fireEvent.click(casilla)
+    expect(within(inscritos).getAllByRole('rowheader')).toHaveLength(8)
+    fireEvent.change(within(inscritos).getByLabelText('Mesa'), { target: { value: 'm1' } })
+    expect(within(inscritos).getByText('Nadie está pendiente con ese filtro: ya terminaron todos.')).toBeTruthy()
+  })
+
+  it('«Proyectar el tablero» lista las teclas con <kbd> y, con la ronda 1 abierta, explica que el tablero no muestra sus resultados', async () => {
+    await abrirDemo()
+    const proyectar = screen.getByRole('region', { name: 'Proyectar el tablero' })
+    expect(screen.queryByRole('region', { name: 'Ver en vivo' })).toBeNull()
+    const teclas = [...proyectar.querySelectorAll('.teclas__lista kbd')].map((k) => k.textContent)
+    expect(teclas).toEqual(['F', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
+    expect(within(proyectar.querySelector('.teclas__lista') as HTMLElement).getByText('Comparación; otra vez, repite la animación')).toBeTruthy()
+    expect(within(proyectar).getByText(/^Con la ronda 1 abierta, el tablero muestra cuántos votaron, pero no los resultados: aparecen cuando todos hayan votado o al cerrar la ronda\./)).toBeTruthy()
+    // Las teclas ya no van en un párrafo.
+    expect(document.getElementById('ayuda-tablero-sala')?.textContent).not.toMatch(/G y D cambian de modo/)
+  })
+
+  it('con la ronda 2 abierta no repite el aviso de la ronda 1', async () => {
+    await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+    for (const accion of ['cerrar_ronda_1', 'abrir_ronda_2']) await responderMock('POST', '/api/admin/salas/s_demo/acciones', { accion })
+    await responderMock('POST', '/api/admin/logout')
+    await abrirDemo()
+    await screen.findByText('Ronda 2 abierta', { selector: '.estado' })
+    expect(screen.queryByText(/^Con la ronda 1 abierta/)).toBeNull()
+  })
+
+  it('con la ronda 2 cerrada, «Resumen del taller» va sobre la bitácora con los minutos, la completitud y los accesos de nuevo', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date('2026-10-20T15:00:00-05:00'))
+      await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+      const accion = (a: string) => responderMock('POST', '/api/admin/salas/s_demo/acciones', { accion: a })
+      // La sala demo ya tiene la ronda 1 abierta: se reabre la cuenta desde aquí (el simulador mide desde ronda_abierta).
+      await accion('cerrar_ronda_1')
+      await accion('reabrir_ronda')
+      await responderMock('POST', '/api/admin/participantes/p_2/acceso')
+      vi.setSystemTime(new Date('2026-10-20T15:12:00-05:00'))
+      await accion('cerrar_ronda_1')
+      await accion('abrir_ronda_2')
+      vi.setSystemTime(new Date('2026-10-20T15:30:00-05:00'))
+      await accion('cerrar_ronda_2')
+      await responderMock('POST', '/api/admin/logout')
+    } finally {
+      vi.useRealTimers()
+    }
+    await abrirDemo()
+    const resumen = await screen.findByRole('region', { name: 'Resumen del taller' })
+    const cifras = Object.fromEntries(within(resumen).getAllByRole('listitem').map((li) => [li.querySelector('.kpi__rotulo')!.textContent, li.querySelector('.cifra')!.textContent]))
+    expect(cifras).toEqual({
+      'Duración de la ronda 1': '12 min',
+      'Duración de la ronda 2': '18 min',
+      'Completaron la ronda 1': '12 de 12',
+      'Completaron la ronda 2': '0 de 12',
+      'Accesos de nuevo': '1',
+    })
+    const orden = secciones()
+    expect(orden.indexOf('Resumen del taller')).toBe(orden.indexOf('Bitácora de la sala') - 1)
+    // Sin ronda abierta, Mesas vuelve a su lugar después de Proyectar el tablero.
+    expect(orden.indexOf('Mesas')).toBeGreaterThan(orden.indexOf('Proyectar el tablero'))
+  })
+})

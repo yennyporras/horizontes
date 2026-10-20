@@ -231,9 +231,9 @@ describe('Sala en vivo', () => {
     expect([...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)).toEqual(['Abrir ronda 2'])
   })
 
-  it('QA-A-03, QA-A-04 y QA-A-25: «Ver en vivo» es el único lugar con los accesos, y la vista previa no inscribe', async () => {
+  it('QA-A-03, QA-A-04 y QA-A-25: «Proyectar el tablero» es el único lugar con los accesos, y la vista previa no inscribe', async () => {
     await abrirDemo()
-    const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
+    const enVivo = screen.getByRole('region', { name: 'Proyectar el tablero' })
     const enlacesTablero = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="/tablero/"], a[href^="/m/"]')]
     // Tablero de la sala en sus dos modos (Gráfica y Detallado), tablero de la mesa y vista previa del celular.
     expect(enlacesTablero.length).toBe(4)
@@ -244,13 +244,15 @@ describe('Sala en vivo', () => {
     fireEvent.change(within(enVivo).getByLabelText('Mesa'), { target: { value: 'm2' } })
     expect(within(enVivo).getByRole('link', { name: 'Vista previa del celular' }).getAttribute('href')).toBe('/m/HZ7K2-2?vista=previa')
     expect(within(enVivo).getByRole('link', { name: 'Tablero de Mesa 2' })).toBeTruthy()
-    // La tabla de mesas ya no repite enlaces (eran de 21 px en el celular).
-    expect(within(screen.getByRole('region', { name: 'Mesas' })).queryAllByRole('link')).toHaveLength(0)
+    // La tabla de mesas ya no repite enlaces al tablero (eran de 21 px en el celular); con la ronda abierta solo lleva
+    // «Ver quién falta» (QA por roles, Nicolai), que se queda en el panel.
+    const deMesas = within(screen.getByRole('region', { name: 'Mesas' })).queryAllByRole('link')
+    expect(deMesas.every((a) => a.textContent === 'Ver quién falta' && a.getAttribute('href')!.startsWith('/admin/'))).toBe(true)
   })
 
   it('B-2: «Cambiar el enlace del tablero» pide confirmar, cambia el token de todos los enlaces y lo anota en la bitácora', async () => {
     await abrirDemo()
-    const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
+    const enVivo = screen.getByRole('region', { name: 'Proyectar el tablero' })
     const token = () => new URL(within(enVivo).getByRole('link', { name: 'Detallado' }).getAttribute('href')!, 'http://x').searchParams.get('t')
     const antes = token()
     fireEvent.click(within(enVivo).getByRole('button', { name: 'Cambiar el enlace del tablero' }))
@@ -273,7 +275,7 @@ describe('Sala en vivo', () => {
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     const region = await screen.findByRole('region', { name: /Resultado preliminar · Mesa 1/ })
     expect(within(region).getByText(/Se renueva cada 3 votos nuevos/)).toBeTruthy()
-    expect(screen.getByText(/El resultado preliminar se renueva cada 3 votos nuevos; al cerrar la ronda queda el exacto/)).toBeTruthy()
+    expect(screen.getByText(/El resultado preliminar se renueva cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final./)).toBeTruthy()
     lento = true
     // Siguiente (modo guiado) cambia la versión de la sala: el resultado se vuelve a pedir y tarda.
     fireEvent.click(within(screen.getByRole('region', { name: 'Pregunta en pantalla' })).getByRole('button', { name: 'Siguiente' }))

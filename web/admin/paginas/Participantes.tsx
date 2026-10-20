@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { api, lista } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
@@ -35,7 +35,10 @@ function useVotaron(salaId: string | undefined, version: string | undefined) {
 export function Participantes() {
   const { salaId } = useParams()
   const { datos, error, refrescar } = useSala(salaId)
-  const [filtroMesa, setFiltroMesa] = useState('todas')
+  // QA por roles (Nicolai): «Ver quién falta» de Sala en vivo llega con ?mesa=m1&pendientes=1.
+  const [busqueda] = useSearchParams()
+  const [filtroMesa, setFiltroMesa] = useState(() => busqueda.get('mesa') ?? 'todas')
+  const [soloPendientes, setSoloPendientes] = useState(() => busqueda.get('pendientes') === '1')
   const [buscar, setBuscar] = useState('')
   const [aviso, setAviso] = useState<{ tono: 'exito' | 'error'; texto: string } | null>(null)
   const [guardando, setGuardando] = useState<string | null>(null)
@@ -114,6 +117,7 @@ export function Participantes() {
         const q = buscar.trim().toLowerCase()
         const filas = d.participantes
           .filter((p) => filtroMesa === 'todas' || p.mesa_id === filtroMesa)
+          .filter((p) => !soloPendientes || (p.activo && !p.completo_ronda))
           .filter((p) => !q || p.nombre.toLowerCase().includes(q) || p.correo.toLowerCase().includes(q))
           .sort((a, b) => nombreMesa(a.mesa_id).localeCompare(nombreMesa(b.mesa_id), 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es'))
 
@@ -149,6 +153,13 @@ export function Participantes() {
                   <input type="search" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
                 </label>
               </div>
+              <label className="opcion opcion--linea">
+                <input type="checkbox" checked={soloPendientes} aria-describedby="ayuda-pendientes" onChange={(e) => setSoloPendientes(e.target.checked)} />
+                <span>Solo pendientes</span>
+              </label>
+              <p id="ayuda-pendientes" className="pista">
+                {ronda ? `Quienes siguen activos y no han terminado la ronda ${ronda}.` : 'Quienes siguen activos y no han terminado la ronda en curso.'}
+              </p>
               {aviso && (
                 <p className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
                   {aviso.texto}
@@ -157,7 +168,7 @@ export function Participantes() {
               {d.participantes.length === 0 ? (
                 <p className="vacio">Aún no hay inscritos. Comparte el QR de cada mesa para que la gente entre.</p>
               ) : filas.length === 0 ? (
-                <p className="vacio">Nadie coincide con ese filtro.</p>
+                <p className="vacio">{soloPendientes ? 'Nadie está pendiente con ese filtro: ya terminaron todos.' : 'Nadie coincide con ese filtro.'}</p>
               ) : (
                 <div className="tabla-envoltura">
                   <table className="tabla-tarjetas tabla-tarjetas--ancha">

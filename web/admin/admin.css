@@ -248,6 +248,10 @@
 .hz-admin .opcion input { accent-color: var(--hz-accion); min-height: auto; width: 20px; height: 20px; margin-top: 2px; flex: none; }
 .hz-admin .opcion small { display: block; color: var(--hz-tinta-3); font-size: var(--hz-fs-14); }
 .hz-admin fieldset:disabled .opcion { cursor: not-allowed; }
+/* Casilla suelta en una fila de filtros («Solo pendientes»): alto táctil, centrada */
+.hz-admin .opcion--linea { align-items: center; width: fit-content; min-height: var(--hz-tactil); padding: 0; }
+.hz-admin .opcion--linea input { margin-top: 0; }
+.hz-admin .opcion--linea + .pista { margin-top: 0; }
 .hz-admin input:disabled,
 .hz-admin textarea:disabled,
 .hz-admin select:disabled { background: var(--hz-deshabilitado-fondo); color: var(--hz-deshabilitado-texto); border-color: var(--hz-deshabilitado-borde); cursor: not-allowed; }
@@ -563,6 +567,22 @@
 .hz-admin .en-vivo__enlace { display: grid; justify-items: start; gap: var(--hz-sp-2); margin-top: var(--hz-sp-6); padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-borde); }
 .hz-admin .en-vivo__enlace .pista { margin: 0; max-width: 70ch; }
 .hz-admin .en-vivo__titulo { margin: 0; font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
+/* Teclas del tablero en lista visual (QA por roles, Nicolai): tecla en <kbd> y qué hace, en dos columnas si caben */
+.hz-admin .teclas { width: 100%; }
+.hz-admin .teclas__titulo { margin: var(--hz-sp-2) 0 var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin .teclas__lista { display: grid; gap: var(--hz-sp-2) var(--hz-sp-5); grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr)); margin: 0; }
+.hz-admin .teclas__lista > div { display: grid; grid-template-columns: 5.5rem 1fr; align-items: center; gap: var(--hz-sp-3); }
+.hz-admin .teclas__lista dt { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-1); }
+.hz-admin .teclas__lista dd { margin: 0; font-size: var(--hz-fs-14); }
+.hz-admin .teclas__o { font-size: var(--hz-fs-12); color: var(--hz-tinta-2); }
+.hz-admin kbd {
+  display: inline-grid; place-items: center; min-width: 2em; padding: 2px var(--hz-sp-2);
+  border: 1px solid var(--hz-borde-control); border-bottom-width: 2px; border-radius: var(--hz-r-campo);
+  background: var(--hz-fondo); color: var(--hz-tinta); font-family: inherit; font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); line-height: 1.4;
+}
+/* Solo para lectores de pantalla (encabezado de la columna «Quién falta») */
+.hz-admin .sr-solo { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.hz-admin .kpis--dentro { margin-bottom: var(--hz-sp-3); }
 .hz-admin .en-vivo__mesa { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2); }
 
 /* Menú del celular: el botón solo existe bajo 641 px */

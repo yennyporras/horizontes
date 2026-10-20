@@ -194,7 +194,8 @@ export function estadoMesa(
   mesa: { inscritos: number; precierre?: boolean },
 ): { texto: string; tono?: 'exito' | 'apagado' | 'aviso' } {
   if (mesa.inscritos === 0) return { texto: 'Sin inscritos', tono: 'apagado' }
-  if (rondaAbierta(estado)) return mesa.precierre ? { texto: 'Precierre', tono: 'exito' } : { texto: 'Votando' }
+  // Paula (QA por roles): «Precierre» es jerga del equipo; la insignia dice lo que pasó.
+  if (rondaAbierta(estado)) return mesa.precierre ? { texto: 'Todos votaron', tono: 'exito' } : { texto: 'Votando' }
   if (estado === 'r1_cerrada' || estado === 'r2_cerrada') return { texto: ESTADOS[estado], tono: 'apagado' }
   if (estado === 'cerrada') return { texto: 'Sala cerrada', tono: 'apagado' }
   return { texto: 'Esperando la ronda', tono: 'apagado' }
@@ -246,9 +247,22 @@ export const MODOS_TABLERO: { modo: ModoTablero; nombre: string; tecla: string; 
   { modo: 'detallado', nombre: 'Detallado', tecla: 'D', ayuda: 'la matriz con el progreso y los promedios' },
 ]
 
-/** Teclas del tablero, en una línea, para la ayuda de Ver en vivo (las mismas de la guía del facilitador). */
-export const TECLAS_TABLERO =
-  'En el tablero, G y D cambian de modo, M los alterna, V muestra Cómo votó, F pone pantalla completa y 1, 2 y C cambian entre ronda 1, ronda 2 y comparación.'
+/**
+ * Teclas del tablero para «Proyectar el tablero» (pedido de Nicolai, QA por roles del 20-oct): una lista visual en vez
+ * de un párrafo. Los mismos textos de la ayuda del tablero (tecla ?), en el orden en que se usan durante el taller.
+ */
+export const TECLAS_TABLERO: { teclas: string[]; texto: string }[] = [
+  { teclas: ['F'], texto: 'Pantalla completa (entra y sale)' },
+  { teclas: ['G'], texto: 'Gráfica: solo la matriz' },
+  { teclas: ['D'], texto: 'Detallado: la matriz con los promedios' },
+  { teclas: ['M'], texto: 'Cambia entre Gráfica y Detallado' },
+  { teclas: ['V'], texto: 'Promedios o «Cómo votó»' },
+  { teclas: ['1'], texto: 'Ronda 1' },
+  { teclas: ['2'], texto: 'Ronda 2' },
+  { teclas: ['C'], texto: 'Comparación; otra vez, repite la animación' },
+  { teclas: ['→', '←'], texto: 'Vista siguiente o anterior, también con el control de presentaciones' },
+  { teclas: ['?'], texto: 'La ayuda de teclas en el tablero' },
+]
 
 /**
  * Modos de proyección del tablero (pedido de Nicolai, 20-oct; nombres del 20-oct en la tarde): `grafica`, solo la

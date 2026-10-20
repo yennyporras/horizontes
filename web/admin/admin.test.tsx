@@ -138,7 +138,7 @@ describe('textos del panel', () => {
   it('el estado de cada mesa sigue al de la sala: no dice Votando sin ronda abierta', () => {
     const m = { inscritos: 3, precierre: false }
     expect(estadoMesa('r1_abierta', m).texto).toBe('Votando')
-    expect(estadoMesa('r2_abierta', { ...m, precierre: true }).texto).toBe('Precierre')
+    expect(estadoMesa('r2_abierta', { ...m, precierre: true }).texto).toBe('Todos votaron')
     expect(estadoMesa('r1_cerrada', m).texto).toBe('Ronda 1 cerrada')
     expect(estadoMesa('cerrada', m).texto).toBe('Sala cerrada')
     expect(estadoMesa('inscripcion', m).texto).toBe('Esperando la ronda')
@@ -236,7 +236,7 @@ describe('panel admin contra el simulador', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Abrir inscripción' }))
     await screen.findByText('Inscripción abierta', { selector: '.estado' })
     expect(principales()).toEqual(['Abrir ronda 1'])
-    const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
+    const enVivo = screen.getByRole('region', { name: 'Proyectar el tablero' })
     for (const nombre of ['Gráfica', 'Detallado', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
       const href = within(enVivo).getByRole('link', { name: nombre }).getAttribute('href') ?? ''
       expect(href.startsWith('/')).toBe(true)
@@ -245,8 +245,9 @@ describe('panel admin contra el simulador', () => {
     const modo = (n: string) => new URL(within(enVivo).getByRole('link', { name: n }).getAttribute('href')!, 'http://x').searchParams.get('modo')
     expect([modo('Gráfica'), modo('Detallado')]).toEqual(['grafica', 'detallado'])
     const ayuda = document.getElementById('ayuda-tablero-sala')!.textContent ?? ''
-    for (const t of ['Gráfica muestra solo la matriz moviéndose', 'Detallado muestra la matriz con el progreso y los promedios', 'G y D cambian de modo', 'M los alterna', 'V muestra Cómo votó', 'F pone pantalla completa'])
-      expect(ayuda).toContain(t)
+    for (const t of ['Gráfica muestra solo la matriz moviéndose', 'Detallado muestra la matriz con el progreso y los promedios']) expect(ayuda).toContain(t)
+    // Las teclas van en una lista visual con <kbd> (QA por roles, Nicolai).
+    expect([...enVivo.querySelectorAll('.teclas__lista kbd')].map((k) => k.textContent)).toEqual(['F', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
   })
 
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {
