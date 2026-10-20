@@ -8,7 +8,7 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } 
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { type Transporte, usarTransporte } from './api'
-import { reiniciarMock, responderMock } from './mock/servidor'
+import { horaEnZona, reiniciarMock, responderMock } from './mock/servidor'
 import { recordarSala, salaRecordada, olvidarSala } from './memoria'
 import { useSala } from './useSala'
 import { moverProgramacion } from './paginas/Configuracion'
@@ -607,5 +607,13 @@ describe('Mesas y QR, Respuestas, Exportar', () => {
     fireEvent.click(nav().getByText('Participantes'))
     const nota = await screen.findByText(/^Qué calificó cada persona está en Respuestas/)
     expect(nota.className).toContain('nota-tabla')
+  })
+})
+
+describe('simulador: hora del servidor en HORA_PASADA', () => {
+  it('va con dos cifras como en el servidor real, también antes de las 10 de la mañana', () => {
+    // 08:05:09 en Bogotá (UTC-5) y medianoche en Lima: «8:05:09» o «24:00:00» harían fallar la prueba del panel según la hora.
+    expect(horaEnZona(Date.parse('2026-10-20T13:05:09Z'), 'America/Bogota')).toBe('08:05:09')
+    expect(horaEnZona(Date.parse('2026-10-20T05:00:00Z'), 'America/Lima')).toBe('00:00:00')
   })
 })
