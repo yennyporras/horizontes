@@ -540,3 +540,17 @@ describe('QA-P-11 y QA-P-19: sistema de diseño', () => {
     expect(css).toMatch(/\.hz \.hz-progreso \{[^}]*border: 0;/)
   })
 })
+
+describe('ancho de página estándar: encabezado, contenido y pie con el mismo contenedor', () => {
+  it('la página del celular usa .hz-pagina en todas sus franjas', async () => {
+    servidor(conYo(() => yoCon((y) => (y.sala.estado = 'inscripcion'))))
+    conToken()
+    const { container } = montar()
+    await screen.findByRole('heading', { name: 'El caso y tu hoja' })
+    const raiz = container.querySelector('.hz')!
+    expect(raiz.classList.contains('hz-vista')).toBe(true)
+    expect(raiz.classList.contains('hz-pagina')).toBe(false)
+    for (const sel of ['.hz-producto__fila', '.hzp-contexto', 'main', '.hz-barra-accion__interior'])
+      expect(container.querySelector(sel)!.classList.contains('hz-pagina'), sel).toBe(true)
+  })
+})

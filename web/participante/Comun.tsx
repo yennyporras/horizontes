@@ -43,7 +43,10 @@ export interface MarcoProps {
 /** Lo que la página pasa a cada pantalla: encabezado y avisos globales. */
 export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba' | 'flotantes'>
 
-/** Página del celular: tema claro de Estratek, encabezado de producto y, debajo, la sala y la mesa. */
+/**
+ * Página del celular: tema claro de Estratek, encabezado de producto y, debajo, la sala y la mesa. Encabezado,
+ * contexto, contenido y pie usan el contenedor de página (`.hz-pagina`): en escritorio comparten los bordes del panel.
+ */
 export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFoco, children }: MarcoProps) {
   useTemaDocumento('claro')
   const ref = useRef<HTMLElement>(null)
@@ -57,19 +60,19 @@ export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFo
     document.documentElement.scrollTop = 0
   }, [claveFoco])
   return (
-    <div className="hz hz-pagina" data-tema="claro" lang="es-CO">
+    <div className="hz hz-vista hzp-vista" data-tema="claro" lang="es-CO">
       <EncabezadoProducto />
-      <div className="hzp-contexto">
+      <div className="hzp-contexto hz-pagina">
         <p className="hzp-contexto__sala">{sala}</p>
         {meta && <p className="hzp-contexto__meta">{meta}</p>}
       </div>
-      <main ref={ref} className="hz-contenido">
+      <main ref={ref} className="hz-contenido hz-pagina">
         {arriba}
         {children}
       </main>
       {(flotantes || barra) && (
         <div className={barra ? 'hzp-pie' : 'hzp-pie hzp-pie--sin-barra'}>
-          {flotantes && <div className="hzp-flotantes">{flotantes}</div>}
+          {flotantes && <div className="hzp-flotantes hz-pagina">{flotantes}</div>}
           {barra && <BarraAccion nota={notaBarra}>{barra}</BarraAccion>}
         </div>
       )}

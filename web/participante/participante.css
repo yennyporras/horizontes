@@ -2,9 +2,15 @@
    Línea gráfica: docs/marca/FAMILIA_ESTRATEK.md (tema claro, retícula de 8 px, tarjetas por superficie y borde). */
 
 /* Sala y mesa debajo del encabezado de producto */
-.hzp-contexto { max-width: var(--hz-medida); margin: 0 auto; padding: var(--hz-sp-4) 0 var(--hz-sp-2); display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
+.hzp-contexto { padding-block: var(--hz-sp-4) var(--hz-sp-2); display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
 .hzp-contexto__sala { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 .hzp-contexto__meta { color: var(--hz-tinta-2); }
+/* Contenedor de página (.hz-pagina): los bordes son los del panel; los textos conservan su medida de lectura.
+   El resultado (matriz y tablas) usa más ancho en escritorio. */
+.hzp-vista .hz-contenido > * { max-width: var(--hz-medida); }
+.hzp-vista .hz-contenido > .hzp-resultado, .hzp-vista .hz-contenido > .hzp-seccion { max-width: none; }
+.hzp-seccion > :not(.hzp-resultado) { max-width: var(--hz-medida); }
+
 /* Un nombre o una sala sin espacios no ensancha la página en 360 px. */
 .hzp-contexto p, .hzp-saludo { overflow-wrap: anywhere; }
 
@@ -12,8 +18,8 @@
 .hzp-pie { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
 .hzp-pie > * { pointer-events: auto; }
 .hzp-pie > .hz-barra-accion { position: static; }
-.hzp-flotantes { max-width: var(--hz-medida); margin: 0 auto; padding: 0 var(--hz-sp-4) var(--hz-sp-2); display: grid; gap: var(--hz-sp-2); pointer-events: none; }
-.hzp-flotantes > * { pointer-events: auto; box-shadow: var(--hz-sombra); }
+.hzp-flotantes { padding-bottom: var(--hz-sp-2); display: grid; gap: var(--hz-sp-2); pointer-events: none; }
+.hzp-flotantes > * { pointer-events: auto; box-shadow: var(--hz-sombra); max-width: var(--hz-medida); }
 .hzp-pie--sin-barra { padding-bottom: calc(var(--hz-sp-2) + env(safe-area-inset-bottom)); }
 /* Nota de la barra con alto fijo de 2 líneas: la barra mide lo mismo con la ronda cerrada y abierta. */
 .hzp-nota-barra { display: block; min-height: calc(2 * var(--hz-lh) * 1em); }
@@ -118,18 +124,18 @@
 /* Las cifras de la tabla siguen en negrita y tabulares pese al blindaje de .hz-cifra (componentes.css). */
 .hz .hzp-tabla td { font-weight: var(--hz-fw-etiqueta); font-variant-numeric: tabular-nums; }
 
-/* Celular abierto en escritorio (triage #25): la matriz sale de la columna de lectura y crece. */
-@media (min-width: 64rem) {
-  .hzp-matriz { --hzp-ancho-matriz: min(60rem, 100vw - 4rem); width: var(--hzp-ancho-matriz); margin-left: calc((100% - var(--hzp-ancho-matriz)) / 2); }
-}
+/* Celular abierto en escritorio (triage #25): la matriz usa el ancho de la página (hasta 60 rem) y las tablas,
+   la medida de lectura. */
+.hzp-resultado > :not(.hzp-matriz) { max-width: var(--hz-medida); }
+.hzp-matriz { max-width: 60rem; }
 
 /* Celular girado (poca altura): encabezado y contexto compactos y la barra al final del contenido,
    para que la pregunta se vea sin desplazar. */
 @media (max-height: 30rem) and (orientation: landscape) {
-  .hz-pagina { padding-bottom: var(--hz-sp-4); }
-  .hz-pagina > .hz-producto .hz-producto__fila { padding-block: var(--hz-sp-1) calc(var(--hz-sp-1) + 4px); }
+  .hzp-vista { padding-bottom: var(--hz-sp-4); }
+  .hzp-vista > .hz-producto .hz-producto__fila { padding-block: var(--hz-sp-1) calc(var(--hz-sp-1) + 4px); }
   .hzp-contexto { display: flex; flex-wrap: wrap; column-gap: var(--hz-sp-3); padding: var(--hz-sp-2) 0 0; }
   .hz-contenido { gap: var(--hz-sp-3); }
-  .hzp-pie { position: static; margin-top: var(--hz-sp-4); margin-inline: calc(var(--hz-sp-4) * -1); }
+  .hzp-pie { position: static; margin-top: var(--hz-sp-4); }
   .hzp-pie > .hz-barra-accion { box-shadow: none; }
 }
