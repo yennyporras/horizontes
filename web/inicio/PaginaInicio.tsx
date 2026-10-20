@@ -1,8 +1,8 @@
 // Landing pública de la raíz `/`. Qué es Horizontes, cómo se entra a una mesa, cómo funciona y dónde está el panel.
+// Tema claro con la barra superior carbón, como el celular, el tablero y el panel (decisión de Paola del 20-oct).
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { EncabezadoProducto, Rubrica, useTemaDocumento } from '../shared/ui'
-import logoEstratek from '../shared/ui/marca/estratek-logo-blanco.png'
+import { EncabezadoProducto, LogoEstratek, Rubrica, useTemaDocumento } from '../shared/ui'
 import { CORREO_ESTRATEK, EJES, RUBRICA_EJEMPLO, URL_POLITICA } from './contenido'
 import { EntradaMesa } from './EntradaMesa'
 import { MatrizIlustrada } from './MatrizIlustrada'
@@ -12,10 +12,10 @@ const TITULO = 'Horizontes · Taller de priorización de portafolio · Estratek'
 
 const PASOS: { titulo: string; texto: string; ronda?: 'r1' | 'r2' | 'r1r2' }[] = [
   { titulo: 'Escanea el QR o escribe el código', texto: 'Cada mesa tiene su QR. Lo escaneas con la cámara del celular o escribes el código en esta página.' },
-  { titulo: 'Inscríbete', texto: 'Tu nombre, tu correo y tu autorización de datos. La app te asigna un perfil distinto al de los demás en tu mesa.' },
+  { titulo: 'Inscríbete', texto: 'Tu nombre, tu correo y tu autorización de datos. La app te asigna uno de los seis perfiles y los reparte para que en la mesa haya miradas distintas.' },
   { titulo: 'Lee el caso y tu hoja', texto: 'El caso Foodsume es igual para todos. Tu hoja trae lo que solo sabe tu perfil sobre INSUMEX y NUTRIWHAT.' },
   { titulo: 'Ronda 1, en silencio', texto: 'Calificas solo, con lo que sabes, los dos proyectos en seis criterios. Sin hablar con la mesa.', ronda: 'r1' },
-  { titulo: 'Ronda 2, con la mesa', texto: 'Ahora sí: discuten, se abren las seis hojas para todos y cada quien vuelve a calificar.', ronda: 'r2' },
+  { titulo: 'Ronda 2, con la mesa', texto: 'Ahora sí: la mesa comparte lo que dice cada hoja, discute los dos proyectos y cada quien vuelve a calificar.', ronda: 'r2' },
   {
     titulo: 'La matriz muestra el movimiento',
     texto: 'El tablero ubica los dos proyectos entre ocho fijos, muestra cuánto se movieron de una ronda a otra y el consolidado de la sala.',
@@ -107,7 +107,8 @@ function LaminaPaso({ indice, ronda }: { indice: number; ronda?: 'r1' | 'r2' | '
   const punto = r * Math.SQRT1_2
   return (
     <svg className="in-paso__lamina" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-      <path d={`M0 100 L0 ${100 - r} A${r} ${r} 0 0 1 ${r} 100 Z`} fill="var(--hz-h2)" />
+      <path className="in-paso__arco" d={`M0 100 L0 ${100 - r} A${r} ${r} 0 0 1 ${r} 100 Z`} />
+      <path className="in-paso__horizonte" d={`M0 ${100 - r} A${r} ${r} 0 0 1 ${r} 100`} />
       {ronda === 'r1' && <circle className="in-r1-forma" cx={punto} cy={100 - punto} r="7" />}
       {ronda === 'r2' && <circle className="in-r2-forma" cx={punto} cy={100 - punto} r="7" />}
       {ronda === 'r1r2' && (
@@ -136,7 +137,7 @@ function PruebaEscala() {
       <p className="in-prueba__nota" role="status">
         {valor === null
           ? 'Toca una opción para ver cómo se marca en el celular. Aquí no se guarda nada.'
-          : `Marcaste ${valor}. En el taller, «Guardar calificación» la envía cuando completas los seis criterios.`}
+          : `Marcaste ${valor}. En el taller, tu calificación de cada proyecto se envía cuando respondes los seis criterios.`}
       </p>
     </div>
   )
@@ -144,9 +145,9 @@ function PruebaEscala() {
 
 export default function PaginaInicio() {
   useTitulo()
-  useTemaDocumento('carbon')
+  useTemaDocumento('claro')
   return (
-    <div className="hz hz-inicio" data-tema="carbon">
+    <div className="hz hz-inicio" data-tema="claro" lang="es-CO">
       <a className="in-saltar" href="#contenido">
         Saltar al contenido
       </a>
@@ -266,31 +267,38 @@ export default function PaginaInicio() {
 
         <section id="facilitadores" className="in-sec" aria-labelledby="in-facilitadores-titulo">
           <div className="hz-pagina in-dos">
-            <h2 id="in-facilitadores-titulo" className="in-h2">
-              Para <span className="in-clave">facilitadores</span>
-            </h2>
             <div className="in-texto">
-              <p>
-                El panel es para quien dirige el taller: crea la sala con el caso Foodsume, imprime los QR de las mesas, abre y cierra las
-                rondas y exporta los resultados.
-              </p>
-              <p>
-                Las cuentas del panel las crea un superadmin de Estratek. No hay registro abierto: si vas a facilitar y no tienes usuario,
-                pídeselo a quien coordina el taller en Estratek.
-              </p>
-              <p>El tablero para el proyector se abre desde el panel con su propio enlace. Lo comparte el facilitador; no se busca desde esta página.</p>
+              <h2 id="in-facilitadores-titulo" className="in-h2">
+                Para <span className="in-clave">facilitadores</span>
+              </h2>
+              <p className="in-bajada">El panel es para quien dirige el taller. Las cuentas las crea Estratek: no hay registro abierto.</p>
               <Link className="hz-boton hz-boton--secundario in-boton-claro" to="/admin">
                 Ingresar al panel
               </Link>
+            </div>
+            <div className="in-texto">
+              <p>
+                Desde el panel creas la sala con el caso Foodsume, imprimes los QR de las mesas, abres y cierras las rondas y exportas los
+                resultados. Si alguien cambia de celular o pierde su sesión, desde ahí le das acceso de nuevo.
+              </p>
+              <p>
+                El tablero se proyecta desde el panel en dos modos: «Gráfica», con la matriz a pantalla completa, y «Detallado», con la matriz
+                y los promedios por criterio. Tiene su propio enlace; no se busca desde esta página.
+              </p>
+              <p>Si es tu primera vez, la «Guía de uso» del panel te muestra cada paso.</p>
+              <p>Si vas a facilitar y no tienes usuario, pídeselo a quien coordina el taller en Estratek.</p>
             </div>
           </div>
         </section>
 
         <section id="privacidad" className="in-sec in-sec--suave" aria-labelledby="in-privacidad-titulo">
           <div className="hz-pagina in-dos">
-            <h2 id="in-privacidad-titulo" className="in-h2">
-              Tus <span className="in-clave">datos</span>
-            </h2>
+            <div className="in-texto">
+              <h2 id="in-privacidad-titulo" className="in-h2">
+                Tus <span className="in-clave">datos</span>
+              </h2>
+              <p className="in-bajada">Qué guardamos de ti, quién lo ve y cómo pedir que lo cambiemos o lo borremos.</p>
+            </div>
             <div className="in-texto">
               <ul className="in-lista in-lista--datos">
                 <li>
@@ -302,22 +310,23 @@ export default function PaginaInicio() {
                 </li>
                 <li>
                   <strong>Solo tu nombre y tu correo,</strong> con fines informativos del taller y con tu autorización. Los tratamos según la
-                  ley del país donde se hace el taller: en Colombia, la Ley 1581 de 2012; en Perú, la Ley 29733; en los demás países, la
-                  política de Estratek.
+                  ley del país donde se hace el taller: en Colombia, la Ley 1581 de 2012; en Perú, la Ley 29733; en Guatemala, la política de
+                  Estratek.
                 </li>
               </ul>
-              <p>
-                <a className="in-enlace" href={URL_POLITICA} target="_blank" rel="noreferrer">
-                  Política de Tratamiento de Datos Personales de Estratek<span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
-                </a>
-              </p>
-              <p>
-                Para conocer, actualizar o suprimir tus datos, escribe a{' '}
-                <a className="in-enlace" href={`mailto:${CORREO_ESTRATEK}`}>
-                  {CORREO_ESTRATEK}
-                </a>
-                .
-              </p>
+              <p>Para conocer, actualizar o suprimir tus datos, escribe a Estratek:</p>
+              <ul className="in-enlaces">
+                <li>
+                  <a className="in-enlace" href={`mailto:${CORREO_ESTRATEK}`}>
+                    {CORREO_ESTRATEK}
+                  </a>
+                </li>
+                <li>
+                  <a className="in-enlace" href={URL_POLITICA} target="_blank" rel="noreferrer">
+                    Política de Tratamiento de Datos Personales de Estratek<span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
+                  </a>
+                </li>
+              </ul>
             </div>
           </div>
         </section>
@@ -332,7 +341,7 @@ export default function PaginaInicio() {
             </span>
           </p>
           <div className="in-pie__datos">
-            <img className="in-pie__logo" src={logoEstratek} alt="Estratek" width={296} height={85} loading="lazy" />
+            <LogoEstratek className="in-pie__logo" />
             <p>Un taller de Estratek S.A.S., Medellín, Colombia.</p>
             <p>
               <a href={`mailto:${CORREO_ESTRATEK}`}>{CORREO_ESTRATEK}</a>

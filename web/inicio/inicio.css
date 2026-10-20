@@ -1,6 +1,8 @@
-/* Landing de la raíz en el tema carbón de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md).
+/* Landing de la raíz en el tema claro de la familia Estratek, con la barra superior carbón de EncabezadoProducto
+   (docs/marca/FAMILIA_ESTRATEK.md, decisión del 20-oct: una sola apariencia en toda la app).
    Solo tokens --hz-*; clases in-* bajo .hz-inicio. Titulares en 900 con la palabra clave en azul Estratek,
-   el degradado solo como línea y la » como firma. Un motivo propio: los cuartos de círculo de los horizontes. */
+   el degradado solo como línea y la » como firma. Un motivo propio: los cuartos de círculo de los horizontes.
+   Lo que va dentro del encabezado (secciones, «Ingresar al panel», menú del celular) toma el carbón de la barra. */
 /* Ancho: el contenedor estándar de la familia (.hz-pagina, 1280 px). Encabezado, héroe, secciones y pie comparten bordes;
    los fondos de las secciones y la línea del degradado van de borde a borde. */
 .hz-inicio {
@@ -62,7 +64,8 @@
 @media (min-width: 64rem) { .in-menu__boton, .in-menu { display: none; } }
 
 /* ── Hero: el titular y la matriz con los horizontes a gran escala ── */
-.in-hero { display: grid; gap: var(--hz-sp-8); padding-top: clamp(2rem, 6vw, 4rem); }
+/* Aire arriba y abajo: la matriz no toca la línea del encabezado y el pie de la ilustración no toca la sección siguiente. */
+.in-hero { display: grid; gap: var(--hz-sp-8); padding-block: clamp(2rem, 5vw, 4rem); }
 .in-hero__texto { display: grid; gap: var(--hz-sp-6); align-content: center; }
 .in-lead { font-size: clamp(1.0625rem, 1.4vw, 1.25rem); line-height: 1.55; max-width: 34rem; color: var(--hz-tinta-2); }
 .in-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-3) var(--hz-sp-6); }
@@ -74,11 +77,12 @@
 .in-matriz svg { display: block; width: 100%; height: auto; }
 .in-matriz figcaption { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); max-width: 40rem; }
 /* H1, H2 y H3 y los bordes de los horizontes van en el borde de control neutro: el verde agua se confunde con R1
-   (FAMILIA_ESTRATEK §3, «Gráficos junto a R1/R2»). Sobre las superficies 2 y 3 del carbón pasa 4,5:1. */
+   (FAMILIA_ESTRATEK §3, «Gráficos junto a R1/R2»). Sobre las superficies 2 y 3 del claro pasa 4,5:1. */
 .in-matriz__h { font-size: 4.2px; font-weight: var(--hz-fw-display); fill: var(--hz-borde-control); }
 .in-matriz__eje { font-size: 3.4px; font-weight: var(--hz-fw-etiqueta); fill: var(--hz-tinta-2); }
 .in-matriz__fijo { fill: var(--hz-tinta-3); }
 .in-matriz__horizonte { stroke: var(--hz-borde-control); stroke-width: 0.4; }
+.in-matriz__ejes { fill: none; stroke: var(--hz-borde-control); stroke-width: 0.5; }
 .in-matriz__r1 { fill: var(--hz-fondo); stroke: var(--hz-r1); stroke-width: 0.9; }
 .in-matriz__r2 { fill: var(--hz-r2); }
 .in-matriz__punta { fill: var(--hz-tinta); }
@@ -93,11 +97,11 @@
 @keyframes in-mover { from { transform: translate(var(--dx), var(--dy)); } }
 @keyframes in-trazar { from { stroke-dashoffset: 1; } }
 
-@media (min-width: 56rem) {
-  /* Texto y matriz dentro del contenedor de página: sus bordes son los del encabezado y las secciones. */
-  .in-hero { grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: var(--hz-sp-8); padding-top: 0; }
-  .in-hero__texto { align-self: center; }
-  .in-matriz { width: min(48vw, 36rem, 100svh - 8rem); }
+/* Desde la tableta, texto y matriz lado a lado dentro del contenedor de página (en una columna, la ilustración de
+   720 px empujaba la entrada a la mesa fuera de la primera pantalla). */
+@media (min-width: 48rem) {
+  .in-hero { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: clamp(2rem, 4vw, 4rem); }
+  .in-matriz { width: min(46vw, 36rem, 100svh - 10rem); min-width: 20rem; }
 }
 
 /* ── Secciones: alternan fondo y superficie 1, separadas por un borde ── */
@@ -123,7 +127,14 @@
 /* Cómo funciona: el arco crece paso a paso */
 .in-pasos { display: grid; gap: var(--hz-sp-8); margin-top: var(--hz-sp-10); }
 .in-paso { display: grid; grid-template-columns: 5rem minmax(0, 1fr); column-gap: var(--hz-sp-4); row-gap: var(--hz-sp-2); align-content: start; }
-.in-paso__lamina { grid-row: span 2; width: 5rem; height: 5rem; background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-tarjeta); }
+.in-paso__lamina {
+  grid-row: span 2; width: 5rem; height: 5rem;
+  background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-tarjeta);
+  clip-path: inset(0 round var(--hz-r-tarjeta));
+}
+/* El horizonte de cada paso, como en la matriz: superficie 3 con el borde de control (3:1 sobre la superficie 1). */
+.in-paso__arco { fill: var(--hz-superficie-3); }
+.in-paso__horizonte { fill: none; stroke: var(--hz-borde-control); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .in-paso__flecha { fill: none; stroke: var(--hz-tinta); stroke-width: 3; }
 .in-paso p { color: var(--hz-tinta-2); }
 @media (min-width: 40rem) { .in-pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--hz-sp-8); } }
@@ -150,6 +161,10 @@
 /* Facilitadores y datos */
 .in-lista--datos { gap: var(--hz-sp-4); }
 .in-enlace { display: inline-flex; align-items: center; min-height: var(--hz-tactil); }
+/* Contacto y política: cada enlace en su línea, con su área de 48 px, en vez de partir la frase. */
+.in-enlaces { display: grid; margin-top: calc(var(--hz-sp-2) * -1); }
+/* La bajada de la columna del título: sin el margen de la bajada de sección, la separación la da la rejilla. */
+.in-texto > .in-bajada { margin-top: 0; font-size: var(--hz-fs-18); }
 
 /* ── Pie: la línea del degradado, el nombre con la firma y el logo de Estratek ── */
 .in-pie { position: relative; padding-block: clamp(3rem, 7vw, 6rem) calc(var(--hz-sp-8) + env(safe-area-inset-bottom)); }
@@ -159,7 +174,7 @@
   font-size: clamp(2.5rem, 11vw, 9rem); font-weight: var(--hz-fw-display); line-height: 0.95; letter-spacing: -0.04em; color: var(--hz-tinta);
 }
 .in-pie__nombre .in-firma { margin-left: 0.05em; }
-.in-pie__logo { display: block; width: auto; height: 2.25rem; }
+.in-pie__logo { display: block; height: 2.5rem; }
 .in-pie__datos { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-4) var(--hz-sp-8); font-size: var(--hz-fs-16); color: var(--hz-tinta-2); }
 .in-pie__datos ul { display: flex; flex-wrap: wrap; gap: 0 var(--hz-sp-5); }
 .in-pie__datos a { display: inline-flex; align-items: center; min-height: var(--hz-tactil); min-width: var(--hz-tactil); }
