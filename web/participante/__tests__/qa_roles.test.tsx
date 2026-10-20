@@ -212,7 +212,14 @@ describe('4. inscripción con el botón siempre activo', () => {
   it('sin la casilla, el botón lleva a ella, le da el foco y dice qué falta; no inscribe', async () => {
     const desplazar = vi.fn()
     Element.prototype.scrollIntoView = desplazar
-    servidor((url) => (url.startsWith('/api/mesas/') ? { status: 200, body: MESA } : { status: 201, body: { token: 't', participante: yoBase.participante } }))
+    // Cada ruta con su respuesta: tras inscribirse, la pantalla pide /api/yo y necesita una sala completa.
+    servidor((url) =>
+      url.startsWith('/api/mesas/')
+        ? { status: 200, body: MESA }
+        : url === '/api/yo'
+          ? { status: 200, body: yoBase }
+          : { status: 201, body: { token: 't', participante: yoBase.participante } },
+    )
     montar()
     await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
     expect(screen.getByText(TEXTO_QUE_HARAS)).toBeTruthy()
