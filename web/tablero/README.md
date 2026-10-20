@@ -1,22 +1,27 @@
 # Tablero
 
-Ruta: `/tablero/:sala?mesa=&t=`. Con `t` (token de tablero) aparece el selector de alcance; sin `mesa`, el alcance es la sala.
+Ruta: `/tablero/:sala?mesa=&t=&modo=`. Con `t` (token de tablero) aparece el selector de alcance; sin `mesa`, el alcance es la sala.
+
+**Modos de proyección** (parámetro `modo` de la URL, para que el panel enlace a cada uno):
+- `modo=vivo` (por defecto): solo la matriz, a todo el ancho y el alto bajo el encabezado (firma, sala, ronda y votos recibidos). Con cada foto nueva de votos (D2, de 3 en 3) las burbujas se deslizan.
+- `modo=tabla`: la matriz y, al lado, el progreso y los promedios por criterio con su descripción corta (`web/shared/criterios.ts`) o «Cómo votó» (tecla D).
+
+Selector «En vivo | Con tabla» en el encabezado; teclas V, T y M (alterna). F o el botón «Pantalla completa» ponen el modo elegido en la pantalla completa del navegador, sin los controles. Sin zoom por porcentaje.
 
 Tema **carbón** de la familia Estratek (`docs/marca/FAMILIA_ESTRATEK.md` §3): `data-tema="carbon"` en el `<main>` del tablero y solo tokens semánticos `--hz-*` de `web/shared/ui/tokens.css`, sin colores en duro. Encabezado: nombre de la sala, firma «Horizontes por Estratek »» (la » en el azul de acción) y la línea del degradado de marca de borde a borde.
 
 | Archivo | Qué hace |
 |---|---|
-| `PaginaTablero.tsx` | Página del proyector: encabezado y matriz sola por defecto; con datos (clic, M), progreso y detalle por criterio |
-| `zoom.ts` · `ControlesZoom.tsx` | Zoom vectorial de la matriz (viewBox): botones, teclas, rueda, pellizco y arrastre |
-| `ExplicacionMatriz.tsx` | Qué significa cada eje y cada punto, bajo la matriz (sin pesos) |
+| `PaginaTablero.tsx` | Página del proyector: encabezado, modo en vivo (solo la matriz) o con tabla (progreso y detalle por criterio) |
+| `ExplicacionBreve.tsx` | Qué significa cada eje, en una línea al pie del modo en vivo (solo si cabe entera) |
 | `PreguntaGuiada.tsx` | Modo guiado: la pregunta del facilitador en grande, en lugar de la matriz |
 | `MatrizHorizontes.tsx` | Matriz embebible (solo props, sin fetch) |
 | `matriz/matriz.js` | Dibujo SVG puro, sin dependencias (`matrizSVG`, `calcularLayout`) |
-| `TablaComparada.tsx` · `PanelProyecto.tsx` | Promedios R1 y R2 por criterio, sin fila «Total» ni de votos (proyector · móvil) |
-| `ComoVoto.tsx` | «Cómo votó la sala»: conteo 1-3-5-7-9 por criterio, R1 y R2, con la `distribucion` del servidor. Lo usa también el panel (Sala en vivo) |
+| `TablaComparada.tsx` · `PanelProyecto.tsx` | Promedios R1 y R2 por criterio con su descripción corta, sin fila «Total» ni de votos (proyector · móvil) |
+| `ComoVoto.tsx` | «Cómo votó la sala»: conteo 1-3-5-7-9 por criterio, R1 y R2, con la `distribucion` del servidor, en una sola escala para todo el bloque. Lo usa también el panel (Sala en vivo) |
 | `Progreso.tsx` | Inscritos, completos, mesas y avisos de precierre |
 | `usePollingTablero.ts` · `logica.ts` | Polling 2,5 s con ETag y reglas de presentación |
-| `usePantallaCompleta.ts` | Teclas: F (pantalla completa sin controles), 1, 2 y C (vistas), M y Esc (matriz sola o datos), D (Promedios o Cómo votó), +, −, 0 y flechas (zoom) |
+| `usePantallaCompleta.ts` | Teclas: F (pantalla completa del modo elegido), 1, 2 y C (vistas), V, T, M y Esc (modo en vivo o con tabla; en pantalla completa, Esc solo sale), D (Promedios o Cómo votó) |
 
 ## `MatrizHorizontes` para otras pantallas
 
@@ -51,9 +56,10 @@ Ayudas exportadas (`web/tablero/index.ts`):
 | `vista` | `1 \| 2 \| 'comparacion'` | `'comparacion'` | Una ronda en sólido, o R1 suave + R2 sólido + flecha |
 | `alto` | `number` | cuadrado del ancho (mín. 320 px) | Alto fijo en px |
 | `llenar` | `boolean` | `false` | Usa el alto que le dé el CSS del contenedor (el contenedor debe tener alto definido) |
-| `escalaTexto` | `number` | `1` | Multiplica la letra de la matriz (proyector: 1,3) |
+| `escalaTexto` | `number` | `1` | Multiplica la letra de la matriz (proyector: 1,45) |
+| `letraMin` | `number` | | Proyector: px del texto más chico (20 en 1280, 24 en 1920). Con un lienzo chico se limita a un 26avo de su lado |
 | `animarComparacion` | `boolean` | `true` | Al pasar a `'comparacion'`, R2 sale desde R1 (respeta `prefers-reduced-motion`) |
-| `encuadre` | `{ k, cx, cy }` | | Zoom: aumento y centro en fracción del lienzo. Solo cambia el `viewBox` del SVG |
+| `animarCambios` | `boolean` | `false` | Modo en vivo: con datos nuevos, las burbujas que cambiaron se deslizan desde su posición anterior |
 | `className` | `string` | | Clase extra del contenedor |
 
 Reglas:
@@ -61,6 +67,7 @@ Reglas:
 - Colores solo con tokens: toma el tema de quien lo aloja (carbón en el tablero, claro en el celular y el panel). H3, H2 y H1 en las superficies 1, 2 y 3; borde de los horizontes en el acento de Horizontes; fijos en `--hz-tinta-3` (gris azulado neutro).
 - Se redibuja al cambiar el tamaño del contenedor; si los datos no cambian, no toca el DOM (sin parpadeo con el polling).
 - Las rondas sin votos (`eje_x` null) no se dibujan. Para el texto del estado vacío usa `mensajeVacio(datos, vista)` de `logica.ts`.
+- Nombres pegados a su burbuja: se busca la caja libre más cercana; si quedó apartada, una guía fina la une a su burbuja. Dos vivos en el mismo punto y ronda llevan un rótulo de dos líneas. La marca de agua H1, H2 y H3 se corre dentro de su horizonte si un nombre cae encima.
 
 ## Pruebas
 
