@@ -14,6 +14,20 @@ export async function titulo(p: Page, nombre: string | RegExp, timeout = ESPERA)
 }
 
 /**
+ * Diagnóstico al fallar: si la página no responde en 5 s, Chromium la congeló (máquina sin memoria libre; ver
+ * REINTENTOS_E2E en tests/navegador.ts) y el fallo no dice nada de la app. Si responde, el fallo es real.
+ */
+export async function avisarSiCongelada(p: Page) {
+  if (p.isClosed()) return
+  const responde = await Promise.race([p.evaluate(() => true).catch(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), 5000))])
+  if (!responde)
+    console.warn(
+      '[e2e celular] La página no responde: Chromium la dejó quieta por falta de memoria en la máquina (ni temporizadores ni polling). ' +
+        'Este fallo no es de la app: vuelve a correr la prueba con la máquina más libre.',
+    )
+}
+
+/**
  * Responde con el mismo valor las 6 preguntas (o las indicadas, de 0 a 5). Una pregunta por pantalla (C19-5):
  * desde el resumen entra por el botón de esa pregunta; al elegir, la pantalla pasa sola a la siguiente.
  */
