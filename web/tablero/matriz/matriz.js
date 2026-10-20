@@ -324,7 +324,7 @@ export function calcularLayout(datos, opciones = {}) {
     const porPx = prioridad ? 4 : 3;
     const { cx, cy } = ancla;
     let mejor = null;
-    const ultimoAnillo = prioridad ? 2 : 9;
+    const ultimoAnillo = prioridad ? 2 : 16;
     for (let anillo = 0; anillo <= ultimoAnillo; anillo++) {
       const d = ancla.r + gap + anillo * paso;
       const dd = d * 0.72;
@@ -392,7 +392,7 @@ export function calcularLayout(datos, opciones = {}) {
         // Un nombre apartado lleva una guía hasta su burbuja: que no cruce otro nombre ni, si es de un fijo, un vivo.
         if (distancia > etq.fs * 0.8) {
           const tramo = { x1: cx, y1: cy, x2: px, y2: py };
-          for (const o of colocadas) if (segmentoEnCaja(tramo, o.caja)) costo += o.prioridad ? 30000 : 600;
+          for (const o of colocadas) if (segmentoEnCaja(tramo, o.caja)) costo += o.prioridad ? 2500 : 600;
           if (!prioridad) for (const c of circulosVivos) if (segmentoCruzaCirculo(tramo, c, 2)) costo += 30000;
         }
         if (!mejor || costo < mejor.costo) mejor = { caja, costo, distancia, grave };
@@ -482,21 +482,32 @@ export function calcularLayout(datos, opciones = {}) {
       const [x, y] = posEtiquetas[h.id];
       const [rin, rout] = bandaDe(h.id);
       const margen = (fsHorizonte * 0.6) / escala;
-      let mejor = { x, y };
+      let mejor = null;
+      // Si no hay un lugar libre del todo, al menos uno que no quede bajo el nombre de un vivo.
+      let sinVivos = null;
       const pasos = [0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2];
       buscar: for (const dy of pasos) {
         for (const dx of pasos) {
           const [px, py] = [x + dx, y + dy];
           const rr = Math.hypot(px - xmin, py - ymin);
           if (rr < rin + margen || rr > rout - margen) continue;
-          if (libre(cajaMarca(px, py))) {
+          // Con holgura: el ancho de los nombres es estimado y la letra real puede ocupar un poco más.
+          const c0 = cajaMarca(px, py);
+          const hol = fsHorizonte * 0.15;
+          const caja = { x: c0.x - hol, y: c0.y - hol, w: c0.w + 2 * hol, h: c0.h + 2 * hol };
+          if (libre(caja)) {
             mejor = { x: px, y: py };
             break buscar;
           }
+          if (!sinVivos && !colocadas.some((o) => o.prioridad && cajasSeSolapan(caja, o.caja))) sinVivos = { x: px, y: py };
         }
       }
+      mejor = mejor ?? sinVivos;
+      // Sin ningún lugar que no tape el nombre de un vivo, la marca de agua no se dibuja (los horizontes van en la leyenda).
+      if (!mejor) return null;
       return { id: h.id, x: sx(mejor.x), y: sy(mejor.y), caja: cajaMarca(mejor.x, mejor.y) };
-    });
+    })
+    .filter(Boolean);
 
   return {
     W, H, fs, P, x0, y0, sx, sy, escala, xmin, xmax, ymin, ymax, letras, posEjes, fsHorizonte, marcasAgua: marcasHorizonte.map((m) => m.caja), marcasHorizonte, compacta, punta,
