@@ -179,7 +179,7 @@ describe('textos y utilidades de las correcciones', () => {
       expect(texto, f).not.toMatch(/Ver como participante|Tablero de toda la sala|Abrir tablero de la sala/)
     }
     const guia = readFileSync(join(__dirname, '../../docs/GUIA_FACILITADOR.md'), 'utf8')
-    for (const t of ['Tablero de la sala', 'En vivo, pantalla completa', 'Con tabla', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
+    for (const t of ['Tablero de la sala', 'En vivo, solo la gráfica', 'Con tabla', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
     expect(guia).not.toMatch(/Abrir tablero de la sala|recuperar mi sesión|Hace falta al menos/)
   })
 })
@@ -239,7 +239,7 @@ describe('Sala en vivo', () => {
     for (const a of enlacesTablero) expect(enVivo.contains(a)).toBe(true)
     const previa = within(enVivo).getByRole('link', { name: 'Vista previa del celular' })
     expect(previa.getAttribute('href')).toBe('/m/HZ7K2-1?vista=previa')
-    expect(document.getElementById(previa.getAttribute('aria-describedby')!)?.textContent).toMatch(/No te inscribas ni votes ahí/)
+    expect(document.getElementById(previa.getAttribute('aria-describedby')!)?.textContent).toMatch(/solo para mirar: no inscribe a nadie ni cuenta en el avance/)
     fireEvent.change(within(enVivo).getByLabelText('Mesa'), { target: { value: 'm2' } })
     expect(within(enVivo).getByRole('link', { name: 'Vista previa del celular' }).getAttribute('href')).toBe('/m/HZ7K2-2?vista=previa')
     expect(within(enVivo).getByRole('link', { name: 'Tablero de Mesa 2' })).toBeTruthy()

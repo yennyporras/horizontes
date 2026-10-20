@@ -7,7 +7,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 Auditoría de calidad y seguridad del 20-oct, pedidos de Nicolai para el proyector y pedidos de Paola sobre la marca y el panel.
 
 ### Agregado
-- Tablero con dos modos de proyección, a elegir por evento: **En vivo** (solo la matriz moviéndose a toda la pantalla) y **Con tabla** (matriz, progreso y promedios). Se eligen en el encabezado, con las teclas V y T o desde «Ver en vivo» en el panel (`?modo=vivo|tabla`).
+- Tablero con dos modos de proyección, a elegir por evento: **En vivo** (solo la matriz moviéndose a toda la pantalla) y **Con tabla** (matriz, progreso y promedios). Se eligen en el encabezado, con las teclas V y T o desde «Ver en vivo» en el panel (`?modo=vivo|tabla`): «En vivo, solo la gráfica» y «Con tabla».
 - Pantalla completa del modo elegido, sin controles (botón o tecla F). Reemplaza el zoom por porcentaje.
 - Descripción corta de cada criterio (100 caracteres como máximo) en las tablas del tablero, del celular y del panel.
 - Logo de Horizontes (el sol sobre la línea del horizonte) y favicon. La marca lleva al inicio; en el panel y en el tablero del facilitador, a Salas.

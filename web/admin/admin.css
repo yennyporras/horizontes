@@ -560,7 +560,7 @@
   display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-3) var(--hz-sp-4);
   border-left: 4px solid var(--hz-acento-producto); border-radius: var(--hz-r-campo); background: var(--hz-superficie-1);
 }
-.hz-admin .recorrido__espera strong { font-size: var(--hz-fs-12); text-transform: uppercase; letter-spacing: .06em; color: var(--hz-tinta-2); }
+.hz-admin .recorrido__espera strong { font-size: var(--hz-fs-14); color: var(--hz-tinta); }
 .hz-admin .recorrido__acciones { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--hz-sp-2); margin-top: var(--hz-sp-6); }
 .hz-admin .recorrido__nav { display: flex; gap: var(--hz-sp-2); margin-left: auto; }
 .hz-admin .nav__item--recorrido { outline: 3px solid var(--hz-acento-producto); outline-offset: -3px; }
@@ -574,3 +574,5 @@
 .hz-admin .leyenda-criterios dt { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 .hz-admin .leyenda-criterios__nombre { font-weight: var(--hz-fw-texto); color: var(--hz-tinta-2); }
 .hz-admin .leyenda-criterios dd { margin: 2px 0 0; font-size: var(--hz-fs-12); line-height: 1.4; color: var(--hz-tinta-2); }
+/* Descripción corta del criterio bajo su nombre (web/shared/criterios.ts). */
+.hz-admin .tabla-criterio__desc { display: block; margin-top: 2px; font-size: var(--hz-fs-12); font-weight: var(--hz-fw-texto); line-height: 1.35; color: var(--hz-tinta-2); }

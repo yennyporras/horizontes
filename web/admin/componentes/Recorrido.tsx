@@ -42,7 +42,7 @@ export const PASOS_RECORRIDO: PasoRecorrido[] = [
     titulo: 'Mesas y QR',
     seccion: 'Mesas y QR',
     hace: <p>Arma una mesa por cada 6 personas e imprime la hoja de QR: un código para poner en cada mesa.</p>,
-    espera: <p>Quien escanea el QR de su mesa queda inscrito en ella y recibe su hoja según el perfil.</p>,
+    espera: <p>Quien escanea el QR de su mesa se inscribe en ella con su nombre y correo, y recibe su hoja según el perfil.</p>,
   },
   {
     titulo: 'Sala en vivo',
@@ -55,8 +55,8 @@ export const PASOS_RECORRIDO: PasoRecorrido[] = [
     ),
     espera: (
       <p>
-        En «Ver en vivo» abres el tablero de la sala o de una mesa. Puedes proyectarlo en vivo a pantalla completa, solo
-        con la matriz moviéndose, o con la tabla de votación al lado.
+        En «Ver en vivo» abres el tablero de la sala o de una mesa. Puedes proyectarlo en vivo, solo con la gráfica
+        moviéndose, o con la tabla de votación al lado. En el tablero, F lo pone en pantalla completa.
       </p>
     ),
   },

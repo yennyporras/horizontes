@@ -247,7 +247,7 @@ Ruta base `/m/{codigoMesa}`. El estado se decide con `GET /api/mesas/{codigo}` a
 
 ### 8.15 Sesión no válida (401 o token desconocido)
 - Título: **Tu sesión ya no está activa**
-- Texto: "Inscríbete otra vez con el mismo correo y retomas donde ibas." Botón **Volver a inscribirme** (borra el token local).
+- Texto (desde D1, 20-oct): "Puede que hayas entrado desde otro celular o que el facilitador te haya dado acceso nuevo. Pídele al facilitador que te dé acceso de nuevo: en su panel, «Dar acceso de nuevo» te muestra un QR o un enlace para entrar. Lo que habías marcado sigue en este celular." Sin botón: no hay recuperación con el correo.
 
 ### 8.16 Participante desactivado (`activo = false`)
 - Título: **El facilitador te retiró de esta mesa**

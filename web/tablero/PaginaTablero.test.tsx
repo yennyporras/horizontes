@@ -241,7 +241,7 @@ describe('PaginaTablero', () => {
     // En el modo con tabla, la pantalla completa lleva la tabla; el botón entra y sale.
     fireEvent.keyDown(window, { key: 't' })
     await waitFor(() => expect(document.querySelector('.hz-lateral')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Pantalla completa F' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pantalla completa con tabla F' }))
     await waitFor(() => expect(main.className).toContain('hz-pantalla-completa'))
     expect(document.querySelector('.hz-lateral')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Salir de pantalla completa F' }))
@@ -357,7 +357,7 @@ describe('PaginaTablero', () => {
     expect(document.querySelector('svg.hz-matriz')).toBeNull()
     // Con la tabla, el panel lateral sigue al lado (progreso y promedios); F también sirve sin matriz.
     await verDatos()
-    expect(screen.getByRole('button', { name: 'Pantalla completa F' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Pantalla completa con tabla F' })).toBeTruthy()
     expect(screen.getByRole('progressbar')).toBeTruthy()
     cleanup()
     // Modo automático o sin pregunta elegida: la matriz de siempre.

@@ -15,7 +15,7 @@ En el portátil del facilitador, sin depender de internet: `deploy/plan_b/Planti
 Se genera desde `data/seed_foodsume.json` con `python deploy/plan_b/generar_plantilla.py` (si cambian pesos, textos o fijos, se vuelve a generar).
 - **Votos**: una fila por papeleta y proyecto: mesa, ronda, proyecto y los 6 valores (la celda solo acepta 1, 3, 5, 7 o 9).
 - **Resultados**: en `C2` escribe `Sala` o el número de la mesa. Calcula el promedio simple por criterio y aplica el motor con los pesos de la semilla: T2M 30/35/35, eje X 60/40, eje Y 70/30. Los 8 fijos vienen precargados. Si prefieres contar a mano, digita los promedios en las filas "Promedio digitado" y deja vacía la hoja Votos.
-- **Total** (acta A4 y P2): última columna de Resultados, eje X + eje Y, igual que la fila «Total» de la app. Para conversar con la sala muestra los 6 criterios y el Total; T2M, Eje X y Eje Y solo ubican la burbuja.
+- **Total** (acta A4 y P2): última columna de Resultados, eje X + eje Y. La app ya no muestra la fila «Total» (preentrega del 19-oct); en la plantilla queda como referencia. Para conversar con la sala muestra los 6 criterios; T2M, Eje X y Eje Y solo ubican la burbuja.
 - **Matriz**: gráfico de burbujas con los 8 fijos en gris y los 2 vivos en **R1 verde y hueco** y **R2 rojo y sólido** (acta P3), ejes de 0 a 9,5. Proyéctalo.
 - Verificado (16-oct): con votos de prueba, la plantilla da los mismos T2M, eje X y eje Y que el motor de la app. Total es la suma de esas dos celdas.
 

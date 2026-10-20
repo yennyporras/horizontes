@@ -224,10 +224,6 @@ export function enEsteServidor(url: string | null | undefined): string | null {
 }
 
 /**
- * QA-A-04: la vista previa del celular de una mesa, en este servidor y en modo de solo lectura (`?vista=previa`): el
- * facilitador mira sin inscribirse.
- */
-/**
  * Modos de proyección del tablero (pedido de Nicolai, 20-oct): `vivo`, solo la matriz moviéndose a toda la
  * pantalla, o `tabla`, la matriz con el progreso y los promedios. Se elige por evento desde Ver en vivo.
  */
@@ -238,6 +234,10 @@ export function conModo(url: string | null | undefined, modo: 'vivo' | 'tabla'):
   return `${u.pathname}${u.search}${u.hash}`
 }
 
+/**
+ * QA-A-04: la vista previa del celular de una mesa, en este servidor y en modo de solo lectura (`?vista=previa`): el
+ * facilitador mira sin inscribirse.
+ */
 export function urlVistaPrevia(urlParticipante: string | null | undefined): string | null {
   const ruta = enEsteServidor(urlParticipante)
   if (!ruta) return null
