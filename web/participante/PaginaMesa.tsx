@@ -37,6 +37,9 @@ function FlujoMesa({ codigo }: { codigo: string }) {
   // Enlace de acceso nuevo (D1): /m/{codigo}?acceso=… lo genera el facilitador con «Dar acceso de nuevo».
   const [acceso, setAcceso] = useState<string | null>(() => new URLSearchParams(ubicacion.search).get('acceso'))
   const [reingreso, setReingreso] = useState(false)
+  // QA-A-04: «Vista previa del celular» del panel. Muestra la entrada a la mesa tal como la ve el participante, sin
+  // inscribir a nadie ni usar la sesión que hubiera en este navegador.
+  const previa = new URLSearchParams(ubicacion.search).get('vista') === 'previa'
 
   // El enlace es de un solo uso: sale de la URL apenas se lee, así no queda en el historial ni se comparte con la pantalla.
   useEffect(() => {
@@ -51,6 +54,7 @@ function FlujoMesa({ codigo }: { codigo: string }) {
   // Antes de D1 el celular guardaba nombre y correo para recuperar la sesión: si quedaron, se borran.
   useEffect(() => olvidarDatos(codigo), [codigo])
 
+  if (previa) return <AntesDeInscribirse codigo={codigo} previa onInscrito={() => undefined} />
   if (acceso) {
     return (
       <CanjeAcceso
@@ -171,7 +175,7 @@ function CanjeAcceso({ acceso, haySesion, onListo, onSeguir }: { acceso: string;
 
 // ── Antes de inscribirse: 8.0 a 8.3 ─────────────────────────────────────────
 
-function AntesDeInscribirse({ codigo, onInscrito }: { codigo: string; onInscrito: (token: string) => void }) {
+function AntesDeInscribirse({ codigo, onInscrito, previa = false }: { codigo: string; onInscrito: (token: string) => void; previa?: boolean }) {
   const [mesa, setMesa] = useState<Mesa | null>(null)
   const [error, setError] = useState<ErrorApi | null>(null)
   const [intento, setIntento] = useState(0)
@@ -223,7 +227,8 @@ function AntesDeInscribirse({ codigo, onInscrito }: { codigo: string; onInscrito
   }
   if (!mesa || !fuente) return <Cargando />
 
-  if (!mesa.inscripcion_abierta) {
+  // En la vista previa el facilitador ve el formulario aunque la inscripción aún no abra.
+  if (!mesa.inscripcion_abierta && !previa) {
     if (mesa.sala.estado !== 'preparada') {
       const cerrada = mesa.sala.estado === 'cerrada'
       const termino = cerrada || mesa.sala.estado === 'r2_cerrada'
@@ -246,7 +251,7 @@ function AntesDeInscribirse({ codigo, onInscrito }: { codigo: string; onInscrito
       </Mensaje>
     )
   }
-  return <Inscripcion codigo={codigo} mesa={mesa} onInscrito={onInscrito} />
+  return <Inscripcion codigo={codigo} mesa={mesa} onInscrito={onInscrito} previa={previa} />
 }
 
 // ── Inscrito: 8.4 a 8.17 ────────────────────────────────────────────────────
