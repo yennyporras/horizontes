@@ -18,6 +18,10 @@ export interface OpcionesMatriz {
   /** Milisegundos ya transcurridos de esa animación: un redibujo a mitad de camino la continúa sin reiniciarla. */
   animarDesdeMs?: number
   colores?: Record<string, unknown>
+  /** Cada mesa por separado: fijos como puntos sin nombre y ejes sin subtítulo. */
+  compacta?: boolean
+  /** Rectángulo de fondo del lienzo (para la descarga: fuera de la página no hay fondo detrás). */
+  fondo?: boolean
   /**
    * Modo Gráfica del tablero: posiciones anteriores de los vivos (clave `${id}-${ronda}`, en unidades de los ejes). Las
    * burbujas que cambiaron se deslizan desde ahí; desdeMs continúa una transición ya empezada.
@@ -38,6 +42,8 @@ export interface Burbuja {
   r: number
   valor: { x: number; y: number }
   n_votos?: number
+  /** Coincidía con otro vivo de la misma ronda: se corrió unos píxeles para que se vean los dos aros. */
+  separada?: boolean
 }
 
 export interface Etiqueta {
@@ -93,6 +99,11 @@ export interface Layout {
   fsHorizonte: number
   marcasAgua: Caja[]
   marcasHorizonte: { id: string; x: number; y: number; caja: Caja }[]
+  /** Cada mesa por separado: sin nombres de fijos ni subtítulos de ejes. */
+  compacta: boolean
+  /** Largo de la punta de la flecha R1 → R2, en px. */
+  punta: number
+  posEjes: Record<'marcaX' | 'marcaY' | 'extremoX' | 'extremoY' | 'tituloX' | 'subtituloX' | 'subtituloY' | 'tituloY', number>
   fijos: (Burbuja & { id: string; nombre: string; tam: number; etiqueta?: Etiqueta })[]
   vivos: VivoLayout[]
   etiquetas: Etiqueta[]
@@ -102,6 +113,8 @@ export interface Layout {
 type DatosParciales = Partial<DatosTablero> | null | undefined
 
 export const COLORES: { r1: string; r2: string; [k: string]: unknown }
+export const ANIMACION: { pausa: number; mover: number; aparecer: number; total: number }
+export function formaTitulo(texto: string | null | undefined): string
 export function radioPorTam(tam: number | null | undefined, rmin: number, rmax: number): number
 export function calcularLayout(datos: DatosParciales, opciones?: OpcionesMatriz): Layout
 export function matrizSVG(datos: DatosParciales, opciones?: OpcionesMatriz): string

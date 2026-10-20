@@ -31,6 +31,7 @@ export const COLORES = {
 function estilosColor(id, C) {
   const s = `#${id} `;
   return (
+    `${s}.hz-mz-fondo{fill:${C.halo}}` +
     `${s}.hz-mz-h3{fill:${C.fondoH3}}` +
     `${s}.hz-mz-h2{fill:${C.fondoH2};stroke:${C.curva}}` +
     `${s}.hz-mz-h1{fill:${C.fondoH1};stroke:${C.curva}}` +
@@ -66,6 +67,30 @@ function anchoTexto(texto, fs) {
   let em = 0;
   for (const c of String(texto).toUpperCase()) em += AVANCE[c] ?? (/\d/.test(c) ? 0.62 : 0.72);
   return em * 1.04 * fs + fs * 0.3;
+}
+
+/**
+ * Títulos de los ejes: el texto viene de la semilla (aprobado por Sebastián) en mayúsculas sostenidas, que a 6 m se
+ * leen peor. Solo cambia la forma de pintarlo: «TIME 2 MARKET» → «Time 2 Market». Un texto con minúsculas queda igual.
+ */
+export function formaTitulo(texto) {
+  const t = String(texto ?? '');
+  if (!/[A-ZÁÉÍÓÚÑ]/.test(t) || t !== t.toUpperCase()) return t;
+  return t.toLowerCase().replace(/(^|[\s(«"'-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
+}
+
+/** Distancia de un punto a un segmento. */
+function distanciaASegmento(px, py, s) {
+  const dx = s.x2 - s.x1;
+  const dy = s.y2 - s.y1;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 ? clamp(((px - s.x1) * dx + (py - s.y1) * dy) / l2, 0, 1) : 0;
+  return Math.hypot(px - (s.x1 + t * dx), py - (s.y1 + t * dy));
+}
+
+/** El segmento pasa por dentro del círculo (con un margen de `holgura` px). */
+function segmentoCruzaCirculo(s, c, holgura = 0) {
+  return distanciaASegmento(c.cx, c.cy, s) < c.r + holgura;
 }
 
 function cajasSeSolapan(a, b) {
@@ -111,6 +136,7 @@ export function radioPorTam(tam, rmin, rmax) {
  *   vista 1 o 2 dibuja solo esa ronda en sólido; 'comparacion' (por defecto) dibuja R1 suave, R2 sólido y flecha.
  *   letraMin (proyector): px del texto más chico (marcas, subtítulos y nombres). Con un lienzo chico se limita a
  *   un 26avo de su lado, para que la matriz no quede tapada de texto.
+ *   compacta (cada mesa por separado): los fijos van como puntos sin nombre y los ejes sin subtítulo.
  */
 export function calcularLayout(datos, opciones = {}) {
   const W = Math.max(240, opciones.ancho || 800);
@@ -140,12 +166,17 @@ export function calcularLayout(datos, opciones = {}) {
 
   // Márgenes medidos con la letra real (a la izquierda, de afuera hacia adentro: título, subtítulo y marcas;
   // abajo: marcas, título y subtítulo). Con la letra de proyector el plano cede lo justo.
+  // Entre las marcas y el título va la fila (abajo) o la columna (izquierda) de los extremos: «cerca» en 0 y
+  // «lejos» en 9 (QA por roles: el eje Y se leía al revés).
+  const compacta = !!opciones.compacta;
   const { marca: fM, subtitulo: fS, titulo: fT } = letras;
+  const fSub = compacta ? 0 : fS;
   const digitos = Math.max(String(Math.floor(ymax)).length, String(Math.ceil(ymin)).length);
   const sepMarca = fM * 0.5;
   const anchoMarca = fM * 0.68 * digitos;
-  const ml = sepMarca + anchoMarca + fS * 1.45 + fT * 1.12;
-  const mb = fM * 1.15 + fM * 0.25 + fT * 1.35 + fS * 1.3;
+  const fila = fM * 1.2;
+  const ml = sepMarca + anchoMarca + fila + fSub * 1.45 + fT * 1.12;
+  const mb = fM * 1.15 + fila + fM * 0.25 + fT * 1.35 + fSub * 1.3;
   const mt = fM * 0.6;
   const mr = fM * 0.5;
   const P = Math.max(100, Math.min(W - ml - mr, H - mt - mb));
@@ -155,10 +186,12 @@ export function calcularLayout(datos, opciones = {}) {
   const posEjes = {
     marcaX: yBase + fM * 1.15,
     marcaY: x0 - sepMarca,
-    tituloX: yBase + fM * 1.4 + fT * 1.1,
-    subtituloX: yBase + fM * 1.4 + fT * 1.35 + fS,
-    subtituloY: x0 - sepMarca - anchoMarca - fS * 0.5,
-    tituloY: x0 - sepMarca - anchoMarca - fS * 1.45 - fT * 0.22,
+    extremoX: yBase + fM * 1.15 + fila,
+    extremoY: x0 - sepMarca - anchoMarca - fM * 0.35,
+    tituloX: yBase + fM * 1.4 + fila + fT * 1.1,
+    subtituloX: yBase + fM * 1.4 + fila + fT * 1.35 + fSub,
+    subtituloY: x0 - sepMarca - anchoMarca - fila - fSub * 0.5,
+    tituloY: x0 - sepMarca - anchoMarca - fila - fSub * 1.45 - fT * 0.22,
   };
 
   const sx = (v) => x0 + ((v - xmin) / (xmax - xmin)) * P;
@@ -213,30 +246,55 @@ export function calcularLayout(datos, opciones = {}) {
     const vista = opciones.vista ?? 'comparacion';
     const r1 = vista === 2 ? null : ronda(1);
     const r2_ = vista === 1 ? null : ronda(2);
-    let flecha = null;
-    if (r1 && r2_) {
-      const dx = r2_.cx - r1.cx;
-      const dy = r2_.cy - r1.cy;
-      const d = Math.hypot(dx, dy);
-      const punta = Math.max(6, fs * 0.55);
-      const ux = d ? dx / d : 0;
-      const uy = d ? dy / d : 0;
-      if (d > r1.r + r2_.r + punta) {
-        // Burbujas separadas: de borde a borde.
-        flecha = {
-          x1: r1.cx + ux * (r1.r + 2),
-          y1: r1.cy + uy * (r1.r + 2),
-          x2: r2_.cx - ux * (r2_.r + 3),
-          y2: r2_.cy - uy * (r2_.r + 3),
-          encima: false,
-        };
-      } else if (d > punta * 1.4) {
-        // Burbujas superpuestas (movimiento corto): de centro a centro, dibujada encima.
-        flecha = { x1: r1.cx, y1: r1.cy, x2: r2_.cx - ux * 2, y2: r2_.cy - uy * 2, encima: true };
-      }
-    }
-    return { id: p.id, nombre: p.nombre, tam: p.tam, r1, r2: r2_, flecha };
+    return { id: p.id, nombre: p.nombre, tam: p.tam, r1, r2: r2_, flecha: null };
   });
+
+  // Dos vivos en el mismo punto y la misma ronda se verían como una sola burbuja (jurado y Nicolai): se separan
+  // unos píxeles en horizontal y se dibujan los dos aros. El valor (title y desc) sigue siendo el del servidor.
+  for (const n of ['r1', 'r2']) {
+    const bs = vivos.map((v) => v[n]).filter(Boolean);
+    const vistos = new Set();
+    for (const b of bs) {
+      if (vistos.has(b)) continue;
+      const grupo = bs.filter((o) => !vistos.has(o) && Math.hypot(o.cx - b.cx, o.cy - b.cy) < Math.max(o.r, b.r) * 0.35);
+      grupo.forEach((o) => vistos.add(o));
+      if (grupo.length < 2) continue;
+      const paso = Math.max(4, Math.max(...grupo.map((o) => o.r)) * 0.45);
+      const cx = grupo.reduce((a, o) => a + o.cx, 0) / grupo.length;
+      grupo.forEach((o, i) => {
+        o.cx = cx + (i - (grupo.length - 1) / 2) * paso;
+        o.separada = true;
+      });
+    }
+  }
+
+  // Flecha R1 → R2, visible aunque el movimiento sea pequeño (Nicolai): punta grande con halo y un largo mínimo.
+  const punta = Math.max(8, fs * 0.75);
+  for (const v of vivos) {
+    const { r1, r2: r2_ } = v;
+    if (!r1 || !r2_) continue;
+    const dx = r2_.cx - r1.cx;
+    const dy = r2_.cy - r1.cy;
+    const d = Math.hypot(dx, dy);
+    if (d < 1) continue;
+    const ux = dx / d;
+    const uy = dy / d;
+    if (d > r1.r + r2_.r + punta) {
+      // Burbujas separadas: de borde a borde.
+      v.flecha = {
+        x1: r1.cx + ux * (r1.r + 2),
+        y1: r1.cy + uy * (r1.r + 2),
+        x2: r2_.cx - ux * (r2_.r + 3),
+        y2: r2_.cy - uy * (r2_.r + 3),
+        encima: false,
+      };
+    } else {
+      // Burbujas superpuestas (movimiento corto): termina en el centro de R2 y, si el tramo es más corto que
+      // la punta, arranca antes del centro de R1 para que la dirección se lea.
+      const largo = Math.max(d, punta * 1.8);
+      v.flecha = { x1: r2_.cx - ux * largo, y1: r2_.cy - uy * largo, x2: r2_.cx, y2: r2_.cy, encima: true };
+    }
+  }
 
   // Obstáculos: todas las burbujas y flechas.
   const circulos = [
@@ -244,6 +302,7 @@ export function calcularLayout(datos, opciones = {}) {
     ...vivos.flatMap((v) => [v.r1, v.r2].filter(Boolean)),
   ];
   const segmentos = vivos.map((v) => v.flecha).filter(Boolean);
+  const circulosVivos = vivos.flatMap((v) => [v.r1, v.r2].filter(Boolean));
   const limites = { x: x0, y: y0, w: P, h: P };
 
   const colocadas = [];
@@ -251,6 +310,8 @@ export function calcularLayout(datos, opciones = {}) {
   /**
    * Busca, de cerca a lejos, la caja libre más próxima a la burbuja: 16 posiciones alrededor por anillo y el
    * costo suma la distancia al borde de la burbuja (así cada nombre queda pegado a la suya) y los choques.
+   * Los nombres de los vivos (prioridad) solo prueban los anillos pegados a su burbuja: a 6 m un nombre apartado
+   * se lee como de otra burbuja (jurado y Nicolai). La guía de un fijo apartado nunca cruza un vivo.
    */
   function colocar(etq, ancla, prioridad) {
     const lineas = etq.lineas ? etq.lineas.map((l) => `${l.nombre} R${l.ronda}`) : [etq.texto];
@@ -263,7 +324,8 @@ export function calcularLayout(datos, opciones = {}) {
     const porPx = prioridad ? 4 : 3;
     const { cx, cy } = ancla;
     let mejor = null;
-    for (let anillo = 0; anillo <= 9; anillo++) {
+    const ultimoAnillo = prioridad ? 2 : 9;
+    for (let anillo = 0; anillo <= ultimoAnillo; anillo++) {
       const d = ancla.r + gap + anillo * paso;
       const dd = d * 0.72;
       // Orden de preferencia en empate: derecha, izquierda, arriba, abajo y luego las diagonales.
@@ -285,6 +347,22 @@ export function calcularLayout(datos, opciones = {}) {
         [cx - w * 0.15, cy + d],
         [cx - w * 0.85, cy + d],
       ];
+      // Los vivos prueban además 24 direcciones alrededor de la burbuja (solo tienen los anillos pegados a ella).
+      if (prioridad) {
+        for (let k = 0; k < 24; k++) {
+          const t = (k * Math.PI) / 12 + Math.PI / 24;
+          const [ux, uy] = [Math.cos(t), Math.sin(t)];
+          // Centro de la caja sobre el rayo, lo más cerca posible sin quedar a menos de d del centro de la burbuja.
+          let [lo, hi] = [0, d + w + h];
+          for (let it = 0; it < 18; it++) {
+            const m = (lo + hi) / 2;
+            const dist = Math.hypot(Math.max(0, Math.abs(m * ux) - w / 2), Math.max(0, Math.abs(m * uy) - h / 2));
+            if (dist < d) lo = m;
+            else hi = m;
+          }
+          cands.push([cx + hi * ux - w / 2, cy + hi * uy - h / 2]);
+        }
+      }
       cands.forEach(([x, y], i) => {
         const caja = { x, y, w, h };
         const px = clamp(cx, x, x + w);
@@ -303,11 +381,12 @@ export function calcularLayout(datos, opciones = {}) {
         // Tapar otro texto es peor que rozar una burbuja: el nombre de un fijo nunca pisa el de un vivo.
         // Entre nombres queda un espacio (sin él, dos nombres seguidos se leen como uno).
         const holgada = { x: x - sep, y: y - sep * 0.3, w: w + 2 * sep, h: h + sep * 0.6 };
-        for (const o of colocadas) costo += areaSolape(holgada, o.caja) * (o.prioridad ? 50 : 4) + (cajasSeSolapan(holgada, o.caja) ? (o.prioridad ? 20000 : 1000) : 0);
-        // Un nombre apartado lleva una guía hasta su burbuja: que no cruce otro nombre.
+        for (const o of colocadas) costo += areaSolape(holgada, o.caja) * (o.prioridad ? 50 : 4) + (cajasSeSolapan(holgada, o.caja) ? (o.prioridad || cajasSeSolapan(caja, o.caja) ? 20000 : 1000) : 0);
+        // Un nombre apartado lleva una guía hasta su burbuja: que no cruce otro nombre ni, si es de un fijo, un vivo.
         if (distancia > etq.fs * 0.8) {
           const tramo = { x1: cx, y1: cy, x2: px, y2: py };
-          for (const o of colocadas) if (segmentoEnCaja(tramo, o.caja)) costo += 600;
+          for (const o of colocadas) if (segmentoEnCaja(tramo, o.caja)) costo += o.prioridad ? 30000 : 600;
+          if (!prioridad) for (const c of circulosVivos) if (segmentoCruzaCirculo(tramo, c, 2)) costo += 30000;
         }
         if (!mejor || costo < mejor.costo) mejor = { caja, costo, distancia };
       });
@@ -373,8 +452,11 @@ export function calcularLayout(datos, opciones = {}) {
     'r1',
     'etiquetaR1',
   );
-  for (const f of [...fijos].sort((a, b) => b.r - a.r)) {
-    f.etiqueta = colocar({ texto: f.nombre, fs: letras.fijo, color: 'suave', peso: 600, tipo: 'fijo' }, f, false);
+  // Cada mesa por separado (compacta): los fijos son puntos de referencia sin nombre (el nombre queda en su title).
+  if (!compacta) {
+    for (const f of [...fijos].sort((a, b) => b.r - a.r)) {
+      f.etiqueta = colocar({ texto: f.nombre, fs: letras.fijo, color: 'suave', peso: 600, tipo: 'fijo' }, f, false);
+    }
   }
 
   // Lugar final de cada marca de agua: el suyo o el más cercano dentro de su horizonte sin nombres ni burbujas.
@@ -410,13 +492,19 @@ export function calcularLayout(datos, opciones = {}) {
     });
 
   return {
-    W, H, fs, P, x0, y0, sx, sy, escala, xmin, xmax, ymin, ymax, letras, posEjes, fsHorizonte, marcasAgua: marcasHorizonte.map((m) => m.caja), marcasHorizonte,
+    W, H, fs, P, x0, y0, sx, sy, escala, xmin, xmax, ymin, ymax, letras, posEjes, fsHorizonte, marcasAgua: marcasHorizonte.map((m) => m.caja), marcasHorizonte, compacta, punta,
     ejes: { x: ex, y: ey },
     horizontes, posEtiquetas, fijos, vivos, etiquetas: colocadas, colores,
   };
 }
 
 let contadorInstancias = 0;
+
+/**
+ * Animación R1 → R2 (Nicolai, QA por roles): R1 se ve quieto 0,6 s, R2 se mueve desde R1 durante 1,5 s y la flecha
+ * y los nombres aparecen hasta los 2,5 s. En milisegundos.
+ */
+export const ANIMACION = { pausa: 600, mover: 1500, aparecer: 2000, total: 2500 };
 
 /** Cifra con coma decimal (es-CO), como en el resto del tablero: 6,33. */
 const coma = (n, decimales = 2) => (esNumero(n) ? n.toFixed(decimales).replace('.', ',') : String(n ?? ''));
@@ -446,8 +534,8 @@ export function matrizSVG(datos, opciones = {}) {
     const desde = Math.max(0, Math.round(esNumero(opciones.animarDesdeMs) ? opciones.animarDesdeMs : 0));
     const s = `#${id} `;
     estilo +=
-      `${s}.hz-anim-mov{animation:${id}-mover 1.2s cubic-bezier(.22,.8,.3,1) ${-desde}ms both}` +
-      `${s}.hz-anim-apar{animation:${id}-aparecer .5s ease-out ${900 - desde}ms both}` +
+      `${s}.hz-anim-mov{animation:${id}-mover ${ANIMACION.mover}ms cubic-bezier(.45,0,.25,1) ${ANIMACION.pausa - desde}ms both}` +
+      `${s}.hz-anim-apar{animation:${id}-aparecer ${ANIMACION.total - ANIMACION.aparecer}ms ease-out ${ANIMACION.aparecer - desde}ms both}` +
       `@keyframes ${id}-mover{from{transform:translate(var(--dx),var(--dy))}to{transform:translate(0,0)}}` +
       `@keyframes ${id}-aparecer{from{opacity:0}to{opacity:1}}` +
       `@media (prefers-reduced-motion: reduce){${s}.hz-anim-mov,${s}.hz-anim-apar{animation:none}}`;
@@ -494,10 +582,12 @@ export function matrizSVG(datos, opciones = {}) {
   partes.push(`<desc id="${id}-d">${esc(desc)}</desc>`);
   partes.push(
     `<defs><clipPath id="${id}-clip"><rect x="${r2(x0)}" y="${r2(y0)}" width="${r2(P)}" height="${r2(P)}"/></clipPath>` +
-      `<marker id="${id}-flecha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="${r2(fs * 0.45)}" markerHeight="${r2(fs * 0.45)}" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="hz-mz-punta" d="M0,0 L10,5 L0,10 z" stroke-width="1"/></marker>` +
+      `<marker id="${id}-flecha" viewBox="-2 -2 14 14" refX="8" refY="5" markerWidth="${r2(L.punta * 1.4)}" markerHeight="${r2(L.punta * 1.4)}" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="hz-mz-punta" d="M0,0 L10,5 L0,10 z" stroke-width="2" stroke-linejoin="round" paint-order="stroke"/></marker>` +
       `</defs>`,
   );
 
+  // Fondo del lienzo: solo en la descarga (fuera de la página no hay fondo detrás del SVG).
+  if (opciones.fondo) partes.push(`<rect class="hz-mz-fondo" x="0" y="0" width="${r2(W)}" height="${r2(H)}"/>`);
   // Fondos de horizontes (H3 = todo el plano, H2 y H1 = cuartos de círculo desde el origen).
   partes.push(`<g clip-path="url(#${id}-clip)">`);
   partes.push(`<rect x="${r2(x0)}" y="${r2(y0)}" width="${r2(P)}" height="${r2(P)}" class="hz-mz-h3"/>`);
@@ -535,6 +625,13 @@ export function matrizSVG(datos, opciones = {}) {
   for (let v = Math.ceil(L.ymin); v <= L.ymax && v - L.ymin <= 50; v++) {
     partes.push(`<text class="hz-mz-suave hz-mz-marca" x="${r2(posEjes.marcaY)}" y="${r2(sy(v))}" font-size="${r2(fM)}" text-anchor="end" dominant-baseline="middle">${v}</text>`);
   }
+  // Extremos de los ejes: «cerca» en 0 y «lejos» en 9 (los dos ejes miden distancia: al mercado y al core).
+  partes.push(
+    `<text class="hz-mz-suave hz-mz-extremo" x="${r2(x0)}" y="${r2(posEjes.extremoX)}" font-size="${r2(fM)}" font-weight="700" text-anchor="start">cerca</text>`,
+    `<text class="hz-mz-suave hz-mz-extremo" x="${r2(Math.min(sx(9) + fM * 1.2, x0 + P))}" y="${r2(posEjes.extremoX)}" font-size="${r2(fM)}" font-weight="700" text-anchor="end">lejos</text>`,
+    `<text class="hz-mz-suave hz-mz-extremo" transform="translate(${r2(posEjes.extremoY)} ${r2(yBase)}) rotate(-90)" font-size="${r2(fM)}" font-weight="700" text-anchor="start">cerca</text>`,
+    `<text class="hz-mz-suave hz-mz-extremo" transform="translate(${r2(posEjes.extremoY)} ${r2(Math.max(sy(9) - fM * 1.2, y0))}) rotate(-90)" font-size="${r2(fM)}" font-weight="700" text-anchor="end">lejos</text>`,
+  );
   // Títulos de ejes. El subtítulo del eje X va centrado bajo el plano; si no cabe ahí (el plano está corrido a
   // la derecha por el eje Y), se corre a la izquierda lo justo, y solo se achica si no cabe en todo el lienzo.
   const tx = x0 + P / 2;
@@ -544,14 +641,18 @@ export function matrizSVG(datos, opciones = {}) {
   const medioSubX = (subX.length * AVANCE_MINUSCULAS * fSX) / 2;
   const txSub = clamp(tx, Math.min(W / 2, medioSubX + 2), Math.max(W / 2, W - medioSubX - 2));
   partes.push(
-    `<text class="hz-mz-texto hz-mz-titulo-eje" x="${r2(tx)}" y="${r2(posEjes.tituloX)}" font-size="${r2(letras.titulo)}" font-weight="800" text-anchor="middle" letter-spacing="0.04em">${esc(L.ejes.x.titulo || '')}</text>`,
-    `<text class="hz-mz-suave hz-mz-subtitulo-eje" x="${r2(txSub)}" y="${r2(posEjes.subtituloX)}" font-size="${r2(fSX)}" text-anchor="middle">${esc(subX)}</text>`,
+    `<text class="hz-mz-texto hz-mz-titulo-eje" x="${r2(tx)}" y="${r2(posEjes.tituloX)}" font-size="${r2(letras.titulo)}" font-weight="800" text-anchor="middle">${esc(formaTitulo(L.ejes.x.titulo))}</text>`,
   );
+  if (!L.compacta) partes.push(`<text class="hz-mz-suave hz-mz-subtitulo-eje" x="${r2(txSub)}" y="${r2(posEjes.subtituloX)}" font-size="${r2(fSX)}" text-anchor="middle">${esc(subX)}</text>`);
   const ty = y0 + P / 2;
   partes.push(
-    `<text class="hz-mz-texto hz-mz-titulo-eje" transform="translate(${r2(posEjes.tituloY)} ${r2(ty)}) rotate(-90)" font-size="${r2(letras.titulo)}" font-weight="800" text-anchor="middle" letter-spacing="0.04em">${esc(L.ejes.y.titulo || '')}</text>`,
-    `<text class="hz-mz-suave hz-mz-subtitulo-eje" transform="translate(${r2(posEjes.subtituloY)} ${r2(ty)}) rotate(-90)" font-size="${r2(letras.subtitulo)}" text-anchor="middle">${esc(L.ejes.y.subtitulo || '')}</text>`,
+    `<text class="hz-mz-texto hz-mz-titulo-eje" transform="translate(${r2(posEjes.tituloY)} ${r2(ty)}) rotate(-90)" font-size="${r2(letras.titulo)}" font-weight="800" text-anchor="middle">${esc(formaTitulo(L.ejes.y.titulo))}</text>`,
   );
+  if (!L.compacta) {
+    partes.push(
+      `<text class="hz-mz-suave hz-mz-subtitulo-eje" transform="translate(${r2(posEjes.subtituloY)} ${r2(ty)}) rotate(-90)" font-size="${r2(letras.subtitulo)}" text-anchor="middle">${esc(L.ejes.y.subtitulo || '')}</text>`,
+    );
+  }
 
   // Fijos
   partes.push(`<g class="hz-fijos">`);
