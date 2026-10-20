@@ -1,16 +1,15 @@
 /* Landing de la raíz en el tema carbón de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md).
    Solo tokens --hz-*; clases in-* bajo .hz-inicio. Titulares en 900 con la palabra clave en azul Estratek,
    el degradado solo como línea y la » como firma. Un motivo propio: los cuartos de círculo de los horizontes. */
+/* Ancho: el contenedor estándar de la familia (.hz-pagina, 1280 px). Encabezado, héroe, secciones y pie comparten bordes;
+   los fondos de las secciones y la línea del degradado van de borde a borde. */
 .hz-inicio {
-  --in-margen: clamp(1rem, 4vw, 3rem);
-  --in-ancho: 80rem;
   font-size: 1.0625rem;
   overflow-x: clip;
 }
 .hz-inicio a:not(.hz-boton) { color: var(--hz-accion); font-weight: var(--hz-fw-etiqueta); text-underline-offset: 3px; }
 :where(.hz-inicio) ul, :where(.hz-inicio) ol { margin: 0; padding: 0; list-style: none; }
 
-.in-ancho { max-width: var(--in-ancho); margin-inline: auto; padding-inline: var(--in-margen); }
 .in-texto { display: grid; gap: var(--hz-sp-4); align-content: start; max-width: 40rem; }
 .in-display { font-size: var(--hz-fs-display); font-weight: var(--hz-fw-display); line-height: var(--hz-lh-display); letter-spacing: var(--hz-ls-display); color: var(--hz-tinta); text-wrap: balance; }
 .in-h2 { font-size: var(--hz-fs-display-2); font-weight: var(--hz-fw-display); line-height: 1.1; letter-spacing: var(--hz-ls-display); color: var(--hz-tinta); text-wrap: balance; }
@@ -35,7 +34,6 @@
 
 /* ── Encabezado de producto con la navegación ─────── */
 .hz-inicio a.hz-producto__marca { color: var(--hz-tinta); }
-.in-nav .hz-producto__fila { max-width: var(--in-ancho); margin-inline: auto; padding-inline: var(--in-margen); }
 .in-nav__secciones { display: none; }
 .in-nav__secciones ul { display: flex; gap: var(--hz-sp-1); }
 .in-nav__secciones a {
@@ -51,7 +49,7 @@
 .in-menu__boton { padding-inline: var(--hz-sp-5); }
 .in-menu {
   position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
-  padding: var(--hz-sp-2) var(--in-margen) var(--hz-sp-4);
+  padding: var(--hz-sp-2) var(--hz-margen-pagina) var(--hz-sp-4);
   background: var(--hz-superficie-1); border-bottom: 1px solid var(--hz-borde); box-shadow: var(--hz-sombra);
 }
 .in-menu[hidden] { display: none; }
@@ -65,7 +63,7 @@
 
 /* ── Hero: el titular y la matriz con los horizontes a gran escala ── */
 .in-hero { display: grid; gap: var(--hz-sp-8); padding-top: clamp(2rem, 6vw, 4rem); }
-.in-hero__texto { display: grid; gap: var(--hz-sp-6); align-content: center; padding-inline: var(--in-margen); }
+.in-hero__texto { display: grid; gap: var(--hz-sp-6); align-content: center; }
 .in-lead { font-size: clamp(1.0625rem, 1.4vw, 1.25rem); line-height: 1.55; max-width: 34rem; color: var(--hz-tinta-2); }
 .in-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-3) var(--hz-sp-6); }
 .hz-inicio a.in-avance { display: inline-flex; align-items: center; min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
@@ -74,7 +72,7 @@
 
 .in-matriz { margin: 0; display: grid; gap: var(--hz-sp-3); }
 .in-matriz svg { display: block; width: 100%; height: auto; }
-.in-matriz figcaption { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); padding-inline: var(--in-margen); max-width: 40rem; }
+.in-matriz figcaption { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); max-width: 40rem; }
 /* H1, H2 y H3 y los bordes de los horizontes van en el borde de control neutro: el verde agua se confunde con R1
    (FAMILIA_ESTRATEK §3, «Gráficos junto a R1/R2»). Sobre las superficies 2 y 3 del carbón pasa 4,5:1. */
 .in-matriz__h { font-size: 4.2px; font-weight: var(--hz-fw-display); fill: var(--hz-borde-control); }
@@ -96,10 +94,10 @@
 @keyframes in-trazar { from { stroke-dashoffset: 1; } }
 
 @media (min-width: 56rem) {
-  /* El texto se alinea con la columna de las secciones; la matriz llega al borde derecho. */
-  .in-hero { grid-template-columns: minmax(0, 1fr) auto; align-items: end; padding-top: 0; }
-  .in-hero__texto { align-self: center; padding-left: max(var(--in-margen), calc((100vw - var(--in-ancho)) / 2 + var(--in-margen))); padding-right: 0; }
-  .in-matriz { width: min(52vw, 100svh - 8rem); }
+  /* Texto y matriz dentro del contenedor de página: sus bordes son los del encabezado y las secciones. */
+  .in-hero { grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: var(--hz-sp-8); padding-top: 0; }
+  .in-hero__texto { align-self: center; }
+  .in-matriz { width: min(48vw, 36rem, 100svh - 8rem); }
 }
 
 /* ── Secciones: alternan fondo y superficie 1, separadas por un borde ── */

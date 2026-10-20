@@ -212,3 +212,15 @@ describe('correcciones de la QA de la landing', () => {
     expect(container.textContent).not.toMatch(/recuperas con el mismo correo/)
   })
 })
+
+describe('ancho de página estándar', () => {
+  it('encabezado, héroe, secciones y pie usan el contenedor .hz-pagina', () => {
+    const { container } = montar()
+    expect(container.querySelector('.hz-producto__fila')!.classList.contains('hz-pagina')).toBe(true)
+    expect(container.querySelector('#inicio')!.classList.contains('hz-pagina')).toBe(true)
+    for (const id of ['entrar', 'como-funciona', 'que-se-evalua', 'facilitadores', 'privacidad'])
+      expect(container.querySelector(`#${id} > .hz-pagina`), id).toBeTruthy()
+    expect(container.querySelector('footer > .hz-pagina')).toBeTruthy()
+    expect(readFileSync('web/inicio/inicio.css', 'utf8')).not.toMatch(/--in-ancho|--in-margen/)
+  })
+})

@@ -167,7 +167,7 @@ export default function PaginaInicio() {
       </EncabezadoProducto>
 
       <main id="contenido">
-        <section id="inicio" className="in-hero" aria-labelledby="in-titulo">
+        <section id="inicio" className="in-hero hz-pagina" aria-labelledby="in-titulo">
           <div className="in-hero__texto">
             <h1 id="in-titulo" className="in-display">
               La mesa mueve el <span className="in-clave">portafolio</span>
@@ -191,7 +191,7 @@ export default function PaginaInicio() {
         </section>
 
         <section id="entrar" className="in-sec in-sec--entrar" aria-labelledby="in-entrar-titulo">
-          <div className="in-ancho in-dos">
+          <div className="hz-pagina in-dos">
             <div className="in-texto">
               <h2 id="in-entrar-titulo" className="in-h2">
                 Entra a tu <span className="in-clave">mesa</span>
@@ -207,7 +207,7 @@ export default function PaginaInicio() {
         </section>
 
         <section id="como-funciona" className="in-sec" aria-labelledby="in-como-titulo">
-          <div className="in-ancho">
+          <div className="hz-pagina">
             <h2 id="in-como-titulo" className="in-h2">
               Cómo <span className="in-clave">funciona</span>
             </h2>
@@ -229,7 +229,7 @@ export default function PaginaInicio() {
         </section>
 
         <section id="que-se-evalua" className="in-sec in-sec--suave" aria-labelledby="in-evalua-titulo">
-          <div className="in-ancho in-dos in-dos--evalua">
+          <div className="hz-pagina in-dos in-dos--evalua">
             <div className="in-texto">
               <h2 id="in-evalua-titulo" className="in-h2">
                 Qué se <span className="in-clave">evalúa</span>
@@ -265,7 +265,7 @@ export default function PaginaInicio() {
         </section>
 
         <section id="facilitadores" className="in-sec" aria-labelledby="in-facilitadores-titulo">
-          <div className="in-ancho in-dos">
+          <div className="hz-pagina in-dos">
             <h2 id="in-facilitadores-titulo" className="in-h2">
               Para <span className="in-clave">facilitadores</span>
             </h2>
@@ -287,7 +287,7 @@ export default function PaginaInicio() {
         </section>
 
         <section id="privacidad" className="in-sec in-sec--suave" aria-labelledby="in-privacidad-titulo">
-          <div className="in-ancho in-dos">
+          <div className="hz-pagina in-dos">
             <h2 id="in-privacidad-titulo" className="in-h2">
               Tus <span className="in-clave">datos</span>
             </h2>
@@ -324,7 +324,7 @@ export default function PaginaInicio() {
       </main>
 
       <footer className="in-pie">
-        <div className="in-ancho in-pie__interior">
+        <div className="hz-pagina in-pie__interior">
           <p className="in-pie__nombre">
             Horizontes
             <span className="in-firma" aria-hidden="true">
