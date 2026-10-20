@@ -10,6 +10,7 @@ import {
   cambiarClave,
   crearAdmin,
   editarAdmin,
+  eliminarAdmin,
   exigirSuperadmin,
   listarAdmins,
   login,
@@ -18,7 +19,7 @@ import {
 } from '../dominio/admins.js'
 import { canjearAcceso, darAcceso } from '../dominio/accesos.js'
 import { Demostracion, TIEMPOS_DEMO, type TiemposDemo } from '../dominio/demo.js'
-import { LimitadorPeticiones } from '../dominio/mantenimiento.js'
+import { LimitadorPeticiones, eliminarSala, exigirConfirmacionSala } from '../dominio/mantenimiento.js'
 import { aplicarAccion, cambiarConfig, fijarPreguntaGuiada } from '../dominio/estados.js'
 import {
   detalleSala,
@@ -37,7 +38,7 @@ import {
 import { autenticarParticipante, hojasDeSala, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
 import { type CambioRubrica, borrarRubricaPlantilla, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
-import { type MesaFila, agregarMesas, buscarSala, cargarSala, crearSalaDesdePlantilla, duplicarSala, tokenTableroValido } from '../dominio/salas.js'
+import { type MesaFila, agregarMesas, buscarSala, cargarSala, crearSalaDesdePlantilla, duplicarSala, eliminarMesa, tokenTableroValido } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
 import { isoEnZona, tokenAleatorio } from '../dominio/util.js'
 import { uno } from '../db/index.js'
@@ -52,6 +53,8 @@ export interface OpcionesApi {
   alCerrarSala: (salaId: string) => void
   /** Respaldo de la BD con una etiqueta de momento (antes de empezar la sala, antes de reiniciar una ronda). */
   respaldar?: (salaId: string, momento: string) => void
+  /** Respaldo obligatorio antes de eliminar una sala: si falla, lanza y no se borra nada. */
+  respaldarAntesDeEliminar?: (salaId: string) => void
   /** Tiempos del modo demo (las pruebas los acortan). */
   demo?: Partial<TiemposDemo>
 }
@@ -295,6 +298,20 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     })
   })
 
+  // Eliminar la sala (solo superadmin): pide el nombre exacto, respalda la BD y borra todo lo de la sala. 204.
+  // Orden: permiso (403), sala (404), nombre (422) y después el respaldo; un nombre mal escrito no gasta respaldos.
+  app.delete<{ Params: { id: string }; Body: { confirmar?: unknown } | null }>('/api/admin/salas/:id', async (req, reply) => {
+    if (req.admin!.rol !== 'superadmin') throw new ErrorApi(403, 'SOLO_SUPERADMIN', 'Solo la cuenta superadministradora puede eliminar salas.')
+    const sala = cargarSala(db, req.params.id)
+    const confirmar = req.body?.confirmar
+    exigirConfirmacionSala(sala, confirmar)
+    op.respaldarAntesDeEliminar?.(sala.id)
+    if (demo.enCurso() === sala.id) demo.detener()
+    const r = eliminarSala(db, sala.id, confirmar)
+    req.log.info({ sala: r.sala.id, borrados: r.borrados }, 'sala eliminada')
+    return reply.code(204).send()
+  })
+
   app.patch<{ Params: { id: string } }>('/api/admin/salas/:id/config', async (req) => {
     const s = cambiarConfig(db, cargarSala(db, req.params.id).id, (req.body ?? {}) as never, ahora(), por(req))
     return salaResumen(s, op.baseUrl).config
@@ -316,6 +333,12 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     const sala = cargarSala(db, req.params.id)
     agregarMesas(db, sala.id, Number(req.body?.cantidad))
     return { mesas: mesasAdmin(db, cargarSala(db, sala.id), op.baseUrl) }
+  })
+
+  // Eliminar una mesa (cualquier admin): solo sin inscritos (409 MESA_CON_INSCRITOS) y nunca la última (409 ULTIMA_MESA).
+  app.delete<{ Params: { mesaId: string } }>('/api/admin/mesas/:mesaId', async (req) => {
+    const sala = eliminarMesa(db, req.params.mesaId, ahora(), por(req))
+    return { mesas: mesasAdmin(db, sala, op.baseUrl) }
   })
 
   app.get<{ Params: { id: string } }>('/api/admin/salas/:id/rubricas', async (req) => rubricasSala(db, req.params.id))
@@ -366,6 +389,12 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   })
   app.post('/api/admin/admins', async (req, reply) => reply.code(201).send(crearAdmin(db, req.admin!, (req.body ?? {}) as never, ahora())))
   app.patch<{ Params: { id: string } }>('/api/admin/admins/:id', async (req) => editarAdmin(db, req.admin!, Number(req.params.id), (req.body ?? {}) as never))
+  // Eliminar un administrador (solo superadmin): ni la propia cuenta ni otra superadministradora (409). 204.
+  app.delete<{ Params: { id: string } }>('/api/admin/admins/:id', async (req, reply) => {
+    const a = eliminarAdmin(db, req.admin!, Number(req.params.id))
+    req.log.info({ admin: a.id }, 'administrador eliminado')
+    return reply.code(204).send()
+  })
 
   app.get<{ Params: { id: string; archivo: string } }>('/api/admin/salas/:id/export/:archivo', async (req, reply) => {
     const sala = cargarSala(db, req.params.id)

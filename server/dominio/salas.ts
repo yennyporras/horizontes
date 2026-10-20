@@ -165,6 +165,31 @@ export function agregarMesas(db: Db, salaId: string, cantidad: number) {
   })
 }
 
+/**
+ * Elimina una mesa sin inscritos (pedido de Paola, 21-oct). 409 MESA_CON_INSCRITOS si tiene participantes, activos o
+ * inactivos (sus votos y su aviso aceptado cuelgan de ella: primero se mueven a otra mesa); 409 ULTIMA_MESA si es la
+ * única de la sala. Borra también las fotos del consolidado de esa mesa. Los números de las demás mesas no cambian (los
+ * QR impresos siguen sirviendo). Evento `mesa_eliminada`. Devuelve la sala y las mesas que quedan.
+ */
+export function eliminarMesa(db: Db, mesaId: string, ahora: number, por: string) {
+  return transaccion(db, () => {
+    const m = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ?', mesaId)
+    if (!m) throw new ErrorApi(404, 'MESA_NO_EXISTE', 'Esa mesa no existe.')
+    const inscritos = Number(uno<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM participantes WHERE mesa_id = ?', m.id)?.n ?? 0)
+    if (inscritos > 0) {
+      const quienes = inscritos === 1 ? '1 persona inscrita' : `${inscritos} personas inscritas`
+      throw new ErrorApi(409, 'MESA_CON_INSCRITOS', `${m.nombre} tiene ${quienes}. Muévelas a otra mesa en Participantes antes de eliminarla.`)
+    }
+    const total = Number(uno<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?', m.sala_id)?.n ?? 0)
+    if (total <= 1) throw new ErrorApi(409, 'ULTIMA_MESA', `${m.nombre} es la única mesa de la sala. Una sala necesita al menos una mesa.`)
+    ejecutar(db, 'DELETE FROM fotos_agregado WHERE sala_id = ? AND alcance = ?', m.sala_id, m.id)
+    ejecutar(db, 'DELETE FROM mesas WHERE id = ?', m.id)
+    registrarEvento(db, m.sala_id, ahora, 'mesa_eliminada', por, { mesa_id: m.id, numero: m.numero, nombre: m.nombre, codigo: m.codigo })
+    tocar(db, m.sala_id)
+    return cargarSala(db, m.sala_id)
+  })
+}
+
 export interface NuevaSala extends DatosClasificacion {
   nombre: unknown
   plantilla: unknown
