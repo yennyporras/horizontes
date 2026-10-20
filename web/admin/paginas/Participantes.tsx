@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { api, lista } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
@@ -7,7 +7,8 @@ import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import { useConfirmar } from '../componentes/Confirmar'
 import { DialogoAcceso, type Acceso } from '../componentes/AccesoDeNuevo'
 import type { Participante, RespuestaPersona, SalaDetalle } from '../tipos'
-import { PERFILES, nombrePerfil, rondaAbierta, zonaSala } from '../textos'
+import { rondaAbierta, zonaSala } from '../textos'
+import { nombrePerfil, useContenidoSala } from '../contenido'
 
 /**
  * Quiénes ya votaron en alguna ronda (QA-A-09): mover o desactivar a esas personas cambia resultados y precierre, así
@@ -34,13 +35,18 @@ function useVotaron(salaId: string | undefined, version: string | undefined) {
 export function Participantes() {
   const { salaId } = useParams()
   const { datos, error, refrescar } = useSala(salaId)
-  const [filtroMesa, setFiltroMesa] = useState('todas')
+  // QA por roles (Nicolai): «Ver quién falta» de Sala en vivo llega con ?mesa=m1&pendientes=1.
+  const [busqueda] = useSearchParams()
+  const [filtroMesa, setFiltroMesa] = useState(() => busqueda.get('mesa') ?? 'todas')
+  const [soloPendientes, setSoloPendientes] = useState(() => busqueda.get('pendientes') === '1')
   const [buscar, setBuscar] = useState('')
   const [aviso, setAviso] = useState<{ tono: 'exito' | 'error'; texto: string } | null>(null)
   const [guardando, setGuardando] = useState<string | null>(null)
   const [acceso, setAcceso] = useState<{ p: Participante; datos: Acceso } | null>(null)
   const [dialogo, confirmar] = useConfirmar()
   const votaron = useVotaron(salaId, datos?.version)
+  const contenido = useContenidoSala(datos)
+  const perfiles = contenido.perfiles
   const yaVoto = (p: Participante) => (votaron ? votaron.has(p.id) : p.completo_ronda)
 
   const editar = async (p: Participante, cambio: { perfil_id?: string; mesa_id?: string; activo?: boolean }, texto: string) => {
@@ -65,7 +71,7 @@ export function Participantes() {
       yaVoto(p) &&
       !(await confirmar(
         `¿Mover a ${p.nombre} a ${destino}?`,
-        `${p.nombre} ya votó. Sus votos se mueven con la persona: dejan de contar en ${origen} y pasan a contar en ${destino}. El avance y el precierre de las dos mesas se recalculan.`,
+        `${p.nombre} ya votó. Sus votos se mueven con la persona: dejan de contar en ${origen} y pasan a contar en ${destino}. El avance de las dos mesas se recalcula.`,
         'Sí, mover',
         { tono: 'primario' },
       ))
@@ -80,13 +86,13 @@ export function Participantes() {
       yaVoto(p) &&
       !(await confirmar(
         `¿Desactivar a ${p.nombre}?`,
-        `${p.nombre} ya votó. Al desactivarla, sus votos dejan de contar en los promedios de la sala y de su mesa, y la mesa puede llegar al precierre sin ella. Puedes activarla de nuevo cuando quieras.`,
+        `${p.nombre} ya votó. Si desactivas a esta persona, sus calificaciones dejan de contar en los promedios de la sala y de su mesa, y su mesa puede llegar a «Todos votaron» sin contarla. Puedes activarla de nuevo cuando quieras.`,
         'Sí, desactivar',
         { tono: 'primario' },
       ))
     )
       return
-    await editar(p, { activo: !p.activo }, p.activo ? `${p.nombre} quedó inactivo: sus votos no cuentan en los promedios.` : `${p.nombre} volvió a estar activo.`)
+    await editar(p, { activo: !p.activo }, p.activo ? `Desactivaste a ${p.nombre}: sus calificaciones no cuentan en los promedios.` : `Activaste de nuevo a ${p.nombre}.`)
   }
 
   const darAcceso = async (p: Participante) => {
@@ -111,8 +117,9 @@ export function Participantes() {
         const q = buscar.trim().toLowerCase()
         const filas = d.participantes
           .filter((p) => filtroMesa === 'todas' || p.mesa_id === filtroMesa)
+          .filter((p) => !soloPendientes || (p.activo && !p.completo_ronda))
           .filter((p) => !q || p.nombre.toLowerCase().includes(q) || p.correo.toLowerCase().includes(q))
-          .sort((a, b) => nombreMesa(a.mesa_id).localeCompare(nombreMesa(b.mesa_id), 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es'))
+          .sort((a, b) => nombreMesa(a.mesa_id).localeCompare(nombreMesa(b.mesa_id), 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
 
         return (
           <>
@@ -121,7 +128,7 @@ export function Participantes() {
               <DialogoAcceso nombre={acceso.p.nombre} participanteId={acceso.p.id} zona={zonaSala(d.sala.config)} inicial={acceso.datos} alCerrar={() => setAcceso(null)} />
             )}
             <AvisoPrivado>Nombre, correo, mesa, perfil, país e IP de cada inscrito. Para gestionar la sala, no para mostrarla.</AvisoPrivado>
-            <Resumen d={d} />
+            <Resumen d={d} perfiles={perfiles} />
             <section className="panel" aria-labelledby="t-lista">
               <h2 id="t-lista">Inscritos</h2>
               <p className="pista" id="ayuda-acceso">
@@ -146,6 +153,13 @@ export function Participantes() {
                   <input type="search" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
                 </label>
               </div>
+              <label className="opcion opcion--linea">
+                <input type="checkbox" checked={soloPendientes} aria-describedby="ayuda-pendientes" onChange={(e) => setSoloPendientes(e.target.checked)} />
+                <span>Solo pendientes</span>
+              </label>
+              <p id="ayuda-pendientes" className="pista">
+                {ronda ? `Quienes siguen activos y no han terminado la ronda ${ronda}.` : 'Quienes siguen activos y no han terminado la ronda en curso.'}
+              </p>
               {aviso && (
                 <p className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
                   {aviso.texto}
@@ -154,7 +168,7 @@ export function Participantes() {
               {d.participantes.length === 0 ? (
                 <p className="vacio">Aún no hay inscritos. Comparte el QR de cada mesa para que la gente entre.</p>
               ) : filas.length === 0 ? (
-                <p className="vacio">Nadie coincide con ese filtro.</p>
+                <p className="vacio">{soloPendientes ? 'Nadie está pendiente con ese filtro: ya terminaron todos.' : 'Nadie coincide con ese filtro.'}</p>
               ) : (
                 <div className="tabla-envoltura">
                   <table className="tabla-tarjetas tabla-tarjetas--ancha">
@@ -197,9 +211,9 @@ export function Participantes() {
                               aria-label={`Perfil de ${p.nombre}`}
                               value={p.perfil_id}
                               disabled={guardando === p.id}
-                              onChange={(e) => editar(p, { perfil_id: e.target.value }, `${p.nombre} ahora tiene el perfil ${nombrePerfil(e.target.value)}.`)}
+                              onChange={(e) => editar(p, { perfil_id: e.target.value }, `${p.nombre} ahora tiene el perfil ${nombrePerfil(contenido, e.target.value)}.`)}
                             >
-                              {PERFILES.map((pf) => (
+                              {perfiles.map((pf) => (
                                 <option key={pf.id} value={pf.id}>
                                   {pf.nombre}
                                 </option>
@@ -246,8 +260,8 @@ export function Participantes() {
                 </div>
               )}
               <p className="pista nota-tabla">
-                Qué calificó cada persona está en Respuestas, solo para administradores; ningún tablero lo muestra. País e IP son registro interno: solo salen en este panel y en el
-                export.
+                Qué calificó cada persona está en Respuestas, solo para administradores; ningún tablero lo muestra. País e IP son registro interno: solo salen en este panel y en los
+                archivos de Exportar.
               </p>
             </section>
           </>
@@ -258,7 +272,7 @@ export function Participantes() {
 }
 
 /** Perfiles por mesa: ayuda a ver si el balance quedó parejo antes de reasignar. */
-function Resumen({ d }: { d: SalaDetalle }) {
+function Resumen({ d, perfiles }: { d: SalaDetalle; perfiles: { id: string; nombre: string }[] }) {
   if (d.mesas.length === 0) return null
   return (
     <section className="panel" aria-labelledby="t-perfiles">
@@ -268,7 +282,7 @@ function Resumen({ d }: { d: SalaDetalle }) {
           <thead>
             <tr>
               <th scope="col">Mesa</th>
-              {PERFILES.map((p) => (
+              {perfiles.map((p) => (
                 <th key={p.id} scope="col" className="num">
                   {p.nombre}
                 </th>
@@ -282,7 +296,7 @@ function Resumen({ d }: { d: SalaDetalle }) {
             {d.mesas.map((m) => (
               <tr key={m.id}>
                 <th scope="row">{m.nombre}</th>
-                {PERFILES.map((p) => (
+                {perfiles.map((p) => (
                   <td key={p.id} className="num" data-label={p.nombre}>
                     {m.perfiles[p.id] ?? 0}
                   </td>

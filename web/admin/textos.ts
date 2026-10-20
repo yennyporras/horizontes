@@ -1,7 +1,6 @@
-import seed from '../../data/seed_foodsume.json'
-import { nombreCorto } from '../tablero/logica'
 import type { CriterioId } from '../shared/api/contrato'
-import type { Accion, EstadoSala, Pais, ZonaHoraria } from './tipos'
+import type { Accion, EstadoSala, Pais, Sector, TipoSala, ZonaHoraria } from './tipos'
+import { CONTENIDO_VACIO, nombreCriterio, nombrePerfil, nombreProyecto, numeroPregunta, type ContenidoSala } from './contenido'
 
 /**
  * Largo mínimo de una clave de administrador. Es el que exige el servidor (LARGO_MINIMO_CLAVE en
@@ -9,22 +8,35 @@ import type { Accion, EstadoSala, Pais, ZonaHoraria } from './tipos'
  */
 export const LARGO_MINIMO_CLAVE = 8
 
-export const PERFILES: { id: string; nombre: string }[] = seed.perfiles
-
-/** Los 6 criterios de la plantilla, en el orden del motor (el mismo de la hoja de votación). */
-export const CRITERIOS = seed.motor.criterios.map((c) => ({ id: c.id as CriterioId, nombre: c.nombre, corto: nombreCorto(c.id, c.nombre), pregunta: c.pregunta }))
-
-/** Los proyectos vivos que califica la sala (INSUMEX y NUTRIWHAT), en el orden de la plantilla. */
-export const PROYECTOS_VIVOS = seed.plantilla.proyectos.filter((p) => p.modo === 'vivo').map((p) => ({ id: p.id, nombre: p.nombre }))
-
-export const nombreProyecto = (id: string) => seed.plantilla.proyectos.find((p) => p.id === id)?.nombre ?? id
-
 /** País de la sala (acta del 16-oct, C4) con su zona horaria por defecto. */
 export const PAISES: Record<Pais, { nombre: string; zona: ZonaHoraria }> = {
   CO: { nombre: 'Colombia', zona: 'America/Bogota' },
   PE: { nombre: 'Perú', zona: 'America/Lima' },
   GT: { nombre: 'Guatemala', zona: 'America/Guatemala' },
 }
+
+/** QA por roles del 20-oct (inversionista): los ensayos no cuentan en las métricas del negocio. */
+export const TIPOS_SALA: Record<TipoSala, string> = {
+  taller: 'Taller con cliente',
+  ensayo: 'Ensayo',
+}
+
+/** Sectores de la empresa cliente (lista del contrato, migración 8). */
+export const SECTORES: Record<Sector, string> = {
+  alimentos: 'Alimentos',
+  energia: 'Energía',
+  financiero: 'Financiero',
+  comercio: 'Comercio',
+  salud: 'Salud',
+  manufactura: 'Manufactura',
+  otro: 'Otro',
+}
+
+/** Largo máximo del nombre de la empresa cliente (el que valida el servidor). */
+export const LARGO_MAXIMO_EMPRESA = 80
+
+/** Nombre del país por su código; si no es uno de los tres, el código. */
+export const nombrePais = (codigo: string) => PAISES[codigo as Pais]?.nombre ?? codigo
 
 // Ninguna de las tres zonas tiene horario de verano: el desfase es fijo.
 export const ZONAS: Record<ZonaHoraria, { nombre: string; horas: number }> = {
@@ -49,8 +61,6 @@ export function horaLocalAIso(valor: string, zona: ZonaHoraria = 'America/Bogota
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(valor)) return null
   return `${valor}:00-${String(-ZONAS[zona].horas).padStart(2, '0')}:00`
 }
-
-export const nombrePerfil = (id: string) => PERFILES.find((p) => p.id === id)?.nombre ?? id
 
 export const ESTADOS: Record<EstadoSala, string> = {
   preparada: 'Preparada',
@@ -120,7 +130,7 @@ export const accionesParaCorregir = (estado: EstadoSala): Accion[] =>
 /** Qué pasa al pulsar cada acción, en una línea, junto al botón. */
 export const QUE_PASA: Record<Accion, string> = {
   abrir_inscripcion: 'Los QR empiezan a funcionar: cada persona se inscribe, recibe su perfil y lee el caso.',
-  abrir_ronda_1: 'Cada persona califica INSUMEX y NUTRIWHAT sola y en silencio, con la hoja de su perfil.',
+  abrir_ronda_1: 'Cada persona califica INSUMEX y NUTRIWHAT por su cuenta y en silencio, con la hoja de su perfil. El tablero muestra los resultados cuando todos voten o cierres la ronda.',
   cerrar_ronda_1: 'Nadie más responde la ronda 1 y queda su resultado final.',
   abrir_ronda_2: 'Se abren las 6 hojas para todos. Cada mesa conversa y vuelve a calificar.',
   cerrar_ronda_2: 'Nadie más responde la ronda 2. Después pon el tablero en Comparación (tecla C).',
@@ -184,7 +194,8 @@ export function estadoMesa(
   mesa: { inscritos: number; precierre?: boolean },
 ): { texto: string; tono?: 'exito' | 'apagado' | 'aviso' } {
   if (mesa.inscritos === 0) return { texto: 'Sin inscritos', tono: 'apagado' }
-  if (rondaAbierta(estado)) return mesa.precierre ? { texto: 'Precierre', tono: 'exito' } : { texto: 'Votando' }
+  // Paula (QA por roles): «Precierre» es jerga del equipo; la insignia dice lo que pasó.
+  if (rondaAbierta(estado)) return mesa.precierre ? { texto: 'Todos votaron', tono: 'exito' } : { texto: 'Votando' }
   if (estado === 'r1_cerrada' || estado === 'r2_cerrada') return { texto: ESTADOS[estado], tono: 'apagado' }
   if (estado === 'cerrada') return { texto: 'Sala cerrada', tono: 'apagado' }
   return { texto: 'Esperando la ronda', tono: 'apagado' }
@@ -236,9 +247,22 @@ export const MODOS_TABLERO: { modo: ModoTablero; nombre: string; tecla: string; 
   { modo: 'detallado', nombre: 'Detallado', tecla: 'D', ayuda: 'la matriz con el progreso y los promedios' },
 ]
 
-/** Teclas del tablero, en una línea, para la ayuda de Ver en vivo (las mismas de la guía del facilitador). */
-export const TECLAS_TABLERO =
-  'En el tablero, G y D cambian de modo, M los alterna, V muestra Cómo votó, F pone pantalla completa y 1, 2 y C cambian entre ronda 1, ronda 2 y comparación.'
+/**
+ * Teclas del tablero para «Proyectar el tablero» (pedido de Nicolai, QA por roles del 20-oct): una lista visual en vez
+ * de un párrafo. Los mismos textos de la ayuda del tablero (tecla ?), en el orden en que se usan durante el taller.
+ */
+export const TECLAS_TABLERO: { teclas: string[]; texto: string }[] = [
+  { teclas: ['F'], texto: 'Pantalla completa (entra y sale)' },
+  { teclas: ['G'], texto: 'Gráfica: solo la matriz' },
+  { teclas: ['D'], texto: 'Detallado: la matriz con los promedios' },
+  { teclas: ['M'], texto: 'Cambia entre Gráfica y Detallado' },
+  { teclas: ['V'], texto: 'Promedios o «Cómo votó»' },
+  { teclas: ['1'], texto: 'Ronda 1' },
+  { teclas: ['2'], texto: 'Ronda 2' },
+  { teclas: ['C'], texto: 'Comparación; otra vez, repite la animación' },
+  { teclas: ['→', '←'], texto: 'Vista siguiente o anterior, también con el control de presentaciones' },
+  { teclas: ['?'], texto: 'La ayuda de teclas en el tablero' },
+]
 
 /**
  * Modos de proyección del tablero (pedido de Nicolai, 20-oct; nombres del 20-oct en la tarde): `grafica`, solo la
@@ -264,7 +288,11 @@ export function urlVistaPrevia(urlParticipante: string | null | undefined): stri
   return `${u.pathname}${u.search}${u.hash}`
 }
 
-/** Ruta interna del tablero (sin dominio) para pedir su JSON: /tablero/HZ7K2?mesa=m1&t=TOKEN → /api/tablero/{salaId}?... */
+/**
+ * Ruta interna del tablero (sin dominio) para pedir su JSON: /tablero/HZ7K2?mesa=m1&t=TOKEN → /api/tablero/{salaId}?...
+ * `vista=panel` (con la sesión de admin): el panel sí recibe el resultado preliminar de la ronda 1, que el tablero
+ * público y los celulares reciben oculto mientras la ronda está abierta (decisión de Paola del 20-oct).
+ */
 export function rutaApiTablero(salaId: string, urlTablero: string, mesaId?: string): string {
   const u = new URL(urlTablero, 'http://x')
   const q = new URLSearchParams()
@@ -272,6 +300,7 @@ export function rutaApiTablero(salaId: string, urlTablero: string, mesaId?: stri
   if (mesaId) q.set('mesa', mesaId)
   const t = u.searchParams.get('t')
   if (t) q.set('t', t)
+  q.set('vista', 'panel')
   return `/api/tablero/${salaId}?${q.toString()}`
 }
 
@@ -281,7 +310,7 @@ export const decimal = (n: number | null | undefined, d = 2) =>
 export const fechaHora = (iso: string | null, zona: ZonaHoraria = 'America/Bogota') =>
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, dateStyle: 'medium', timeStyle: 'short' }) : 'Sin definir'
 
-/** Fecha corta sin año para tablas densas (Respuestas): «20 de oct, 6:54 a. m.». El export trae la fecha completa. */
+/** Fecha corta sin año: «20 de oct, 6:54 a. m.». Los archivos de Exportar traen la fecha completa. */
 export const fechaCorta = (iso: string | null, zona: ZonaHoraria = 'America/Bogota') =>
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'Sin definir'
 
@@ -328,15 +357,20 @@ const CAMPO_CONFIG: Record<string, string> = {
   apertura_programada_r2_at: 'apertura programada de la ronda 2',
   cierre_programado_r2_at: 'cierre programado de la ronda 2',
   cierre_programado_ronda_at: 'cierre programado de la ronda',
+  tipo: 'tipo de sala',
+  empresa: 'empresa cliente',
+  sector: 'sector',
 }
 
 /** «a, b y c». */
-const enumerar = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`)
+export const enumerar = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`)
 
 /** Lo que la bitácora necesita de la sala para decir nombres en vez de identificadores. */
 export interface ContextoEvento {
   mesas?: { id: string; nombre: string }[]
   participantes?: { id: string; nombre: string }[]
+  /** Criterios, proyectos vivos y perfiles de la sala (contenido.ts). */
+  contenido?: ContenidoSala
 }
 
 /**
@@ -348,6 +382,7 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
   const mesa = (id: unknown) => ctx.mesas?.find((m) => m.id === id)?.nombre
   const persona = (id: unknown) => ctx.participantes?.find((p) => p.id === id)?.nombre
   const ronda = typeof d.ronda === 'number' ? d.ronda : null
+  const c = ctx.contenido ?? CONTENIDO_VACIO
   const por = ev.por === 'sistema' || ev.por === 'participante' ? '' : ev.por === 'programado' ? ' · a la hora programada' : ` · ${ev.por.replace(/^admin:/, '')}`
   let t = TEXTO_EVENTO[ev.tipo] ?? `${ev.tipo.charAt(0).toUpperCase()}${ev.tipo.slice(1).replace(/_/g, ' ')}`
 
@@ -382,23 +417,24 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
       const quien = persona(d.participante_id ?? d.id) ?? 'Un participante'
       const cambios: string[] = []
       if (d.mesa_id !== undefined) cambios.push(`pasó a ${mesa(d.mesa_id) ?? 'otra mesa'}`)
-      if (typeof d.perfil_id === 'string') cambios.push(`ahora tiene el perfil ${nombrePerfil(d.perfil_id)}`)
-      if (d.activo === false) cambios.push('quedó inactivo')
-      if (d.activo === true) cambios.push('volvió a estar activo')
+      if (typeof d.perfil_id === 'string') cambios.push(`ahora tiene el perfil ${nombrePerfil(c, d.perfil_id)}`)
+      // Paula (QA por roles): fórmulas sin género.
+      if (d.activo === false) cambios.push('dejó de contar en los promedios')
+      if (d.activo === true) cambios.push('volvió a contar en los promedios')
       t = cambios.length ? `${quien} ${enumerar(cambios)}` : `${quien}: datos editados`
       break
     }
     case 'pregunta_guiada':
       t =
         typeof d.proyecto_id === 'string' && typeof d.criterio_id === 'string'
-          ? `Pregunta en pantalla: ${nombreProyecto(d.proyecto_id)} · ${numeroPregunta({ proyecto_id: d.proyecto_id, criterio_id: d.criterio_id as CriterioId }).texto}`
+          ? `Pregunta en pantalla: ${nombreProyecto(c, d.proyecto_id)} · ${numeroPregunta({ criterio_id: d.criterio_id as CriterioId }, c.criterios).texto}`
           : 'Pregunta quitada: vuelve la matriz'
       break
     case 'mesas_agregadas':
       if (typeof d.cantidad === 'number') t = d.cantidad === 1 ? 'Se agregó 1 mesa' : `Se agregaron ${d.cantidad} mesas`
       break
     case 'rubrica_editada':
-      if (typeof d.criterio_id === 'string') t = `Rúbrica editada: ${CRITERIOS.find((c) => c.id === d.criterio_id)?.nombre ?? d.criterio_id}`
+      if (typeof d.criterio_id === 'string') t = `Rúbrica editada: ${nombreCriterio(c, d.criterio_id)}`
       break
     case 'acceso_reemitido': {
       const quien = persona(d.participante_id)
@@ -446,15 +482,6 @@ export function bitacora(eventos: { at: string; tipo: string; detalle?: Record<s
   }
   return lineas
 }
-
-/** QA-A-08: número de la pregunta dentro de su proyecto, como el tablero: «Pregunta 3 de 6». */
-export function numeroPregunta(p: { proyecto_id: string; criterio_id: CriterioId }): { n: number; de: number; texto: string } {
-  const n = CRITERIOS.findIndex((c) => c.id === p.criterio_id) + 1
-  return { n, de: CRITERIOS.length, texto: `Pregunta ${n} de ${CRITERIOS.length}` }
-}
-
-/** Orden de las preguntas en modo guiado (C19-5): los proyectos vivos y, en cada uno, los 6 criterios. */
-export const ORDEN_PREGUNTAS = PROYECTOS_VIVOS.flatMap((p) => CRITERIOS.map((c) => ({ proyecto_id: p.id, criterio_id: c.id })))
 
 /** Aperturas y cierres programados de la sala (C19-4), en el orden del taller, para Sala en vivo. */
 export function programaciones(c: Partial<Record<CampoProgramado, string | null>>): { texto: string; at: string }[] {

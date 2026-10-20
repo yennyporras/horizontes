@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
 import { Rubricas } from './Rubricas'
-import type { ConfigSala, EstadoSala, Pais, SalaDetalle, ZonaHoraria } from '../tipos'
-import { PAISES, ZONAS, conPunto, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala, type CampoProgramado } from '../textos'
+import type { ConfigSala, EstadoSala, Pais, SalaDetalle, Sector, TipoSala, ZonaHoraria } from '../tipos'
+import { LARGO_MAXIMO_EMPRESA, PAISES, SECTORES, TIPOS_SALA, ZONAS, conPunto, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala, type CampoProgramado } from '../textos'
 
 /** QA-A-13: el resultado de cada cambio sale junto al control que lo produjo (`lugar`), no arriba de la página. */
 type Aviso = { lugar: string; tono: 'exito' | 'error' | 'aviso'; texto: string } | null
+/** Lo que acepta `PATCH /config`: la configuración y, desde la migración 8, el tipo de sala, la empresa y el sector. */
+type CambioSala = Partial<ConfigSala> & { tipo?: TipoSala; empresa?: string | null; sector?: Sector | null }
 type GuardarCampo = (cambio: Partial<ConfigSala>) => Promise<void>
-type Guardar = (cambio: Partial<ConfigSala>, texto: string, lugar: string) => Promise<boolean>
+type Guardar = (cambio: CambioSala, texto: string, lugar: string) => Promise<boolean>
 
 const CAMPOS_PROGRAMADOS: CampoProgramado[] = [
   'apertura_programada_sala_at',
@@ -79,6 +81,7 @@ export function Configuracion() {
             <p className="pista">Los cambios se aplican de inmediato y los celulares los ven en menos de 5 segundos.</p>
             {/* Orden de la preparación: el país primero (define el aviso de datos y la hora de lo programado). */}
             <PaisSala d={vista} guardar={guardar} aviso={aviso} setAviso={setAviso} />
+            <TipoYCliente d={d} guardar={guardar} aviso={aviso} />
             <Visibilidad d={vista} guardar={guardar} aviso={aviso} />
             <Programacion d={d} guardarCampo={guardarCampo} />
             <Rubricas salaId={d.sala.id} version={d.version} />
@@ -142,7 +145,7 @@ function Visibilidad({ d, guardar, aviso }: PropsSeccion) {
           >
             Resultado en vivo <span className="etiqueta">Por defecto</span>
             {/* D2: el consolidado en vivo se renueva de 3 en 3 votos. */}
-            <small>Apenas vota, cada persona ve el resultado consolidado. Se renueva cada 3 votos nuevos, así nadie deduce el voto de otro; al cerrar la ronda queda el exacto.</small>
+            <small>Apenas vota, cada persona ve el resultado consolidado. Se renueva cada 3 votos nuevos, así nadie deduce el voto de otro. Al cerrar la ronda se muestra el resultado final.</small>
           </Opcion>
           <Opcion
             type="radio"
@@ -151,7 +154,7 @@ function Visibilidad({ d, guardar, aviso }: PropsSeccion) {
             onChange={() => guardar({ vista_participante: 'registrado' }, 'Tras votar, el participante ve «Voto registrado».', 'vista')}
           >
             Voto registrado
-            <small>Ven el progreso de su mesa hasta que cierres la ronda o llegue el precierre.</small>
+            <small>Ven el progreso de su mesa hasta que todos en su mesa voten o cierres la ronda.</small>
           </Opcion>
           <AvisoEn aviso={aviso} lugar="vista" />
         </fieldset>
@@ -272,6 +275,74 @@ function PaisSala({ d, guardar, aviso, setAviso }: PropsSeccion & { setAviso: (a
       )}
       <AvisoEn aviso={aviso} lugar="pais" />
       <p className="pista">Elige el país antes de programar horas. El aviso de datos que firma cada participante cita la ley del país de la sala. La zona horaria se ajusta sola al cambiar el país.</p>
+    </section>
+  )
+}
+
+/**
+ * QA por roles del 20-oct (inversionista): tipo de sala, empresa cliente y sector. Los ensayos no cuentan en las cifras
+ * de Salas. Se guardan con `PATCH /config` como el resto de la configuración.
+ */
+function TipoYCliente({ d, guardar, aviso }: PropsSeccion) {
+  const s = d.sala
+  const tipo: TipoSala = s.tipo ?? 'taller'
+  const [empresa, setEmpresa] = useState(s.empresa ?? '')
+  useEffect(() => setEmpresa(s.empresa ?? ''), [s.empresa])
+  const empresaGuardada = (s.empresa ?? '').trim()
+  const guardarEmpresa = (e: FormEvent) => {
+    e.preventDefault()
+    const v = empresa.trim()
+    void guardar({ empresa: v || null }, v ? `La empresa cliente quedó como «${v}».` : 'Quitamos la empresa cliente.', 'cliente')
+  }
+  return (
+    <section className="panel" aria-labelledby="t-cliente">
+      <h2 id="t-cliente">Tipo y cliente</h2>
+      <div className="fila-form fila-form--corta">
+        <label className="campo">
+          <span>Tipo</span>
+          <select
+            value={tipo}
+            onChange={(e) => {
+              const t = e.target.value as TipoSala
+              void guardar({ tipo: t }, t === 'ensayo' ? 'La sala quedó como ensayo: no cuenta en las cifras de Salas.' : 'La sala quedó como taller con cliente: cuenta en las cifras de Salas.', 'cliente')
+            }}
+          >
+            {(Object.keys(TIPOS_SALA) as TipoSala[]).map((t) => (
+              <option key={t} value={t}>
+                {TIPOS_SALA[t]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="campo">
+          <span>Sector (opcional)</span>
+          <select
+            value={s.sector ?? ''}
+            onChange={(e) => {
+              const v = (e.target.value || null) as Sector | null
+              void guardar({ sector: v }, v ? `El sector quedó como ${SECTORES[v]}.` : 'Quitamos el sector.', 'cliente')
+            }}
+          >
+            <option value="">Sin definir</option>
+            {(Object.keys(SECTORES) as Sector[]).map((x) => (
+              <option key={x} value={x}>
+                {SECTORES[x]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <form className="fila-form" onSubmit={guardarEmpresa}>
+        <label className="campo">
+          <span>Empresa cliente (opcional)</span>
+          <input maxLength={LARGO_MAXIMO_EMPRESA} value={empresa} autoComplete="organization" onChange={(e) => setEmpresa(e.target.value)} />
+        </label>
+        <button className="hz-boton hz-boton--secundario" type="submit" disabled={empresa.trim() === empresaGuardada}>
+          Guardar empresa
+        </button>
+      </form>
+      <AvisoEn aviso={aviso} lugar="cliente" />
+      <p className="pista">Un ensayo no cuenta en las cifras de Salas. Empresa y sector sirven para saber con quién se hizo cada taller; no se muestran a los participantes.</p>
     </section>
   )
 }

@@ -106,7 +106,7 @@ describe('auditoría del panel (20-oct)', () => {
     expect(conModo('/tablero/HZ7K2?t=TOK&modo=grafica', 'detallado')).toBe('/tablero/HZ7K2?t=TOK&modo=detallado')
   })
 
-  it('Respuestas usa la fecha corta (sin año) para que la tabla quepa en 1280 px', () => {
+  it('la fecha corta (sin año) se lee en español', () => {
     expect(fechaCorta('2026-10-20T11:54:00Z').replace(/\s/g, ' ')).toBe('20 de oct, 6:54 a. m.')
     expect(fechaCorta(null)).toBe('Sin definir')
   })
