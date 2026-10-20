@@ -18,7 +18,7 @@ for (const [w, h] of [[1920, 1080], [360, 740]]) {
     mismoSvg: window.__svg === document.querySelector('svg.hz-matriz'),
     flechas: document.querySelectorAll('.hz-flecha').length,
     r1: document.querySelectorAll('.hz-r1').length,
-    pressed: document.querySelector('[aria-pressed="true"]')?.textContent,
+    pressed: document.querySelector('[aria-label="Vista de la matriz"] [aria-pressed="true"]')?.textContent,
   }))
   await page.screenshot({ path: `${salida}/tablero-comp-${w}.png`, fullPage: false })
   console.log(w, JSON.stringify(r), errores.join(' | '))
