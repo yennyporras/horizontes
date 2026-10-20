@@ -120,7 +120,7 @@ test('marcas «Dividido» (votos en 1 y 9, o 25 % en cada extremo) y «Se juntó
   const reg = [...proy.querySelectorAll('.hz-cv-crit')].find((p) => p.firstChild?.textContent === 'Regulación')!
   expect([...reg.querySelectorAll('.hz-cv-etq')].map((e) => e.textContent)).toEqual(['Dividido en R1', 'Se juntó en R2'])
   // Rótulos de la escala: «Valor» y «personas».
-  expect(container.querySelector('.hz-cv-rotulos')!.textContent).toBe('Valor elegido de 1 a 9; sobre cada barra, cuántas personas lo eligieron.')
+  expect(container.querySelector('.hz-cv-rotulos')!.textContent).toBe('Valor de 1 a 9; sobre cada barra, cuántas personas')
   cleanup()
   // Con una sola ronda, la marca sin la ronda.
   render(<ComoVoto datos={datos} rondas={[1]} />)

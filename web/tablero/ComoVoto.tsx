@@ -75,6 +75,11 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
         <h2 id="hz-cv-t" className="hz-sub hz-cv-titulo">
           Cómo votó {quien}
         </h2>
+        {conDatos.length > 0 && (
+          <p className="hz-cv-rotulos">
+            <b>Valor</b> de 1 a 9; sobre cada barra, cuántas <b>personas</b>
+          </p>
+        )}
         {controles}
       </div>
       {avisos.map((a) => (
@@ -82,11 +87,6 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
           {a}
         </p>
       ))}
-      {conDatos.length > 0 && (
-        <p className="hz-cv-rotulos">
-          <b>Valor</b> elegido de 1 a 9; sobre cada barra, cuántas <b>personas</b> lo eligieron.
-        </p>
-      )}
       {conDatos.length > 0 && (
         <div className="hz-cv-proyectos">
           {datos.proyectos_vivos.map((p) => (

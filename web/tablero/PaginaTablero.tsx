@@ -12,7 +12,7 @@ import { QueSeMovio } from './QueSeMovio'
 import { AyudaTeclas } from './AyudaTeclas'
 import { PreguntaGuiada } from './PreguntaGuiada'
 import { usePollingTablero } from './usePollingTablero'
-import { usePantallaCompleta } from './usePantallaCompleta'
+import { accionDeTecla, usePantallaCompleta } from './usePantallaCompleta'
 import {
   EN_VIVO,
   PARAMETRO_MODO,
@@ -174,7 +174,16 @@ export default function PaginaTablero() {
     if (valor === 'mesas') p.set('vista', 'mesas')
     else if (valor !== 'sala') p.set('mesa', valor)
     setPaginaMesas(0)
-    setParams(p, { replace: true })
+    setParams(
+      (actual) => {
+        // Sobre los parámetros del momento (un atajo pudo cambiar el modo justo antes).
+        const n = new URLSearchParams(actual)
+        for (const k of ['vista', 'mesa']) n.delete(k)
+        for (const [k, v] of p) if (k === 'vista' || k === 'mesa') n.set(k, v)
+        return n
+      },
+      { replace: true },
+    )
   }
 
   useEffect(() => {
@@ -217,6 +226,7 @@ export default function PaginaTablero() {
       data-ruta="tablero"
       data-tema="claro"
       data-modo={modo}
+      data-detalle={soloMatriz ? undefined : detalle}
     >
       <Encabezado
         href={inicio}
@@ -319,7 +329,9 @@ export default function PaginaTablero() {
                     </div>
                   </>
                 )}
-                {/* Tamaño de la burbuja y horizontes; los ejes ya van bajo la matriz. Solo si hay alto (CSS). */}
+                {/* Proyector: la lectura de los ejes va en el panel, bajo la tabla (bajo la matriz le quitaba alto). */}
+                <ExplicacionBreve className="hz-explica-lateral" />
+                {/* Celular y tableta: el tamaño de la burbuja y los horizontes al final del panel (CSS). */}
                 <LecturaMatriz conEjes={false} className="hz-lectura-lateral" />
               </aside>
             )}
@@ -477,6 +489,10 @@ function Encabezado({
             <select
               data-atajos=""
               value={mesa ?? 'sala'}
+              // Un atajo nunca elige una opción (M buscaba «Mesa 1»): se corta aquí; el tablero lo atiende en window.
+              onKeyDown={(e) => {
+                if (accionDeTecla(e.key)) e.preventDefault()
+              }}
               onChange={(e) => {
                 onAlcance(e.target.value)
                 e.currentTarget.blur()

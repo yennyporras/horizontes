@@ -735,14 +735,19 @@ body:has(> #root > .hz-tablero) {
     align-self: stretch;
     overflow-y: auto;
   }
-  /* Detallado: la lectura de los ejes bajo la matriz, en letra de proyector. */
+  /* En el proyector la lectura de los ejes del Detallado va en el panel, bajo la tabla; con «Cómo votó» (que llena el
+     panel), bajo la matriz. */
   .hz-explica-detallado {
+    display: none;
     flex: none;
     margin-top: 0.2em;
     line-height: 1.25;
   }
-  .hz-zona-matriz:has(.hz-explica-detallado) {
-    --hz-pie: 5em;
+  [data-detalle='votos'] .hz-explica-detallado {
+    display: block;
+  }
+  [data-detalle='votos'] .hz-explica-lateral {
+    display: none;
   }
   .hz-pie-matriz .hz-leyenda {
     flex-wrap: nowrap;
@@ -886,10 +891,15 @@ body:has(> #root > .hz-tablero) {
     font-size: 1.15em;
   }
   .hz-lateral .hz-cv-pista {
-    height: 1.15em;
+    height: 0.8em;
   }
   .hz-lateral .hz-cv .hz-cv-crit {
     margin-top: 0.15em;
+    line-height: 1.15;
+  }
+  .hz-lateral .hz-cv-etq {
+    margin-left: 0.3em;
+    line-height: 1.15;
   }
   .hz-lateral .hz-tb-progreso {
     padding-block: 0.4em;
@@ -935,6 +945,12 @@ body:has(> #root > .hz-tablero) {
   }
   .hz-cab-titulo {
     flex-basis: 8em;
+  }
+  /* El nombre de la sala en una línea: si no cabe, termina en «…» (está completo en el title de la pestaña). */
+  .hz-cab h1 {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   /* En el panel de Detallado no cabe junto a la pantalla completa: la ayuda sigue en la tecla ?. */
   .hz-lateral .hz-boton-teclas {
@@ -1257,6 +1273,13 @@ body:has(> #root > .hz-tablero) {
    descripción de cada criterio queda en el title de la fila (Nicolai: «Inversión» quedaba fuera). */
 @media (min-width: 1100px) and (max-height: 1200px) {
   .hz-comparada .hz-crit-desc {
+    display: none;
+  }
+}
+
+/* Celular y tableta: la lectura de los ejes del Detallado va bajo la matriz, no en el panel. */
+@media (max-width: 1099px) {
+  .hz-explica-lateral {
     display: none;
   }
 }
