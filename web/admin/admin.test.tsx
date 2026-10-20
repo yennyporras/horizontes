@@ -102,6 +102,12 @@ describe('textos del panel', () => {
     expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: 'insumex', criterio_id: 'regulacion' }, por: 'admin:jorge' })).toBe('Pregunta en pantalla: INSUMEX · Pregunta 3 de 6 · jorge')
     expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: null, criterio_id: null }, por: 'admin:jorge' })).toBe('Pregunta quitada: vuelve la matriz · jorge')
     expect(textoEvento({ tipo: 'algo_nuevo', detalle: null, por: 'sistema' })).toBe('Algo nuevo')
+    // Eventos nuevos del servidor (20-oct).
+    expect(textoEvento({ tipo: 'acceso_reemitido', detalle: { participante_id: 'p_1', vence_at: 'x' }, por: 'admin:paola' }, ctx)).toBe('Acceso de nuevo para Ana Pérez · paola')
+    expect(textoEvento({ tipo: 'acceso_canjeado', detalle: { participante_id: 'p_1' }, por: 'sistema' }, ctx)).toBe('Ana Pérez volvió a entrar con el acceso de nuevo')
+    expect(textoEvento({ tipo: 'apertura_programada_descartada', detalle: { accion: 'abrir_ronda_1' }, por: 'programado' })).toBe(
+      'Apertura programada descartada: a esa hora no aplicaba · a la hora programada',
+    )
   })
 
   it('bitácora sin ruido: agrupa lo repetido y no duplica lo programado', () => {
