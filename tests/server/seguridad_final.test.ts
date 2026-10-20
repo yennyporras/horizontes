@@ -109,3 +109,41 @@ describe('M-3: los topes por IP no dejan al salón sin entrar ni votar', () => {
     for (let i = 0; i < 25; i++) expect((await login('paola', 'superclave123')).statusCode).toBe(200)
   }, 30_000)
 })
+
+describe('B-2: regenerar el token del tablero', () => {
+  const regenerar = (id: string, cookie: string | null = e.cookie) =>
+    e.app.inject({ method: 'POST', url: `/api/admin/salas/${id}/acciones`, headers: cookie ? { cookie } : {}, payload: { accion: 'regenerar_token_tablero' } })
+  const detalle = async (id: string) => (await e.app.inject({ url: `/api/admin/salas/${id}`, headers: { cookie: e.cookie } })).json()
+
+  it('el enlace anterior deja de servir, el detalle trae el nuevo, sube la versión y queda en la bitácora', async () => {
+    const s = await crearSala(e, 2)
+    const antes = await detalle(s.id)
+    const r = await regenerar(s.id)
+    expect(r.statusCode).toBe(200)
+    const nuevo = r.json().sala.token_tablero as string
+    expect(nuevo).not.toBe(s.token_tablero)
+    expect(nuevo).toMatch(/^[A-Za-z0-9_-]{32}$/)
+    expect(r.json().sala.url_tablero).toBe(`https://horizontes.test/tablero/${s.id}?t=${nuevo}`)
+    expect(r.json().sala.estado).toBe('preparada')
+
+    const d = await detalle(s.id)
+    expect(d.sala.token_tablero).toBe(nuevo)
+    expect(d.version).not.toBe(antes.version)
+    for (const m of d.mesas) expect(m.url_tablero).toContain(`t=${nuevo}`)
+    expect(d.eventos[0]).toMatchObject({ tipo: 'token_tablero_regenerado', por: 'admin:paola' })
+    expect(JSON.stringify(d.eventos[0])).not.toContain(nuevo)
+
+    expect((await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).statusCode).toBe(401)
+    expect((await e.app.inject(`/api/tablero/${s.id}?t=${nuevo}`)).statusCode).toBe(200)
+    // Una sola fuente del token (S-12): el hash sigue vacío.
+    expect(e.db.prepare('SELECT token_tablero_hash AS h FROM salas WHERE id = ?').get(s.id)).toEqual({ h: '' })
+  })
+
+  it('vale en cualquier estado, también con la sala cerrada, y exige sesión admin', async () => {
+    const s = await crearSala(e, 1)
+    await accion(e, s.id, 'cerrar_sala')
+    expect((await regenerar(s.id)).statusCode).toBe(200)
+    expect((await regenerar(s.id, null)).statusCode).toBe(401)
+    expect((await regenerar('s_noexiste')).statusCode).toBe(404)
+  })
+})

@@ -134,7 +134,7 @@ describe('respaldo antes y después de cada sala', () => {
 })
 
 describe('reinicio limpio de la sala del taller', () => {
-  it('borra participantes, consentimientos, votos y eventos; conserva mesas, código y tablero', async () => {
+  it('borra participantes, consentimientos, votos y eventos; conserva mesas y código; el tablero estrena enlace (B-2)', async () => {
     const s = await crearSala(e, 2)
     await accion(e, s.id, 'abrir_inscripcion')
     await accion(e, s.id, 'abrir_ronda_1')
@@ -152,9 +152,14 @@ describe('reinicio limpio de la sala del taller', () => {
     expect(n('SELECT COUNT(*) AS n FROM participantes WHERE sala_id = ?', s.id)).toBe(0)
     expect(n('SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?', s.id)).toBe(2)
     expect(n("SELECT COUNT(*) AS n FROM eventos WHERE sala_id = ? AND tipo = 'sala_reiniciada'", s.id)).toBe(1)
-    // La otra sala no se toca y el enlace del tablero sigue sirviendo.
+    expect(n("SELECT COUNT(*) AS n FROM eventos WHERE sala_id = ? AND tipo = 'token_tablero_regenerado'", s.id)).toBe(1)
+    // La otra sala no se toca.
     expect((await e.app.inject({ url: '/api/yo', headers: { 'x-participante-token': tOtra } })).statusCode).toBe(200)
-    expect((await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).statusCode).toBe(200)
+    // El enlace del tablero del ensayo deja de servir; el nuevo sí.
+    expect(r.sala.token_tablero).not.toBe(s.token_tablero)
+    expect((await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).statusCode).toBe(401)
+    expect((await e.app.inject(`/api/tablero/${s.id}?t=${r.sala.token_tablero}`)).statusCode).toBe(200)
+    expect((await e.app.inject(`/api/tablero/${otra.id}?t=${otra.token_tablero}`)).statusCode).toBe(200)
     // Y la sala vuelve a arrancar desde cero.
     expect((await accion(e, s.id, 'abrir_inscripcion')).statusCode).toBe(200)
     expect((await inscribir(e, s.mesas[0].codigo, 'p0@x.co')).statusCode).toBe(201)

@@ -5,7 +5,7 @@ import { ErrorApi } from '../http.js'
 import { CRITERIOS } from '../../shared/motor/motor.js'
 import { borrarFotos, fijarFotosExactas } from './fotos.js'
 import { contenido, preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
-import { type EstadoSala, type SalaFila, cargarSala, mesasDeSala, registrarEvento, tocar } from './salas.js'
+import { type EstadoSala, type SalaFila, cargarSala, mesasDeSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
 import { DESFASES, PAISES, type ZonaHoraria, ZONA_POR_PAIS, isoEnZona, isoUtc } from './util.js'
 
 export const ACCIONES = [
@@ -20,6 +20,9 @@ export const ACCIONES = [
   'reabrir_sala',
 ] as const
 export type Accion = (typeof ACCIONES)[number]
+
+/** Acción del panel que no cambia el estado de la sala y vale en cualquiera (B-2): el tablero estrena enlace. */
+export const REGENERAR_TOKEN_TABLERO = 'regenerar_token_tablero'
 
 interface Transicion {
   desde: EstadoSala[]
@@ -85,6 +88,7 @@ export interface OpcionesAccion {
 
 /** Aplica una acción del admin (o del programador). 409 TRANSICION_INVALIDA si no aplica. */
 export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: number, por: string, op: OpcionesAccion = {}): SalaFila {
+  if (accion === REGENERAR_TOKEN_TABLERO) return regenerarTokenTablero(db, salaId, ahora, por)
   if (!(ACCIONES as readonly string[]).includes(accion)) {
     throw new ErrorApi(422, 'ACCION_INVALIDA', `La acción "${accion}" no existe.`)
   }

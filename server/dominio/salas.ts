@@ -68,6 +68,20 @@ export function tokenTableroValido(sala: Pick<SalaFila, 'token_tablero'>, t: str
   return timingSafeEqual(a, b)
 }
 
+/**
+ * Token nuevo del tablero (B-2): el enlace anterior deja de servir y `url_tablero` sale con el nuevo. Se guarda en la
+ * única fuente, `token_tablero` (S-12). Vale en cualquier estado de la sala. Evento `token_tablero_regenerado` sin el token.
+ */
+export function regenerarTokenTablero(db: Db, salaId: string, ahora: number, por: string): SalaFila {
+  return transaccion(db, () => {
+    const s = cargarSala(db, salaId)
+    ejecutar(db, "UPDATE salas SET token_tablero = ?, token_tablero_hash = '' WHERE id = ?", tokenAleatorio(), s.id)
+    registrarEvento(db, s.id, ahora, 'token_tablero_regenerado', por)
+    tocar(db, s.id)
+    return cargarSala(db, s.id)
+  })
+}
+
 export function mesasDeSala(db: Db, salaId: string): MesaFila[] {
   return todos<MesaFila>(db, 'SELECT * FROM mesas WHERE sala_id = ? ORDER BY numero', salaId)
 }
