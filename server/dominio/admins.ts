@@ -103,11 +103,15 @@ export function adminDeSesion(db: Db, token: string | undefined, ahora: number):
   return a ?? null
 }
 
-export function cambiarClave(db: Db, a: AdminFila, actual: unknown, nueva: unknown) {
+/** Cambia la clave y cierra las demás sesiones del admin (S-11): solo sigue la del navegador que la cambió. */
+export function cambiarClave(db: Db, a: AdminFila, actual: unknown, nueva: unknown, tokenSesion: string | undefined) {
   if (typeof actual !== 'string' || !verificarClave(actual, a.clave_hash)) throw new ErrorApi(401, 'CREDENCIALES_INVALIDAS', 'La clave actual no es correcta.')
   const n = validarClave(nueva)
   if (n === actual) throw new ErrorApi(422, 'CLAVE_INVALIDA', 'La clave nueva debe ser distinta de la actual.')
-  ejecutar(db, 'UPDATE admins SET clave_hash = ?, debe_cambiar_clave = 0 WHERE id = ?', hashClave(n), a.id)
+  transaccion(db, () => {
+    ejecutar(db, 'UPDATE admins SET clave_hash = ?, debe_cambiar_clave = 0 WHERE id = ?', hashClave(n), a.id)
+    ejecutar(db, 'DELETE FROM sesiones_admin WHERE admin_id = ? AND token_hash != ?', a.id, sha256(tokenSesion ?? ''))
+  })
 }
 
 // --- Gestión de administradores (solo superadmin) ------------------------------------

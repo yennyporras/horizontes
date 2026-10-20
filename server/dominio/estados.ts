@@ -159,20 +159,31 @@ export interface CambiosConfig {
 }
 
 /**
+ * ISO-8601 con fecha, hora y zona, y año de 4 dígitos (S-7, S-8): `2026-10-20T15:00:00-05:00`, `…:00.000Z` o sin segundos.
+ * Sin zona dependería del huso del proceso; en texto libre («October 21, 2026») o con año extendido (`+020266-…`)
+ * Date.parse acepta cosas que luego se comparaban mal.
+ */
+const RE_ISO_CON_ZONA = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/
+
+/**
  * Valida una hora de apertura o cierre programado. Manda la hora del servidor, no la del navegador del admin:
  * una hora que ya pasó se rechaza (si se aceptara, la ronda se cerraría de golpe en la siguiente petición).
  */
 function fechaOpcional(campo: string, v: unknown, ahora: number, zona: ZonaHoraria): string | null {
   if (v === null || v === '') return null
-  if (typeof v !== 'string' || Number.isNaN(Date.parse(v))) {
-    throw new ErrorApi(422, 'CONFIG_INVALIDA', `${campo} debe ser una fecha ISO-8601 con zona o null.`)
+  const ms = typeof v === 'string' && RE_ISO_CON_ZONA.test(v) ? Date.parse(v) : Number.NaN
+  if (Number.isNaN(ms)) {
+    throw new ErrorApi(422, 'CONFIG_INVALIDA', `${campo} debe ser una fecha ISO-8601 con zona (por ejemplo 2026-10-20T15:00:00-05:00) o null.`)
   }
-  if (Date.parse(v) <= ahora) {
+  if (ms <= ahora) {
     const hora = (isoEnZona(ahora, zona) ?? '').slice(11, 19)
     throw new ErrorApi(422, 'HORA_PASADA', `Esa hora ya pasó. En el servidor son las ${hora}; elige una hora posterior.`)
   }
-  return isoUtc(Date.parse(v))
+  return isoUtc(ms)
 }
+
+/** Milisegundos de una hora guardada (NaN si no es una fecha). Se compara en milisegundos, no como texto (S-7). */
+const msDe = (v: string | null) => (v ? Date.parse(v) : Number.NaN)
 
 /**
  * Orden de la programación: cada hora no antes que la anterior del taller y cada apertura antes de su cierre
@@ -282,6 +293,10 @@ export function fijarPreguntaGuiada(db: Db, salaId: string, cuerpo: unknown, aho
     const s = cargarSala(db, salaId)
     const ronda = rondaAbierta(s)
     if (!ronda) throw new ErrorApi(409, 'RONDA_CERRADA', 'No hay una ronda abierta: abre una ronda para guiar las preguntas.')
+    // En automático los celulares no la usan: fijarla dejaría una pregunta fantasma en el tablero (S-10). Quitarla sí se puede.
+    if (proyecto && s.modo_preguntas !== 'guiado') {
+      throw new ErrorApi(409, 'MODO_NO_GUIADO', 'La sala está en modo automático. Cambia a modo guiado para fijar la pregunta.')
+    }
     ejecutar(db, 'UPDATE salas SET pregunta_guiada_proyecto_id = ?, pregunta_guiada_criterio_id = ? WHERE id = ?', proyecto, criterio, s.id)
     registrarEvento(db, s.id, ahora, 'pregunta_guiada', por, { ronda, proyecto_id: proyecto, criterio_id: criterio })
     tocar(db, s.id)
@@ -299,8 +314,10 @@ export function fijarPreguntaGuiada(db: Db, salaId: string, cuerpo: unknown, aho
  * salas quedaron cerradas y cuáles arrancaron (salieron de `preparada`).
  */
 export function aplicarCierresProgramados(db: Db, ahora: number): { aplicados: number; salasCerradas: string[]; salasIniciadas: string[] } {
-  const corte = isoUtc(ahora)
-  const vencidas = todos<{ id: string }>(db, `SELECT id FROM salas WHERE ${PROGRAMACION.map((p) => `(${p.col} IS NOT NULL AND ${p.col} <= ?)`).join(' OR ')}`, ...PROGRAMACION.map(() => corte))
+  const vence = (v: string | null) => msDe(v) <= ahora
+  const vencidas = todos<SalaFila>(db, `SELECT * FROM salas WHERE ${PROGRAMACION.map((p) => `${p.col} IS NOT NULL`).join(' OR ')}`).filter((s) =>
+    PROGRAMACION.some((p) => vence(s[p.col])),
+  )
   let aplicados = 0
   const salasCerradas: string[] = []
   const salasIniciadas: string[] = []
@@ -309,7 +326,7 @@ export function aplicarCierresProgramados(db: Db, ahora: number): { aplicados: n
       // Uno a la vez: cada paso cambia el estado y consume su hora, así el siguiente se evalúa sobre la sala al día.
       for (;;) {
         const s = cargarSala(db, id)
-        const p = PROGRAMACION.filter((x) => s[x.col] && s[x.col]! <= corte).sort((a, b) => s[a.col]!.localeCompare(s[b.col]!))[0]
+        const p = PROGRAMACION.filter((x) => vence(s[x.col])).sort((a, b) => msDe(s[a.col]) - msDe(s[b.col]))[0]
         if (!p) break
         const programado_at = s[p.col]
         if (TRANSICIONES[p.accion].desde.includes(s.estado)) {
