@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, type ReactNode } from 'react'
-import { Aviso, BarraAccion, Boton, EncabezadoHorizonte, Insignia } from '../shared/ui'
+import { Aviso, BarraAccion, Boton, EncabezadoProducto, Insignia, useTemaDocumento } from '../shared/ui'
 import './participante.css'
 
 /** Cifra con coma decimal (es-CO) y siempre 2 decimales, igual que el tablero (triage #11). */
@@ -38,7 +38,9 @@ export interface MarcoProps {
 /** Lo que la página pasa a cada pantalla: encabezado y avisos globales. */
 export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba'>
 
+/** Página del celular: tema claro de Estratek, encabezado de producto y, debajo, la sala y la mesa. */
 export function Marco({ sala, meta, arriba, barra, notaBarra, claveFoco, children }: MarcoProps) {
+  useTemaDocumento('claro')
   const ref = useRef<HTMLElement>(null)
   useEffect(() => {
     if (!claveFoco) return
@@ -50,8 +52,12 @@ export function Marco({ sala, meta, arriba, barra, notaBarra, claveFoco, childre
     document.documentElement.scrollTop = 0
   }, [claveFoco])
   return (
-    <div className="hz hz-pagina" lang="es-CO">
-      <EncabezadoHorizonte sala={sala} meta={meta} />
+    <div className="hz hz-pagina" data-tema="claro" lang="es-CO">
+      <EncabezadoProducto />
+      <div className="hzp-contexto">
+        <p className="hzp-contexto__sala">{sala}</p>
+        {meta && <p className="hzp-contexto__meta">{meta}</p>}
+      </div>
       <main ref={ref} className="hz-contenido">
         {arriba}
         {children}

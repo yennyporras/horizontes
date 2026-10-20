@@ -79,12 +79,23 @@ export function Salas() {
           </label>
           <label className="campo campo--corto">
             <span>Mesas</span>
-            <input type="number" min={1} max={20} required value={mesas} onChange={(e) => setMesas(Number(e.target.value))} />
+            <input
+              type="number"
+              min={1}
+              max={20}
+              required
+              value={mesas}
+              aria-describedby="ayuda-mesas"
+              onChange={(e) => setMesas(Number(e.target.value))}
+            />
           </label>
-          <button className="btn btn--primario" type="submit" disabled={creando} aria-busy={creando}>
+          <button className="hz-boton hz-boton--primario" type="submit" disabled={creando} aria-busy={creando}>
             {creando ? 'Creando…' : 'Crear sala'}
           </button>
         </form>
+        <p id="ayuda-mesas" className="pista">
+          Recomendado: una mesa por cada 6 personas (hay 6 perfiles por mesa).
+        </p>
         {errorCrear && (
           <p className="alerta alerta--error" role="alert">
             {errorCrear}
@@ -118,7 +129,7 @@ export function Salas() {
               <span className={`estado estado--${s.estado}`}>{ESTADOS[s.estado]}</span>
               <span className="acciones-sala">
                 <button
-                  className="btn"
+                  className="hz-boton hz-boton--secundario"
                   type="button"
                   onClick={() => void duplicar(s)}
                   disabled={duplicando !== null}
@@ -127,7 +138,7 @@ export function Salas() {
                 >
                   {duplicando === s.id ? 'Duplicando…' : 'Duplicar para ensayo'}
                 </button>
-                <Link className="btn btn--primario" to={`/admin/salas/${s.id}/vivo`}>
+                <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${s.id}/vivo`}>
                   Abrir
                 </Link>
               </span>

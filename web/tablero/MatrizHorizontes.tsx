@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { matrizSVG } from './matriz/matriz.js'
 import type { DatosTablero, Vista } from './tipos'
+import { viewBoxDe, type Encuadre } from './zoom'
 
 /** Animación R1 → R2: 1,2 s de movimiento y la flecha y las etiquetas aparecen hasta 1,4 s. */
 const DURACION_ANIMACION_MS = 1600
@@ -20,6 +21,8 @@ export interface MatrizHorizontesProps {
   escalaTexto?: number
   /** Anima R1 → R2 cuando la vista cambia a Comparación (por defecto, sí). */
   animarComparacion?: boolean
+  /** Zoom vectorial (tablero): parte visible del lienzo. Sin él, la matriz completa. */
+  encuadre?: Encuadre
   className?: string
 }
 
@@ -27,7 +30,7 @@ export interface MatrizHorizontesProps {
  * Matriz de burbujas embebible (la usa T2 en la vista en vivo del participante).
  * Se redibuja al cambiar de tamaño; si los datos no cambian, el DOM no se toca.
  */
-export function MatrizHorizontes({ datos, vista = 'comparacion', alto, llenar = false, escalaTexto = 1, animarComparacion = true, className }: MatrizHorizontesProps) {
+export function MatrizHorizontes({ datos, vista = 'comparacion', alto, llenar = false, escalaTexto = 1, animarComparacion = true, encuadre, className }: MatrizHorizontesProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [tam, setTam] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
   const idPrefijo = 'hzm' + useId().replace(/[^a-zA-Z0-9]/g, '')
@@ -85,6 +88,14 @@ export function MatrizHorizontes({ datos, vista = 'comparacion', alto, llenar = 
       }),
     [datos, ancho, altoFinal, vista, idPrefijo, escalaTexto, inicioAnimacion],
   )
+
+  // El zoom cambia solo el viewBox del SVG ya dibujado: no reemplaza el nodo ni reinicia la animación.
+  // Se vuelve a aplicar cuando el polling o un cambio de tamaño traen un SVG nuevo.
+  useLayoutEffect(() => {
+    const el = ref.current?.querySelector('svg')
+    if (!el || !encuadre) return
+    el.setAttribute('viewBox', viewBoxDe(encuadre, Number(el.getAttribute('width')), Number(el.getAttribute('height'))))
+  }, [svg, encuadre])
 
   return (
     <div

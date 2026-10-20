@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { consultar } from './api'
+import { ApiError, consultar } from './api'
+import { olvidarSala } from './Marco'
 import type { SalaDetalle } from './tipos'
 
 export const INTERVALO_POLLING_MS = 2500
@@ -20,6 +21,7 @@ export function useSala(salaId: string | undefined) {
         setDatos(r.datos)
       }
     } catch (e) {
+      if (e instanceof ApiError && e.status === 404) olvidarSala(salaId)
       setError(e instanceof Error ? e.message : 'No se pudo cargar la sala.')
     }
   }, [salaId])

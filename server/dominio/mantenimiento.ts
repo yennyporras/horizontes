@@ -78,7 +78,9 @@ export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
     ejecutar(
       db,
       `UPDATE salas SET estado = 'preparada', ronda_actual = 0, alcance_resultados = ?, vista_participante = ?,
-         revelar_hojas = 0, cierre_programado_ronda_at = NULL, cierre_programado_sala_at = NULL WHERE id = ?`,
+         revelar_hojas = 0, cierre_programado_ronda_at = NULL, cierre_programado_sala_at = NULL, apertura_programada_sala_at = NULL,
+         apertura_programada_r1_at = NULL, cierre_programado_r1_at = NULL, apertura_programada_r2_at = NULL, cierre_programado_r2_at = NULL,
+         modo_preguntas = 'automatico', pregunta_guiada_proyecto_id = NULL, pregunta_guiada_criterio_id = NULL WHERE id = ?`,
       CONFIG_POR_DEFECTO.alcance_resultados,
       CONFIG_POR_DEFECTO.vista_participante,
       sala.id,

@@ -119,6 +119,7 @@ Por eso la app corre con **1 réplica** y `TZ=America/Bogota`.
 - Certificado no sale: el DNS aún no apunta al VPS; esperar y redeploy.
 - `EACCES` en `/data`: el volumen se creó como root; `docker exec -u 0 <contenedor> chown -R node:node /data` desde la terminal del VPS.
 - Los cierres programados no se aplican a la hora: revisar `TZ`, que haya 1 sola réplica y el log del intervalo.
+- **Aviso rojo en el panel «Los QR apuntan a …, pero estás en …»** (C19-1, pasó el 19-oct con los QR de producción apuntando a staging): el `BASE_URL` de esa app en Coolify no es el dominio desde el que abriste el panel. Coolify → la app del ambiente (`horizontes-prod` o la de staging) → **Environment Variables** → `BASE_URL` con el dominio de ese ambiente, con `https://` y sin `/` final → **Save** → **Redeploy**. Recarga el panel: el aviso desaparece. Los QR que ya imprimiste con el dominio equivocado hay que volver a imprimirlos desde **Mesas y QR**. Durante el cambio de dominio de §6, abrir el panel por el dominio viejo también muestra el aviso: es lo esperado, entra por el nuevo.
 
 ## 6. Cambio a horizontes.com.co
 

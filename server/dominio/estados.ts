@@ -1,7 +1,9 @@
-// Máquina de estados de la sala (SPEC §3), configuración (§6) y cierres programados (§5).
+// Máquina de estados de la sala (SPEC §3), configuración (§6) y aperturas y cierres programados (§5, cambios del 19-oct).
 // preparada → inscripcion → r1_abierta → r1_cerrada → r2_abierta → r2_cerrada → cerrada
 import { type Db, ejecutar, todos, transaccion } from '../db/index.js'
 import { ErrorApi } from '../http.js'
+import { CRITERIOS } from '../../shared/motor/motor.js'
+import { preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
 import { type EstadoSala, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
 import { DESFASES, PAISES, type ZonaHoraria, ZONA_POR_PAIS, isoEnZona, isoUtc } from './util.js'
 
@@ -39,6 +41,30 @@ const TRANSICIONES: Record<Exclude<Accion, 'reiniciar_ronda'>, Transicion> = {
     hacia: (s) => (s.ronda_actual >= 2 ? 'r2_cerrada' : s.ronda_actual === 1 ? 'r1_cerrada' : 'inscripcion'),
     tipo: 'sala_reabierta',
   },
+}
+
+/**
+ * Aperturas y cierres programables, en el orden en que ocurren en un taller. Cada uno aplica su acción a su hora,
+ * solo si la transición es válida en ese momento. Una transición (manual o programada) consume lo programado para ella.
+ */
+export const PROGRAMACION = [
+  { col: 'apertura_programada_sala_at', accion: 'abrir_inscripcion', etapa: 'sala', apertura: true, nombre: 'la apertura de la sala' },
+  { col: 'apertura_programada_r1_at', accion: 'abrir_ronda_1', etapa: 'r1', apertura: true, nombre: 'la apertura de la ronda 1' },
+  { col: 'cierre_programado_r1_at', accion: 'cerrar_ronda_1', etapa: 'r1', apertura: false, nombre: 'el cierre de la ronda 1' },
+  { col: 'apertura_programada_r2_at', accion: 'abrir_ronda_2', etapa: 'r2', apertura: true, nombre: 'la apertura de la ronda 2' },
+  { col: 'cierre_programado_r2_at', accion: 'cerrar_ronda_2', etapa: 'r2', apertura: false, nombre: 'el cierre de la ronda 2' },
+  { col: 'cierre_programado_sala_at', accion: 'cerrar_sala', etapa: 'sala', apertura: false, nombre: 'el cierre de la sala' },
+] as const
+type ColumnaProgramada = (typeof PROGRAMACION)[number]['col']
+
+/** Lo programado que consume cada acción: la suya y las que salta (abrir la ronda 1 sin inscripción, cerrar la sala). */
+const CONSUME: Partial<Record<Accion, ColumnaProgramada[]>> = {
+  abrir_inscripcion: ['apertura_programada_sala_at'],
+  abrir_ronda_1: ['apertura_programada_sala_at', 'apertura_programada_r1_at'],
+  cerrar_ronda_1: ['cierre_programado_r1_at'],
+  abrir_ronda_2: ['apertura_programada_r2_at'],
+  cerrar_ronda_2: ['cierre_programado_r2_at'],
+  cerrar_sala: PROGRAMACION.map((p) => p.col),
 }
 
 const NOMBRE_ESTADO: Record<EstadoSala, string> = {
@@ -89,9 +115,9 @@ export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: num
     }
     // Al abrir R2 se revelan las 6 hojas (el admin puede apagarlo después).
     if (accion === 'abrir_ronda_2') sets.push('revelar_hojas = 1')
-    // Una ronda cerrada (a mano o programada) consume el cierre programado de ronda.
-    if (hacia.endsWith('_cerrada') || hacia === 'cerrada') sets.push('cierre_programado_ronda_at = NULL')
-    if (hacia === 'cerrada') sets.push('cierre_programado_sala_at = NULL')
+    for (const col of CONSUME[accion as Accion] ?? []) sets.push(`${col} = NULL`)
+    // La pregunta guiada es de la ronda abierta: cualquier cambio de estado la quita.
+    sets.push('pregunta_guiada_proyecto_id = NULL', 'pregunta_guiada_criterio_id = NULL')
     ejecutar(db, `UPDATE salas SET ${sets.join(', ')} WHERE id = ?`, ...params, s.id)
     registrarEvento(db, s.id, ahora, t.tipo, por, { accion, desde: s.estado, hacia, ronda: t.ronda ?? (s.ronda_actual || undefined) })
     tocar(db, s.id)
@@ -107,12 +133,18 @@ export interface CambiosConfig {
   revelar_hojas?: unknown
   cierre_programado_ronda_at?: unknown
   cierre_programado_sala_at?: unknown
+  apertura_programada_sala_at?: unknown
+  apertura_programada_r1_at?: unknown
+  cierre_programado_r1_at?: unknown
+  apertura_programada_r2_at?: unknown
+  cierre_programado_r2_at?: unknown
+  modo_preguntas?: unknown
   pais?: unknown
   zona_horaria?: unknown
 }
 
 /**
- * Valida una hora de cierre programado. Manda la hora del servidor, no la del navegador del admin:
+ * Valida una hora de apertura o cierre programado. Manda la hora del servidor, no la del navegador del admin:
  * una hora que ya pasó se rechaza (si se aceptara, la ronda se cerraría de golpe en la siguiente petición).
  */
 function fechaOpcional(campo: string, v: unknown, ahora: number, zona: ZonaHoraria): string | null {
@@ -126,6 +158,26 @@ function fechaOpcional(campo: string, v: unknown, ahora: number, zona: ZonaHorar
   }
   return isoUtc(Date.parse(v))
 }
+
+/**
+ * Orden de la programación: cada hora no antes que la anterior del taller y cada apertura antes de su cierre
+ * (sala, ronda 1, ronda 2). Solo cuentan las horas definidas. 422 ORDEN_INVALIDO.
+ */
+function validarOrden(prog: Partial<Record<ColumnaProgramada, string | null>>) {
+  const definidas = PROGRAMACION.filter((p) => prog[p.col])
+  for (let i = 0; i < definidas.length; i++) {
+    for (let j = i + 1; j < definidas.length; j++) {
+      const a = definidas[i]
+      const b = definidas[j]
+      const ta = Date.parse(prog[a.col]!)
+      const tb = Date.parse(prog[b.col]!)
+      if (ta > tb || (ta === tb && a.etapa === b.etapa)) {
+        throw new ErrorApi(422, 'ORDEN_INVALIDO', `${mayuscula(a.nombre)} debe ser antes que ${b.nombre}.`)
+      }
+    }
+  }
+}
+const mayuscula = (t: string) => t[0].toUpperCase() + t.slice(1)
 
 export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ahora: number, por: string): SalaFila {
   const sets: string[] = []
@@ -161,12 +213,29 @@ export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ah
     }
     poner('zona_horaria', (zona = cambios.zona_horaria as ZonaHoraria))
   }
-  if (cambios.cierre_programado_ronda_at !== undefined) poner('cierre_programado_ronda_at', fechaOpcional('cierre_programado_ronda_at', cambios.cierre_programado_ronda_at, ahora, zona))
-  if (cambios.cierre_programado_sala_at !== undefined) poner('cierre_programado_sala_at', fechaOpcional('cierre_programado_sala_at', cambios.cierre_programado_sala_at, ahora, zona))
+  if (cambios.modo_preguntas !== undefined) {
+    if (!['automatico', 'guiado'].includes(cambios.modo_preguntas as string)) throw new ErrorApi(422, 'CONFIG_INVALIDA', 'modo_preguntas debe ser "automatico" o "guiado".')
+    poner('modo_preguntas', cambios.modo_preguntas)
+  }
+  // Programación: el alias de ronda escribe en la ronda abierta (o la siguiente); el campo propio de la ronda, si llega, manda.
+  const actual = cargarSala(db, salaId)
+  const programada: Partial<Record<ColumnaProgramada, string | null>> = {}
+  if (cambios.cierre_programado_ronda_at !== undefined) {
+    programada[`cierre_programado_r${rondaDelAlias(actual)}_at` as const] = fechaOpcional('cierre_programado_ronda_at', cambios.cierre_programado_ronda_at, ahora, zona)
+  }
+  for (const { col } of PROGRAMACION) {
+    if (cambios[col] !== undefined) programada[col] = fechaOpcional(col, cambios[col], ahora, zona)
+  }
+  for (const [col, v] of Object.entries(programada)) poner(col, v)
+  if (Object.keys(programada).length) validarOrden({ ...actual, ...programada })
   if (sets.length === 0) throw new ErrorApi(422, 'CONFIG_INVALIDA', 'No llegó ningún cambio de configuración.')
 
   return transaccion(db, () => {
     const s = cargarSala(db, salaId)
+    // Cambiar de modo quita la pregunta guiada: el celular no debe quedar en una pregunta de otro modo.
+    if (cambios.modo_preguntas !== undefined && cambios.modo_preguntas !== s.modo_preguntas) {
+      sets.push('pregunta_guiada_proyecto_id = NULL', 'pregunta_guiada_criterio_id = NULL')
+    }
     ejecutar(db, `UPDATE salas SET ${sets.join(', ')} WHERE id = ?`, ...params, s.id)
     registrarEvento(db, s.id, ahora, 'config', por, detalle)
     tocar(db, s.id)
@@ -174,51 +243,78 @@ export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ah
   })
 }
 
-// --- Cierres programados (§5) -------------------------------------------------
+// --- Pregunta guiada (cambios del 19-oct, S4) ------------------------------------------
 
 /**
- * Aplica los cierres programados vencidos de todas las salas. Se llama antes de cada
- * petición (chequeo perezoso) y cada 15 s. Devuelve cuántos cierres aplicó y qué salas quedaron cerradas.
+ * Fija la pregunta que ven los celulares y el tablero en modo guiado (`null` la quita). Solo con una ronda abierta.
+ * El voto se sigue guardando completo: el celular acumula las respuestas y envía al completar el proyecto.
  */
-export function aplicarCierresProgramados(db: Db, ahora: number): { aplicados: number; salasCerradas: string[] } {
+export function fijarPreguntaGuiada(db: Db, salaId: string, cuerpo: unknown, ahora: number, por: string) {
+  let proyecto: string | null = null
+  let criterio: string | null = null
+  if (cuerpo !== null) {
+    const c = (typeof cuerpo === 'object' && !Array.isArray(cuerpo) ? cuerpo : {}) as { proyecto_id?: unknown; criterio_id?: unknown }
+    if (typeof c.proyecto_id !== 'string' || !vivos(db, salaId).some((p) => p.id === c.proyecto_id)) {
+      throw new ErrorApi(422, 'PROYECTO_INVALIDO', 'La pregunta guiada debe ser de INSUMEX o NUTRIWHAT.')
+    }
+    if (typeof c.criterio_id !== 'string' || !(CRITERIOS as readonly string[]).includes(c.criterio_id)) {
+      throw new ErrorApi(422, 'CRITERIO_NO_EXISTE', 'Ese criterio no existe.')
+    }
+    proyecto = c.proyecto_id
+    criterio = c.criterio_id
+  }
+  return transaccion(db, () => {
+    const s = cargarSala(db, salaId)
+    const ronda = rondaAbierta(s)
+    if (!ronda) throw new ErrorApi(409, 'RONDA_CERRADA', 'No hay una ronda abierta: abre una ronda para guiar las preguntas.')
+    ejecutar(db, 'UPDATE salas SET pregunta_guiada_proyecto_id = ?, pregunta_guiada_criterio_id = ? WHERE id = ?', proyecto, criterio, s.id)
+    registrarEvento(db, s.id, ahora, 'pregunta_guiada', por, { ronda, proyecto_id: proyecto, criterio_id: criterio })
+    tocar(db, s.id)
+    const n = cargarSala(db, s.id)
+    return { pregunta_guiada: preguntaGuiada(n), version: `v-${n.version}` }
+  })
+}
+
+// --- Aperturas y cierres programados (§5, cambios del 19-oct) -----------------------------
+
+/**
+ * Aplica las aperturas y los cierres programados vencidos de todas las salas, en orden de hora (y del taller si
+ * coinciden). Se llama antes de cada petición (chequeo perezoso) y cada 15 s. Cada uno se aplica solo si su
+ * transición es válida en ese momento; si no, se descarta y queda en la bitácora. Devuelve cuántos aplicó, qué
+ * salas quedaron cerradas y cuáles arrancaron (salieron de `preparada`).
+ */
+export function aplicarCierresProgramados(db: Db, ahora: number): { aplicados: number; salasCerradas: string[]; salasIniciadas: string[] } {
   const corte = isoUtc(ahora)
-  const vencidas = todos<SalaFila>(
-    db,
-    `SELECT * FROM salas
-      WHERE (cierre_programado_ronda_at IS NOT NULL AND cierre_programado_ronda_at <= ?)
-         OR (cierre_programado_sala_at IS NOT NULL AND cierre_programado_sala_at <= ?)`,
-    corte,
-    corte,
-  )
+  const vencidas = todos<{ id: string }>(db, `SELECT id FROM salas WHERE ${PROGRAMACION.map((p) => `(${p.col} IS NOT NULL AND ${p.col} <= ?)`).join(' OR ')}`, ...PROGRAMACION.map(() => corte))
   let aplicados = 0
   const salasCerradas: string[] = []
-  for (const v of vencidas) {
+  const salasIniciadas: string[] = []
+  for (const { id } of vencidas) {
     transaccion(db, () => {
-      const s = cargarSala(db, v.id)
-      if (s.cierre_programado_ronda_at && s.cierre_programado_ronda_at <= corte) {
-        const accion = s.estado === 'r1_abierta' ? 'cerrar_ronda_1' : s.estado === 'r2_abierta' ? 'cerrar_ronda_2' : null
-        if (accion) {
-          aplicarAccion(db, s.id, accion, ahora, 'programado')
-          registrarEvento(db, s.id, ahora, 'cierre_programado', 'programado', { accion, programado_at: s.cierre_programado_ronda_at })
+      // Uno a la vez: cada paso cambia el estado y consume su hora, así el siguiente se evalúa sobre la sala al día.
+      for (;;) {
+        const s = cargarSala(db, id)
+        const p = PROGRAMACION.filter((x) => s[x.col] && s[x.col]! <= corte).sort((a, b) => s[a.col]!.localeCompare(s[b.col]!))[0]
+        if (!p) break
+        const programado_at = s[p.col]
+        if (TRANSICIONES[p.accion].desde.includes(s.estado)) {
+          aplicarAccion(db, s.id, p.accion, ahora, 'programado') // consume su hora (CONSUME)
+          registrarEvento(db, s.id, ahora, p.apertura ? 'apertura_programada' : 'cierre_programado', 'programado', { accion: p.accion, programado_at })
           aplicados++
+          if (p.accion === 'cerrar_sala') salasCerradas.push(s.id)
+          if (p.apertura && s.estado === 'preparada') salasIniciadas.push(s.id)
         } else {
-          // Venció sin ronda abierta: se descarta para que no cierre la próxima ronda de golpe.
-          ejecutar(db, 'UPDATE salas SET cierre_programado_ronda_at = NULL WHERE id = ?', s.id)
-          registrarEvento(db, s.id, ahora, 'cierre_programado_descartado', 'programado', { programado_at: s.cierre_programado_ronda_at, estado: s.estado })
+          // No aplica en el estado actual: se descarta para que no se aplique de golpe más adelante.
+          ejecutar(db, `UPDATE salas SET ${p.col} = NULL WHERE id = ?`, s.id)
+          registrarEvento(db, s.id, ahora, p.apertura ? 'apertura_programada_descartada' : 'cierre_programado_descartado', 'programado', {
+            accion: p.accion,
+            programado_at,
+            estado: s.estado,
+          })
           tocar(db, s.id)
         }
       }
-      const s2 = cargarSala(db, v.id)
-      if (s2.cierre_programado_sala_at && s2.cierre_programado_sala_at <= corte && s2.estado !== 'cerrada') {
-        aplicarAccion(db, s2.id, 'cerrar_sala', ahora, 'programado')
-        salasCerradas.push(s2.id)
-        registrarEvento(db, s2.id, ahora, 'cierre_programado', 'programado', { accion: 'cerrar_sala', programado_at: s2.cierre_programado_sala_at })
-        aplicados++
-      } else if (s2.cierre_programado_sala_at && s2.cierre_programado_sala_at <= corte) {
-        ejecutar(db, 'UPDATE salas SET cierre_programado_sala_at = NULL WHERE id = ?', s2.id)
-        tocar(db, s2.id)
-      }
     })
   }
-  return { aplicados, salasCerradas }
+  return { aplicados, salasCerradas, salasIniciadas }
 }

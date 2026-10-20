@@ -8,7 +8,7 @@ import { Cargando, Marco, Mensaje, type MarcoBase } from './Comun'
 import { Inscripcion } from './pantallas/Inscripcion'
 import { Lectura } from './pantallas/Lectura'
 import { ResultadoAlcance, textoAlcance } from './pantallas/Resultado'
-import { Calificar, ElegirProyecto, proyectosVivos, votoDe } from './pantallas/Votacion'
+import { Calificar, ElegirProyecto, PreguntaGuiada, proyectosVivos, votoDe } from './pantallas/Votacion'
 import { bienvenidaPendiente, guardarBorrador, olvidarDatos, guardarToken, guardarVista, leerBorrador, leerToken, leerVista, marcarBienvenida, olvidarSesion } from './sesion'
 import { usarYo } from './usarYo'
 
@@ -323,6 +323,8 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
   const precierreSala = alcance === 'sala' && Boolean(yo.resultados?.progreso?.precierre)
   const precierre = abierta && (yo.progreso_mesa.precierre || precierreSala)
   const donde = textoAlcance(yo.resultados, alcance)
+  // C19-5: en guiado cada quien ve la pregunta que elige el facilitador; sin dato, automático.
+  const guiado = yo.config.modo_preguntas === 'guiado'
 
   const arriba: ReactNode[] = []
   if (sinConexion)
@@ -389,34 +391,24 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
     )
   }
 
-  // 8.8 Calificar
-  if (vista.startsWith('calificar:') && abierta) {
-    const pid = vista.slice('calificar:'.length)
-    return (
-      <Calificar
-        key={`${pid}-${ronda}`}
-        yo={yo}
-        codigo={codigo}
-        token={token}
-        proyectoId={pid}
-        marco={marco}
-        onVolver={() => ir('elegir')}
-        onGuardado={(r: RespuestaVoto, nombre) => {
-          setCola(quitarDeCola(codigo, r.voto))
-          aplicar((y) => conVoto(y, r))
-          setAvisoOk(`Calificación de ${nombre} guardada.`)
-          ir('inicio')
-          void refrescar()
-        }}
-        esperarCola={esperarCola}
-        onSinSenal={(voto) => {
-          setCola(encolar(codigo, { ...voto, id: nuevoId(), participante_id: yo.participante.id }))
-          ir('inicio')
-          setAvisoOk(null)
-        }}
-        onSesionVencida={() => void refrescar()}
-      />
-    )
+  // Guardado en línea (los dos modos): sale de la cola, se refleja en local y se confirma con el servidor.
+  const alGuardar = (r: RespuestaVoto, nombre: string) => {
+    setCola(quitarDeCola(codigo, r.voto))
+    aplicar((y) => conVoto(y, r))
+    setAvisoOk(`Calificación de ${nombre} guardada.`)
+    void refrescar()
+  }
+  const paraVotar = {
+    yo,
+    codigo,
+    token,
+    marco,
+    esperarCola,
+    onSesionVencida: () => void refrescar(),
+    onSinSenal: (voto: Omit<VotoEnCola, 'id' | 'participante_id'>) => {
+      setCola(encolar(codigo, { ...voto, id: nuevoId(), participante_id: yo.participante.id }))
+      setAvisoOk(null)
+    },
   }
 
   const botonLeer = (
@@ -424,6 +416,48 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
       Leer el caso y {yo.config.revelar_hojas ? 'las hojas' : 'tu hoja'}
     </Boton>
   )
+  const resultadoPreliminar = yo.resultados ? (
+    <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} misVotos={yo.mis_votos} preliminar />
+  ) : null
+  const seccionPreliminar = precierre && resultadoPreliminar && (
+    <section className="hzp-seccion" aria-labelledby="hzp-pre">
+      <h2 id="hzp-pre" className="hz-subtitulo">
+        Resultado preliminar de {donde}
+      </h2>
+      {resultadoPreliminar}
+    </section>
+  )
+
+  // P1 modo guiado: la pregunta del facilitador reemplaza la lista de proyectos mientras la ronda está abierta.
+  if (abierta && guiado && vista !== 'lectura') {
+    return (
+      <PreguntaGuiada {...paraVotar} onGuardado={alGuardar}>
+        {botonLeer}
+        {seccionPreliminar}
+      </PreguntaGuiada>
+    )
+  }
+
+  // 8.8 Calificar (modo automático)
+  if (vista.startsWith('calificar:') && abierta) {
+    const pid = vista.slice('calificar:'.length)
+    return (
+      <Calificar
+        key={`${pid}-${ronda}`}
+        {...paraVotar}
+        proyectoId={pid}
+        onVolver={() => ir('elegir')}
+        onGuardado={(r, nombre) => {
+          alGuardar(r, nombre)
+          ir('inicio')
+        }}
+        onSinSenal={(voto) => {
+          paraVotar.onSinSenal(voto)
+          ir('inicio')
+        }}
+      />
+    )
+  }
 
   // 8.5 Lectura (también es la pantalla de espera 8.6 antes de la ronda 1)
   const esperaRonda1 = estado === 'preparada' || estado === 'inscripcion'
@@ -436,8 +470,8 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
     let nota: ReactNode = undefined
     if (abierta) {
       barra = (
-        <Boton bloque onClick={() => ir(completo ? 'inicio' : 'elegir')}>
-          {completo ? 'Ver mi votación' : 'Calificar proyectos'}
+        <Boton bloque onClick={() => ir(completo || guiado ? 'inicio' : 'elegir')}>
+          {guiado ? 'Ir a la pregunta' : completo ? 'Ver mi votación' : 'Calificar proyectos'}
         </Boton>
       )
     } else if (enLectura) {
@@ -472,7 +506,7 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
       <Marco {...marco} claveFoco="cerrada">
         <h1 className="hz-titulo">El taller terminó</h1>
         <p className="hz-texto-2">Gracias por participar. Este es el resultado final de {donde}.</p>
-        {yo.resultados ? <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} preliminar={false} /> : null}
+        {yo.resultados ? <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} misVotos={yo.mis_votos} preliminar={false} /> : null}
         {botonLeer}
       </Marco>
     )
@@ -491,16 +525,13 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
         {ronda === 1 && (
           <Aviso tono="info">La ronda 2 aún no está abierta. Cuando el facilitador la abra, compartan sus hojas y discutan en la mesa antes de calificar.</Aviso>
         )}
-        {yo.resultados && <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} preliminar={false} />}
+        {yo.resultados && <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} misVotos={yo.mis_votos} preliminar={false} />}
         {botonLeer}
       </Marco>
     )
   }
 
   // Ronda abierta. 8.7 Elegir proyecto (pendiente o editando)
-  const resultadoPreliminar = yo.resultados ? (
-    <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} preliminar />
-  ) : null
 
   if (!completo || vista === 'elegir') {
     return (
@@ -512,14 +543,7 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
           </Boton>
         )}
         {botonLeer}
-        {precierre && resultadoPreliminar && (
-          <section className="hzp-seccion" aria-labelledby="hzp-pre">
-            <h2 id="hzp-pre" className="hz-subtitulo">
-              Resultado preliminar de {donde}
-            </h2>
-            {resultadoPreliminar}
-          </section>
-        )}
+        {seccionPreliminar}
       </Marco>
     )
   }
@@ -561,14 +585,7 @@ function Participante({ codigo, token, yaInscrito, onSalir }: { codigo: string; 
           Volver al caso
         </Boton>
       </div>
-      {precierre && resultadoPreliminar && (
-        <section className="hzp-seccion" aria-labelledby="hzp-pre">
-          <h2 id="hzp-pre" className="hz-subtitulo">
-            Resultado preliminar de {donde}
-          </h2>
-          {resultadoPreliminar}
-        </section>
-      )}
+      {seccionPreliminar}
     </Marco>
   )
 }

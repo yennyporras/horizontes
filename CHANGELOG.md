@@ -2,6 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versiones con [SemVer](https://semver.org/lang/es/).
 
+## [1.1.0] · 2026-10-19
+
+Cambios pedidos por Paola tras la prueba en staging y acordados en la preentrega del 19-oct con Sebastian y Nicolai.
+
+### Agregado
+- Una pregunta por pantalla en el celular, con dos modos por sala: automático (pasa sola al responder) y guiado (el facilitador elige y avanza la pregunta desde el panel; el tablero la muestra en grande).
+- «Tu calificación» junto a cada promedio en el celular. Las respuestas de cada persona solo las ve el admin en la sección nueva «Respuestas».
+- Apertura y cierre programados para la sala, la ronda 1 y la ronda 2, con títulos y descripciones claros.
+- Tablero: la matriz sola por defecto (clic o tecla M para ver u ocultar los datos), zoom vectorial (botones, rueda, pellizco y teclas) y una explicación breve de los ejes, sin pesos.
+- Panel: aviso si `BASE_URL` no coincide con el dominio desde el que se abre (QR con el dominio equivocado), ayuda de una mesa por cada 6 personas y nota para imprimir el QR de cada mesa.
+
+### Cambiado
+- Línea gráfica de la familia Estratek (`docs/marca/FAMILIA_ESTRATEK.md`) con la paleta exacta de estratek.com.co: carbón #141414, hielo #DCECFF, azul #3487FF, verde agua #00CDA1, violeta #442AAF y el degradado de marca. Landing y proyector en carbón; celular y panel en claro con barra carbón. Encabezado «Horizontes por Estratek »», logo oficial y contraste AA medido en los dos temas.
+- Se quita la fila «Total» de todas las vistas (Sebastian, preentrega). La API conserva el campo por compatibilidad.
+
+### Corregido
+- Un admin que nunca había abierto una sala llegaba a una pantalla vacía en cada sección del panel; ahora puede elegir la sala desde ahí.
+
 ## [1.0.0] · 2026-10-19
 
 Primera versión para producción.
@@ -22,4 +40,5 @@ Primera versión para producción.
 ### Cambiado
 - Decisiones del acta del 16-oct: la tabla de resultados muestra los 6 criterios y «Total» (sin Time to Market, Eje X, Eje Y ni Votos); las salas nuevas muestran por defecto el consolidado de toda la sala tras votar.
 
+[1.1.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.1.0
 [1.0.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.0.0

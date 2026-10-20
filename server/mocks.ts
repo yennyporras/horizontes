@@ -105,6 +105,26 @@ export async function rutasMocks(app: FastifyInstance) {
       ),
     }
   })
+  // Respuestas por persona: los votos del mock de /api/yo a nombre del participante del mock de la sala.
+  app.get('/api/admin/salas/:id/respuestas', async () => {
+    const a = admin()
+    const p = a.participantes[0]
+    const mesa = a.mesas.find((m: { id: string }) => m.id === p.mesa_id)
+    return {
+      respuestas: (leer('GET_api_yo').mis_votos as object[]).map((v) => ({
+        participante_id: p.id,
+        nombre: p.nombre,
+        correo: p.correo,
+        mesa_id: p.mesa_id,
+        mesa: mesa?.nombre ?? '',
+        perfil_id: p.perfil_id,
+        activo: p.activo,
+        ...v,
+      })),
+    }
+  })
+  // Modo guiado: el mock acepta cualquier pregunta (o null) y no la guarda.
+  app.put('/api/admin/salas/:id/pregunta-guiada', async (req) => ({ pregunta_guiada: req.body ?? null, version: admin().version }))
   app.post('/api/admin/salas/:id/mesas', async () => ({ mesas: admin().mesas }))
   app.patch('/api/admin/participantes/:id', async (req) => ({ ...admin().participantes[0], ...(req.body as object) }))
   app.get('/api/admin/admins', async () => ({ admins: [admin().admin_actual] }))

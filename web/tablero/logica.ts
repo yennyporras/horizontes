@@ -1,5 +1,6 @@
 // Lógica de presentación del tablero. Solo lee lo que entrega el servidor: nunca recalcula el motor.
-import type { DatosTablero, EstadoSala, ProyectoVivo, RondaVivo, Vista } from './tipos'
+import type { CriterioTablero, DatosTablero, EstadoSala, ProyectoVivo, RondaVivo, Vista } from './tipos'
+import type { Rubrica } from '../shared/api/contrato'
 
 export const INTERVALO_POLLING_MS = 2500
 
@@ -213,4 +214,32 @@ export async function pedirTablero(
     return { tipo: 'error', status: res.status, codigo: 'RESPUESTA_INVALIDA', mensaje: 'El servidor respondió algo que no es el tablero. Reintentamos solos cada pocos segundos.' }
   }
   return { tipo: 'nuevo', datos, etag: res.headers.get('ETag') ?? (datos.version != null ? `"${datos.version}"` : null) }
+}
+
+/** Pregunta que el facilitador proyecta en modo guiado (C19-5, T3), o null si no aplica. */
+export interface VistaPregunta {
+  proyecto: string
+  numero: number
+  total: number
+  nombre: string
+  pregunta: string | null
+  rubrica: Rubrica[]
+}
+
+export function preguntaGuiadaActual(datos: DatosTablero | null | undefined): VistaPregunta | null {
+  if (!datos || !rondaAbierta(datos.sala?.estado)) return null
+  const pg = datos.sala.pregunta_guiada
+  if (datos.config?.modo_preguntas !== 'guiado' || !pg) return null
+  const criterios: CriterioTablero[] = datos.criterios ?? []
+  const i = criterios.findIndex((c) => c.id === pg.criterio_id)
+  if (i < 0) return null
+  const c = criterios[i]
+  return {
+    proyecto: datos.proyectos_vivos.find((p) => p.id === pg.proyecto_id)?.nombre ?? pg.proyecto_id,
+    numero: i + 1,
+    total: criterios.length,
+    nombre: c.nombre,
+    pregunta: c.pregunta ?? null,
+    rubrica: c.rubrica ?? [],
+  }
 }

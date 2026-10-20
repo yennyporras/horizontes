@@ -16,14 +16,16 @@
     "id": "s_demo",
     "nombre": "Taller Horizontes demo",
     "estado": "r1_abierta",
-    "ronda_actual": 1
+    "ronda_actual": 1,
+    "pregunta_guiada": null
   },
   "config": {
     "vista_participante": "registrado",
     "alcance_resultados": "mesa",
     "revelar_hojas": false,
     "pais": "CO",
-    "zona_horaria": "America/Bogota"
+    "zona_horaria": "America/Bogota",
+    "modo_preguntas": "automatico"
   },
   "contenido": {
     "caso": {

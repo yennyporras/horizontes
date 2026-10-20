@@ -1,124 +1,168 @@
-# Sistema de diseño · Horizontes (participante)
+# Sistema de diseño · Horizontes
 
-Dueña: T2. Fuente de los tokens en código: `web/shared/ui/tokens.css`. Si este documento y el CSS no coinciden, manda el CSS y se corrige este documento en la misma ronda.
-Muestra viva: `/m/_ui` (todos los componentes base en 360 px).
+**La ley de diseño es `docs/marca/FAMILIA_ESTRATEK.md`** (línea gráfica de la familia Estratek, aprobada por Paola el 19-oct). Este documento la aplica a Horizontes: qué token usa cada pieza, cuánto contraste da y cómo se ven los componentes. Si algo choca con FAMILIA_ESTRATEK, manda FAMILIA_ESTRATEK.
+Valores en código: `web/shared/ui/tokens.css`. Si este documento y el CSS no coinciden, manda el CSS y se corrige este documento en la misma ronda. Fuera de `tokens.css` no hay colores en duro.
+Muestra viva: `/m/_ui` (todos los componentes base en 360 px, con una muestra del tema carbón).
 
 ## 1. Idea de diseño
 
-**Sujeto.** Un taller presencial: 30 a 40 personas en mesas, con el celular en la mano, leyendo un caso y calificando dos proyectos mientras discuten. El celular es una herramienta de trabajo de mesa, no una app de consumo. La pantalla se mira de reojo, se suelta y se vuelve a tomar.
+**Sujeto.** Un taller presencial: 30 a 40 personas en mesas, con el celular en la mano, leyendo un caso y calificando dos proyectos mientras discuten. El celular es una herramienta de trabajo de mesa. El tablero se proyecta y se lee a 6 m.
 
-**Lo memorable: el horizonte.** La matriz del tablero dibuja los horizontes como cuartos de círculo (radio 4,5 y 9). En el celular usamos esa misma geometría como única firma visual:
-- Cada opción de la rúbrica lleva un **arco de horizonte**: un cuarto de círculo cuyo radio crece con el valor (1 = arco pequeño pegado a la esquina, 9 = arco amplio). Quien califica ve, sin leer el número, que 9 es "más lejos del core, más incierto" y 1 "más cerca". Es la misma lectura que tendrá la matriz.
-- El encabezado de la pantalla lleva los tres arcos H1, H2, H3 en azules claros, recortados en la esquina superior derecha. Nada más decora.
+**Familia Estratek.** Horizontes es una herramienta respaldada: nombre, glifo «H» y acento propios (verde agua `#00CDA1`), y la firma «por Estratek »». Todo lo demás es común a la familia: paleta núcleo, Montserrat, retícula de 8 px, radios, componentes, foco y el azul Estratek como único color de acción.
 
-**Todo lo demás, sobrio.** Fondo blanco, texto azul tinta, un solo color de acción. Sin degradados decorativos, sin sombras grises repetidas, sin etiquetas en mayúsculas sostenidas, sin flechas pegadas a los botones.
+**Lo memorable: el horizonte.** La matriz dibuja los horizontes como cuartos de círculo. Cada opción de la rúbrica lleva un **arco de horizonte** cuyo radio crece con el valor (1 pegado a la esquina, 9 amplio); el elegido se llena con el color de acción. El encabezado del celular lleva los tres arcos H1, H2, H3 en las superficies del tema. En la landing, H1, H2 y H3 y las viñetas van en el acento de Horizontes.
 
-**Revisión contra los clichés.** Primer borrador: tarjetas redondeadas iguales con sombra suave para todo (el kit SaaS). Lo cambiamos: la rúbrica es una lista con separadores, no un mosaico de tarjetas; solo la opción elegida gana fondo y borde. La única "tarjeta" con elevación es la hoja de proyecto activa. Los radios cambian según jerarquía (ver §5).
+**Sobrio.** El degradado de marca solo como línea (bajo el encabezado de producto, sobre el pie), borde, barra de progreso o gráfico grande; nunca detrás de texto. Sin sombras fuertes ni brillos. Un `h1` y un primario por vista.
 
 ## 2. Color
 
-| Token | Hex | Rol | Contraste |
-|---|---|---|---|
-| `--hz-azul` | `#1C4587` | Azul Estratek. Acción primaria, títulos, foco | 9,3:1 sobre blanco |
-| `--hz-azul-medio` | `#3F7CC8` | Borde de selección, barras, arcos activos | 4,3:1 sobre blanco (no para texto pequeño) |
-| `--hz-cielo` | `#00A3FF` | Acento de rúbrica: anillo exterior del foco, arco de la opción elegida | 2,7:1, solo decorativo y siempre junto a un indicador AA |
-| `--hz-tinta` | `#0F2340` | Texto principal | 15,7:1 |
-| `--hz-tinta-2` | `#3A4D6B` | Texto secundario | 8,6:1 |
-| `--hz-tinta-3` | `#5B6B84` | Metadatos, ayudas | 5,4:1 |
-| `--hz-fondo` | `#FFFFFF` | Fondo de página | |
-| `--hz-h1` | `#EEF4FB` | Horizonte 1. Fondo de superficie suave, pestañas inactivas | |
-| `--hz-h2` | `#DCE8F6` | Horizonte 2. Fondo de la opción elegida, pista de la barra | |
-| `--hz-h3` | `#C5D8EF` | Horizonte 3. Bordes y separadores | |
-| `--hz-ok` | `#1D6B4F` / fondo `#E6F4EE` | Voto guardado, completo | 5,7:1 sobre su fondo |
-| `--hz-alerta` | `#7A4B00` / fondo `#FFF4DC` | Sin señal, precierre, ronda por cerrar | 6,8:1 sobre su fondo |
-| `--hz-error` | `#A3261B` / fondo `#FDECEA` | Errores de campo y de envío | 6,4:1 sobre su fondo |
+### 2.1 Temas por contexto
 
-Reglas: el color nunca es el único portador de significado (siempre texto o icono). El azul medio y el cielo no se usan para texto de menos de 18,66 px negrita.
+| Contexto | Tema | Cómo |
+|---|---|---|
+| Celular del participante, panel | **Claro** | Por defecto (`:root`) |
+| Landing (`/`) y tablero (`/tablero/:sala`) | **Carbón** | `data-tema="carbon"` en el elemento raíz de la vista y `useTemaDocumento('carbon')` (lo pone en `<html>` mientras la vista está montada: fondo del rebote y `theme-color`) |
+| Barra superior del panel | Carbón dentro del claro | `data-tema="carbon"` en la barra |
+
+Mismos nombres de token en los dos temas; solo cambian los valores. Una variable propia de un área que use `var(--hz-…)` se resuelve donde se declara: si un área define alias (`--a-*`, `--t-*`), deben declararse en el elemento con `data-tema` o dentro de él.
+
+### 2.2 Tokens y contraste medido
+
+Contraste WCAG 2.2 medido el 19-oct; la prueba `web/shared/ui/__tests__/contraste.test.ts` lo verifica en los dos temas. f = fondo, s1, s2 y s3 = superficies.
+
+| Token | Claro | Carbón | Rol | Contraste claro · carbón |
+|---|---|---|---|---|
+| `--hz-fondo` (= `--hz-lienzo`) | `#FFFFFF` | `#141414` | Fondo de página | |
+| `--hz-superficie-1` | `#F3F8FF` | `#1B1D22` | Tarjetas, barra inferior, secciones alternas | |
+| `--hz-superficie-2` (= `--hz-h1`) | `#E8F1FF` | `#23262D` | Bloques suaves, pestañas | |
+| `--hz-superficie-3` (= `--hz-h2`) | `#DCECFF` | `#2C3038` | Hover, pista de barras, deshabilitado, insignia neutra | |
+| `--hz-borde` (= `-suave`, `--hz-superficie-4`, `--hz-h3`) | `#C9D9F2` | `#343944` | Bordes de tarjeta y separadores | |
+| `--hz-borde-control` (= `--hz-borde-fuerte`) | `#5A6680` | `#8A9BB8` | Borde de campos, casillas y botón secundario | f 5,76 · 6,55; s2 5,06 · 5,38 (≥ 3) |
+| `--hz-tinta` | `#141414` | `#DCECFF` | Texto y títulos | f 18,42 · 15,34; s3 15,34 · 11,02 |
+| `--hz-tinta-2` | `#44506A` | `#A8B6CF` | Texto de apoyo | f 8,07 · 9,00; s3 6,72 · 6,46 |
+| `--hz-tinta-3` | `#5A6680` | `#8A9BB8` | Metadatos, ayudas, deshabilitado | f 5,76 · 6,55; s3 4,79 · 4,70 |
+| `--hz-accion` (= `--hz-azul`, `--hz-acento`, `--hz-cielo`) | `#1A66D6` | `#3487FF` | Acción, enlaces, selección, cifra elegida | f 5,36 · 5,31; s1 5,03 · 4,86 |
+| `--hz-sobre-accion` (= `--hz-sobre-acento`) | `#FFFFFF` | `#141414` | Texto sobre un relleno de acción | 5,36 · 5,31 |
+| `--hz-foco-color` | `#1A66D6` | `#3487FF` | Contorno de foco | f 5,36 · 5,31 (≥ 3) |
+| `--hz-acento-producto` | `#00CDA1` | `#00CDA1` | Glifo, línea, gráficos propios; **nunca texto sobre claro** | |
+| `--hz-acento-producto-texto` | `#007A60` | `#00CDA1` | Acento como texto | f 5,31 · 8,99 |
+| `--hz-ok` / `--hz-ok-fondo` | `#007A60` / `#DDF6EF` | `#00CDA1` / `#10332B` | Éxito | 4,68 · 6,70 |
+| `--hz-alerta` / `--hz-alerta-fondo` | `#8A5A00` / `#FFF3D6` | `#FFBB44` / `#2B2418` | Alerta | 5,37 · 9,09 |
+| `--hz-error` / `--hz-error-fondo` | `#BF0029` / `#FDE7EB` | `#FF6B7F` / `#3A1620` | Error y destructivo | 5,48 · 5,82 |
+| `--hz-info-fondo` | `#E8F1FF` | `#16233A` | Fondo del aviso info (texto en acción) | 4,71 · 4,53 |
+| `--hz-acento-tinte` | acción al 10 % | acción al 10 % | Opción elegida (cifra en acción encima) | 4,67 · 4,77 |
+| `--hz-deshabilitado-texto` / `-fondo` | tinta 3 / s3 | tinta 3 / s3 | Deshabilitado plano | 4,79 · 4,70 |
+| `--hz-azul-medio` | `#3487FF` | `#3487FF` | Trazos de arcos y curvas; **no para texto sobre claro** | f 3,47 · 5,31 (gráfico ≥ 3) |
+| `--hz-grad-marca` (= `--et-grad`) | violeta `#442AAF` 0 %, azul `#3487FF` 30 %, verde agua `#00CDA1` 100 % | igual | Líneas, bordes, progreso | nunca detrás de texto |
+
+Reglas que salen de la medición:
+- Texto en acción solo sobre fondo, superficie 1, tinte de selección o `--hz-info-fondo`. En carbón la acción da 4,37 sobre la superficie 2 y 3,82 sobre la 3: ahí el texto va en tinta.
+- Sobre un relleno de acción, el texto va en `--hz-sobre-accion`: en carbón es carbón, **nunca blanco** (3,47).
+- El verde agua nunca es texto sobre claro (2,05); el violeta nunca es texto sobre carbón (1,93).
+- El color nunca es el único portador de significado: siempre texto, ícono o forma.
+
+### 2.3 Rondas
+
+| Token | Claro | Carbón | Contraste claro · carbón |
+|---|---|---|---|
+| `--hz-r1` (verde, hueco) | `#1B7F3A` | `#3FB25A` | f 5,07 · 6,78; s1 4,75 · 6,20; s3 4,22 · 4,87 (forma ≥ 3) |
+| `--hz-r2` (rojo, sólido) | `#C62828` | `#F36363` | f 5,62 · 5,94; s1 5,27 · 5,44; s3 4,68 · 4,27 (forma ≥ 3) |
+| `--hz-sobre-r1` / `--hz-sobre-r2` | `#FFFFFF` | `#141414` | 5,07 / 5,62 · 6,78 / 5,94 |
+
+R1 y R2 son de ronda, no de estado. Siempre con el texto «R1»/«R2» y con forma: R1 hueco (borde y texto verdes), R2 sólido (relleno rojo y `--hz-sobre-r2`). Como texto, sobre fondo o superficie 1.
+
+### 2.4 Primitivos
+
+`--et-carbon` `#141414`, `--et-hielo` `#DCECFF`, `--et-hielo-2` `#BEDAFF`, `--et-azul` `#3487FF`, `--et-azul-profundo` `#1A66D6`, `--et-verde-agua` `#00CDA1`, `--et-violeta` `#442AAF`, `--et-rojo` `#BF0029`, `--et-blanco` `#FFFFFF`, `--et-grad`. Las pantallas usan los semánticos `--hz-*`; los `--et-*` son para tokens y casos de marca (el glifo lleva `--et-carbon` sobre el acento en los dos temas). La tabla de cambios de valor frente al tema anterior está en `docs/DECISIONES.md` (2026-10-19, Marca).
 
 ## 3. Tipografía
 
-- Familia única: **Montserrat** (variable, autoalojada con `@fontsource-variable/montserrat`, la misma del IRMI). Respaldo: `system-ui, -apple-system, 'Segoe UI', sans-serif`.
-- Escala base 16 px, razón 1,25 (tercera mayor), redondeada a píxeles enteros:
+- Familia única: **Montserrat** variable, autoalojada con `@fontsource-variable/montserrat`. Respaldo con métricas ajustadas (`Montserrat Respaldo`), luego `"Segoe UI"`, `system-ui`, `sans-serif`.
+- Pesos: 400 (`--hz-fw-regular`) y 500 (`--hz-fw-texto`, base de `.hz`) en cuerpo, 700 en etiquetas y botones (`--hz-fw-etiqueta`), 800 en títulos (`--hz-fw-titulo`), 900 en display, titulares de la landing y cifras (`--hz-fw-display`, `--hz-fw-cifra`). Tipo oración, sin mayúsculas sostenidas (salvo INSUMEX y NUTRIWHAT, que así vienen de la semilla).
 
-| Token | Tamaño | Peso | Uso |
-|---|---|---|---|
-| `--hz-fs-12` | 12 px | 600 | Solo insignias de una o dos palabras |
-| `--hz-fs-14` | 14 px | 500 | Ayudas, metadatos, texto de la rúbrica secundario |
-| `--hz-fs-16` | 16 px | 400 | Cuerpo, campos (16 px evita el zoom automático de iOS) |
-| `--hz-fs-18` | 18 px | 600 | Pregunta del criterio |
-| `--hz-fs-20` | 20 px | 700 | Títulos de sección |
-| `--hz-fs-25` | 25 px | 800 | Título de pantalla |
-| `--hz-fs-32` | 32 px | 800 | Número de la rúbrica elegida, cifras grandes |
+| Token | Tamaño | Uso |
+|---|---|---|
+| `--hz-fs-12` | 12 px | Insignias, firma «por Estratek» |
+| `--hz-fs-14` | 14 px | Ayudas, metadatos, etiquetas de campo, paneles densos |
+| `--hz-fs-16` | 16 px | Cuerpo y campos (evita el zoom automático de iOS) |
+| `--hz-fs-20` · `--hz-fs-24` · `--hz-fs-32` · `--hz-fs-40` · `--hz-fs-56` | 20 a 56 px | Subtítulos, títulos, cifras |
+| `--hz-fs-72` · `--hz-fs-96` | 72 · 96 px | Solo proyección |
+| `--hz-fs-h1` / `--hz-fs-h2` | 24 a 32 / 20 a 24 px | Título de pantalla y de sección |
+| `--hz-fs-display` / `--hz-fs-display-2` | 40 a 56 / 32 a 40 px | Landing (900, interlineado 1,05) |
+| `--hz-fs-proj-*` | 16 a 44 px | Tablero en proyección |
+| `--hz-fs-18` · `--hz-fs-25` · `--hz-fs-30` · `--hz-fs-36` | | Se conservan para las áreas que ya los usan |
 
-- Interlineado: 1,5 en cuerpo, 1,2 en títulos. Medida de lectura del caso: máximo 66 caracteres (`--hz-medida: 34rem`).
-- Mayúsculas sostenidas solo en los nombres propios de los proyectos (INSUMEX, NUTRIWHAT), que así vienen de la semilla. Nada de etiquetas en mayúsculas.
-- Cifras con `font-variant-numeric: tabular-nums` en progreso y promedios.
+- Interlineado 1,5 en cuerpo y 1,2 en títulos. Medida del caso: `--hz-medida` (34rem).
+- Cifras con `font-variant-numeric: tabular-nums` y coma decimal.
+- **Firma:** la **»** del logo en azul (acción) junto a «por Estratek», en enlaces de avance («Ver cómo funciona »») y en el nombre del pie. Es decorativa: `aria-hidden`.
 
 ## 4. Espaciado y retícula
 
-- Escala de 4 px: `--hz-sp-1` 4 · `--hz-sp-2` 8 · `--hz-sp-3` 12 · `--hz-sp-4` 16 · `--hz-sp-5` 20 · `--hz-sp-6` 24 · `--hz-sp-8` 32 · `--hz-sp-10` 40 · `--hz-sp-12` 48.
-- Móvil primero: diseño para 360 px de ancho, margen lateral 16 px, contenido a una columna. Desde 600 px el contenido se centra con ancho máximo 34rem; el participante nunca ve dos columnas.
-- Zona del pulgar: la acción principal de cada pantalla vive en una barra inferior fija (`.hz-barra-accion`) con 16 px de margen y respeto a `env(safe-area-inset-bottom)`.
-- Objetivos táctiles de 48 px mínimo de alto; 8 px mínimo entre objetivos.
+- Retícula de 8 px con medio paso de 4: `--hz-sp-1` 4 · `-2` 8 · `-3` 12 · `-4` 16 · `-6` 24 · `-8` 32 · `-10` 40 · `-12` 48 · `-16` 64 · `-20` 80. `--hz-sp-5` (20) y `--hz-sp-24` (96) se conservan.
+- Móvil primero: 360 px, margen lateral 16 px, una columna. La acción principal del celular vive en la barra inferior fija (`.hz-barra-accion`).
+- Áreas táctiles de 48 px (`--hz-tactil`); 8 px mínimo entre objetivos.
 
 ## 5. Radios, bordes y elevación
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--hz-r-s` | 6 px | Campos, insignias |
-| `--hz-r-m` | 10 px | Botones, opciones de rúbrica, avisos |
-| `--hz-r-l` | 16 px | Hoja de proyecto, hojas inferiores |
-| `--hz-r-pill` | 999 px | Barra de progreso, pestañas |
+| `--hz-r-boton` (= `--hz-r-pill`) | 999 px | Botones, pestañas, insignias, progreso |
+| `--hz-r-campo` (= `--hz-r-s`, `--hz-r-m`) | 12 px | Campos, opciones de rúbrica, avisos, glifo |
+| `--hz-r-tarjeta` (= `--hz-r-l`) | 16 px | Tarjetas y hojas |
 
-Bordes de 1 px en `--hz-h3`; 2 px en `--hz-azul-medio` para lo seleccionado. Una sola sombra (`--hz-sombra`: `0 1px 2px rgba(15,35,64,.08), 0 8px 24px rgba(15,35,64,.08)`) y solo para la barra inferior fija y la hoja activa.
+Jerarquía por superficie y borde de 1 px. Sombra (`--hz-sombra`) solo en lo que flota: la barra inferior fija, menús y diálogos.
 
 ## 6. Foco, movimiento y accesibilidad
 
-- Foco visible en todo lo interactivo con `:focus-visible`: contorno de 3 px `--hz-azul` con separación de 2 px y anillo exterior de 2 px `--hz-cielo` (`box-shadow`). Funciona sobre blanco y sobre `--hz-h2`.
-- Movimiento solo como respuesta: la opción elegida rellena su arco (160 ms) y el aviso de guardado entra desde abajo (200 ms). Con `prefers-reduced-motion: reduce` no hay transiciones.
-- Formularios: cada campo con `<label>` visible, error asociado con `aria-describedby` y `aria-invalid`. Los errores no dependen del color.
-- Rúbrica: `role="radiogroup"` con `aria-labelledby` a la pregunta; cada opción es un `input type="radio"` nativo, navegable con flechas.
-- Pestañas: patrón ARIA `tablist` / `tab` / `tabpanel`, flechas izquierda y derecha, `Inicio` y `Fin`.
-- Avisos: `role="status"` para información y éxito; `role="alert"` para error y sin señal.
-- Idioma `lang="es-CO"`, separador decimal coma en todas las cifras.
+- Foco visible con `:focus-visible`: contorno de 2 px en `--hz-foco-color`, separado 2 px; 3 px en la opción de la rúbrica; en alto contraste de Windows, `CanvasText`. `--hz-foco` queda como anillo en `box-shadow` para quien lo necesite.
+- Movimiento de 150 ms en interacción y 250 ms en transiciones, con `--hz-curva`. Con `prefers-reduced-motion: reduce` no hay transiciones.
+- Formularios: `<label>` visible, error con ícono y texto asociado con `aria-describedby` y `aria-invalid`.
+- Rúbrica: `radiogroup` con radios nativos. Pestañas: patrón ARIA `tablist`. Avisos: `status` para info y ok, `alert` para alerta y error.
+- `lang="es-CO"`, coma decimal.
 
 ## 7. Componentes base (`web/shared/ui/`)
 
-Todos son componentes React sin dependencias externas, con clases `hz-*` y tokens `--hz-*`. Ningún componente calcula resultados.
+React sin dependencias externas, clases `hz-*` y tokens `--hz-*`. Ningún componente calcula resultados.
+
+### EncabezadoProducto
+- Glifo «H» (40 px, radio 12, carbón sobre el acento de Horizontes), nombre en 900, firma «por Estratek »» con la » en azul y la línea del degradado de 4 px debajo. `href` opcional (la marca se vuelve enlace) y `children` a la derecha (navegación, sala, acciones). Props `nombre` y `glifo` para las demás herramientas de la familia.
 
 ### Boton
-- Variantes: `primario` (fondo azul, texto blanco), `secundario` (borde azul, texto azul, fondo blanco), `fantasma` (solo texto azul subrayado al pasar).
-- Tamaño único de 48 px de alto; `bloque` ocupa el ancho completo (por defecto en la barra inferior).
-- Estados: normal, foco, presionado (fondo `#163869`), deshabilitado (fondo `--hz-h2`, texto `--hz-tinta-3`, `aria-disabled`), cargando (`aria-busy`, texto cambia a la forma en curso: "Guardando…").
-- El texto dice exactamente lo que pasa: "Guardar calificación", nunca "Enviar".
+- `primario`: sólido en `--hz-accion` con texto `--hz-sobre-accion`, uno por vista; al pasar, `--hz-azul-presionado`.
+- `secundario`: contorno `--hz-borde-control` y texto tinta; al pasar, borde de acción y tinte suave.
+- `fantasma`: texto en acción, subrayado al pasar. Dentro de un aviso, en tinta y subrayado.
+- `destructivo`: relleno `--hz-error` con texto `--hz-fondo` (6,47 · 6,72). Solo para borrar o retirar.
+- Píldora de 48 px de alto, texto 16/700. Deshabilitado plano (`--hz-deshabilitado-*`, `aria-disabled`, sin opacidad); cargando con `aria-busy` y el texto en curso («Guardando…»).
 
 ### Campo
-- Etiqueta arriba (14 px, 600), entrada de 48 px y 16 px de texto, ayuda debajo (14 px), error debajo con icono "!" y texto `--hz-error`.
-- Tipos usados: texto (nombre), correo (`inputmode="email"`, `autocomplete="email"`).
+- Etiqueta encima (14/700, tinta), entrada de 48 px sobre el fondo con borde `--hz-borde-control` de 1,5 px y radio 12, ayuda debajo (14, tinta 3), error con ícono «!» y texto `--hz-error`.
 
-### Casilla (consentimiento)
-- Casilla de 24 px con área táctil de 48 px; el texto de autorización completo a su lado, con el enlace a la política. Sin aceptar, el botón "Inscribirme" queda deshabilitado y se explica por qué.
+### Casilla
+- 24 px con área táctil de 44 px; marcada, relleno de acción con la palomita en `--hz-sobre-accion`.
 
-### Rubrica (tarjeta de rúbrica seleccionable 9-7-5-3-1)
-- Encabezado: nombre del criterio (14 px, `--hz-tinta-2`) y pregunta (18 px, 600).
-- Cinco opciones en orden 9, 7, 5, 3, 1, cada una en una fila: arco de horizonte a la izquierda (40 × 40 px, radio proporcional al valor), número grande, texto completo de la rúbrica. El texto nunca se trunca.
-- Elegida: fondo `--hz-h2`, borde 2 px `--hz-azul-medio`, arco relleno en `--hz-cielo` con trazo `--hz-azul`, marca "Elegida" para lectores de pantalla.
-- Sin elegir en un intento de guardar: borde de la pregunta en `--hz-error` y mensaje "Elige una opción para este criterio".
+### Rubrica
+- Lista de cinco opciones 9 a 1 con separadores, arco de horizonte, número en 900 y texto completo. Elegida: `--hz-acento-tinte`, borde de acción de 1,5 px con barra lateral de 4 px, número en acción, texto en 700, arco relleno de acción.
 
 ### Pestanas
-- Dos o tres pestañas en píldora sobre `--hz-h1`; la activa en blanco con texto azul y 700. En la R2, "Hojas" sustituye a "Tu hoja".
+- Píldoras sobre superficie 1 con borde; la activa sobre el fondo con contorno de acción y texto 800.
 
 ### BarraProgreso
-- Pista `--hz-h2`, relleno `--hz-azul-medio`, 8 px de alto, con texto visible "5 de 7 completaron" y `role="progressbar"` con `aria-valuenow`, `aria-valuemax` y `aria-valuetext`.
+- Pista superficie 3 de 8 px, relleno con el degradado de marca, texto visible y `role="progressbar"`.
 
 ### Aviso
-- Tonos: `info`, `ok`, `alerta`, `error`. Icono simple, título opcional en 600, texto. Opcional una acción (botón fantasma), por ejemplo "Reintentar".
+- `info`, `ok`, `alerta`, `error`: fondo del estado, borde de 1 px y filo izquierdo de 4 px del color del estado, ícono (símbolo en el color del fondo sobre el color del estado), título opcional en 700 y texto en tinta.
 
 ### Insignia
-- Píldora pequeña de 12 px, 600, para estados cortos: "Preliminar", "Guardado", "Pendiente", "Ronda 2".
+- Píldora de 12/700: `neutra`, `ok` (✓), `alerta` (!), `error` (!), con fondo, texto y símbolo del estado (el símbolo no se lee en voz alta). R1 hueca y R2 sólida (§2.3).
+
+### Hoja
+- Tarjeta en superficie 1 con borde y radio 16; la activa lleva un filo de acción de 3 px arriba.
 
 ### EncabezadoHorizonte
-- Barra superior con el nombre de la sala, la mesa y el perfil, más los tres arcos H1, H2, H3 decorativos (`aria-hidden`).
+- Nombre de la sala, mesa y perfil, con los tres arcos H1, H2, H3 en las superficies del tema (`aria-hidden`).
+
+### Landing (`web/inicio/`)
+- Tema carbón. EncabezadoProducto con la navegación; titulares en 900 con la palabra clave en azul («La mesa mueve el **portafolio**»); un primario en el hero («Entrar a mi mesa») y el avance «Ver cómo funciona »» como enlace. Secciones que alternan fondo y superficie 1 con borde. La matriz ilustrada lleva H1, H2 y H3 en el acento de Horizontes, curvas en `--hz-azul-medio`, fijos en tinta 3 y R1/R2 del tema. Pie con la línea del degradado, «Horizontes »» en grande y el logo oficial blanco de Estratek (`web/shared/ui/marca/estratek-logo-blanco.png`, texto alternativo «Estratek»). En 360 px el encabezado lleva solo la marca; «Ingresar al panel» sigue en «Para facilitadores» y en el pie.
 
 ## 8. Flujo de pantallas del participante
 
