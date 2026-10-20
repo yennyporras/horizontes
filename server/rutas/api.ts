@@ -34,9 +34,9 @@ import {
 import { autenticarParticipante, hojasDeSala, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
 import { type CambioRubrica, borrarRubricaPlantilla, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
-import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala, tokenTableroValido } from '../dominio/salas.js'
+import { type MesaFila, agregarMesas, buscarSala, cargarSala, crearSalaDesdePlantilla, duplicarSala, tokenTableroValido } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
-import { isoEnZona } from '../dominio/util.js'
+import { isoEnZona, tokenAleatorio } from '../dominio/util.js'
 import { uno } from '../db/index.js'
 
 export interface OpcionesApi {
@@ -52,6 +52,9 @@ export interface OpcionesApi {
 }
 
 const COOKIE = 'hz_admin'
+
+/** Contra qué comparar el `?t=` cuando la sala no existe: la respuesta y el trabajo son los mismos que con una sala real. */
+const SALA_FICTICIA = { token_tablero: tokenAleatorio() }
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -136,13 +139,17 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   // --- Tablero --------------------------------------------------------------------------
 
   app.get<{ Params: { salaId: string }; Querystring: { alcance?: string; mesa?: string; t?: string } }>('/api/tablero/:salaId', async (req, reply) => {
-    const sala = cargarSala(db, req.params.salaId)
     const sesion = adminDeSesion(db, req.cookies[COOKIE], ahora())
     const esAdmin = Boolean(sesion && !sesion.debe_cambiar_clave)
+    // Sin sesión admin ni token válido responde siempre el mismo 401, exista o no la sala: el 404 permitía saber qué
+    // salas existen (M-1b). La comparación corre igual con una sala inexistente, para no delatarla por el tiempo.
+    const existente = buscarSala(db, req.params.salaId)
     // `?t=a&t=b` llega como arreglo: no es un token (antes terminaba en 500, S-9).
-    if (!esAdmin && !(typeof req.query.t === 'string' && tokenTableroValido(sala, req.query.t))) {
+    const tokenOk = typeof req.query.t === 'string' && tokenTableroValido(existente ?? SALA_FICTICIA, req.query.t) && Boolean(existente)
+    if (!esAdmin && !tokenOk) {
       throw new ErrorApi(401, 'TOKEN_TABLERO_INVALIDO', 'El enlace del tablero no es válido. Pide el enlace actualizado al facilitador.')
     }
+    const sala = existente ?? cargarSala(db, req.params.salaId)
     let alcance: { tipo: 'sala' } | { tipo: 'mesa'; mesa: MesaFila } = { tipo: 'sala' }
     if (req.query.alcance === 'mesa' || (req.query.mesa && req.query.alcance !== 'sala')) {
       const clave = String(req.query.mesa ?? '')
