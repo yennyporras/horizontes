@@ -71,11 +71,29 @@ export interface CuerpoInscripcion {
   correo: string
   consentimiento: { aceptado: true; version: string }
 }
-/** 201, o 409 CORREO_YA_INSCRITO (trae además `error`). */
+/**
+ * 201 de `POST /api/inscripcion`. Desde el 20-oct (D1) un correo ya inscrito en la sala responde 409 `CORREO_YA_INSCRITO`
+ * solo con `error` (sin token, nombre ni datos): la sesión la devuelve el facilitador con «Dar acceso de nuevo».
+ */
 export interface RespuestaInscripcion {
   token: string
   participante: ParticipantePublico
+  /** Obsoleto desde el 20-oct: el 409 ya no trae token ni participante. Se conserva para no romper a quien lo lea. */
   error?: ErrorCuerpo['error']
+}
+
+/** `POST /api/acceso`: canjea el enlace personal (`/m/{codigoMesa}?acceso=…`) que genera el facilitador. */
+export interface CuerpoAcceso {
+  acceso: string
+}
+/**
+ * 200 de `POST /api/acceso`: la misma forma que la inscripción exitosa. El token nuevo cierra las demás sesiones del participante.
+ * Errores: 404 `ACCESO_INVALIDO` · 410 `ACCESO_VENCIDO` (venció a los 15 min o ya se usó) · 409 `SALA_CERRADA` ·
+ * 403 `PARTICIPANTE_INACTIVO` · 422 `DATOS_INVALIDOS` (sin `acceso`) · 429 `DEMASIADAS_PETICIONES`.
+ */
+export interface RespuestaAcceso {
+  token: string
+  participante: ParticipantePublico
 }
 
 export interface Rubrica {
@@ -117,7 +135,7 @@ export interface Yo {
   pendientes: string[]
   completo_ronda: boolean
   progreso_mesa: ProgresoMesa
-  resultados: Tablero | null
+  resultados: ResultadosParticipante | null
 }
 
 /** Hoja de información de un perfil para un proyecto vivo. */
@@ -168,6 +186,7 @@ export interface Tablero {
   sala: { id: string; nombre: string; estado: EstadoSala; ronda_actual: 0 | 1 | 2; pregunta_guiada?: PreguntaGuiada | null }
   alcance: { tipo: 'sala' | 'mesa'; mesa_id: string | null; mesa_nombre: string | null }
   config: Config
+  /** `por_mesa` solo en el tablero (con token o sesión de admin); las vistas del participante usan `ResultadosParticipante`. */
   progreso: { inscritos: number; completos: number; precierre: boolean; por_mesa: (ProgresoMesa & { mesa_id: string; nombre: string })[] }
   ejes: Record<'x' | 'y', { titulo: string; subtitulo: string; min: number; max: number }>
   grafico: { titulo: string; horizontes: { id: string; radio: number | null }[]; etiquetas_horizonte?: Record<string, [number, number]>; nota_horizontes?: string; tam_a_radio?: string }
@@ -178,6 +197,19 @@ export interface Tablero {
   preliminar: boolean
   /** Votos mínimos por proyecto y ronda para mostrar resultados de un alcance (hoy 3). */
   minimo_votos?: number
+  /**
+   * Consolidado en vivo (20-oct, D2): con la ronda abierta, el agregado de cada alcance, ronda y proyecto es una foto que se
+   * renueva solo cuando llegan al menos estos votos nuevos o cambiados desde la última (hoy 3). Con la ronda cerrada, exacto.
+   */
+  votos_por_actualizacion?: number
+}
+
+/**
+ * `GET /api/resultados` y `GET /api/yo` → `resultados`: la forma del tablero recortada al alcance del participante.
+ * Desde el 20-oct (D2) no trae `progreso.por_mesa` (cuántos hay inscritos en cada mesa no es del participante).
+ */
+export type ResultadosParticipante = Omit<Tablero, 'progreso'> & {
+  progreso: Omit<Tablero['progreso'], 'por_mesa'> & { por_mesa?: Tablero['progreso']['por_mesa'] }
 }
 
 // --- Admin -----------------------------------------------------------------------
@@ -234,6 +266,22 @@ export interface ParticipanteAdmin {
   /** IP de la inscripción. Solo en el panel admin y el export interno. */
   ip?: string | null
   pais?: string
+}
+/** `POST /api/admin/participantes/{id}/acceso` («Dar acceso de nuevo»): enlace personal de un solo uso que vence a los 15 min. */
+export interface AccesoParticipante {
+  /** `{BASE_URL}/m/{codigoMesa}?acceso={token}`. Mostrarlo como QR y como enlace para copiar; no se puede volver a consultar. */
+  url: string
+  /** Hora de vencimiento, ISO con el desfase de la sala. */
+  vence_at: string
+}
+/** `DELETE /api/admin/rubricas-plantilla/{criterio_id}`: las salas nuevas vuelven a la rúbrica de la semilla en ese criterio. */
+export interface RubricaPlantillaBorrada {
+  plantilla: string
+  criterio_id: CriterioId
+  /** false si no había una rúbrica guardada para las salas nuevas (la llamada es idempotente). */
+  borrada: boolean
+  /** La rúbrica que usarán desde ahora las salas nuevas (la de la semilla). */
+  rubrica: Rubrica[]
 }
 export interface Evento {
   at: string

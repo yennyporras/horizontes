@@ -465,5 +465,6 @@
     }
   ],
   "preliminar": false,
-  "minimo_votos": 3
+  "minimo_votos": 3,
+  "votos_por_actualizacion": 3
 }
