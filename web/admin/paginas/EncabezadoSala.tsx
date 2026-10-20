@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { SalaDetalle } from '../tipos'
 import type { ErrorSala } from '../useSala'
 import { ESTADOS } from '../textos'
+import { CabeceraPagina } from '../../shared/ui'
 
 /** QA-A-24: cada sección tiene su título en la pestaña del navegador («Participantes · Taller X · Horizontes»). */
 export function useTituloPagina(...partes: (string | null | undefined)[]) {
@@ -18,7 +19,7 @@ export function ConSala({ titulo, datos, error, children }: { titulo: string; da
   if (!datos) {
     return (
       <>
-        <h1 tabIndex={-1}>{titulo}</h1>
+        <CabeceraPagina enfocable titulo={titulo} />
         {error ? (
           <>
             <p className="alerta alerta--error" role="alert">
@@ -36,15 +37,19 @@ export function ConSala({ titulo, datos, error, children }: { titulo: string; da
   }
   return (
     <>
-      <div className="encabezado-sala">
-        <h1 tabIndex={-1}>{titulo}</h1>
-        <p className="encabezado-sala__meta">
-          <strong>{datos.sala.nombre}</strong>
-          {datos.sala.tipo === 'ensayo' && <span className="etiqueta etiqueta--ensayo">Ensayo</span>}
-          <span className="sin-corte">Código {datos.sala.codigo}</span>
-          <span className={`estado estado--${datos.sala.estado}`}>{ESTADOS[datos.sala.estado]}</span>
-        </p>
-      </div>
+      <CabeceraPagina
+        className="encabezado-sala"
+        enfocable
+        titulo={titulo}
+        contexto={
+          <p className="encabezado-sala__meta">
+            <strong>{datos.sala.nombre}</strong>
+            {datos.sala.tipo === 'ensayo' && <span className="etiqueta etiqueta--ensayo">Ensayo</span>}
+            <span className="sin-corte">Código {datos.sala.codigo}</span>
+            <span className={`estado estado--${datos.sala.estado}`}>{ESTADOS[datos.sala.estado]}</span>
+          </p>
+        }
+      />
       {/* F-5: solo un problema de red o del servidor es «conexión»; lo demás se dice tal cual. */}
       {error && (
         <p className={`alerta ${error.conexion ? 'alerta--aviso' : 'alerta--error'}`} role="status">

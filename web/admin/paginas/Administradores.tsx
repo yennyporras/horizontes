@@ -5,6 +5,7 @@ import type { AdminFila } from '../tipos'
 import { useTituloPagina } from './EncabezadoSala'
 import { LARGO_MINIMO_CLAVE } from '../textos'
 import { usuarioAdminValido } from '../../../shared/reglas/usuario'
+import { CabeceraPagina } from '../../shared/ui'
 
 /**
  * QA-A-21: la regla del usuario, visible y en español (antes vivía en un `title` que no se ve en el celular). Paula (QA
@@ -118,8 +119,11 @@ export function Administradores() {
   return (
     <>
       {dialogo}
-      <h1 tabIndex={-1}>Administradores</h1>
-      <p className="pista">Solo tú, como superadmin, ves esta sección. Las cuentas nuevas son de rol admin: manejan salas pero no crean otros administradores.</p>
+      <CabeceraPagina
+        enfocable
+        titulo="Administradores"
+        contexto="Solo tú, como superadmin, ves esta sección. Las cuentas nuevas son de rol admin: manejan salas pero no crean otros administradores."
+      />
       {aviso && (
         <div className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
           {aviso.texto}

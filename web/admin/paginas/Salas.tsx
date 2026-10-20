@@ -6,6 +6,7 @@ import { ESTADOS, LARGO_MAXIMO_EMPRESA, SECTORES, TIPOS_SALA, enumerar, fechaHor
 import { useTituloPagina } from './EncabezadoSala'
 import { useSesion } from '../sesion'
 import type { EstadoSalaEliminada } from './Configuracion'
+import { CabeceraPagina } from '../../shared/ui'
 
 const personas = (n: number) => (n === 1 ? '1 persona' : `${n} personas`)
 
@@ -85,7 +86,7 @@ export function Salas() {
 
   return (
     <>
-      <h1 tabIndex={-1}>Salas</h1>
+      <CabeceraPagina enfocable titulo="Salas" />
       {claveCambiada && (
         <p className="alerta alerta--exito" role="status">
           Tu clave quedó cambiada.

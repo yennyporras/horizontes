@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useSesion } from '../sesion'
 import { ApiError, usaMocks } from '../api'
-import { EncabezadoProducto } from '../../shared/ui'
-import { PiePanel } from '../Marco'
+import { CabeceraPagina, EncabezadoProducto, PiePagina } from '../../shared/ui'
 import { useTituloPagina } from './EncabezadoSala'
 import { faltan } from '../textos'
 
@@ -59,12 +58,11 @@ export function Login() {
 
   return (
     <div className="login">
-      <div data-tema="carbon">
-        <EncabezadoProducto href="/" />
-      </div>
+      <EncabezadoProducto href="/" />
+      {/* Misma composición que el resto del panel: cabecera de página en el borde del contenido y el formulario debajo. */}
       <main className="login__cuerpo hz-pagina">
+        <CabeceraPagina id="titulo-login" titulo="Panel del facilitador" contexto="Entra con el usuario y la clave que te dio Estratek." />
         <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-login">
-          <h1 id="titulo-login">Panel del facilitador</h1>
           {vencida && (
             <p className="alerta alerta--info" role="status">
               Tu sesión terminó. Vuelve a entrar para seguir donde ibas.
@@ -99,7 +97,7 @@ export function Login() {
           {usaMocks() && <p className="pista">Modo simulado: los datos no se guardan.</p>}
         </form>
       </main>
-      <PiePanel />
+      <PiePagina />
     </div>
   )
 }

@@ -27,7 +27,11 @@
   color: var(--hz-tinta);
   text-wrap: balance;
 }
-.hz-admin h1 { font-size: var(--hz-fs-h1); font-weight: var(--hz-fw-titulo); }
+.hz-admin h1 { font-size: var(--hz-fs-h1); font-weight: var(--hz-fw-h1); letter-spacing: var(--hz-ls-display); line-height: 1.15; }
+/* Cabecera de página común (CabeceraPagina): el aire lo da su rejilla, no el margen del título. */
+.hz-admin .hz-cabecera-pagina { margin-bottom: var(--hz-sp-bloque); }
+.hz-admin .hz-cabecera-pagina h1 { margin: 0; }
+.hz-admin .hz-cabecera-pagina__contexto { max-width: 70ch; }
 .hz-admin h2 { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-titulo); }
 .hz-admin h3 { font-size: var(--hz-fs-16); font-weight: var(--hz-fw-etiqueta); }
 .hz-admin p { margin: 0 0 var(--hz-sp-3); }
@@ -61,84 +65,25 @@
   color: var(--hz-accion);
 }
 
-/* ── Barra superior carbón: EncabezadoProducto con la navegación y la cuenta ──
-   El contenedor lleva data-tema="carbon"; la línea del degradado la pone .hz-producto. En celular van la marca y
-   la cuenta arriba y el menú debajo. Igual en todos los anchos: la página no pasa de 1280 px y el menú con la cuenta
-   no caben en una sola fila (antes, desde 1440 px, la cuenta saltaba a una segunda fila bajo el menú). */
-.hz-admin .cabecera .hz-producto__fila { flex-wrap: wrap; gap: var(--hz-sp-2) var(--hz-sp-6); }
-.hz-admin .cabecera .hz-producto__extra { display: contents; }
-.hz-admin .cabecera .hz-producto__marca { order: 1; }
-/* Arriba a la derecha: la guía y el cambio de clave, y después quién eres y Salir */
-.hz-admin .cuenta-extra { order: 2; margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--hz-sp-2); }
-.hz-admin .usuario {
-  order: 3;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0 var(--hz-sp-2);
-  font-size: var(--hz-fs-14);
-  color: var(--hz-tinta-2);
-}
+/* ── Barra común (EncabezadoProducto) con la cuenta a la derecha y la franja de pestañas debajo ──
+   Desde 1024 px: la guía, la clave, quién eres y Salir en la barra; las secciones como pestañas en la segunda franja,
+   de 56 px en todas las secciones. Bajo 1024 px las dos van en «Menú · sección actual» (QA-A-23). */
+.hz-admin .hz-producto__menu .cuenta { display: flex; align-items: center; gap: var(--hz-sp-1); }
+.hz-admin .usuario { display: inline-flex; align-items: center; gap: var(--hz-sp-2); padding-inline: var(--hz-sp-2); font-size: var(--hz-fs-14); color: var(--hz-tinta-2); white-space: nowrap; }
 .hz-admin .usuario__nombre { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
-/* Menú en el orden del taller: preparar, conducir, después y sistema. Una línea fina separa los grupos, sin rótulos. */
-.hz-admin .nav {
-  order: 4;
-  flex-basis: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--hz-sp-1) var(--hz-sp-6);
-  min-width: 0;
-}
-.hz-admin .nav__grupo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-1); }
-/* Con el menú en una sola fila (desde 1200 px) la línea marca el grupo; si el menú se parte en dos filas, solo el aire,
-   para que ninguna fila empiece con una línea suelta. */
-@media (min-width: 1200px) {
-  .hz-admin .nav { column-gap: var(--hz-sp-2); }
-  .hz-admin .nav__grupo + .nav__grupo { padding-left: var(--hz-sp-2); border-left: 1px solid var(--hz-borde-control); }
-}
-.hz-admin .nav__item {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 var(--hz-sp-3);
-  border-radius: var(--hz-r-pill);
-  font-size: var(--hz-fs-14);
-  font-weight: var(--hz-fw-etiqueta);
-  color: var(--hz-tinta-2);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background-color var(--hz-t-rapido), color var(--hz-t-rapido);
-}
-.hz-admin .nav__item:hover { color: var(--hz-tinta); background: var(--hz-superficie-2); }
-/* Sección actual: superficie, tinta y subrayado en el color de acción (no depende solo del color) */
-.hz-admin .nav__item--activo {
-  color: var(--hz-tinta);
-  background: var(--hz-superficie-3);
-  box-shadow: inset 0 -3px 0 var(--hz-accion);
-}
-/* En celular la marca y la cuenta caben en una fila: el nombre se omite, quedan el rol y Salir. La guía y el cambio de
-   clave van dentro del menú plegable (ver el bloque de 640 px). */
-@media (max-width: 480px) {
-  .hz-admin .cabecera .hz-producto__fila { column-gap: var(--hz-sp-2); }
-  .hz-admin .usuario__nombre { display: none; }
-  .hz-admin .usuario { column-gap: var(--hz-sp-1); }
-  .hz-admin .usuario .hz-boton { padding-inline: var(--hz-sp-2); }
-}
+.hz-admin .hz-producto__desplegable .usuario { min-height: var(--hz-tactil); padding-inline: var(--hz-sp-3); }
+/* Pestañas en el orden del taller: preparar, conducir, después y sistema. Una línea fina separa los grupos, sin rótulos. */
+.hz-admin .hz-franja-pagina .nav__grupo { display: flex; align-items: stretch; }
+.hz-admin .hz-franja-pagina .nav__grupo + .nav__grupo { margin-left: var(--hz-sp-2); padding-left: var(--hz-sp-2); border-left: 1px solid var(--hz-borde); }
+.hz-admin .hz-producto__desplegable .nav__grupo + .nav__grupo { padding-top: var(--hz-sp-1); border-top: 1px solid var(--hz-borde); }
 
 /* Ancho de página común de la familia Estratek (20-oct): .hz-pagina (--hz-ancho-pagina, 1280 px) en la fila de la barra,
    el contenido y el pie, así los tres comparten bordes. Aquí solo el aire vertical. */
-.hz-admin .marco { min-height: 100vh; display: flex; flex-direction: column; }
-.hz-admin .contenido { flex: 1; padding-block: var(--hz-sp-6) var(--hz-sp-12); }
-.hz-admin .pie { padding-block: 0 var(--hz-sp-6); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
-.hz-admin .pie p { margin: 0; padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-borde); }
-.hz-admin .pie__flecha { color: var(--hz-accion); font-weight: var(--hz-fw-display); }
+.hz-admin .marco { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.hz-admin .contenido { flex: 1; padding-block: var(--hz-sp-bloque) var(--hz-sp-12); }
 .hz-admin .contenido > * { min-width: 0; }
 
 /* ── Encabezado de sección ───────────────────────────── */
-.hz-admin .encabezado-sala { margin-bottom: var(--hz-sp-6); }
-.hz-admin .encabezado-sala h1 { margin-bottom: var(--hz-sp-2); }
 .hz-admin .encabezado-sala__meta {
   display: flex;
   flex-wrap: wrap;
@@ -155,11 +100,11 @@
 .hz-admin .panel {
   border: 1px solid var(--hz-borde);
   border-radius: var(--hz-r-tarjeta);
-  padding: var(--hz-sp-6);
-  margin-bottom: var(--hz-sp-6);
+  padding: var(--hz-sp-tarjeta);
+  margin-bottom: var(--hz-sp-bloque);
   background: var(--hz-superficie-1);
 }
-.hz-admin .rejilla { display: grid; gap: var(--hz-sp-6); margin-bottom: var(--hz-sp-6); grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+.hz-admin .rejilla { display: grid; gap: var(--hz-sp-6); margin-bottom: var(--hz-sp-bloque); grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
 .hz-admin .rejilla > .panel { margin-bottom: 0; }
 .hz-admin .panel .rejilla { gap: var(--hz-sp-4); margin-bottom: var(--hz-sp-4); }
 .hz-admin .hoja-perfil {
@@ -428,15 +373,11 @@
 }
 .hz-admin dialog::backdrop { background: color-mix(in srgb, var(--et-carbon) 60%, transparent); }
 
-/* ── Login y cambio de clave: barra de producto y una caja ── */
-.hz-admin .login { min-height: 100vh; display: flex; flex-direction: column; background: var(--hz-superficie-1); }
-.hz-admin .login__cuerpo { flex: 1; display: grid; place-items: center; padding-block: var(--hz-sp-8); }
-.hz-admin .login__caja { width: 100%; max-width: 400px; margin: 0; background: var(--hz-fondo); }
-.hz-admin .login__caja h1 { font-size: var(--hz-fs-24); }
-/* En el celular la caja arranca arriba (centrada en alto dejaba media pantalla vacía sobre ella) */
-@media (max-width: 640px) {
-  .hz-admin .login__cuerpo { place-items: start center; padding-block: var(--hz-sp-6); }
-}
+/* ── Login y cambio de clave: la misma composición del panel (barra, cabecera de página en el borde del contenido,
+   el formulario en su tarjeta y el pie), sin la franja de pestañas. ── */
+.hz-admin .login { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.hz-admin .login__cuerpo { flex: 1; padding-block: var(--hz-sp-bloque) var(--hz-sp-12); }
+.hz-admin .login__caja { width: 100%; max-width: 28rem; margin: 0; }
 
 /* ── Rúbricas: el valor fijo en un círculo y el texto editable al lado ── */
 .hz-admin .rubrica-pregunta { font-style: italic; color: var(--hz-tinta-2); }
@@ -470,7 +411,6 @@
 
 /* Celular: las tablas largas se leen como tarjetas (una por fila, cada dato con su rótulo) y el menú va en una sola fila deslizable */
 @media (max-width: 640px) {
-  .hz-admin .panel { padding: var(--hz-sp-4); }
   .hz-admin .kpis { gap: var(--hz-sp-3); }
   .hz-admin .kpi { padding: var(--hz-sp-3) var(--hz-sp-4); }
   .hz-admin .cifra { font-size: var(--hz-fs-24); }
@@ -498,17 +438,6 @@
   .hz-admin .tabla-respuestas td.crit { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; gap: 0; white-space: normal; }
   .hz-admin .tabla-respuestas td.crit::before { max-width: none; overflow-wrap: normal; }
   .hz-admin .tabla-respuestas td.crit { overflow-wrap: normal; }
-  /* QA-A-23: en el celular el menú se abre con «Menú · sección actual»; abierto, cada sección es una fila de 48 px. */
-  .hz-admin .usuario { order: 2; margin-left: auto; }
-  .hz-admin .menu-boton { display: inline-flex; order: 3; flex-basis: 100%; justify-content: flex-start; }
-  .hz-admin .nav { display: none; order: 4; flex-direction: column; align-items: stretch; gap: 0; }
-  .hz-admin .nav--abierto { display: flex; }
-  .hz-admin .nav__grupo { flex-direction: column; align-items: stretch; gap: 0; }
-  .hz-admin .nav__grupo + .nav__grupo { padding: var(--hz-sp-1) 0 0; margin-top: var(--hz-sp-1); border-left: 0; border-top: 1px solid var(--hz-borde-control); }
-  .hz-admin .nav__item { min-height: var(--hz-tactil); font-size: var(--hz-fs-16); }
-  .hz-admin .cuenta-extra { display: none; order: 5; flex-basis: 100%; margin-left: 0; flex-direction: column; align-items: stretch; padding-top: var(--hz-sp-1); border-top: 1px solid var(--hz-borde-control); }
-  .hz-admin .cuenta-extra--abierta { display: flex; }
-  .hz-admin .cuenta-extra .hz-boton { justify-content: flex-start; padding-inline: var(--hz-sp-3); }
   /* Rúbricas: el rótulo «Nivel 9» ya dice el valor; el círculo le quitaría ancho al texto */
   .hz-admin .rubrica-nivel { grid-template-columns: minmax(0, 1fr); }
   .hz-admin .rubrica-valor { display: none; }
@@ -525,7 +454,7 @@
   .hz-admin .encabezado-sala,
   .hz-admin .cabecera,
   .hz-admin .aviso-mock,
-  .hz-admin .pie,
+  .hz-admin .hz-pie,
   .hz-admin .aviso-dominio,
   .hz-admin .alerta,
   .hz-admin .no-imprimir { display: none !important; }
@@ -586,10 +515,6 @@
 .hz-admin .kpis--dentro { margin-bottom: var(--hz-sp-3); }
 .hz-admin .en-vivo__mesa { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2); }
 
-/* Menú del celular: el botón solo existe bajo 641 px */
-@media (min-width: 641px) {
-  .hz-admin .menu-boton { display: none; }
-}
 
 /* Mesas y QR: llamada a la acción en cada tarjeta (también en la hoja impresa) */
 .hz-admin .qr-tarjeta__cta { font-weight: var(--hz-fw-titulo); font-size: var(--hz-fs-18); margin-bottom: var(--hz-sp-1); }

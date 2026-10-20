@@ -2,8 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useSesion } from '../sesion'
-import { EncabezadoProducto } from '../../shared/ui'
-import { PiePanel } from '../Marco'
+import { CabeceraPagina, EncabezadoProducto, PiePagina } from '../../shared/ui'
 import { useTituloPagina } from './EncabezadoSala'
 import { LARGO_MINIMO_CLAVE } from '../textos'
 
@@ -40,17 +39,18 @@ export function CambiarClave() {
 
   return (
     <div className="login">
-      <div data-tema="carbon">
-        <EncabezadoProducto href="/admin/salas" />
-      </div>
+      <EncabezadoProducto href="/admin/salas" />
       <main className="login__cuerpo hz-pagina">
-        <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-clave">
-          <h1 id="titulo-clave">{obligatorio ? 'Cambia tu clave' : 'Cambiar mi clave'}</h1>
-          <p>
-            {obligatorio
+        <CabeceraPagina
+          id="titulo-clave"
+          titulo={obligatorio ? 'Cambia tu clave' : 'Cambiar mi clave'}
+          contexto={
+            obligatorio
               ? `Es tu primer ingreso. Elige una clave propia de al menos ${LARGO_MINIMO_CLAVE} caracteres.`
-              : `Escribe tu clave actual y elige una nueva de al menos ${LARGO_MINIMO_CLAVE} caracteres.`}
-          </p>
+              : `Escribe tu clave actual y elige una nueva de al menos ${LARGO_MINIMO_CLAVE} caracteres.`
+          }
+        />
+        <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-clave">
           <label className="campo">
             <span>{obligatorio ? 'Clave temporal' : 'Clave actual'}</span>
             <input type="password" autoComplete="current-password" required value={actual} onChange={(e) => setActual(e.target.value)} />
@@ -78,7 +78,7 @@ export function CambiarClave() {
           )}
         </form>
       </main>
-      <PiePanel />
+      <PiePagina />
     </div>
   )
 }
