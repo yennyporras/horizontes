@@ -116,7 +116,7 @@
 }
 @media (min-width: 1440px) {
   .hz-admin .nav { order: 2; flex: 1; flex-basis: auto; }
-  .hz-admin .usuario { order: 3; margin-left: 0; }
+  .hz-admin .usuario { order: 3; margin-left: auto; }
 }
 
 /* Ancho de página común de la familia Estratek (20-oct): .hz-pagina (--hz-ancho-pagina, 1280 px) en la fila de la barra,
@@ -196,7 +196,7 @@
   background: var(--hz-deshabilitado-fondo); color: var(--hz-deshabilitado-texto); border-color: var(--hz-deshabilitado-borde);
   cursor: not-allowed; transform: none; text-decoration: none;
 }
-.hz-admin .hz-boton--chico { min-height: 40px; padding: 0 var(--hz-sp-4); font-size: var(--hz-fs-14); }
+.hz-admin .hz-boton--chico { min-height: var(--hz-tactil); padding: 0 var(--hz-sp-4); font-size: var(--hz-fs-14); }
 
 /* ── Formularios (§6: etiqueta encima en 14/700, campos de radio 12) ── */
 .hz-admin .campo { display: flex; flex-direction: column; gap: var(--hz-sp-1); margin-bottom: var(--hz-sp-3); flex: 1; min-width: min(200px, 100%); }
@@ -220,7 +220,7 @@
 .hz-admin textarea:focus-visible { border-color: var(--hz-accion); }
 .hz-admin textarea { width: 100%; resize: vertical; line-height: 1.4; field-sizing: content; min-height: 4.5em; }
 .hz-admin .campo-linea { display: flex; align-items: center; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
-.hz-admin select.chico { min-height: 40px; font-size: var(--hz-fs-14); padding: var(--hz-sp-1) var(--hz-sp-2); }
+.hz-admin select.chico { min-height: var(--hz-tactil); font-size: var(--hz-fs-14); padding: var(--hz-sp-1) var(--hz-sp-2); }
 .hz-admin .fila-form { display: flex; flex-wrap: wrap; gap: 0 var(--hz-sp-4); align-items: flex-end; }
 .hz-admin .fila-form .hz-boton { margin-bottom: var(--hz-sp-3); }
 .hz-admin fieldset { border: 1px solid var(--hz-borde); border-radius: var(--hz-r-campo); padding: var(--hz-sp-3) var(--hz-sp-4); margin: 0 0 var(--hz-sp-4); background: var(--hz-fondo); }
@@ -454,8 +454,6 @@
   .hz-admin .nav { display: none; order: 4; flex-direction: column; gap: 0; }
   .hz-admin .nav--abierto { display: flex; }
   .hz-admin .nav__item { min-height: var(--hz-tactil); font-size: var(--hz-fs-16); }
-  /* 48 px de área táctil también en los botones compactos de tablas y avisos (marca §5) */
-  .hz-admin .hz-boton--chico { min-height: var(--hz-tactil); }
   /* Rúbricas: el rótulo «Nivel 9» ya dice el valor; el círculo le quitaría ancho al texto */
   .hz-admin .rubrica-nivel { grid-template-columns: minmax(0, 1fr); }
   .hz-admin .rubrica-valor { display: none; }
@@ -514,7 +512,9 @@
 .hz-admin .en-vivo__mesa { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2); }
 
 /* Menú del celular: el botón solo existe bajo 641 px */
-.hz-admin .menu-boton { display: none; }
+@media (min-width: 641px) {
+  .hz-admin .menu-boton { display: none; }
+}
 
 /* Mesas y QR: llamada a la acción en cada tarjeta (también en la hoja impresa) */
 .hz-admin .qr-tarjeta__cta { font-weight: var(--hz-fw-titulo); font-size: var(--hz-fs-18); margin-bottom: var(--hz-sp-1); }
