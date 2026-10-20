@@ -1,13 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Aviso, BarraProgreso, Boton } from '../shared/ui'
+import { Aviso, BarraProgreso, Boton, Icono } from '../shared/ui'
 import { canjearAcceso, ErrorApi, obtenerMesa, type EstadoSala, type Mesa, type RespuestaVoto, type Sesion, type Yo } from './api'
 import { usarFuenteLista } from './fuente'
 import { encolar, enviarCola, leerCola, nuevoId, quitar as quitarDeCola, type VotoEnCola } from './cola'
 import { Cargando, Marco, Mensaje, type MarcoBase } from './Comun'
 import { Inscripcion } from './pantallas/Inscripcion'
-import { Lectura } from './pantallas/Lectura'
-import { MIN_VOTOS, ResultadoAlcance, resultadoVisible, textoAlcance, vistaMatriz } from './pantallas/Resultado'
+import { Lectura, type PestanaLectura } from './pantallas/Lectura'
+import { CierrePersonal, MIN_VOTOS, ResultadoAlcance, rondaOculta, resultadoVisible, TEXTO_R1_OCULTA, textoAlcance, vistaMatriz } from './pantallas/Resultado'
 import { Calificar, ElegirProyecto, PreguntaGuiada, proyectosVivos, votoDe } from './pantallas/Votacion'
 import { bienvenidaPendiente, guardarBorrador, guardarToken, guardarVista, leerBorrador, leerToken, leerVista, marcarBienvenida, olvidarDatos } from './sesion'
 import { usarYo } from './usarYo'
@@ -16,8 +16,27 @@ import { usarYo } from './usarYo'
 // Solo en desarrollo: en el build no hay import y la muestra no se publica.
 const MuestraUI = import.meta.env.DEV ? lazy(() => import('../shared/ui/MuestraUI').then((m) => ({ default: m.MuestraUI }))) : () => null
 
-/** Texto de la decisión D1 (20-oct): la sesión perdida la devuelve el facilitador desde su panel. */
-export const PIDE_ACCESO = 'Pídele al facilitador que te dé acceso de nuevo: en su panel, «Dar acceso de nuevo» te muestra un QR o un enlace para entrar.'
+/**
+ * Texto de la decisión D1 (20-oct): la sesión perdida la devuelve el facilitador. Habla de lo que hace la persona en
+ * el salón, no del panel del facilitador (QA por roles del 20-oct).
+ */
+export const PIDE_ACCESO = 'Levanta la mano y pídele al facilitador que te dé acceso de nuevo: te muestra un QR para volver a entrar.'
+
+/** Chip de la cola (QA por roles del 20-oct): qué hacer, sin asustar. */
+export const TEXTO_COLA_UNA = 'Deja esta página abierta: la enviamos automáticamente cuando vuelva la señal.'
+export const TEXTO_COLA_VARIAS = 'Deja esta página abierta: las enviamos automáticamente cuando vuelva la señal.'
+/** Chip de sin señal, desde el tercer fallo seguido del polling. */
+export const TEXTO_SIN_SENAL = 'Sin señal por ahora. Lo que marcaste sigue guardado en este celular.'
+
+/** Aviso de conexión en una línea (chip) que flota sobre la barra inferior. */
+function Chip({ tono, children }: { tono: 'alerta' | 'ok'; children: ReactNode }) {
+  return (
+    <p className={`hzp-chip hzp-chip--${tono}`} role="status">
+      <Icono tono={tono} />
+      <span>{children}</span>
+    </p>
+  )
+}
 
 // Flujo del participante (DISENO §8). Ruta /m/:codigo; /m/_ui es la muestra del sistema de diseño.
 export default function PaginaMesa() {
@@ -253,7 +272,7 @@ function AntesDeInscribirse({ codigo, onInscrito, previa = false }: { codigo: st
     }
     return (
       <Mensaje sala={mesa.sala.nombre} meta={mesa.mesa.nombre} titulo="Aún no abrimos la inscripción">
-        El facilitador la abrirá en unos minutos. Deja esta pantalla abierta: se actualiza sola.
+        El facilitador la abrirá en unos minutos. Deja esta pantalla abierta: se actualiza automáticamente.
       </Mensaje>
     )
   }
@@ -274,6 +293,8 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   const ubicacion = useLocation()
   const [vista, setVistaEstado] = useState<Vista>(() => (leerVista(codigo) as Vista | null) ?? 'inicio')
   const [bienvenida, setBienvenida] = useState(() => bienvenidaPendiente(codigo))
+  // Pestaña del material (caso u hoja): el botón principal de la lectura depende de ella.
+  const [pestana, setPestana] = useState<PestanaLectura>('caso')
   const [avisoOk, setAvisoOk] = useState<string | null>(null)
   const [avisoReingreso, setAvisoReingreso] = useState(reingreso)
   // Votos guardados sin señal, a la espera de reenvío (sobreviven a recargas).
@@ -303,6 +324,8 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
       cambiarVista(v, reemplazar)
       setAvisoReingreso(false)
       setAvisoRonda(null)
+      // El material se abre siempre por el caso.
+      if (v === 'lectura') setPestana('caso')
     },
     [cambiarVista],
   )
@@ -503,6 +526,9 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   const precierre = abierta && (alcance === 'sala' ? Boolean(yo.resultados?.progreso?.precierre) : yo.progreso_mesa.precierre)
   const donde = textoAlcance(yo.resultados, alcance)
   const hayResultado = resultadoVisible(yo.resultados)
+  // Decisión 1 de Paola (20-oct): con la ronda 1 abierta y sin precierre, el servidor manda la ronda oculta. Quien ya
+  // votó no ve promedios ni matriz hasta que todos voten o se cierre la ronda.
+  const r1Oculta = abierta && ronda === 1 && rondaOculta(yo.resultados, 1)
   const minimo = yo.resultados?.minimo_votos ?? MIN_VOTOS
   // D2: la foto del consolidado se renueva cuando llegan estos votos nuevos (hoy 3).
   const deAPocos = yo.resultados?.votos_por_actualizacion ?? 3
@@ -519,23 +545,18 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
     )
   if (avisoReingreso) arriba.push(<Aviso key="reingreso" tono="ok">Listo, entraste de nuevo. Retomas donde ibas.</Aviso>)
 
-  // Lo que llega solo flota sobre la barra inferior: no empuja lo que se está leyendo.
+  // Lo que llega solo flota sobre la barra inferior: no empuja lo que se está leyendo. Los avisos de conexión son
+  // un chip de una línea que no asusta (QA por roles del 20-oct); la falta de señal se avisa desde el tercer fallo.
   const flotantes: ReactNode[] = []
-  if (sinConexion)
-    flotantes.push(
-      <Aviso key="red" tono="alerta" titulo="Sin conexión">
-        Seguimos intentando. Lo que marcaste está guardado en este celular.
-      </Aviso>,
-    )
-  else if (recuperada) flotantes.push(<Aviso key="ok-red" tono="ok">Conexión recuperada.</Aviso>)
   if (porEnviar.length > 0 && abierta)
     flotantes.push(
-      <Aviso key="cola" tono="alerta" titulo={porEnviar.length === 1 ? '1 calificación por enviar' : `${porEnviar.length} calificaciones por enviar`}>
-        {porEnviar.length === 1
-          ? 'Está guardada en este celular y la enviamos sola en cuanto se pueda. No borres los datos del navegador.'
-          : 'Están guardadas en este celular y las enviamos solas en cuanto se pueda. No borres los datos del navegador.'}
-      </Aviso>,
+      <Chip key="cola" tono="alerta">
+        <strong>{porEnviar.length === 1 ? '1 calificación por enviar' : `${porEnviar.length} calificaciones por enviar`}</strong>.{' '}
+        {porEnviar.length === 1 ? TEXTO_COLA_UNA : TEXTO_COLA_VARIAS}
+      </Chip>,
     )
+  else if (sinConexion) flotantes.push(<Chip key="red" tono="alerta">{TEXTO_SIN_SENAL}</Chip>)
+  if (recuperada && !sinConexion) flotantes.push(<Chip key="ok-red" tono="ok">Conexión recuperada.</Chip>)
   if (avisoOk && abierta) flotantes.push(<Aviso key="ok" tono="ok">{avisoOk}</Aviso>)
 
   const marco: MarcoBase = {
@@ -568,11 +589,11 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
         {/* El saludo va pegado al título: es su antetítulo, no un párrafo suelto. */}
         <div className="hzp-titular">
           <p className="hzp-saludo">Hola, {yo.participante.nombre.split(' ')[0]}</p>
-          <h1 className="hz-titulo">Tu perfil es {yo.participante.perfil.nombre}</h1>
+          <h1 className="hz-titulo">Tu perfil: {yo.participante.perfil.nombre}</h1>
         </div>
         <p className="hz-texto-2">
-          En tu mesa cada persona tiene información distinta sobre {nombres}. Tú aportas la mirada de {yo.participante.perfil.nombre}. Lee el caso y tu
-          hoja. En la ronda 1 calificas por tu cuenta y en silencio. En la ronda 2 compartes tu hoja y discuten en la mesa.
+          En tu mesa cada persona tiene información distinta sobre {nombres}. Tú aportas la mirada del perfil {yo.participante.perfil.nombre}. Lee el caso y
+          tu hoja. En la ronda 1 calificas por tu cuenta y en silencio. En la ronda 2 compartes tu hoja y discuten en la mesa.
         </p>
       </Marco>
     )
@@ -604,9 +625,12 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
       Leer el caso y {yo.config.revelar_hojas ? 'las hojas' : 'tu hoja'}
     </Boton>
   )
+  const todosMisVotos = [...yo.mis_votos, ...(yo.mis_votos_anteriores ?? [])]
+  // Al cerrar la ronda 2: cuántas de tus respuestas cambiaron (QA por roles del 20-oct). Solo cuenta tus votos.
+  const cierrePersonal = ronda === 2 && <CierrePersonal misVotos={todosMisVotos} criterios={yo.criterios} />
   const resultado = (preliminar: boolean) =>
     yo.resultados ? (
-      <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} misVotos={[...yo.mis_votos, ...(yo.mis_votos_anteriores ?? [])]} preliminar={preliminar} />
+      <ResultadoAlcance resultados={yo.resultados} criterios={yo.criterios} alcance={alcance} misVotos={todosMisVotos} preliminar={preliminar} />
     ) : null
   // 8.11 Precierre: va al final de la pantalla para no empujar lo que se está leyendo cuando llega.
   const quienes = alcance === 'sala' ? 'la sala' : yo.participante.mesa.nombre
@@ -663,12 +687,36 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
     const esperando = esperaRonda1 || estado === 'r1_cerrada'
     const enLectura = vista === 'lectura' && !esperaRonda1 && !sinResultadoCerrada
     const textoRonda = (n: number) => (n === 1 ? 'En la ronda 1 calificas por tu cuenta y en silencio.' : 'En la ronda 2 comparten sus hojas y discuten en la mesa.')
-    const accion = guiado ? 'Ir a la pregunta' : completo ? 'Ver mi votación' : 'Calificar proyectos'
+    const accion = guiado ? 'Ir a la pregunta' : completo ? 'Ver mis calificaciones' : 'Calificar proyectos'
     let barra: ReactNode = undefined
     let nota: ReactNode = undefined
     // Antes y después de abrir la ronda la barra mide lo mismo (un botón y una nota de 2 líneas): nada salta mientras se lee.
     const notaEspera = <span className="hzp-nota-barra">La votación se abre cuando el facilitador lo indique.</span>
-    if (abierta) {
+    // QA por roles del 20-oct: en la pestaña Caso el paso que sigue es leer la hoja; calificar solo se ofrece desde
+    // la hoja. «Leer mi hoja» cambia de pestaña y sube al comienzo de la hoja.
+    if (pestana === 'caso') {
+      barra = (
+        <Boton
+          bloque
+          onClick={() => {
+            setPestana('hoja')
+            requestAnimationFrame(() => {
+              document.documentElement.scrollTop = 0
+              document.querySelector<HTMLElement>('.hzp-vista [role="tab"][aria-selected="true"]')?.focus({ preventScroll: true })
+            })
+          }}
+        >
+          {yo.config.revelar_hojas ? 'Leer las hojas' : 'Leer mi hoja'}
+        </Boton>
+      )
+      nota = abierta ? (
+        <span className="hzp-nota-barra">La ronda {ronda} está abierta.</span>
+      ) : esperando ? (
+        notaEspera
+      ) : enLectura ? undefined : (
+        'El resultado aparece aquí en unos segundos.'
+      )
+    } else if (abierta) {
       barra = (
         <Boton bloque onClick={() => ir(completo || guiado ? 'inicio' : 'elegir')}>
           {accion}
@@ -713,7 +761,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
           </Aviso>
         )}
         {sinResultadoCerrada && estado === 'r2_cerrada' && <Aviso tono="info">La ronda 2 se cerró. El resultado aparece aquí en unos segundos.</Aviso>}
-        <Lectura yo={yo} codigo={codigo} />
+        <Lectura yo={yo} codigo={codigo} activa={pestana} onCambio={setPestana} />
       </Marco>
     )
   }
@@ -724,6 +772,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
       <Marco {...marco} claveFoco="cerrada">
         <h1 className="hz-titulo">El taller terminó</h1>
         <p className="hz-texto-2">{hayResultado ? `Gracias por participar. Este es el resultado final de ${donde}.` : 'Gracias por participar.'}</p>
+        {cierrePersonal}
         {resultado(false)}
         {botonLeer}
       </Marco>
@@ -741,6 +790,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
       <Marco {...marco} claveFoco={`cerrada-${ronda}`}>
         <h1 className="hz-titulo">Ronda {ronda} cerrada</h1>
         {texto && <p className="hz-texto-2">{texto}</p>}
+        {cierrePersonal}
         {ronda === 1 && (
           <Aviso tono="info">La ronda 2 aún no está abierta. Cuando el facilitador la abra, compartan sus hojas antes de calificar.</Aviso>
         )}
@@ -755,7 +805,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   if (!completo || vista === 'elegir') {
     return (
       <Marco {...marco} claveFoco={`elegir-${ronda}`}>
-        <ElegirProyecto yo={yo} porEnviar={porEnviar} onCalificar={(pid) => ir(`calificar:${pid}`)} />
+        <ElegirProyecto yo={yo} codigo={codigo} porEnviar={porEnviar} onCalificar={(pid) => ir(`calificar:${pid}`)} />
         {completo && (
           <Boton variante="secundario" onClick={() => ir('inicio')}>
             Listo, ya no voy a editar
@@ -768,7 +818,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   }
 
   // 8.10 Resultado parcial (D2): el consolidado se renueva de 3 en 3 votos, no con cada voto.
-  if (yo.config.vista_participante === 'en_vivo' && yo.resultados && !precierre) {
+  if (yo.config.vista_participante === 'en_vivo' && yo.resultados && !precierre && !r1Oculta) {
     return (
       <Marco {...marco} claveFoco={`envivo-${ronda}`}>
         <h1 className="hz-titulo">Resultado parcial de {donde}</h1>
@@ -791,11 +841,12 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   const completos = Math.min(inscritos, yo.progreso_mesa.completos + (porEnviar.length > 0 && !yo.completo_ronda ? 1 : 0))
   return (
     <Marco {...marco} claveFoco={`registrado-${ronda}`}>
-      <h1 className="hz-titulo">{porEnviar.length > 0 ? 'Voto guardado en este celular' : 'Voto registrado'}</h1>
+      <h1 className="hz-titulo">{porEnviar.length > 0 ? 'Calificación guardada en este celular' : 'Calificación enviada'}</h1>
       <p className="hz-texto-2">
         Calificaste {vivos.map((p) => p.nombre).join(' y ')} en la ronda {ronda}.{' '}
-        {porEnviar.length > 0 ? 'Lo enviamos solo en cuanto se pueda.' : 'Puedes editar mientras la ronda siga abierta.'}
+        {porEnviar.length > 0 ? 'La enviamos automáticamente en cuanto se pueda.' : 'Puedes editar mientras la ronda siga abierta.'}
       </p>
+      {r1Oculta && !precierre && <Aviso tono="info">{TEXTO_R1_OCULTA}</Aviso>}
       <BarraProgreso actual={completos} total={inscritos} texto={`${completos} de ${inscritos} completaron en ${yo.participante.mesa.nombre}`} />
       <div className="hzp-acciones">
         <Boton variante="secundario" bloque onClick={() => ir('elegir')}>

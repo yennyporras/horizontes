@@ -3,11 +3,12 @@
 // espacio del pie fijo y diagramación del resumen.
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import yoBase from '../../../mocks/GET_api_yo.json'
 import tablero from '../../../mocks/GET_api_tablero.json'
-import PaginaMesa from '../PaginaMesa'
+import PaginaMesa, { TEXTO_COLA_VARIAS } from '../PaginaMesa'
+import { TEXTO_QUE_HARAS } from '../pantallas/Inscripcion'
 import { ResultadoAlcance } from '../pantallas/Resultado'
 import type { Resultados, Voto, Yo } from '../api'
 
@@ -16,7 +17,7 @@ const MESA = {
   sala: { id: 's_demo', nombre: 'Taller Horizontes demo', estado: 'inscripcion' },
   mesa: { id: 'm1', nombre: 'Mesa 1' },
   inscripcion_abierta: true,
-  consentimiento: { version: 'estratek-v1', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
+  consentimiento: { version: 'hz-1.2', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
 }
 const TODAS = { alistamiento_tecnico: 3, conocimiento_cliente: 3, regulacion: 3, capacidades_organizacionales: 3, alineacion_core: 3, inversion_requerida: 3 }
 
@@ -149,22 +150,26 @@ describe('textos que dicen lo que pasa', () => {
       JSON.stringify(['insumex', 'nutriwhat'].map((p, i) => ({ id: `v${i}`, participante_id: 'p_8f2a', proyecto_id: p, nombre: p.toUpperCase(), ronda: 1, respuestas: TODAS }))),
     )
     montar()
-    expect(await screen.findByText('2 calificaciones por enviar')).toBeTruthy()
-    expect(screen.getByText('Están guardadas en este celular y las enviamos solas en cuanto se pueda. No borres los datos del navegador.')).toBeTruthy()
+    // Chip de una línea que dice qué hacer, sin asustar (QA por roles del 20-oct).
+    const chip = (await screen.findByText('2 calificaciones por enviar')).closest('.hzp-chip')!
+    expect(chip.getAttribute('role')).toBe('status')
+    expect(chip.querySelector(':scope > span:last-child')!.textContent).toBe(`2 calificaciones por enviar. ${TEXTO_COLA_VARIAS}`)
   })
 
   it('el caso cuenta los proyectos que trae el portafolio', async () => {
     servidor(conYo(() => yoCon((y) => ((y.sala.estado = 'inscripcion'), (y.contenido.portafolio = y.contenido.portafolio.slice(0, 7))))))
     conToken()
     montar()
-    expect(await screen.findByRole('heading', { name: 'Los 7 proyectos del portafolio' })).toBeTruthy()
+    // Los 2 que se califican arriba; los otros, plegados al final (QA por roles del 20-oct).
+    expect(await screen.findByRole('heading', { name: 'Los 2 proyectos que vas a calificar' })).toBeTruthy()
+    expect(screen.getByText('Los otros 5 proyectos del portafolio')).toBeTruthy()
   })
 
   it('voto registrado: el enlace al caso dice lo mismo que en las demás pantallas', async () => {
     servidor(conYo(() => yoCon(completo)))
     conToken()
     montar()
-    await screen.findByRole('heading', { name: 'Voto registrado' })
+    await screen.findByRole('heading', { name: 'Calificación enviada' })
     expect(screen.getByRole('button', { name: 'Leer el caso y tu hoja' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Volver al caso' })).toBeNull()
   })
@@ -200,7 +205,7 @@ describe('textos que dicen lo que pasa', () => {
     servidor((url) => (url.startsWith('/api/mesas/') ? { status: 200, body: MESA } : { status: 404 }))
     montar()
     await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
-    expect(screen.getByText('Inscríbete para recibir el caso y tu hoja de información.')).toBeTruthy()
+    expect(screen.getByText(TEXTO_QUE_HARAS)).toBeTruthy()
     expect(screen.queryByText(/Estás en Mesa 1 de/)).toBeNull()
   })
 })
@@ -237,7 +242,7 @@ describe('precierre: el que cuenta es el del alcance de los resultados (SPEC §4
     )
     conToken()
     montar()
-    await screen.findByRole('heading', { name: 'Voto registrado' })
+    await screen.findByRole('heading', { name: 'Calificación enviada' })
     expect(screen.queryByText(/Todos votaron/)).toBeNull()
     expect(screen.queryByText(/El resultado se muestra cuando hay al menos/)).toBeNull()
   })
@@ -316,6 +321,10 @@ describe('modo guiado', () => {
     await screen.findByRole('heading', { name: 'El caso y tu hoja' })
     expect(screen.getByText(/Cuando termines de leer, ve a la pregunta que marca el facilitador\./)).toBeTruthy()
     expect(screen.queryByText(/califica los 2 proyectos/)).toBeNull()
+    // Desde el caso, la hoja; desde la hoja, la pregunta (QA por roles del 20-oct).
+    expect(screen.queryByRole('button', { name: 'Ir a la pregunta' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Leer mi hoja' }))
+    expect(screen.getByRole('tab', { name: 'Tu hoja' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('button', { name: 'Ir a la pregunta' })).toBeTruthy()
   })
 

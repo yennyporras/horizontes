@@ -26,9 +26,33 @@ export function hojasDeProyecto(yo: Yo, proyectoId: string): HojaInfo[] {
     .sort((a, b) => orden(a) - orden(b))
 }
 
-/** 8.5 Lectura: pestañas "Caso" y "Tu hoja" (o "Hojas" cuando se revelan las 6). */
-export function Lectura({ yo, codigo, pestanaInicial = 'caso' }: { yo: Yo; codigo: string; pestanaInicial?: 'caso' | 'hoja' }) {
-  const [activa, setActiva] = useState<string>(pestanaInicial)
+export type PestanaLectura = 'caso' | 'hoja'
+
+/** Primera línea del caso (pedido de Sebastián en el QA por roles del 20-oct; la semilla no se toca). */
+export const AVISO_CASO_FICTICIO = 'Caso ficticio con fines académicos. Las empresas reales que se mencionan son contexto y no participan en él.'
+
+/**
+ * 8.5 Lectura: pestañas "Caso" y "Tu hoja" (o "Hojas" cuando se revelan las 6). La página puede llevar la pestaña
+ * (`activa` y `onCambio`): el botón principal de la barra cambia con ella.
+ */
+export function Lectura({
+  yo,
+  codigo,
+  activa: activaExterna,
+  onCambio,
+}: {
+  yo: Yo
+  codigo: string
+  activa?: PestanaLectura
+  onCambio?: (p: PestanaLectura) => void
+}) {
+  const [activaPropia, setActivaPropia] = useState<PestanaLectura>('caso')
+  const activa = activaExterna ?? activaPropia
+  const setActiva = (id: string) => {
+    const p: PestanaLectura = id === 'hoja' ? 'hoja' : 'caso'
+    setActivaPropia(p)
+    onCambio?.(p)
+  }
   const revelar = yo.config.revelar_hojas
   const [avisoHojas] = useState(() => revelar && !hojasAvisadas(codigo))
   useEffect(() => {
@@ -52,27 +76,53 @@ export function Lectura({ yo, codigo, pestanaInicial = 'caso' }: { yo: Yo; codig
   )
 }
 
+type Proyecto = Yo['contenido']['portafolio'][number]
+
+function ListaProyectos({ proyectos, vivos = false }: { proyectos: Proyecto[]; vivos?: boolean }) {
+  return (
+    <ul className="hzp-proyectos">
+      {proyectos.map((p) => (
+        <li key={p.id} className={['hzp-proyecto', vivos && 'hzp-proyecto--vivo'].filter(Boolean).join(' ')}>
+          <p className="hzp-proyecto__nombre">{p.nombre}</p>
+          {(p.tipo || p.sector) && <p className="hz-texto-3">{[p.tipo, p.sector].filter(Boolean).join(' · ')}</p>}
+          {p.descripcion && <p className="hzp-proyecto__desc">{p.descripcion}</p>}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * El caso (QA por roles del 20-oct: eran 8 pantallas). Arriba el aviso de caso ficticio y los 2 proyectos que se
+ * califican; después el caso y la situación; los otros proyectos del portafolio, plegados al final.
+ */
 function Caso({ yo }: { yo: Yo }) {
   const { caso, portafolio } = yo.contenido
+  const vivos = portafolio.filter((p) => p.modo === 'vivo')
+  const otros = portafolio.filter((p) => p.modo !== 'vivo')
   return (
     <article className="hzp-lectura">
+      <p className="hzp-ficticio">{AVISO_CASO_FICTICIO}</p>
+      {vivos.length > 0 && (
+        <section className="hzp-lectura__bloque" aria-labelledby="hzp-vivos">
+          <h2 id="hzp-vivos" className="hz-subtitulo">
+            {vivos.length === 1 ? 'El proyecto que vas a calificar' : `Los ${vivos.length} proyectos que vas a calificar`}
+          </h2>
+          <ListaProyectos proyectos={vivos} vivos />
+        </section>
+      )}
       <h2 className="hz-subtitulo">{caso.titulo}</h2>
       <Md texto={caso.descripcion_md} />
       <h2 className="hz-subtitulo">La situación</h2>
       <Md texto={caso.situacion_md} />
-      <h2 className="hz-subtitulo">Los {portafolio.length} proyectos del portafolio</h2>
-      <ul className="hzp-proyectos">
-        {portafolio.map((p) => (
-          <li key={p.id} className={['hzp-proyecto', p.modo === 'vivo' && 'hzp-proyecto--vivo'].filter(Boolean).join(' ')}>
-            <p className="hzp-proyecto__nombre">
-              <span>{p.nombre}</span>
-              {p.modo === 'vivo' && <Insignia>Se califica</Insignia>}
-            </p>
-            {(p.tipo || p.sector) && <p className="hz-texto-3">{[p.tipo, p.sector].filter(Boolean).join(' · ')}</p>}
-            {p.descripcion && <p className="hzp-proyecto__desc">{p.descripcion}</p>}
-          </li>
-        ))}
-      </ul>
+      {otros.length > 0 && (
+        <details className="hzp-plegable">
+          <summary className="hzp-plegable__titulo">
+            {otros.length === 1 ? 'El otro proyecto del portafolio' : `Los otros ${otros.length} proyectos del portafolio`}
+          </summary>
+          <ListaProyectos proyectos={otros} />
+        </details>
+      )}
     </article>
   )
 }
@@ -82,7 +132,7 @@ function TuHoja({ yo }: { yo: Yo }) {
   const propias = yo.contenido.hojas.filter((h) => h.perfil_id === perfil.id)
   return (
     <div className="hzp-lectura">
-      <h2 className="hz-subtitulo">Tu hoja como {perfil.nombre}</h2>
+      <h2 className="hz-subtitulo">Tu hoja (perfil {perfil.nombre})</h2>
       {propias.length === 0 && <Aviso tono="info">Tu hoja aún no está disponible. Pídele al facilitador que revise tu perfil.</Aviso>}
       {/* Todas son del perfil propio: ninguna se destaca sobre la otra. */}
       {propias.map((h) => (

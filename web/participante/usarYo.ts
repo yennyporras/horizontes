@@ -10,17 +10,19 @@ export interface EstadoYo {
   fatal: ErrorApi | null
   /** Error de la primera carga (sin datos aún): 5xx o red. */
   errorCarga: ErrorApi | null
-  /** El polling falló 2 veces seguidas. */
+  /** El polling falló 3 veces seguidas (QA por roles del 20-oct: un fallo suelto no se avisa). */
   sinConexion: boolean
   /** Se recuperó la conexión hace menos de 3 s. */
   recuperada: boolean
 }
 
 const esFatal = (e: ErrorApi) => e.status === 401 || e.status === 403 || e.status === 404
+/** Fallos seguidos del polling antes de avisar «sin señal». */
+export const FALLOS_SIN_SENAL = 3
 
 /**
  * Polling de GET /api/yo cada 2,5 s con If-None-Match (304 = sin cambios).
- * Con fallos de red o del servidor espera más (hasta 10 s) y avisa "Sin conexión" al segundo fallo seguido.
+ * Con fallos de red o del servidor espera más (hasta 10 s) y avisa la falta de señal al tercer fallo seguido.
  */
 export function usarYo(token: string | null) {
   const [estado, setEstado] = useState<EstadoYo>({ yo: null, fatal: null, errorCarga: null, sinConexion: false, recuperada: false })
@@ -48,7 +50,7 @@ export function usarYo(token: string | null) {
         const r = await obtenerYo(token, forzar ? null : etag.current)
         if (!vivo.current || n < atendida.current) return
         atendida.current = n
-        const veniaSinConexion = fallos.current >= 2
+        const veniaSinConexion = fallos.current >= FALLOS_SIN_SENAL
         fallos.current = 0
         if (veniaSinConexion) {
           if (recuperacion.current) clearTimeout(recuperacion.current)
@@ -74,7 +76,7 @@ export function usarYo(token: string | null) {
           return
         }
         fallos.current += 1
-        setEstado((s) => ({ ...s, errorCarga: s.yo ? null : e, sinConexion: fallos.current >= 2, recuperada: false }))
+        setEstado((s) => ({ ...s, errorCarga: s.yo ? null : e, sinConexion: fallos.current >= FALLOS_SIN_SENAL, recuperada: false }))
         programar(Math.min(INTERVALO_MS * 2 ** (fallos.current - 1), ESPERA_MAX_MS))
       }
     },

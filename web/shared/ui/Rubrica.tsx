@@ -18,19 +18,24 @@ export interface RubricaProps {
   /** Para el texto "Criterio 3 de 6". */
   posicion?: { actual: number; total: number }
   error?: string | null
+  /**
+   * Cómo se lee la escala, en una línea fija bajo la pregunta (QA por roles del 20-oct: 9 es lo más lejano y nadie
+   * lo adivina). El celular pasa `LECTURA_ESCALA` de web/shared/criterios.ts.
+   */
+  escala?: string
 }
 
 /** Tarjeta de rúbrica seleccionable. Muestra las opciones de 9 a 1 con el texto completo. */
-export function Rubrica({ criterioId, nombre, pregunta, opciones, valor, onCambio, posicion, error }: RubricaProps) {
+export function Rubrica({ criterioId, nombre, pregunta, opciones, valor, onCambio, posicion, error, escala }: RubricaProps) {
   const id = useId()
   const ordenadas = [...opciones].sort((a, b) => b.valor - a.valor)
   return (
     <fieldset
       role="radiogroup"
       className={['hz-rubrica', error && 'hz-rubrica--error'].filter(Boolean).join(' ')}
-      // Lector de pantalla: "Criterio 3 de 6: Regulación, grupo de radio, requerido" y luego la pregunta (y el error).
+      // Lector de pantalla: "Criterio 3 de 6: Regulación, grupo de radio, requerido" y luego la pregunta, la escala (y el error).
       aria-labelledby={`${id}-nombre`}
-      aria-describedby={[`${id}-pregunta`, error && `${id}-error`].filter(Boolean).join(' ')}
+      aria-describedby={[`${id}-pregunta`, escala && `${id}-escala`, error && `${id}-error`].filter(Boolean).join(' ')}
       aria-required="true"
       aria-invalid={error ? true : undefined}
     >
@@ -40,6 +45,11 @@ export function Rubrica({ criterioId, nombre, pregunta, opciones, valor, onCambi
           {nombre}
         </span>
         <span id={`${id}-pregunta`} className="hz-rubrica__pregunta">{pregunta}</span>
+        {escala && (
+          <span id={`${id}-escala`} className="hz-rubrica__escala">
+            {escala}
+          </span>
+        )}
       </legend>
       <div className="hz-rubrica__opciones">
         {ordenadas.map((o) => (

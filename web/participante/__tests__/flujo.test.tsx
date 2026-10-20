@@ -6,6 +6,7 @@ import yoBase from '../../../mocks/GET_api_yo.json'
 import tablero from '../../../mocks/GET_api_tablero.json'
 import PaginaMesa from '../PaginaMesa'
 import { AVANCE_MS } from '../pantallas/Votacion'
+import { TEXTO_PARCIAL } from '../pantallas/Resultado'
 import { PIDE_ACCESO } from '../PaginaMesa'
 import { TEXTO_CORREO_INSCRITO } from '../pantallas/Inscripcion'
 import type { PreguntaGuiada, Yo } from '../api'
@@ -15,7 +16,7 @@ const MESA = {
   sala: { id: 's_demo', nombre: 'Taller Horizontes demo', estado: 'inscripcion' },
   mesa: { id: 'm1', nombre: 'Mesa 1' },
   inscripcion_abierta: true,
-  consentimiento: { version: 'estratek-v1', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
+  consentimiento: { version: 'hz-1.2', texto_autorizacion: 'Autorizo a Estratek a tratar mis datos.', politica_url: 'https://estratek.com.co/politica' },
 }
 
 const clonar = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
@@ -114,7 +115,7 @@ describe('antes de inscribirse', () => {
     ]
     for (const c of casos) {
       const texto = `Autorizo a Estratek S.A.S. (${c.pais ?? 'CO'}).`
-      const mesa = { ...MESA, sala: { ...MESA.sala, pais: c.pais }, consentimiento: { ...MESA.consentimiento, version: 'hz-1.1', texto_autorizacion: texto } }
+      const mesa = { ...MESA, sala: { ...MESA.sala, pais: c.pais }, consentimiento: { ...MESA.consentimiento, version: 'hz-1.2', texto_autorizacion: texto } }
       servidor(() => ({ status: 200, body: mesa }))
       montar()
       await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
@@ -141,9 +142,10 @@ describe('antes de inscribirse', () => {
     })
     montar()
     await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
+    // QA por roles del 20-oct: el botón siempre está activo; la nota dice dónde está la casilla.
     const boton = screen.getByRole('button', { name: 'Inscribirme' })
-    expect(boton.getAttribute('aria-disabled')).toBe('true')
-    expect(screen.getByText('Para inscribirte necesitamos tu autorización de tratamiento de datos.')).toBeTruthy()
+    expect(boton.getAttribute('aria-disabled')).toBeNull()
+    expect(screen.getByText('Marca la casilla de autorización, al final del formulario.')).toBeTruthy()
     const enlace = screen.getByRole('link', { name: /Política de Tratamiento de Datos Personales de Estratek/ })
     expect(enlace.getAttribute('href')).toBe('https://estratek.com.co/politica')
     expect(enlace.getAttribute('target')).toBe('_blank')
@@ -151,7 +153,6 @@ describe('antes de inscribirse', () => {
     const casilla = screen.getByRole('checkbox') as HTMLInputElement
     expect(casilla.checked).toBe(false)
     fireEvent.click(casilla)
-    expect(boton.getAttribute('aria-disabled')).toBeNull()
 
     fireEvent.click(boton)
     expect(await screen.findByText('Escribe tu nombre.')).toBeTruthy()
@@ -162,16 +163,16 @@ describe('antes de inscribirse', () => {
     fireEvent.change(screen.getByLabelText('Tu correo'), { target: { value: 'Ana@Empresa.com' } })
     fireEvent.click(boton)
 
-    expect(await screen.findByRole('heading', { name: 'Tu perfil es Conocimiento del cliente' })).toBeTruthy()
-    expect(cuerpo).toEqual({ codigoMesa: CODIGO, nombre: 'Ana Pérez', correo: 'ana@empresa.com', consentimiento: { aceptado: true, version: 'estratek-v1' } })
+    expect(await screen.findByRole('heading', { name: 'Tu perfil: Conocimiento del cliente' })).toBeTruthy()
+    expect(cuerpo).toEqual({ codigoMesa: CODIGO, nombre: 'Ana Pérez', correo: 'ana@empresa.com', consentimiento: { aceptado: true, version: 'hz-1.2' } })
     expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBe('tok-nuevo')
 
     fireEvent.click(screen.getByRole('button', { name: 'Leer el caso' }))
     expect(await screen.findByRole('heading', { name: 'El caso y tu hoja' })).toBeTruthy()
     expect(screen.getByText(/La ronda 1 aún no está abierta/)).toBeTruthy()
-    expect(screen.getAllByText('Se califica')).toHaveLength(2)
+    expect(within(screen.getByRole('region', { name: 'Los 2 proyectos que vas a calificar' })).getAllByRole('listitem')).toHaveLength(2)
     fireEvent.click(screen.getByRole('tab', { name: 'Tu hoja' }))
-    expect(screen.getByRole('heading', { name: 'Tu hoja como Conocimiento del cliente' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Tu hoja (perfil Conocimiento del cliente)' })).toBeTruthy()
   })
 
   it('correo repetido (409 CORREO_YA_INSCRITO): muestra el mensaje y no entra (D1)', async () => {
@@ -244,7 +245,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
       // Una sola acción principal por vista: el primer proyecto pendiente.
       expect([...document.querySelectorAll('.hz-boton--primario')]).toEqual([calificar])
       fireEvent.click(calificar)
-      await screen.findByRole('heading', { name: nombre, level: 1 })
+      await screen.findByRole('heading', { name: new RegExp(`^R[12] · ${nombre}`), level: 1 })
       for (let n = 1; n <= 6; n++) {
         // Una sola pregunta, con su encabezado, su grupo de radios y la barra «Pregunta n de 6 · proyecto».
         expect(screen.getAllByRole('radiogroup')).toHaveLength(1)
@@ -264,7 +265,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
     expect(puts).toHaveLength(2)
     expect(puts[0]).toMatchObject({ proyecto_id: 'insumex', ronda: 1 })
     expect(Object.values(puts[0].respuestas as object)).toEqual([9, 9, 9, 9, 9, 9])
-    expect(await screen.findByRole('heading', { name: 'Voto registrado' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Calificación enviada' })).toBeTruthy()
     expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe('6 de 7 completaron en Mesa 1')
     // 12 respuestas con su pausa de avance y 2 guardados: con la suite completa en paralelo pasa de 5 s.
   }, 20_000)
@@ -283,7 +284,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
     conToken()
     sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:nutriwhat')
     montar()
-    await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })
+    await screen.findByRole('heading', { name: /^R[12] · NUTRIWHAT/, level: 1 })
     expect(progreso()).toBe('Pregunta 1 de 6 · NUTRIWHAT')
     expect(screen.getByRole('button', { name: 'Anterior' }).getAttribute('aria-disabled')).toBe('true')
     // Con las flechas del teclado la persona recorre las opciones: elegir así no pasa de pregunta.
@@ -337,7 +338,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
       JSON.stringify({ alistamiento_tecnico: 3, conocimiento_cliente: 3, regulacion: 3, capacidades_organizacionales: 3, alineacion_core: 3, inversion_requerida: 3 }),
     )
     montar()
-    await screen.findByRole('heading', { name: 'NUTRIWHAT' })
+    await screen.findByRole('heading', { name: /^R[12] · NUTRIWHAT/, level: 1 })
     // Con las 6 marcadas abre el resumen: cada una con su valor y su botón Cambiar.
     expect(screen.getByRole('heading', { name: 'Revisa tus respuestas' })).toBeTruthy()
     expect(screen.getAllByRole('button', { name: /^Cambiar / })).toHaveLength(6)
@@ -349,7 +350,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
     // INSUMEX sí tenía una guardada: esa es la que cuenta.
     sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:insumex')
     montar()
-    await screen.findByRole('heading', { name: 'INSUMEX' })
+    await screen.findByRole('heading', { name: /^R[12] · INSUMEX/, level: 1 })
     fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
     expect(await screen.findByText('La ronda 1 ya se cerró. Cuenta tu última calificación guardada de INSUMEX.')).toBeTruthy()
   })
@@ -373,7 +374,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
     conToken()
     sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:insumex')
     montar()
-    await screen.findByRole('heading', { name: 'INSUMEX' })
+    await screen.findByRole('heading', { name: /^R[12] · INSUMEX/, level: 1 })
     // INSUMEX ya tenía voto: abre el resumen con las 6 respuestas.
     expect(screen.getAllByRole('button', { name: /^Cambiar / })).toHaveLength(6)
     fireEvent.click(screen.getByRole('button', { name: 'Guardar calificación' }))
@@ -410,7 +411,7 @@ describe('votación (modo automático, una pregunta por pantalla)', () => {
     conToken()
     sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:nutriwhat')
     montar()
-    await screen.findByRole('heading', { name: 'NUTRIWHAT' })
+    await screen.findByRole('heading', { name: /^R[12] · NUTRIWHAT/, level: 1 })
     fireEvent.click(within(screen.getByRole('radiogroup', { name: /Alistamiento/ })).getAllByRole('radio')[2])
     yo = yoCon((y) => {
       y.version = 'v-cerrada'
@@ -447,7 +448,7 @@ describe('votación en modo guiado', () => {
     servidor((url) => (url === '/api/yo' ? { status: 200, body: yo, headers: { ETag: yo.version } } : { status: 500 }))
     conToken()
     montar()
-    await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })
+    await screen.findByRole('heading', { name: /^R[12] · NUTRIWHAT/, level: 1 })
     expect(screen.getAllByRole('radiogroup')).toHaveLength(1)
     expect(screen.getByRole('radiogroup', { name: 'Regulación' })).toBeTruthy()
     expect(progreso()).toBe('Pregunta 3 de 6 · NUTRIWHAT')
@@ -456,7 +457,7 @@ describe('votación en modo guiado', () => {
     expect(screen.queryByRole('button', { name: 'Anterior' })).toBeNull()
     elegir(1)
     expect(await screen.findByText('Espera la siguiente pregunta del facilitador')).toBeTruthy()
-    expect(screen.getByText(/Tu respuesta quedó en este celular.*\(llevas 1\)/)).toBeTruthy()
+    expect(screen.getByText('Respuesta anotada (llevas 1 de 6 de NUTRIWHAT). Se envía automáticamente cuando completes las 6.')).toBeTruthy()
     expect(JSON.parse(sessionStorage.getItem(`hz_borrador_nutriwhat_r1:${CODIGO}`) ?? '{}')).toEqual({ regulacion: 7 })
     expect(llamadas.some((l) => l.url === '/api/votos')).toBe(false)
     // El facilitador pasa a la siguiente: aparece sola, sin respuesta marcada, y la anterior sigue guardada.
@@ -527,8 +528,8 @@ describe('estados de la sala', () => {
     conToken()
     montar()
     expect(await screen.findByText('Todos votaron en Mesa 1')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Voto registrado' })).toBeTruthy()
-    expect(screen.getAllByText('Preliminar').length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { name: 'Calificación enviada' })).toBeTruthy()
+    expect(screen.getAllByText(TEXTO_PARCIAL).length).toBeGreaterThan(0)
     expect(screen.getByRole('heading', { name: 'Resultado preliminar de tu mesa' })).toBeTruthy()
   })
 
@@ -544,7 +545,7 @@ describe('estados de la sala', () => {
     expect(await screen.findByRole('heading', { name: 'Ronda 2 cerrada' })).toBeTruthy()
     expect(screen.getByText(/Así se movieron INSUMEX y NUTRIWHAT de la ronda 1 a la ronda 2 en tu mesa/)).toBeTruthy()
     expect(screen.getAllByRole('columnheader', { name: 'R2' }).length).toBeGreaterThan(0)
-    expect(screen.queryByText('Preliminar')).toBeNull()
+    expect(screen.queryByText(TEXTO_PARCIAL)).toBeNull()
     // P3: tu calificación de INSUMEX en R1 (mis_votos) junto al promedio; en NUTRIWHAT no votaste.
     const [insumex, nutriwhat] = screen.getAllByRole('table')
     expect(within(insumex).getByRole('rowheader', { name: /^Regulación/ }).closest('tr')!.textContent).toContain('Tu calificación: Tú 7')
@@ -579,7 +580,7 @@ describe('estados de la sala', () => {
     sessionStorage.setItem(`hz_vista:${CODIGO}`, 'calificar:nutriwhat')
     montar()
     expect(await screen.findByRole('heading', { name: 'Tu sesión ya no está activa' })).toBeTruthy()
-    expect(screen.getByText(/«Dar acceso de nuevo»/)).toBeTruthy()
+    expect(screen.getByText(/Levanta la mano y pídele al facilitador que te dé acceso de nuevo/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Recuperar/ })).toBeNull()
     expect(screen.queryByLabelText('Tu correo')).toBeNull()
     expect(llamadas.some((l) => l.url === '/api/inscripcion')).toBe(false)

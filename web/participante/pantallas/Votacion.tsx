@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Aviso, BarraProgreso, Boton, Hoja, Insignia, Rubrica } from '../../shared/ui'
+import { LECTURA_ESCALA } from '../../shared/criterios'
 import { ErrorApi, guardarVoto, type Criterio, type ProyectoPortafolio, type RespuestaVoto, type Yo } from '../api'
 import type { VotoEnCola } from '../cola'
 import { FaseRonda, Marco, Md, type MarcoBase } from '../Comun'
@@ -10,7 +11,7 @@ export const proyectosVivos = (yo: Yo) => yo.contenido.portafolio.filter((p) => 
 export const votoDe = (yo: Yo, proyectoId: string) => yo.mis_votos.find((v) => v.proyecto_id === proyectoId && v.ronda === yo.sala.ronda_actual)
 
 /** 8.7 Elegir proyecto: INSUMEX y NUTRIWHAT con su estado. */
-export function ElegirProyecto({ yo, porEnviar = [], onCalificar }: { yo: Yo; porEnviar?: string[]; onCalificar: (proyectoId: string) => void }) {
+export function ElegirProyecto({ yo, codigo, porEnviar = [], onCalificar }: { yo: Yo; codigo: string; porEnviar?: string[]; onCalificar: (proyectoId: string) => void }) {
   const vivos = proyectosVivos(yo)
   const hechos = vivos.filter((p) => votoDe(yo, p.id) || porEnviar.includes(p.id)).length
   const ronda = yo.sala.ronda_actual
@@ -22,7 +23,7 @@ export function ElegirProyecto({ yo, porEnviar = [], onCalificar }: { yo: Yo; po
       <FaseRonda ronda={ronda} />
       <p className="hz-texto-2">
         {ronda === 1
-          ? `Califica por tu cuenta, sin comentar con tu mesa. Usa el caso y tu hoja como ${yo.participante.perfil.nombre}.`
+          ? `Califica por tu cuenta, sin comentar con tu mesa. Usa el caso y tu hoja del perfil ${yo.participante.perfil.nombre}.`
           : 'Compartan en la mesa lo que dice cada hoja y discutan cada proyecto. Después cada quien califica: cuenta tu calificación, no la de la mesa.'}
       </p>
       <BarraProgreso actual={hechos} total={vivos.length} texto={`Llevas ${hechos} de ${vivos.length} proyectos`} />
@@ -30,11 +31,20 @@ export function ElegirProyecto({ yo, porEnviar = [], onCalificar }: { yo: Yo; po
         {vivos.map((p) => {
           const enCola = porEnviar.includes(p.id)
           const hecho = Boolean(votoDe(yo, p.id)) || enCola
+          // Con respuestas a medias en este celular, cuántas lleva en vez de «Pendiente».
+          const borrador = hecho ? null : leerBorrador(codigo, p.id, ronda)
+          const respondidas = borrador ? yo.criterios.filter((c) => borrador[c.id]).length : 0
           return (
             <li key={p.id} className="hzp-elegir__fila">
               <div className="hzp-elegir__info">
                 <p className="hzp-proyecto__nombre">{p.nombre}</p>
-                {enCola ? <Insignia tono="alerta">Por enviar</Insignia> : hecho ? <Insignia tono="ok">Guardado</Insignia> : <Insignia>Pendiente</Insignia>}
+                {enCola ? (
+                  <Insignia tono="alerta">Por enviar</Insignia>
+                ) : hecho ? (
+                  <Insignia tono="ok">Guardado</Insignia>
+                ) : (
+                  <Insignia>{respondidas > 0 ? `${respondidas} de ${yo.criterios.length} respondidas` : 'Pendiente'}</Insignia>
+                )}
               </div>
               <Boton variante={p.id === siguiente ? 'primario' : 'secundario'} onClick={() => onCalificar(p.id)} aria-label={`${hecho ? 'Editar' : 'Calificar'} ${p.nombre}`}>
                 {hecho ? 'Editar' : 'Calificar'}
@@ -131,7 +141,48 @@ const respuestasIniciales = (yo: Yo, codigo: string, proyectoId: string): Respue
   ...(leerBorrador(codigo, proyectoId, yo.sala.ronda_actual) ?? {}),
 })
 
-/** P1: una pregunta con su encabezado (lector de pantalla), la barra «Pregunta 3 de 6 · INSUMEX» y su rúbrica. */
+/** Primera pregunta de la ronda 1 en modo automático: cómo se avanza (QA por roles del 20-oct). */
+export const AVISO_AVANCE = 'Al elegir pasas a la siguiente. Al final revisas todo antes de guardar.'
+
+/**
+ * Encabezado compacto de la pantalla de calificar (QA por roles del 20-oct: el encabezado se comía más de la mitad
+ * de la pantalla). Una línea «R1 · INSUMEX · Pregunta 1 de 6» como título, «Volver» pequeño al lado y la barra de
+ * avance debajo. La ronda va con su insignia R1 o R2: se lee sin depender del color.
+ */
+function CabezaCalificar({ ronda, proyecto, paso, volver }: { ronda: number; proyecto: string; paso?: { actual: number; total: number }; volver?: ReactNode }) {
+  return (
+    <div className="hzp-cabeza">
+      <div className="hzp-cabeza__fila">
+        <h1 className="hzp-cabeza__linea">
+          {(ronda === 1 || ronda === 2) && (
+            <>
+              <Insignia tono={ronda === 1 ? 'r1' : 'r2'}>R{ronda}</Insignia>
+              {' · '}
+            </>
+          )}
+          {proyecto}
+          {paso && ` · Pregunta ${paso.actual} de ${paso.total}`}
+        </h1>
+        {volver}
+      </div>
+      {paso && (
+        <div
+          className="hz-progreso__pista"
+          role="progressbar"
+          aria-label={`Avance en ${proyecto}`}
+          aria-valuetext={`Pregunta ${paso.actual} de ${paso.total} · ${proyecto}`}
+          aria-valuemin={0}
+          aria-valuemax={paso.total}
+          aria-valuenow={paso.actual}
+        >
+          <div className="hz-progreso__relleno" style={{ width: `${(paso.actual / paso.total) * 100}%` }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** P1: una pregunta con su línea «R1 · INSUMEX · Pregunta 3 de 6», su encabezado para el lector de pantalla y su rúbrica. */
 function Pregunta({
   yo,
   proyecto,
@@ -139,6 +190,8 @@ function Pregunta({
   valor,
   onElegir,
   titulo,
+  volver,
+  aviso,
 }: {
   yo: Yo
   proyecto: ProyectoPortafolio
@@ -147,6 +200,10 @@ function Pregunta({
   /** `conFlechas`: recorre las opciones con las flechas del teclado; elegir así no pasa de pregunta. */
   onElegir: (valor: number, conFlechas: boolean) => void
   titulo?: Ref<HTMLHeadingElement>
+  /** «Volver» pequeño junto a la línea de la pregunta (modo automático). */
+  volver?: ReactNode
+  /** Aviso entre la barra y la pregunta: cómo se avanza, en la primera de la ronda 1. */
+  aviso?: ReactNode
 }) {
   const c = yo.criterios[indice]
   const total = yo.criterios.length
@@ -162,15 +219,17 @@ function Pregunta({
         flechas.current = false
       }}
     >
-      <BarraProgreso actual={indice + 1} total={total} texto={`Pregunta ${indice + 1} de ${total} · ${proyecto.nombre}`} />
+      <CabezaCalificar ronda={yo.sala.ronda_actual} proyecto={proyecto.nombre} paso={{ actual: indice + 1, total }} volver={volver} />
       <h2 ref={titulo} tabIndex={-1} className="hz-visual-oculto">
         Pregunta {indice + 1} de {total}: {c.nombre}
       </h2>
+      {aviso}
       <Rubrica
         key={c.id}
         criterioId={c.id}
         nombre={c.nombre}
         pregunta={c.pregunta}
+        escala={LECTURA_ESCALA}
         opciones={c.rubrica}
         valor={valor}
         onCambio={(v) => onElegir(v, flechas.current)}
@@ -303,17 +362,19 @@ function CalificarProyecto(props: CalificarProps & { proyecto: ProyectoPortafoli
     </div>
   )
 
+  // «Volver» pequeño junto a la línea de la pregunta; el lector de pantalla oye a dónde vuelve.
+  const volver = (
+    <Boton variante="fantasma" className="hzp-volver" aria-label="Volver a los proyectos" onClick={onVolver}>
+      Volver
+    </Boton>
+  )
   return (
     <Marco {...marco} claveFoco={`calificar-${proyecto.id}`} barra={barra}>
-      <Boton variante="fantasma" className="hzp-volver" onClick={onVolver}>
-        Volver a los proyectos
-      </Boton>
-      <h1 className="hz-titulo">{proyecto.nombre}</h1>
-      <FaseRonda ronda={ronda} />
       {error && <Aviso tono="error">{error}</Aviso>}
       {enResumen ? (
         <section className="hzp-resumen" aria-labelledby="hzp-resumen-titulo">
-          <BarraProgreso actual={total - faltan} total={total} texto={`${total - faltan} de ${total} respondidas · ${proyecto.nombre}`} />
+          <CabezaCalificar ronda={ronda} proyecto={proyecto.nombre} volver={volver} />
+          <BarraProgreso actual={total - faltan} total={total} texto={`${total - faltan} de ${total} respondidas`} />
           <h2 id="hzp-resumen-titulo" ref={titulo} tabIndex={-1} className="hz-subtitulo">
             Revisa tus respuestas
           </h2>
@@ -344,7 +405,16 @@ function CalificarProyecto(props: CalificarProps & { proyecto: ProyectoPortafoli
           </ol>
         </section>
       ) : (
-        <Pregunta yo={yo} proyecto={proyecto} indice={paso} valor={respuestas[criterios[paso].id] ?? null} onElegir={elegir} titulo={titulo} />
+        <Pregunta
+          yo={yo}
+          proyecto={proyecto}
+          indice={paso}
+          valor={respuestas[criterios[paso].id] ?? null}
+          onElegir={elegir}
+          titulo={titulo}
+          volver={volver}
+          aviso={ronda === 1 && paso === 0 ? <Aviso tono="info">{AVISO_AVANCE}</Aviso> : undefined}
+        />
       )}
       <HojaPlegable yo={yo} proyectoId={proyecto.id} />
     </Marco>
@@ -374,7 +444,7 @@ export function PreguntaGuiada(props: GuiadaProps) {
       <Marco {...marco} claveFoco="guiada-espera">
         <h1 className="hz-titulo">Espera la pregunta del facilitador</h1>
         <FaseRonda ronda={yo.sala.ronda_actual} />
-        <p className="hz-texto-2">El facilitador elige cada pregunta y aparece aquí sola. Deja esta pantalla abierta.</p>
+        <p className="hz-texto-2">El facilitador elige cada pregunta y aparece aquí automáticamente. Deja esta pantalla abierta.</p>
         <BarraProgreso actual={hechos} total={vivos.length} texto={`Llevas ${hechos} de ${vivos.length} proyectos`} />
         {children}
       </Marco>
@@ -414,8 +484,6 @@ function RespuestaGuiada(props: GuiadaProps & { proyecto: ProyectoPortafolio; in
 
   return (
     <Marco {...marco} claveFoco={`guiada-${proyecto.id}`}>
-      <h1 className="hz-titulo">{proyecto.nombre}</h1>
-      <FaseRonda ronda={ronda} />
       {error && (
         <Aviso tono="error" accion={listas && !guardando ? { texto: 'Reintentar', onClick: () => void enviar(respuestas) } : undefined}>
           {error}
@@ -427,9 +495,9 @@ function RespuestaGuiada(props: GuiadaProps & { proyecto: ProyectoPortafolio; in
           {enviado
             ? `Tus ${total} respuestas de ${proyecto.nombre} quedaron guardadas. Puedes cambiar esta mientras la ronda siga abierta.`
             : respondidas < total
-              ? `Tu respuesta quedó en este celular. Enviamos tu calificación de ${proyecto.nombre} cuando respondas las ${total} preguntas (llevas ${respondidas}).`
+              ? `Respuesta anotada (llevas ${respondidas} de ${total} de ${proyecto.nombre}). Se envía automáticamente cuando completes las ${total}.`
               : enCola
-                ? `Tus ${total} respuestas de ${proyecto.nombre} están guardadas en este celular y todavía no llegan. Las enviamos solas en cuanto se pueda.`
+                ? `Tus ${total} respuestas de ${proyecto.nombre} están guardadas en este celular y todavía no llegan. Las enviamos automáticamente en cuanto se pueda.`
                 : `Enviando tus ${total} respuestas de ${proyecto.nombre}…`}
         </Aviso>
       )}
