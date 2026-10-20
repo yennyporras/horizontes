@@ -920,6 +920,26 @@ body:has(> #root > .hz-tablero) {
     gap: 0.2em 0.45em;
     font-size: 0.9em;
   }
+  /* Con el logo de Estratek a la derecha, la barra sigue en una franja: selector y botones más angostos. */
+  .hz-cab-controles {
+    font-size: 0.88em;
+  }
+  .hz-alcance select {
+    max-width: 9.5em;
+  }
+  .hz-segmento button {
+    padding: 0.3em 0.5em;
+  }
+  .hz-cab .hz-cab-logo {
+    height: 24px;
+  }
+  .hz-cab-titulo {
+    flex-basis: 8em;
+  }
+  /* En el panel de Detallado no cabe junto a la pantalla completa: la ayuda sigue en la tecla ?. */
+  .hz-lateral .hz-boton-teclas {
+    display: none;
+  }
 }
 
 /* Celular y tableta: sin pantalla completa ni pistas de teclas (QA-T-11: no hay teclado físico). */
