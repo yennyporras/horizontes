@@ -52,7 +52,7 @@ const TRANSICIONES: Record<Exclude<Accion, 'reiniciar_ronda'>, Transicion> = {
  * solo si la transición es válida en ese momento. Una transición (manual o programada) consume lo programado para ella.
  */
 export const PROGRAMACION = [
-  { col: 'apertura_programada_sala_at', accion: 'abrir_inscripcion', etapa: 'sala', apertura: true, nombre: 'la apertura de la sala' },
+  { col: 'apertura_programada_sala_at', accion: 'abrir_inscripcion', etapa: 'sala', apertura: true, nombre: 'la apertura de la inscripción' },
   { col: 'apertura_programada_r1_at', accion: 'abrir_ronda_1', etapa: 'r1', apertura: true, nombre: 'la apertura de la ronda 1' },
   { col: 'cierre_programado_r1_at', accion: 'cerrar_ronda_1', etapa: 'r1', apertura: false, nombre: 'el cierre de la ronda 1' },
   { col: 'apertura_programada_r2_at', accion: 'abrir_ronda_2', etapa: 'r2', apertura: true, nombre: 'la apertura de la ronda 2' },
