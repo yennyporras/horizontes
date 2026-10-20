@@ -554,3 +554,22 @@ describe('ancho de página estándar: encabezado, contenido y pie con el mismo c
       expect(container.querySelector(sel)!.classList.contains('hz-pagina'), sel).toBe(true)
   })
 })
+
+describe('QA-A-04: vista previa del celular desde el panel', () => {
+  it('/m/{codigo}?vista=previa muestra la entrada con un aviso, aunque la inscripción no abra, y no inscribe a nadie', async () => {
+    servidor((url) => (url === `/api/mesas/${CODIGO}` ? { status: 200, body: { ...MESA, inscripcion_abierta: false, sala: { ...MESA.sala, estado: 'preparada' } } } : { status: 404 }))
+    conToken()
+    montar(`/m/${CODIGO}?vista=previa`)
+    expect(await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })).toBeTruthy()
+    expect(screen.getByText('Vista previa del facilitador')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Tu nombre'), { target: { value: 'Prueba Panel' } })
+    fireEvent.change(screen.getByLabelText('Tu correo'), { target: { value: 'panel@example.com' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    const inscribirme = screen.getByRole('button', { name: 'Inscribirme' }) as HTMLButtonElement
+    expect(inscribirme.disabled || inscribirme.getAttribute('aria-disabled') === 'true').toBe(true)
+    fireEvent.click(inscribirme)
+    fireEvent.submit(document.querySelector('form')!)
+    // Ni inscripción ni la sesión guardada en este navegador: solo se leyó la mesa.
+    expect(llamadas.map((l) => l.url)).toEqual(llamadas.map(() => `/api/mesas/${CODIGO}`))
+  })
+})

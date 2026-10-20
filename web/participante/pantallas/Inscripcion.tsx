@@ -19,10 +19,12 @@ export interface InscripcionProps {
   codigo: string
   mesa: Mesa
   onInscrito: (token: string) => void
+  /** Vista previa del facilitador (`?vista=previa` desde el panel): se ve igual, pero no inscribe a nadie. */
+  previa?: boolean
 }
 
 /** 8.1 Inscripción con el componente de consentimiento (patrón del IRMI, texto de Estratek). */
-export function Inscripcion({ codigo, mesa, onInscrito }: InscripcionProps) {
+export function Inscripcion({ codigo, mesa, onInscrito, previa = false }: InscripcionProps) {
   const [nombre, setNombre] = useState('')
   const [correo, setCorreo] = useState('')
   const [acepta, setAcepta] = useState(false)
@@ -49,7 +51,7 @@ export function Inscripcion({ codigo, mesa, onInscrito }: InscripcionProps) {
 
   const enviar = async (ev?: FormEvent) => {
     ev?.preventDefault()
-    if (enviando || !acepta) return
+    if (enviando || !acepta || previa) return
     // Un intento nuevo reemplaza el error del anterior.
     setErrorEnvio(null)
     const e = validar()
@@ -83,13 +85,25 @@ export function Inscripcion({ codigo, mesa, onInscrito }: InscripcionProps) {
       sala={mesa.sala.nombre}
       meta={mesa.mesa.nombre}
       claveFoco="inscripcion"
-      notaBarra={!acepta ? 'Para inscribirte necesitamos tu autorización de tratamiento de datos.' : undefined}
+      notaBarra={
+        previa
+          ? 'Vista previa: el botón no inscribe a nadie.'
+          : !acepta
+            ? 'Para inscribirte necesitamos tu autorización de tratamiento de datos.'
+            : undefined
+      }
       barra={
-        <Boton bloque deshabilitado={!acepta} cargando={enviando} textoCargando="Inscribiendo…" onClick={() => void enviar()}>
+        <Boton bloque deshabilitado={!acepta || previa} cargando={enviando} textoCargando="Inscribiendo…" onClick={() => void enviar()}>
           Inscribirme
         </Boton>
       }
     >
+      {previa && (
+        <Aviso tono="info" titulo="Vista previa del facilitador">
+          Así ven los participantes la entrada a {mesa.mesa.nombre}. Desde aquí no se inscribe a nadie ni se vota: para
+          probar el taller completo, usa otro celular o una ventana de incógnito con el QR de la mesa.
+        </Aviso>
+      )}
       <h1 className="hz-titulo">Te damos la bienvenida al taller Horizontes</h1>
       <p className="hz-texto-2">
         Estás en {mesa.mesa.nombre} de {mesa.sala.nombre}. Inscríbete para recibir el caso y tu hoja de información.
