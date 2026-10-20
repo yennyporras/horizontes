@@ -50,6 +50,8 @@ export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba' | 'flotantes
 export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFoco, children }: MarcoProps) {
   useTemaDocumento('claro')
   const ref = useRef<HTMLElement>(null)
+  const vista = useRef<HTMLDivElement>(null)
+  const pie = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!claveFoco) return
     const h1 = ref.current?.querySelector('h1')
@@ -59,9 +61,26 @@ export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFo
     }
     document.documentElement.scrollTop = 0
   }, [claveFoco])
+  // El espacio al final de la página es el alto real del pie fijo (barra, nota y avisos flotantes): nada queda
+  // tapado debajo de la barra y, sin barra, no sobra un hueco en blanco. Crece al final, así no mueve lo que se lee.
+  const hayPie = Boolean(flotantes || barra)
+  useEffect(() => {
+    const v = vista.current
+    const p = pie.current
+    if (!v) return
+    const medir = () => v.style.setProperty('--hzp-alto-pie', `${p ? Math.ceil(p.getBoundingClientRect().height) : 0}px`)
+    medir()
+    if (!p || typeof ResizeObserver === 'undefined') return
+    const o = new ResizeObserver(medir)
+    o.observe(p)
+    return () => o.disconnect()
+  }, [hayPie])
   return (
-    <div className="hz hz-vista hzp-vista" data-tema="claro" lang="es-CO">
-      <EncabezadoProducto href="/" />
+    <div ref={vista} className="hz hz-vista hzp-vista" data-tema="claro" lang="es-CO">
+      {/* Barra superior carbón con la línea del degradado, igual que el panel (FAMILIA_ESTRATEK §6). */}
+      <div className="hzp-cabecera" data-tema="carbon">
+        <EncabezadoProducto href="/" />
+      </div>
       <div className="hzp-contexto hz-pagina">
         <p className="hzp-contexto__sala">{sala}</p>
         {meta && <p className="hzp-contexto__meta">{meta}</p>}
@@ -70,8 +89,8 @@ export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFo
         {arriba}
         {children}
       </main>
-      {(flotantes || barra) && (
-        <div className={barra ? 'hzp-pie' : 'hzp-pie hzp-pie--sin-barra'}>
+      {hayPie && (
+        <div ref={pie} className={barra ? 'hzp-pie' : 'hzp-pie hzp-pie--sin-barra'}>
           {flotantes && <div className="hzp-flotantes hz-pagina">{flotantes}</div>}
           {barra && <BarraAccion nota={notaBarra}>{barra}</BarraAccion>}
         </div>
