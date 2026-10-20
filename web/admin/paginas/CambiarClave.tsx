@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useSesion } from '../sesion'
 import { EncabezadoProducto } from '../../shared/ui'
+import { PiePanel } from '../Marco'
 import { useTituloPagina } from './EncabezadoSala'
 
 /**
@@ -41,7 +42,7 @@ export function CambiarClave() {
       <div data-tema="carbon">
         <EncabezadoProducto />
       </div>
-      <main className="login__cuerpo">
+      <main className="login__cuerpo hz-pagina">
         <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-clave">
           <h1 id="titulo-clave">{obligatorio ? 'Cambia tu clave' : 'Cambiar mi clave'}</h1>
           <p>{obligatorio ? 'Es tu primer ingreso. Elige una clave propia de al menos 10 caracteres.' : 'Escribe tu clave actual y elige una nueva de al menos 10 caracteres.'}</p>
@@ -72,6 +73,7 @@ export function CambiarClave() {
           )}
         </form>
       </main>
+      <PiePanel />
     </div>
   )
 }

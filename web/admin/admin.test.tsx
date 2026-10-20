@@ -208,7 +208,7 @@ describe('panel admin contra el simulador', () => {
   it('marca Estratek: barra de producto carbón y una sola acción principal, el paso que sigue', async () => {
     montar('/admin/login')
     expect(screen.getByText('Horizontes').closest('[data-tema="carbon"]')).toBeTruthy()
-    expect(screen.getByText(/por Estratek/)).toBeTruthy()
+    expect(within(document.querySelector('.hz-producto') as HTMLElement).getByText(/por Estratek/)).toBeTruthy()
     await entrar('paola')
     fireEvent.change(screen.getByLabelText('Nombre del taller'), { target: { value: 'Marca' } })
     fireEvent.click(screen.getByRole('button', { name: 'Crear sala' }))

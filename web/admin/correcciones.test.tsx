@@ -511,6 +511,22 @@ describe('Login, cuenta y navegación', () => {
   })
 })
 
+describe('Ancho de página común (pedido del 20-oct)', () => {
+  it('la barra, el contenido y el pie usan el mismo contenedor .hz-pagina, también en el login', async () => {
+    montar('/admin/login')
+    await screen.findByRole('heading', { name: 'Panel de administración' })
+    const login = [document.querySelector('.hz-producto__fila'), screen.getByRole('main'), screen.getByRole('contentinfo')]
+    for (const el of login) expect(el?.classList.contains('hz-pagina')).toBe(true)
+    await entrar()
+    const panel = [document.querySelector('.hz-producto__fila'), document.getElementById('contenido'), screen.getByRole('contentinfo')]
+    for (const el of panel) expect(el?.classList.contains('hz-pagina')).toBe(true)
+    const css = readFileSync(join(__dirname, 'admin.css'), 'utf8').split('@media print')[0]
+    // El contenido no redefine su ancho ni su relleno lateral: manda el contenedor común.
+    expect(css).not.toMatch(/\.contenido \{[^}]*max-width/)
+    expect(css).not.toMatch(/\.contenido \{[^}]*padding: /)
+  })
+})
+
 describe('Mesas y QR, Respuestas, Exportar', () => {
   it('QA-A-26, QA-A-31 y F-6: imprimir es lo principal, cada QR invita a escanear y un doble clic agrega una sola vez', async () => {
     const llamadas = espiar()
