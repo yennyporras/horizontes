@@ -6,6 +6,7 @@ import { recordarSala, salaRecordada } from './memoria'
 import { dominioDistinto } from './textos'
 import { EncabezadoProducto } from '../shared/ui'
 import { ProveedorPendientes, usePendientes } from './componentes/Pendientes'
+import { useRecorrido } from './componentes/Recorrido'
 
 /** Navegación del panel. Las secciones de sala usan la sala abierta en la URL o la última que se usó. */
 export function Marco() {
@@ -24,6 +25,8 @@ function MarcoInterno() {
   const { confirmarSalida, hayPendientes } = usePendientes()
   const [menuAbierto, setMenuAbierto] = useState(false)
   const primeraVista = useRef(true)
+  // Recorrido guiado: solo la primera vez de cada admin en este navegador (y nunca con datos simulados).
+  const recorrido = useRecorrido(admin?.id, !usaMocks())
 
   // Deuda: recordar la sala es un efecto, no algo que pasa en cada render.
   useEffect(() => {
@@ -72,7 +75,15 @@ function MarcoInterno() {
         Saltar al contenido
       </a>
       <div className="cabecera" data-tema="carbon">
-        <EncabezadoProducto>
+        <EncabezadoProducto
+          href="/admin/salas"
+          onIr={async (e) => {
+            // El logo lleva al panel principal (Salas) sin recargar; con cambios sin guardar, pregunta antes.
+            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+            e.preventDefault()
+            if (await confirmarSalida()) navegar('/admin/salas')
+          }}
+        >
           {/* QA-A-23: en el celular el menú se abre con un botón que dice en qué sección estás. */}
           <button
             type="button"
@@ -90,7 +101,9 @@ function MarcoInterno() {
                 to={e.a}
                 end={e.end}
                 onClick={irA(e.a)}
-                className={({ isActive }) => (isActive ? 'nav__item nav__item--activo' : 'nav__item')}
+                className={({ isActive }) =>
+                  ['nav__item', isActive && 'nav__item--activo', recorrido.seccion === e.texto && 'nav__item--recorrido'].filter(Boolean).join(' ')
+                }
               >
                 {e.texto}
               </NavLink>
@@ -99,6 +112,9 @@ function MarcoInterno() {
           <div className="usuario">
             <span className="usuario__nombre">{admin?.nombre}</span>
             <span className="etiqueta">{admin?.rol === 'superadmin' ? 'Superadmin' : 'Admin'}</span>
+            <button type="button" className="hz-boton hz-boton--fantasma" onClick={recorrido.abrir}>
+              Recorrido
+            </button>
             {/* QA-A-22: cada quien cambia su clave cuando quiera. */}
             <Link className="hz-boton hz-boton--fantasma" to="/admin/cambiar-clave" onClick={irA('/admin/cambiar-clave')}>
               Cambiar mi clave
@@ -123,6 +139,7 @@ function MarcoInterno() {
         <Outlet />
       </main>
       <PiePanel />
+      {recorrido.elemento}
     </div>
   )
 }

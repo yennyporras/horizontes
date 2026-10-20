@@ -7,6 +7,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { type Transporte, usarTransporte } from './api'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from '../../tests/server/ayuda'
+import { CLAVE_RECORRIDO } from './componentes/Recorrido'
 
 let e: Entorno
 let cookie = ''
@@ -73,6 +74,8 @@ beforeEach(async () => {
   cookie = ''
   usarTransporte(transporteInject)
   localStorage.removeItem('hz_admin_sala')
+  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
+  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
 })
 afterEach(async () => {
   cleanup()

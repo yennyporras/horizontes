@@ -542,3 +542,25 @@
   .hz-admin .tabla-tarjetas tbody th { min-width: 12ch; }
 }
 .hz-admin .qr-tarjeta .url { font-size: var(--hz-fs-14); }
+
+/* ── Recorrido guiado (componentes/Recorrido.tsx) ──────
+   Mismo <dialog> que las confirmaciones, un poco más ancho. El ítem del menú del paso se marca con el acento. */
+.hz-admin dialog.recorrido { max-width: 560px; }
+.hz-admin .recorrido__paso {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--hz-sp-2);
+  margin: 0; font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2);
+}
+.hz-admin .recorrido__progreso { height: 4px; margin-block: var(--hz-sp-3) var(--hz-sp-4); border-radius: var(--hz-r-pill); background: var(--hz-superficie-2); overflow: hidden; }
+.hz-admin .recorrido__progreso span { display: block; height: 100%; background: var(--hz-grad-marca); transition: width .2s ease; }
+.hz-admin .recorrido h2 { margin-top: 0; outline-offset: 4px; }
+.hz-admin .recorrido__texto { display: grid; gap: var(--hz-sp-3); }
+.hz-admin .recorrido__texto p { margin: 0; max-width: 60ch; }
+.hz-admin .recorrido__espera {
+  display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-3) var(--hz-sp-4);
+  border-left: 4px solid var(--hz-acento-producto); border-radius: var(--hz-r-campo); background: var(--hz-superficie-1);
+}
+.hz-admin .recorrido__espera strong { font-size: var(--hz-fs-12); text-transform: uppercase; letter-spacing: .06em; color: var(--hz-tinta-2); }
+.hz-admin .recorrido__acciones { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--hz-sp-2); margin-top: var(--hz-sp-6); }
+.hz-admin .recorrido__nav { display: flex; gap: var(--hz-sp-2); margin-left: auto; }
+.hz-admin .nav__item--recorrido { outline: 3px solid var(--hz-acento-producto); outline-offset: -3px; }
+@media (prefers-reduced-motion: reduce) { .hz-admin .recorrido__progreso span { transition: none; } }
