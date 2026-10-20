@@ -157,8 +157,8 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 
 /* ── Casilla ────────────────────────────────────────── */
 .hz-casilla { display: flex; gap: var(--hz-sp-3); align-items: flex-start; padding: var(--hz-sp-3) 0; }
-/* Área táctil de 44 px alrededor de la casilla de 24 px, sin mover el diseño. */
-.hz-casilla__toque { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: -10px; cursor: pointer; }
+/* Área táctil de 48 px (familia Estratek §5) alrededor de la casilla de 24 px, sin mover el diseño. */
+.hz-casilla__toque { flex: none; display: grid; place-items: center; width: var(--hz-tactil); height: var(--hz-tactil); margin: -12px; cursor: pointer; }
 .hz-casilla__texto { cursor: pointer; }
 .hz-casilla__input {
   flex: none;
@@ -229,7 +229,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 }
 .hz-pestanas__tab {
   flex: 1;
-  min-height: 44px;
+  min-height: var(--hz-tactil);
   border: 0; border-radius: var(--hz-r-pill);
   background: transparent;
   font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2);
@@ -261,7 +261,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-aviso--ok { color: var(--hz-ok); background: var(--hz-ok-fondo); }
 .hz-aviso--alerta { color: var(--hz-alerta); background: var(--hz-alerta-fondo); }
 .hz-aviso--error { color: var(--hz-error); background: var(--hz-error-fondo); }
-.hz-aviso .hz-boton--fantasma { min-height: 40px; padding: 0; justify-self: start; color: var(--hz-tinta); text-decoration: underline; text-underline-offset: 3px; }
+.hz-aviso .hz-boton--fantasma { min-height: var(--hz-tactil); padding: 0; justify-self: start; color: var(--hz-tinta); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── Insignia ───────────────────────────────────────── */
 .hz-insignia {
@@ -320,7 +320,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
    tablero.css define .hz-cifra, .hz-insignia y .hz-progreso sin alcance y se carga en toda la SPA.
    Dentro de .hz (páginas del participante) mandan los valores de este sistema de diseño. */
 .hz .hz-cifra { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
-.hz .hz-progreso { padding: 0; background: none; border-radius: 0; }
+.hz .hz-progreso { padding: 0; background: none; border: 0; border-radius: 0; }
 .hz .hz-insignia { padding: 2px var(--hz-sp-2); border-radius: var(--hz-r-pill); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); }
 
 /* El encabezado de producto llega a los bordes de la página del celular. */
