@@ -15,12 +15,26 @@ export function idAleatorio(prefijo: string, largo = 8): string {
   return `${prefijo}_${s}`
 }
 
-/** Código corto de sala: HZ + 3 caracteres sin ambigüedad (sin 0/O, 1/I/L). */
-export function codigoSala(): string {
-  let s = 'HZ'
-  for (let i = 0; i < 3; i++) s += ALFABETO_CODIGO[randomInt(ALFABETO_CODIGO.length)]
+/** Caracteres al azar sin ambigüedad (sin 0/O, 1/I/L). */
+export function textoCodigo(largo: number): string {
+  let s = ''
+  for (let i = 0; i < largo; i++) s += ALFABETO_CODIGO[randomInt(ALFABETO_CODIGO.length)]
   return s
 }
+
+/** Código corto de sala: HZ + 3 caracteres sin ambigüedad. */
+export const codigoSala = (): string => `HZ${textoCodigo(3)}`
+
+/** Caracteres al azar del código de mesa: 31^5 (unos 28,6 millones) combinaciones por número de mesa (M-1c). */
+export const LARGO_AZAR_MESA = 5
+
+/**
+ * Código de mesa: el de la sala, 5 caracteres al azar y el número de la mesa (HZ7K2QX4AB-1). Antes del 20-oct era solo
+ * `{sala}-{n}` y se adivinaba con el de la sala (S-5); el mismo 20-oct llevó 3 al azar (HZ7K2QX4-1) y la auditoría de
+ * seguridad lo subió a 5 (M-1c). Las mesas que ya existen conservan su código. La forma sigue siendo
+ * `[A-Z0-9]+-número`, la que acepta la entrada por código de la landing.
+ */
+export const codigoMesa = (codigoDeSala: string, numero: number): string => `${codigoDeSala}${textoCodigo(LARGO_AZAR_MESA)}-${numero}`
 
 /** Se guarda en UTC ISO (comparable como texto). */
 export const isoUtc = (ms: number) => new Date(ms).toISOString()

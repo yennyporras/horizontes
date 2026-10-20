@@ -1,6 +1,6 @@
 # Familia Estratek · Línea gráfica v1
 
-Fuente única de la identidad visual de las herramientas de Estratek: Horizontes, IRMI, Building y Motor Comercial. Aprobada por Paola el 19-oct-2026. Piloto: Horizontes. Propuesta visual: https://claude.ai/artifact/TsY5hzPFrVssiham1rKBS1
+Fuente única de la identidad visual de las herramientas de Estratek: Horizontes, IRMI, Building y Motor Comercial. Aprobada por Paola el 19-oct-2026. Piloto: Horizontes.
 
 Los colores de marca son **exactos** de estratek.com.co: kit de Elementor 1641, CSS adicional del tema y clase `.fondo-estratek`. No se inventan colores de marca. Los derivados (superficies, estados, azul profundo) existen solo para cumplir contraste AA y se documentan aquí.
 
@@ -85,6 +85,7 @@ Todos los pares tinta/fondo y estado/fondo pasan AA. Contrastes medidos con WCAG
   - tarjetas en 16;
   - insignias en píldora.
 - **Jerarquía:** por superficie y borde de 1 px. Sombra solo en lo que flota (menú, diálogo, aviso emergente).
+- **Ancho de página (20-oct):** 1280 px, el del panel, para todas las vistas menos la proyección (que usa la pantalla completa). Tokens `--hz-ancho-pagina` y `--hz-margen-pagina` (margen lateral de 16 px en celular, 24 px desde 768 px y 32 px desde 1280 px) y contenedor común `.hz-pagina`. Encabezado, contenido y pie usan el mismo contenedor y comparten bordes; el fondo de cada franja y la línea del degradado pueden ir de borde a borde. Los textos largos conservan su medida de lectura (`--hz-medida`) dentro del contenedor.
 - **Áreas táctiles:** 48 px como mínimo.
 - **Foco:** contorno de 2 px en el color de foco, separado 2 px, con soporte de `forced-colors`.
 - **Movimiento:** 150 ms en interacción y 250 ms en transiciones. Siempre se respeta `prefers-reduced-motion`.

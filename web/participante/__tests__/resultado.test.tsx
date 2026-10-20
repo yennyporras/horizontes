@@ -4,7 +4,8 @@ import { cleanup, render, screen, within } from '@testing-library/react'
 import tablero from '../../../mocks/GET_api_tablero.json'
 import yoBase from '../../../mocks/GET_api_yo.json'
 import { cifra } from '../Comun'
-import { MIN_VOTOS, ResultadoAlcance } from '../pantallas/Resultado'
+import { DESCRIPCION_CRITERIO } from '../../shared/criterios'
+import { MIN_VOTOS, ResultadoAlcance, resultadoVisible } from '../pantallas/Resultado'
 import type { Resultados, Yo } from '../api'
 
 const clonar = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
@@ -20,7 +21,7 @@ describe('resultado del alcance', () => {
     expect(cifra(null)).toBe('sin dato')
   })
 
-  /** Mock con el campo `total` que calcula el servidor (R4_CONTRATO C1). Valores a propósito distintos de eje X + eje Y. */
+  /** Mock con el campo `total` que calcula el servidor (acta del 16-oct, C1). Valores a propósito distintos de eje X + eje Y. */
   const conTotal = () => {
     const r = clonar(tablero) as unknown as Resultados
     for (const p of r.proyectos_vivos) for (const x of p.rondas) x.total = 10 + x.ronda / 8
@@ -32,7 +33,8 @@ describe('resultado del alcance', () => {
     const { container } = render(<ResultadoAlcance resultados={conTotal()} criterios={yo.criterios} alcance="mesa" />)
     const tabla = screen.getAllByRole('table')[0]
     const filas = within(tabla).getAllByRole('rowheader').map((th) => th.textContent)
-    expect(filas).toEqual(yo.criterios.map((c) => c.nombre))
+    // Cada criterio con su descripción corta debajo (pedido del 20-oct, 100 caracteres como máximo).
+    expect(filas).toEqual(yo.criterios.map((c) => c.nombre + DESCRIPCION_CRITERIO[c.id as keyof typeof DESCRIPCION_CRITERIO]))
     expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
     expect(container.textContent).not.toMatch(/Total|10,13|10,25/)
     expect(screen.getAllByRole('cell')).toHaveLength(screen.getAllByRole('table').length * yo.criterios.length * 2)
@@ -53,7 +55,7 @@ describe('resultado del alcance', () => {
     const r = clonar(tablero) as unknown as Resultados
     for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 2
     const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
-    expect(screen.getByText(/^Hace falta al menos 3 votos para mostrar estos resultados\./)).toBeTruthy()
+    expect(screen.getByText(/^Hacen falta al menos 3 votos para mostrar estos resultados\./)).toBeTruthy()
     expect(container.querySelector('table')).toBeNull()
     expect(container.querySelector('.hzp-matriz')).toBeNull()
   })
@@ -64,8 +66,8 @@ describe('resultado del alcance', () => {
     for (const x of a.rondas) x.n_votos = 2
     for (const x of b.rondas) if (x.ronda === 2) x.n_votos = 2
     render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
-    expect(screen.getByText('Hace falta al menos 3 votos para mostrar este proyecto.')).toBeTruthy()
-    expect(screen.getByText('Ronda 2: hace falta al menos 3 votos para mostrarla.')).toBeTruthy()
+    expect(screen.getByText('Hacen falta al menos 3 votos para mostrar este proyecto.')).toBeTruthy()
+    expect(screen.getByText('Ronda 2: hacen falta al menos 3 votos para mostrarla.')).toBeTruthy()
     // Solo queda la tabla de b con su ronda 1: una sola columna de datos, R1.
     expect(screen.getAllByRole('table')).toHaveLength(1)
     expect(screen.getByRole('columnheader', { name: 'R1' })).toBeTruthy()
@@ -78,9 +80,9 @@ describe('resultado del alcance', () => {
       { proyecto_id: 'insumex', ronda: 1, respuestas: Object.fromEntries(yo.criterios.map((c, i) => [c.id, [1, 3, 5, 7, 9, 9][i]])) },
       { proyecto_id: 'insumex', ronda: 2, respuestas: Object.fromEntries(yo.criterios.map((c) => [c.id, 5])) },
     ]
-    render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" misVotos={misVotos} />)
+    render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" misVotos={misVotos as unknown as Yo['mis_votos']} />)
     const [insumex, nutriwhat] = screen.getAllByRole('table')
-    const fila = within(insumex).getByRole('rowheader', { name: yo.criterios[2].nombre }).closest('tr')!
+    const fila = within(insumex).getByRole('rowheader', { name: new RegExp(`^${yo.criterios[2].nombre}`) }).closest('tr')!
     const celdas = [...fila.querySelectorAll('td')]
     // R1: el promedio del servidor con 2 decimales y debajo tu 5; R2: tu 5 también.
     expect(celdas.map((td) => td.querySelector('.hzp-tabla__promedio')!.textContent)).toEqual(
@@ -104,12 +106,35 @@ describe('resultado del alcance', () => {
     r.minimo_votos = 5
     for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 4
     const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="sala" />)
-    expect(screen.getByText(/^Hace falta al menos 5 votos para mostrar estos resultados\./)).toBeTruthy()
+    expect(screen.getByText(/^Hacen falta al menos 5 votos para mostrar estos resultados\./)).toBeTruthy()
     expect(container.querySelector('table')).toBeNull()
     cleanup()
     const s = conTotal()
     for (const x of s.proyectos_vivos[0].rondas) x.bajo_minimo = true
     render(<ResultadoAlcance resultados={s} criterios={yo.criterios} alcance="sala" />)
     expect(screen.getAllByRole('table')).toHaveLength(1)
+  })
+})
+
+describe('textos del mínimo de votos (QA-P-21, F-12)', () => {
+  it('concuerdan en plural: «Hacen falta al menos N votos»', () => {
+    const r = clonar(tablero) as unknown as Resultados
+    const [a, b] = r.proyectos_vivos
+    for (const x of a.rondas) x.n_votos = 1
+    for (const x of b.rondas) if (x.ronda === 2) x.n_votos = 1
+    const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
+    expect(container.textContent).not.toMatch(/[Hh]ace falta/)
+    expect(container.textContent).toContain('Hacen falta al menos 3 votos para mostrar este proyecto.')
+    expect(container.textContent).toContain('Ronda 2: hacen falta al menos 3 votos para mostrarla.')
+  })
+})
+
+describe('resultadoVisible', () => {
+  it('solo con alguna ronda sobre el mínimo', () => {
+    const r = clonar(tablero) as unknown as Resultados
+    expect(resultadoVisible(r)).toBe(true)
+    for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 2
+    expect(resultadoVisible(r)).toBe(false)
+    expect(resultadoVisible(null)).toBe(false)
   })
 })

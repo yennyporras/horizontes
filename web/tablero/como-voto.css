@@ -131,9 +131,9 @@
   border-radius: 3px 3px 0 0;
 }
 .hz-cv-barras-r1 .hz-cv-barra {
-  min-height: 0.25em;
-  background: var(--hz-fondo);
-  border: 0.14em solid var(--hz-r1);
+  min-height: 0.3em;
+  background: color-mix(in srgb, var(--hz-r1) 18%, var(--hz-fondo));
+  border: max(3px, 0.2em) solid var(--hz-r1);
   border-bottom: 0;
 }
 .hz-cv-barras-r2 .hz-cv-barra {

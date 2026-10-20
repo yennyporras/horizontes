@@ -1,6 +1,6 @@
 # deploy · Horizontes
 
-Dueña: T4. Guía completa de infraestructura en `docs/DESPLIEGUE.md`; aquí va lo operativo del pipeline.
+Responsable: equipo de infraestructura. Guía completa de infraestructura en `docs/DESPLIEGUE.md`; aquí va lo operativo del pipeline.
 
 ## Archivos
 | Archivo | Para qué |
@@ -17,11 +17,11 @@ Desde Git Bash (en Windows) o cualquier terminal bash, en la carpeta del repo co
 tools/deploy.sh diagnostico       # sin efectos: dice qué falta (remoto, credenciales, app en Coolify, clave del superadmin, DNS)
 tools/deploy.sh verificar         # construye la imagen, la arranca, revisa /api/health, /admin, /m y /tablero
 tools/deploy.sh local             # ensayo tipo staging en http://localhost:3999 con volumen propio (parar: tools/deploy.sh parar-local)
-tools/deploy.sh staging           # tools/test.sh + push de main + dominio y variables en Coolify + deploy + DNS, HTTPS y salud
+tools/deploy.sh staging           # exige que el commit ya esté en origin/main (vía PR) + tools/test.sh + dominio y variables en Coolify + deploy + DNS, HTTPS y salud
 tools/deploy.sh produccion        # solo si staging está sano y corre el mismo commit que main (FORZAR=1 para saltarlo)
 tools/deploy.sh revisar staging   # solo comprueba DNS, certificado, /api/health y la SPA
 ```
-`staging` y `produccion` son idempotentes: en cada corrida reescriben con los mismos valores el dominio (`https://<dominio>`, así Coolify emite y renueva el certificado Let's Encrypt), el healthcheck y las variables del servidor (el `.env` de la app en Coolify: `APP_ENV`, `NODE_ENV`, `PORT`, `HOST`, `TZ`, `DB_PATH`, `BASE_URL`, `SUPERADMIN_USUARIO`, `POLITICA_PRIVACIDAD_URL` y `SUPERADMIN_CLAVE` si viene en `deploy/.env.deploy`) y luego piden el deploy. Antes de correr pruebas o empujar, valida credenciales y app en Coolify, y exige `SUPERADMIN_CLAVE_<AMBIENTE>` si Coolify todavía no la tiene (sin ella nadie podría entrar al panel). Opciones: `SIN_PRUEBAS=1`, `SIN_PUSH=1`, `FORZAR=1`.
+`staging` y `produccion` son idempotentes: en cada corrida reescriben con los mismos valores el dominio (`https://<dominio>`, así Coolify emite y renueva el certificado Let's Encrypt), el healthcheck y las variables del servidor (el `.env` de la app en Coolify: `APP_ENV`, `NODE_ENV`, `PORT`, `HOST`, `TZ`, `DB_PATH`, `BASE_URL`, `SUPERADMIN_USUARIO`, `POLITICA_PRIVACIDAD_URL` y `SUPERADMIN_CLAVE` si viene en `deploy/.env.deploy`) y luego piden el deploy. Antes de correr pruebas, valida credenciales y app en Coolify, y exige `SUPERADMIN_CLAVE_<AMBIENTE>` si Coolify todavía no la tiene (sin ella nadie podría entrar al panel). El script no empuja nada (desde el 20-oct): a `main` se llega con pull request y antes de desplegar comprueba que el commit local ya está en `origin/main`, que es lo que construye Coolify. El token de Coolify y la clave del superadmin no van en los argumentos de `curl` ni de `node` (se verían en `ps`): el token va en un archivo temporal de configuración legible solo por el usuario y los cuerpos por la entrada estándar. Opciones: `SIN_PRUEBAS=1`, `FORZAR=1`.
 
 Lo que el script no crea (una sola vez, a mano en Coolify): la app, el volumen `/data` y la tarea de respaldo. Ver abajo.
 
@@ -42,11 +42,11 @@ PWCORE=... CHROME=... node QA-tests/recorrido_integrado.cjs http://localhost:399
 ## Coolify (resumen; detalle en docs/DESPLIEGUE.md §2)
 - App `horizontes-staging`: repo de Horizontes en GitHub, rama `main`, Build Pack **Dockerfile**, *Dockerfile Location* `/deploy/Dockerfile`, *Base Directory* `/`, puerto `3000`, 1 réplica.
 - *Persistent Storage* → Volume Mount `horizontes-datos-staging` en `/data` (la base es `DB_PATH=/data/horizontes.sqlite`, ya fijada en la imagen).
-- Variables (Runtime): `BASE_URL`, `POLITICA_PRIVACIDAD_URL`, `SUPERADMIN_USUARIO`, `SUPERADMIN_CLAVE` y las que T1 agregue (ver `docs/STACK.md`). `PORT`, `HOST`, `TZ` y `DB_PATH` ya vienen en la imagen.
+- Variables (Runtime): `BASE_URL`, `POLITICA_PRIVACIDAD_URL`, `SUPERADMIN_USUARIO`, `SUPERADMIN_CLAVE` y las demás de `docs/STACK.md`. `PORT`, `HOST`, `TZ` y `DB_PATH` ya vienen en la imagen.
 - Dominio `https://staging-horizontes.estratek.com.co`, Force HTTPS.
 
 ## Credenciales
-Ya existe el remoto `origin` (`github.com/yennyporras/horizontes`, con `main`). Faltan (ver `docs/BLOQUEOS.md`): conectar ese repo a la GitHub App de Coolify y crear las apps (`horizontes-staging`, `horizontes`), token de API de Coolify, UUID de las apps y registros DNS. Paola: `cp deploy/env.deploy.ejemplo deploy/.env.deploy`, llenarlo, `tools/deploy.sh diagnostico` hasta que todo diga `[ok]`, y luego `tools/deploy.sh staging`.
+Ya existe el remoto `origin` (`github.com/yennyporras/horizontes`, con `main`). Faltan (ver `docs/ENTREGA.md` §5): conectar ese repo a la GitHub App de Coolify y crear las apps (`horizontes-staging`, `horizontes`), token de API de Coolify, UUID de las apps y registros DNS. Paola: `cp deploy/env.deploy.ejemplo deploy/.env.deploy`, llenarlo, `tools/deploy.sh diagnostico` hasta que todo diga `[ok]`, y luego `tools/deploy.sh staging`.
 
 ## Respaldo de SQLite
 *Scheduled Task* de la app, diario `0 8 * * *` (3:00 a. m. Bogotá):

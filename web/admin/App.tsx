@@ -31,14 +31,14 @@ export function SoloSuperadmin({ children }: { children: ReactNode }) {
     return (
       <section className="panel" aria-labelledby="t403">
         <h1 id="t403">Sin permiso</h1>
-        <p>La gestión de administradores es solo para el superadmin. Si necesitas una cuenta nueva, pídesela a Paola.</p>
+        <p>La gestión de administradores es solo para el superadmin. Si necesitas una cuenta nueva, pídesela a quien administra el panel.</p>
       </section>
     )
   }
   return <>{children}</>
 }
 
-/** Rutas del panel, relativas a /admin (el BrowserRouter usa basename="/admin"). */
+/** Rutas del panel, relativas a /admin (web/App.tsx las monta en /admin/*). */
 export function Rutas() {
   return (
     <Routes>

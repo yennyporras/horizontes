@@ -129,7 +129,7 @@ CREATE TABLE eventos (
 );
 CREATE INDEX ix_eventos_sala ON eventos (sala_id, id);
 `,
-  // R4 (acta del 16-oct): país y zona horaria por sala; IP de la inscripción y del último voto (solo para el admin);
+  // Acta del 16-oct: país y zona horaria por sala; IP de la inscripción y del último voto (solo para el admin);
   // país del aviso aceptado (los tres textos comparten versión y el admin puede cambiar el país de la sala).
   // SQLite no cambia el DEFAULT de una columna existente: la visibilidad por defecto de las salas nuevas
   // (alcance 'sala', vista 'en_vivo') la fija CONFIG_POR_DEFECTO en el código; las salas existentes no cambian.
@@ -152,7 +152,7 @@ CREATE TABLE rubricas_plantilla (
   PRIMARY KEY (plantilla, criterio_id)
 );
 `,
-  // Cambios del 19-oct (docs/CAMBIOS_19OCT_CONTRATO.md S2 y S4): apertura y cierre programados por sala y por ronda,
+  // Cambios del 19-oct (docs/DECISIONES.md, pedidos del 19-oct, S2 y S4): apertura y cierre programados por sala y por ronda,
   // modo de preguntas y pregunta guiada. `cierre_programado_ronda_at` queda como columna sin uso: la API lo sirve como
   // alias del cierre de la ronda abierta (o de la siguiente). Lo que tenía programado pasa a la ronda que habría cerrado.
   `
@@ -169,5 +169,40 @@ UPDATE salas SET cierre_programado_r1_at = cierre_programado_ronda_at
 UPDATE salas SET cierre_programado_r2_at = cierre_programado_ronda_at
  WHERE cierre_programado_ronda_at IS NOT NULL AND NOT (estado = 'r1_abierta' OR ronda_actual = 0);
 UPDATE salas SET cierre_programado_ronda_at = NULL;
+`,
+  // D1 (20-oct): «Dar acceso de nuevo». El facilitador genera un enlace personal de un solo uso que vence a los 15 min;
+  // se guarda solo el hash. Reemplaza la recuperación de la sesión con solo el correo.
+  `
+CREATE TABLE accesos_participante (
+  token_hash      VARCHAR(64) PRIMARY KEY,
+  participante_id VARCHAR(16) NOT NULL REFERENCES participantes(id),
+  sala_id         VARCHAR(16) NOT NULL,
+  creado_at       DATETIME    NOT NULL,
+  vence_at        DATETIME    NOT NULL,
+  usado_at        DATETIME    NULL,
+  por             VARCHAR(60) NOT NULL
+);
+CREATE INDEX ix_accesos_participante ON accesos_participante (participante_id);
+`,
+  // D2 (20-oct): consolidado en vivo de 3 en 3. Con la ronda abierta se publica la última foto del agregado de cada
+  // alcance ('sala' o id de la mesa), ronda y proyecto; se renueva cuando 3 o más personas votaron o cambiaron su voto
+  // desde la foto anterior. `huellas_json` = {participante_id: "135799"} de los votos incluidos, para contar los cambios.
+  `
+CREATE TABLE fotos_agregado (
+  sala_id       VARCHAR(16) NOT NULL,
+  alcance       VARCHAR(16) NOT NULL,
+  ronda         TINYINT     NOT NULL CHECK (ronda IN (1,2)),
+  proyecto_id   VARCHAR(40) NOT NULL,
+  n_votos       INTEGER     NOT NULL,
+  agregado_json TEXT        NULL,
+  huellas_json  TEXT        NOT NULL,
+  version_sala  INTEGER     NOT NULL,
+  PRIMARY KEY (sala_id, alcance, ronda, proyecto_id)
+);
+`,
+  // S-12 (20-oct): el token del tablero queda con una sola fuente, `token_tablero` (el panel necesita volver a mostrar el
+  // enlace, así que el hash al lado no protegía nada). La columna del hash no se borra (migraciones aditivas): queda vacía.
+  `
+UPDATE salas SET token_tablero_hash = '';
 `,
 ]

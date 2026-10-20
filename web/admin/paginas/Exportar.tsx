@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { consultar, usaMocks } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
+import { AvisoPrivado } from '../componentes/AvisoPrivado'
 
 const ARCHIVOS = [
   {
@@ -44,10 +45,11 @@ export function Exportar() {
       {(d) => (
         <>
           <p className="pista">Archivos CSV en UTF-8 que abren bien en Excel. Se generan con los datos del momento.</p>
-          <p className="alerta alerta--info">
-            <strong>Registro interno, solo para gestión.</strong> Estos archivos dicen quién se inscribió y cuándo, y desde qué país e IP se inscribió y votó. El tablero, los celulares
-            y el proyector siguen anónimos. Guárdalos solo donde lo permita la política de datos de Estratek.
-          </p>
+          {/* QA-A-30: el mismo aviso que Participantes y Respuestas para el mismo tipo de datos. */}
+          <AvisoPrivado>
+            Registro interno: quién se inscribió y cuándo, y desde qué país e IP se inscribió y votó. El tablero, los celulares y el proyector siguen anónimos. Guarda los archivos
+            solo donde lo permita la política de datos de Estratek.
+          </AvisoPrivado>
           {errorDescarga && (
             <p className="alerta alerta--error" role="alert">
               {errorDescarga}

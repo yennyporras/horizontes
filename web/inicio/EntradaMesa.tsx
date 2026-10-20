@@ -3,14 +3,31 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, ErrorApi } from '../shared/api/cliente'
 import { Boton, Campo } from '../shared/ui'
 
-// Código de mesa = código de la sala (HZ + 3) y número de mesa, como HZ7K2-1 (server/dominio/salas.ts).
+// Código de mesa = código de la sala (HZ + 3), 5 caracteres al azar (M-1c) y el número de la mesa, como HZ7K2QX4AB-1.
+// Las mesas anteriores conservan el suyo: con 3 al azar (HZ7K2QX4-1, del 20-oct) o sin ellos (HZ7K2-1) (server/dominio/util.ts).
 const FORMATO = /^[A-Z0-9]{3,10}-\d{1,3}$/
 
-/** Acepta el código solo o el enlace completo del QR (…/m/HZ7K2-1). Devuelve null si no tiene el formato. */
+/**
+ * Código sin guion antes del número de la mesa: HZ7K2QX4AB1 = HZ7K2QX4AB y mesa 1; HZ7K2QX41 = HZ7K2QX4 y mesa 1;
+ * HZ7K21 = HZ7K2 y mesa 1. Si cabe más de una lectura gana la de 5 al azar: una sala tiene hasta 30 mesas, así que
+ * HZ7K2Q12123 es HZ7K2Q1212 y mesa 3, no HZ7K2Q12 y mesa 123.
+ */
+const SIN_GUION = /^(HZ[A-Z0-9]{3}(?:[A-Z0-9]{5}|[A-Z0-9]{3})?)(\d{1,3})$/
+
+/**
+ * Acepta el código solo o el enlace completo del QR (…/m/HZ7K2-1), y lo que se teclea en el celular: minúsculas,
+ * espacios alrededor del guion, un espacio en lugar del guion o el código sin guion. Devuelve null si no tiene el formato.
+ */
 export function codigoDeMesa(texto: string): string | null {
   const t = texto.trim()
   const enRuta = /\/m\/([^/?#\s]+)/i.exec(t)
-  const codigo = (enRuta ? enRuta[1] : t).toUpperCase()
+  let codigo = (enRuta ? enRuta[1] : t)
+    .toUpperCase()
+    // Guiones tipográficos que pone el teclado y espacios alrededor del guion.
+    .replace(/\s*[-\u2010-\u2015]\s*/g, '-')
+    .replace(/\s+/g, '-')
+  const junto = SIN_GUION.exec(codigo)
+  if (junto) codigo = `${junto[1]}-${junto[2]}`
   return FORMATO.test(codigo) ? codigo : null
 }
 
@@ -32,7 +49,7 @@ export function EntradaMesa() {
     if (revisando) return
     const codigo = codigoDeMesa(texto)
     if (!codigo) {
-      setProblema(texto.trim() ? 'Ese código no tiene la forma de un código de mesa. Se ve así: HZ7K2-1, con el número de la mesa al final.' : 'Escribe el código de tu mesa, por ejemplo HZ7K2-1.')
+      setProblema(texto.trim() ? 'Ese código no tiene la forma de un código de mesa. Se ve así: HZ7K2Q4M8P-1, con el número de la mesa al final.' : 'Escribe el código de tu mesa, por ejemplo HZ7K2Q4M8P-1.')
       return
     }
     setRevisando(true)
@@ -42,12 +59,19 @@ export function EntradaMesa() {
         navegar(`/m/${codigo}`)
         return
       }
-      const irMesa = <Link to={`/m/${codigo}`}>Ir a {info.mesa.nombre}</Link>
+      // El enlace a la mesa va al inicio de una frase o a mitad de otra: su texto cambia con la mayúscula.
+      const irMesa = (texto: string) => <Link to={`/m/${codigo}`}>{texto}</Link>
       setProblema(
         info.sala.estado === 'preparada' ? (
-          <>La inscripción de {info.mesa.nombre} todavía no abre. El facilitador la abrirá en unos minutos. {irMesa} y espera ahí: la pantalla se actualiza sola.</>
+          <>
+            La inscripción de {info.mesa.nombre} todavía no abre. El facilitador la abrirá en unos minutos. {irMesa(`Entra a ${info.mesa.nombre}`)} y espera
+            ahí: la pantalla se actualiza sola.
+          </>
         ) : (
-          <>{info.sala.nombre} ya terminó y no recibe más inscripciones. Si te inscribiste desde este celular, {irMesa} para ver el resultado.</>
+          <>
+            {info.sala.nombre} ya terminó y no recibe más inscripciones. Si te inscribiste desde este celular, {irMesa(`entra a ${info.mesa.nombre}`)} para
+            ver el resultado.
+          </>
         ),
       )
     } catch (err) {
@@ -75,7 +99,7 @@ export function EntradaMesa() {
           setTexto(e.target.value)
           setProblema(null)
         }}
-        placeholder="HZ7K2-1"
+        placeholder="HZ7K2Q4M8P-1"
         autoComplete="off"
         autoCapitalize="characters"
         spellCheck={false}

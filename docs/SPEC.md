@@ -51,7 +51,7 @@ Fuente principal de requisitos: `docs/REQUISITOS_ORIGEN.md` (reunión Sebastian 
 - `revelar_hojas`: false en la ronda 1; se enciende solo al abrir la ronda 2; editable por el admin.
 
 ## 7. Cálculo
-- Por alcance (mesa o sala) y ronda: promedio simple de cada criterio sobre los votos de participantes activos del alcance; luego el motor (ver `CLAUDE.md`).
+- Por alcance (mesa o sala) y ronda: promedio simple de cada criterio sobre los votos de participantes activos del alcance; luego el motor (ver `CONTRIBUTING.md`, «Motor de cálculo»).
 - Además se entrega por criterio la **distribución** (conteo de 1, 3, 5, 7, 9) y `n_votos`, para la discusión. Nunca respuestas individuales ni nombres.
 - Si un alcance no tiene votos en una ronda, el punto no se dibuja (`null`).
 - Fijos: se calculan una vez desde `inputs` de la semilla. TAM: fijos según semilla; vivos 5 y 6.

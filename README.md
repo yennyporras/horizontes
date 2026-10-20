@@ -39,11 +39,7 @@ Las pruebas en navegador necesitan Chromium (`npx playwright-core install chromi
 `tools/deploy.sh verificar | local | staging | produccion`. Producción se despliega a mano (Auto Deploy apagado). Guía completa en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md); pasos pendientes de puesta en marcha en [`docs/ENTREGA.md`](docs/ENTREGA.md).
 
 ## Flujo de trabajo
-1. Rama desde `main`: `feat/…`, `fix/…`, `docs/…`, `chore/…`, `test/…`.
-2. Commits en [Conventional Commits](https://www.conventionalcommits.org/es/), en español.
-3. `bash tools/test.sh` en verde antes del pull request; toda funcionalidad nueva llega con pruebas.
-4. Pull request a `main` con la CI en verde. Nadie empuja directo a `main`.
-5. Versiones con [SemVer](https://semver.org/lang/es/): tag `vX.Y.Z` y entrada en [`CHANGELOG.md`](CHANGELOG.md).
+Ramas, commits, pull requests, reglas del contrato y del motor, datos personales y definición de terminado: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Documentación
 | Documento | Contenido |
@@ -56,8 +52,6 @@ Las pruebas en navegador necesitan Chromium (`npx playwright-core install chromi
 | [`docs/CONSENTIMIENTO.md`](docs/CONSENTIMIENTO.md) | Aviso de datos por país |
 | [`docs/GUIA_FACILITADOR.md`](docs/GUIA_FACILITADOR.md) · [`docs/PLAN_B.md`](docs/PLAN_B.md) | Operación del taller |
 | [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) · [`docs/ENTREGA.md`](docs/ENTREGA.md) · [`docs/MIGRACION_GITHUB.md`](docs/MIGRACION_GITHUB.md) | Infraestructura |
-
-La historia de construcción (rondas autónomas R0 a R4, prompts y bitácoras) quedó archivada en el tag `archivo/rondas-autonomas`.
 
 ---
 Estratek S.A.S. · Medellín, Colombia

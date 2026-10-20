@@ -5,7 +5,8 @@ import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import type { RespuestaPersona } from '../tipos'
-import { CRITERIOS, fechaHora, nombrePerfil, nombreProyecto, zonaSala } from '../textos'
+import { descripcionCriterio } from '../../shared/criterios'
+import { CRITERIOS, PROYECTOS_VIVOS, fechaHora, nombrePerfil, nombreProyecto, zonaSala } from '../textos'
 
 /**
  * Respuestas de cada persona por ronda (C19-3). Solo para administradores: la API responde 401/403 al resto
@@ -18,6 +19,7 @@ export function Respuestas() {
   const [errorFilas, setErrorFilas] = useState<string | null>(null)
   const [mesa, setMesa] = useState('todas')
   const [ronda, setRonda] = useState('todas')
+  const [proyecto, setProyecto] = useState('todos')
   const version = datos?.version
 
   // Se relee con cada cambio de la sala (un voto nuevo sube la versión).
@@ -44,6 +46,7 @@ export function Respuestas() {
         const visibles = (filas ?? [])
           .filter((f) => mesa === 'todas' || f.mesa_id === mesa)
           .filter((f) => ronda === 'todas' || String(f.ronda) === ronda)
+          .filter((f) => proyecto === 'todos' || f.proyecto_id === proyecto)
           .sort((a, b) => a.mesa.localeCompare(b.mesa, 'es', { numeric: true }) || a.nombre.localeCompare(b.nombre, 'es') || a.ronda - b.ronda || a.proyecto_id.localeCompare(b.proyecto_id))
         return (
           <>
@@ -70,6 +73,17 @@ export function Respuestas() {
                     <option value="2">Ronda 2</option>
                   </select>
                 </label>
+                <label className="campo">
+                  <span>Proyecto</span>
+                  <select value={proyecto} onChange={(e) => setProyecto(e.target.value)}>
+                    <option value="todos">Los dos proyectos</option>
+                    {PROYECTOS_VIVOS.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
               {errorFilas ? (
                 <p className="alerta alerta--error" role="alert">
@@ -82,11 +96,13 @@ export function Respuestas() {
               ) : visibles.length === 0 ? (
                 <p className="vacio">No hay respuestas con ese filtro.</p>
               ) : (
+                <>
+                {/* QA-A-28: el conteo va fuera de la tabla, a todo el ancho (en el celular la tabla se lee como tarjetas). */}
+                <p className="pista" id="t-conteo-respuestas">
+                  {visibles.length} {visibles.length === 1 ? 'voto' : 'votos'}. Cada fila es una persona, una ronda y un proyecto.
+                </p>
                 <div className="tabla-envoltura">
-                  <table className="tabla-tarjetas tabla-respuestas">
-                    <caption className="pista">
-                      {visibles.length} {visibles.length === 1 ? 'voto' : 'votos'}. Cada fila es una persona, una ronda y un proyecto.
-                    </caption>
+                  <table className="tabla-tarjetas tabla-respuestas" aria-describedby="t-conteo-respuestas">
                     <thead>
                       <tr>
                         <th scope="col">Nombre</th>
@@ -95,7 +111,7 @@ export function Respuestas() {
                         <th scope="col">Ronda</th>
                         <th scope="col">Proyecto</th>
                         {CRITERIOS.map((c) => (
-                          <th key={c.id} scope="col" className="num" title={c.nombre}>
+                          <th key={c.id} scope="col" className="num" title={`${c.nombre}. ${descripcionCriterio(c.id) ?? ''}`.trim()}>
                             {c.corto}
                           </th>
                         ))}
@@ -122,7 +138,7 @@ export function Respuestas() {
                           </td>
                           <td data-label="Proyecto">{nombreProyecto(f.proyecto_id)}</td>
                           {CRITERIOS.map((c) => (
-                            <td key={c.id} className="num" data-label={c.corto}>
+                            <td key={c.id} className="num crit" data-label={c.corto}>
                               {f.respuestas[c.id] ?? 'Sin dato'}
                             </td>
                           ))}
@@ -134,6 +150,19 @@ export function Respuestas() {
                     </tbody>
                   </table>
                 </div>
+                {/* Pedido del 20-oct: cada criterio con su descripción corta (web/shared/criterios.ts). */}
+                <dl className="leyenda-criterios" aria-label="Qué mide cada criterio">
+                  {CRITERIOS.map((c) => (
+                    <div key={c.id}>
+                      <dt>
+                        {c.corto}
+                        {c.corto !== c.nombre && <span className="leyenda-criterios__nombre"> · {c.nombre}</span>}
+                      </dt>
+                      <dd>{descripcionCriterio(c.id)}</dd>
+                    </div>
+                  ))}
+                </dl>
+                </>
               )}
             </section>
           </>

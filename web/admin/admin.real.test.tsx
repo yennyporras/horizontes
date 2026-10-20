@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Panel admin contra la API real de T1 (Fastify en memoria con BD SQLite :memory: y reloj simulado).
+// Panel admin contra la API real (Fastify en memoria con BD SQLite :memory: y reloj simulado).
 // El transporte del panel se conecta a app.inject y guarda la cookie de sesión como lo haría el navegador.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -7,6 +7,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { type Transporte, usarTransporte } from './api'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from '../../tests/server/ayuda'
+import { CLAVE_RECORRIDO } from './componentes/Recorrido'
 
 let e: Entorno
 let cookie = ''
@@ -73,6 +74,8 @@ beforeEach(async () => {
   cookie = ''
   usarTransporte(transporteInject)
   localStorage.removeItem('hz_admin_sala')
+  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
+  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
 })
 afterEach(async () => {
   cleanup()
@@ -108,9 +111,17 @@ describe('panel admin contra la API real', () => {
     expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
     expect(within(tabla).getAllByRole('rowheader')).toHaveLength(6)
 
-    await pasar('Cerrar ronda 1', 'Ronda 1 cerrada')
+    // QA-A-06: la persona de la Mesa 2 no votó: cerrar la ronda lo advierte y pide confirmación.
+    fireEvent.click(boton('Cerrar ronda 1'))
+    const aviso = await screen.findByRole('dialog', { name: '¿Cerrar la ronda 1 con 1 persona sin terminar?' })
+    expect(within(aviso).getByText(/1 persona de 3 no ha terminado de votar/)).toBeTruthy()
+    expect(document.activeElement?.textContent).toBe('Cancelar')
+    fireEvent.click(within(aviso).getByRole('button', { name: 'Sí, cerrar la ronda 1' }))
+    await screen.findByText('Ronda 1 cerrada', { selector: '.estado' }, { timeout: 3000 })
     await pasar('Abrir ronda 2', 'Ronda 2 abierta')
-    await pasar('Cerrar ronda 2', 'Ronda 2 cerrada')
+    fireEvent.click(boton('Cerrar ronda 2'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, cerrar la ronda 2' }))
+    await screen.findByText('Ronda 2 cerrada', { selector: '.estado' }, { timeout: 3000 })
     fireEvent.click(boton('Cerrar sala'))
     fireEvent.click(await screen.findByRole('button', { name: 'Sí, cerrar la sala' }))
     await screen.findByText('Sala cerrada', { selector: '.estado' })
@@ -126,11 +137,11 @@ describe('panel admin contra la API real', () => {
     // Acta A2 (C5): la sala nace mostrando toda la sala, en vivo tras votar. Se cambia a mesa y registrado, y se vuelve a sala.
     const sala = (await screen.findByLabelText(/Todos ven la sala completa/)) as HTMLInputElement
     expect(sala.checked).toBe(true)
-    expect((screen.getByLabelText(/Tablero en vivo/) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText(/Resultado en vivo/) as HTMLInputElement).checked).toBe(true)
     fireEvent.click(screen.getByLabelText(/Cada mesa ve su resultado/))
     await screen.findByText('Ahora cada mesa ve solo su resultado.')
     fireEvent.click(screen.getByLabelText(/Voto registrado/))
-    await screen.findByText('Tras votar, el participante ve "Voto registrado".')
+    await screen.findByText('Tras votar, el participante ve «Voto registrado».')
     const r0 = await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })
     expect(r0.json().sala.config).toMatchObject({ alcance_resultados: 'mesa', vista_participante: 'registrado' })
     await waitFor(() => expect(sala.checked).toBe(false))
@@ -169,7 +180,7 @@ describe('panel admin contra la API real', () => {
     await screen.findByText('Carla Ruiz pasó a Mesa 2.')
     fireEvent.change(screen.getByLabelText('Perfil de Carla Ruiz'), { target: { value: 'regulacion' } })
     await screen.findByText(/Carla Ruiz ahora tiene el perfil/)
-    fireEvent.click(boton('Desactivar'))
+    fireEvent.click(boton('Desactivar a Carla Ruiz'))
     await screen.findByText(/Carla Ruiz quedó inactivo/)
     const p = e.db.prepare('SELECT mesa_id, perfil_id, activo FROM participantes WHERE correo = ?').get('carla@x.co') as Record<string, unknown>
     expect(p).toMatchObject({ mesa_id: mesas[1].id, perfil_id: 'regulacion', activo: 0 })
@@ -277,7 +288,8 @@ describe('panel admin contra la API real', () => {
     const resp = (v: number) => ({ alistamiento_tecnico: v, conocimiento_cliente: v, regulacion: v, capacidades_organizacionales: v, alineacion_core: v, inversion_requerida: v })
     // Con 2 votos por proyecto la sala está bajo el mínimo: aviso, sin barras.
     for (const [i, v] of [1, 9].entries()) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[i], p, 1, resp(v))).statusCode).toBe(200)
-    expect(await screen.findByText('Hace falta al menos 3 votos para mostrar estos resultados en la ronda 1.', {}, { timeout: 5000 })).toBeTruthy()
+    // El texto viene del componente del tablero, con la concordancia de F-12.
+    expect(await screen.findByText(/^Hacen falta al menos 3 votos para mostrar estos resultados en la ronda 1\.$/, {}, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryAllByRole('img', { name: /ronda 1:/ })).toHaveLength(0)
     for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[2], p, 1, resp(9))).statusCode).toBe(200)
     const barra = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })
@@ -339,7 +351,7 @@ describe('cambios del 19-oct contra la API real', () => {
       ['Hojas', () => screen.findByRole('region', { name: 'INSUMEX' })],
       ['Configuración', () => screen.findByRole('region', { name: 'Rúbricas' })],
       ['Exportar', () => screen.findByRole('heading', { name: 'Inscritos' })],
-      ['Salud', () => screen.findByText('En línea')],
+      ['Salud', () => screen.findByText('Todo bien')],
     ]
     for (const [seccion, ver] of esperado) {
       fireEvent.click(nav().getByText(seccion))
@@ -386,7 +398,10 @@ describe('cambios del 19-oct contra la API real', () => {
     await e.app.inject({ method: 'GET', url: '/api/health' })
     fireEvent.click(nav().getByText('Sala en vivo'))
     await screen.findByText('Ronda 1 abierta', { selector: '.estado' }, { timeout: 5000 })
-    expect(screen.getAllByText(/Apertura programada aplicada · automático/)).toHaveLength(2)
+    // QA-A-15: la bitácora dice qué se abrió a la hora programada, sin repetirlo con «Apertura programada aplicada».
+    expect(await screen.findByText('Ronda 1 abierta · a la hora programada')).toBeTruthy()
+    expect(screen.getByText('Inscripción abierta · a la hora programada')).toBeTruthy()
+    expect(screen.queryByText(/Apertura programada aplicada/)).toBeNull()
   }, 20_000)
 
   // A4 (C19-5)
@@ -406,11 +421,11 @@ describe('cambios del 19-oct contra la API real', () => {
     const seccion = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
     const siguiente = (await seccion.findByRole('button', { name: 'Siguiente' }, { timeout: 5000 })) as HTMLButtonElement
     fireEvent.click(siguiente)
-    expect(await seccion.findByText('Pregunta 1 de 12 · ronda 1')).toBeTruthy()
+    expect(await seccion.findByText('Pregunta 1 de 6 · INSUMEX · ronda 1')).toBeTruthy()
     expect((await yo()).sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'alistamiento_tecnico' })
     await waitFor(() => expect(siguiente.disabled).toBe(false))
     fireEvent.click(siguiente)
-    expect(await seccion.findByText('Pregunta 2 de 12 · ronda 1')).toBeTruthy()
+    expect(await seccion.findByText('Pregunta 2 de 6 · INSUMEX · ronda 1')).toBeTruthy()
     expect((await yo()).sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'conocimiento_cliente' })
   }, 20_000)
 
@@ -421,5 +436,129 @@ describe('cambios del 19-oct contra la API real', () => {
     await crearSalaDesdePanel('Dominio real', 1)
     const aviso = await screen.findByText(/^Los QR apuntan a/)
     expect(aviso.textContent).toBe(`Los QR apuntan a https://horizontes.test, pero estás en ${window.location.origin}. Corrige BASE_URL en Coolify.`)
+  }, 20_000)
+})
+
+describe('correcciones de la QA del panel contra la API real', () => {
+  /** Sala de 2 mesas con Ana (votó) y Beto (no votó) en la Mesa 1, en ronda 1 abierta. */
+  async function salaConVotos() {
+    const sala = await crearSala(e, 2, 'Sala QA real')
+    expect((await accion(e, sala.id, 'abrir_inscripcion')).statusCode).toBe(200)
+    const ana = (await inscribir(e, sala.mesas[0].codigo, 'ana@x.co', 'Ana Real')).json().token as string
+    expect((await inscribir(e, sala.mesas[0].codigo, 'beto@x.co', 'Beto Real')).statusCode).toBe(201)
+    expect((await accion(e, sala.id, 'abrir_ronda_1')).statusCode).toBe(200)
+    for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, ana, p, 1)).statusCode).toBe(200)
+    return sala
+  }
+
+  async function entrarA(ruta: string) {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    cleanup()
+    montar(ruta)
+  }
+
+  it('D1: «Dar acceso de nuevo» genera el enlace real, el celular lo canjea y queda en la bitácora', async () => {
+    const sala = await salaConVotos()
+    await entrarA(`/admin/salas/${sala.id}/participantes`)
+    fireEvent.click(await screen.findByRole('button', { name: 'Dar acceso de nuevo a Ana Real' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Acceso de nuevo para Ana Real' })
+    const enlace = within(dialogo).getByText(/^https:\/\/horizontes\.test\/m\/.+\?acceso=/).textContent!
+    expect(await within(dialogo).findByRole('img', { name: 'Código QR del acceso de Ana Real' })).toBeTruthy()
+    // El reloj del servidor de prueba está a las 2:00 p. m. de Bogotá: vence a las 2:15 p. m.
+    expect(within(dialogo).getByText(/^Sirve una sola vez y vence a las 2:15/)).toBeTruthy()
+    const canje = await e.app.inject({ method: 'POST', url: '/api/acceso', payload: { acceso: new URL(enlace).searchParams.get('acceso') } })
+    expect(canje.statusCode).toBe(200)
+    expect(canje.json().participante.nombre).toBe('Ana Real')
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Listo' }))
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    expect(await screen.findByText(/Acceso de nuevo para Ana Real · paola/, {}, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText(/Ana Real volvió a entrar con el acceso de nuevo/)).toBeTruthy()
+  }, 20_000)
+
+  it('QA-A-09 y QA-A-06: mover a quien votó pide confirmar; cerrar con pendientes también', async () => {
+    const sala = await salaConVotos()
+    await entrarA(`/admin/salas/${sala.id}/participantes`)
+    const mesaAna = (await screen.findByLabelText('Mesa de Ana Real')) as HTMLSelectElement
+    // Espera a que el panel sepa quién votó (Respuestas) antes de mover.
+    await new Promise((r) => setTimeout(r, 300))
+    fireEvent.change(mesaAna, { target: { value: sala.mesas[1].id } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, mover' }))
+    expect(await screen.findByText('Ana Real pasó a Mesa 2.')).toBeTruthy()
+    expect((e.db.prepare('SELECT mesa_id FROM participantes WHERE correo = ?').get('ana@x.co') as { mesa_id: string }).mesa_id).toBe(sala.mesas[1].id)
+    // Beto no votó: se mueve sin preguntar.
+    fireEvent.change(screen.getByLabelText('Mesa de Beto Real'), { target: { value: sala.mesas[1].id } })
+    expect(await screen.findByText('Beto Real pasó a Mesa 2.')).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cerrar ronda 1' }))
+    const dialogo = await screen.findByRole('dialog', { name: '¿Cerrar la ronda 1 con 1 persona sin terminar?' })
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect((e.db.prepare('SELECT estado FROM salas WHERE id = ?').get(sala.id) as { estado: string }).estado).toBe('r1_abierta')
+  }, 20_000)
+
+  it('QA-A-07: Quitar la pregunta deja al celular sin pregunta guiada', async () => {
+    const sala = await crearSala(e, 1, 'Guiada QA real', { modo_preguntas: 'guiado' })
+    expect((await accion(e, sala.id, 'abrir_inscripcion')).statusCode).toBe(200)
+    const token = (await inscribir(e, sala.mesas[0].codigo, 'ana@x.co')).json().token as string
+    expect((await accion(e, sala.id, 'abrir_ronda_1')).statusCode).toBe(200)
+    await entrarA(`/admin/salas/${sala.id}/vivo`)
+    const seccion = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
+    fireEvent.click(await seccion.findByRole('button', { name: 'Siguiente' }))
+    expect(await seccion.findByText('Pregunta 1 de 6 · INSUMEX · ronda 1')).toBeTruthy()
+    await waitFor(() => expect((seccion.getByRole('button', { name: 'Quitar la pregunta' }) as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(seccion.getByRole('button', { name: 'Quitar la pregunta' }))
+    expect(await seccion.findByText(/^Sin pregunta en pantalla/)).toBeTruthy()
+    const yo = await e.app.inject({ method: 'GET', url: '/api/yo', headers: { 'x-participante-token': token } })
+    expect(yo.json().sala.pregunta_guiada).toBeNull()
+  }, 20_000)
+
+  it('F-7: cambiar el país conserva la hora programada en el mismo reloj', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId } = await crearSalaDesdePanel('País real', 1)
+    fireEvent.click(nav().getByText('Configuración'))
+    await screen.findByRole('heading', { name: 'Apertura y cierre programados' })
+    programar('Ronda 1', 'Cerrar el', '2026-10-20T16:00')
+    await screen.findByText(/La ronda 1 se cerrará el/)
+    fireEvent.change(screen.getByLabelText('País de la sala'), { target: { value: 'GT' } })
+    expect(await screen.findByText(/Las horas programadas siguen en el mismo reloj, ahora en hora de Guatemala: 16:00/)).toBeTruthy()
+    const config = (await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })).json().sala.config
+    expect(config.pais).toBe('GT')
+    expect(Date.parse(config.cierre_programado_r1_at)).toBe(Date.parse('2026-10-20T16:00:00-06:00'))
+  }, 20_000)
+
+  it('F-5: si la sesión se cierra en el servidor, el panel vuelve al login', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    await crearSalaDesdePanel('Sesión real', 1)
+    // Otra pestaña cierra la sesión: el siguiente sondeo responde 401.
+    await e.app.inject({ method: 'POST', url: '/api/admin/logout', headers: { cookie } })
+    expect(await screen.findByRole('heading', { name: 'Panel de administración' }, { timeout: 6000 })).toBeTruthy()
+    expect(screen.getByText('Tu sesión terminó. Vuelve a entrar para seguir donde ibas.')).toBeTruthy()
+  }, 20_000)
+})
+
+describe('rúbricas de las salas nuevas contra la API real', () => {
+  it('«Quitar de las salas nuevas» borra la rúbrica guardada y la sala nueva nace con la original', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    await crearSalaDesdePanel('Plantilla real', 1)
+    fireEvent.click(nav().getByText('Configuración'))
+    const rubricas = within(await screen.findByRole('region', { name: 'Rúbricas' }))
+    fireEvent.change(await rubricas.findByLabelText('Nivel 9'), { target: { value: 'Inversión muy alta (> USD 2MM)' } })
+    fireEvent.click(rubricas.getByLabelText(/Usar también en las salas nuevas/))
+    fireEvent.click(rubricas.getByRole('button', { name: 'Guardar' }))
+    await rubricas.findByText(/las salas nuevas también la usarán/)
+    fireEvent.click(rubricas.getByRole('button', { name: 'Quitar de las salas nuevas' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, quitar' }))
+    expect(await rubricas.findByText('Las salas nuevas vuelven a usar la rúbrica original de Inversión Requerida para Probar.')).toBeTruthy()
+    const nueva = await crearSala(e, 1, 'Nace con la original')
+    const r = await e.app.inject({ url: `/api/admin/salas/${nueva.id}/rubricas`, headers: { cookie } })
+    const inv = (r.json().criterios as { id: string; rubrica: { valor: number; texto: string }[] }[]).find((c) => c.id === 'inversion_requerida')!
+    expect(inv.rubrica.find((n) => n.valor === 9)?.texto).not.toBe('Inversión muy alta (> USD 2MM)')
   }, 20_000)
 })

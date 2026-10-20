@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
 import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
+import { CLAVE_RECORRIDO } from './componentes/Recorrido'
+import { DESCRIPCION_CRITERIO } from '../shared/criterios'
 import {
   ACCIONES_POR_ESTADO,
   ORDEN_PREGUNTAS,
@@ -16,6 +18,7 @@ import {
   programaciones,
   rutaApiTablero,
   textoEvento,
+  bitacora,
   urlTableroSala,
   enEsteServidor,
   zonaSala,
@@ -42,6 +45,8 @@ beforeEach(() => {
   reiniciarMock({ simularVotos: false })
   // Cada prueba empieza como un navegador que nunca abrió una sala.
   localStorage.removeItem('hz_admin_sala')
+  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
+  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
   usarTransporte(responderMock)
 })
 afterEach(cleanup)
@@ -86,8 +91,45 @@ describe('textos del panel', () => {
   it('describe los eventos de la bitácora en lenguaje claro', () => {
     expect(textoEvento({ tipo: 'ronda_cerrada', detalle: { ronda: 1 }, por: 'admin:paola' })).toBe('Ronda 1 cerrada · paola')
     expect(textoEvento({ tipo: 'inscripcion_abierta', detalle: {}, por: 'admin:paola' })).toBe('Inscripción abierta · paola')
-    expect(textoEvento({ tipo: 'cierre_programado', detalle: {}, por: 'programado' })).toBe('Cierre programado aplicado · automático')
-    expect(textoEvento({ tipo: 'precierre', detalle: { mensaje: 'Todos votaron en Mesa 1. Puedes cerrar la ronda.' }, por: 'sistema' })).toBe('Todos votaron en Mesa 1. Puedes cerrar la ronda.')
+    expect(textoEvento({ tipo: 'cierre_programado', detalle: {}, por: 'programado' })).toBe('Cierre programado aplicado · a la hora programada')
+    // QA-A-15: el precierre del servidor viene en imperativo y sin ronda; la bitácora lo dice como hecho, con la ronda.
+    expect(textoEvento({ tipo: 'precierre', detalle: { mensaje: 'Todos votaron en Mesa 1. Puedes cerrar la ronda.' }, por: 'sistema' })).toBe('Todos votaron en Mesa 1')
+    const ctx = { mesas: [{ id: 'm1', nombre: 'Mesa 1' }, { id: 'm2', nombre: 'Mesa 2' }], participantes: [{ id: 'p_1', nombre: 'Ana Pérez' }] }
+    expect(textoEvento({ tipo: 'precierre', detalle: { mesa_id: 'm2', ronda: 2, mensaje: 'Todos votaron en Mesa 2. Puedes cerrar la ronda.' }, por: 'sistema' }, ctx)).toBe('Todos votaron en Mesa 2 (ronda 2)')
+    expect(textoEvento({ tipo: 'precierre', detalle: { alcance: 'sala', ronda: 1 }, por: 'sistema' }, ctx)).toBe('Todos votaron en la sala (ronda 1)')
+    expect(textoEvento({ tipo: 'inscripcion', detalle: { participante_id: 'p_1', mesa_id: 'm1' }, por: 'sistema' }, ctx)).toBe('Ana Pérez se inscribió en Mesa 1')
+    expect(textoEvento({ tipo: 'inscripcion', detalle: { participante_id: 'p_9', mesa_id: 'm2' }, por: 'sistema' }, ctx)).toBe('Nueva inscripción en Mesa 2')
+    expect(textoEvento({ tipo: 'config', detalle: { pais: 'GT', zona_horaria: 'America/Guatemala' }, por: 'admin:qa' })).toBe('Configuración: país y zona horaria · qa')
+    expect(textoEvento({ tipo: 'config', detalle: { cierre_programado_r1_at: null }, por: 'admin:qa' })).toBe('Configuración: cierre programado de la ronda 1 · qa')
+    expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', mesa_id: 'm2' }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez pasó a Mesa 2 · paola')
+    expect(textoEvento({ tipo: 'participante_editado', detalle: { participante_id: 'p_1', activo: false }, por: 'admin:paola' }, ctx)).toBe('Ana Pérez quedó inactivo · paola')
+    expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: 'insumex', criterio_id: 'regulacion' }, por: 'admin:jorge' })).toBe('Pregunta en pantalla: INSUMEX · Pregunta 3 de 6 · jorge')
+    expect(textoEvento({ tipo: 'pregunta_guiada', detalle: { ronda: 1, proyecto_id: null, criterio_id: null }, por: 'admin:jorge' })).toBe('Pregunta quitada: vuelve la matriz · jorge')
+    expect(textoEvento({ tipo: 'algo_nuevo', detalle: null, por: 'sistema' })).toBe('Algo nuevo')
+    // Eventos nuevos del servidor (20-oct).
+    expect(textoEvento({ tipo: 'acceso_reemitido', detalle: { participante_id: 'p_1', vence_at: 'x' }, por: 'admin:paola' }, ctx)).toBe('Acceso de nuevo para Ana Pérez · paola')
+    expect(textoEvento({ tipo: 'acceso_canjeado', detalle: { participante_id: 'p_1' }, por: 'sistema' }, ctx)).toBe('Ana Pérez volvió a entrar con el acceso de nuevo')
+    expect(textoEvento({ tipo: 'apertura_programada_descartada', detalle: { accion: 'abrir_ronda_1' }, por: 'programado' })).toBe(
+      'Apertura programada descartada: a esa hora no aplicaba · a la hora programada',
+    )
+  })
+
+  it('bitácora sin ruido: agrupa lo repetido y no duplica lo programado', () => {
+    const at = '2026-10-20T14:21:00-05:00'
+    const eventos = [
+      { at, tipo: 'apertura_programada', detalle: { accion: 'abrir_ronda_1' }, por: 'programado' },
+      { at, tipo: 'ronda_abierta', detalle: { ronda: 1 }, por: 'programado' },
+      { at, tipo: 'apertura_programada', detalle: { accion: 'abrir_inscripcion' }, por: 'programado' },
+      { at, tipo: 'inscripcion_abierta', detalle: {}, por: 'programado' },
+      ...Array.from({ length: 12 }, () => ({ at, tipo: 'config', detalle: { cierre_programado_r1_at: null }, por: 'admin:qa' })),
+    ]
+    expect(bitacora(eventos)).toEqual([
+      { at, texto: 'Ronda 1 abierta · a la hora programada', veces: 1 },
+      { at, texto: 'Inscripción abierta · a la hora programada', veces: 1 },
+      { at, texto: 'Configuración: cierre programado de la ronda 1 · qa', veces: 12 },
+    ])
+    // Sin transición al lado, «aplicado» se conserva.
+    expect(bitacora([{ at, tipo: 'cierre_programado', detalle: {}, por: 'programado' }]).map((l) => l.texto)).toEqual(['Cierre programado aplicado · a la hora programada'])
   })
 
   it('el estado de cada mesa sigue al de la sala: no dice Votando sin ronda abierta', () => {
@@ -135,7 +177,7 @@ describe('panel admin contra el simulador', () => {
     expect(await screen.findByRole('rowheader', { name: 'Nicolai' })).toBeTruthy()
   })
 
-  it('crea una sala y recorre el ciclo de estados con botones inválidos deshabilitados', async () => {
+  it('crea una sala y recorre el ciclo de estados: solo se ven las acciones posibles', async () => {
     montar('/admin/login')
     await entrar('paola')
     fireEvent.change(screen.getByLabelText('Nombre del taller'), { target: { value: 'Ensayo' } })
@@ -145,7 +187,8 @@ describe('panel admin contra el simulador', () => {
     await screen.findByText('Preparada')
 
     const boton = (n: string) => screen.getByRole('button', { name: n }) as HTMLButtonElement
-    expect(boton('Abrir ronda 1').disabled).toBe(true)
+    // QA-A-05: lo que no aplica en el estado actual no se muestra.
+    expect(screen.queryByRole('button', { name: 'Abrir ronda 1' })).toBeNull()
     const pasos: [string, string][] = [
       ['Abrir inscripción', 'Inscripción abierta'],
       ['Abrir ronda 1', 'Ronda 1 abierta'],
@@ -158,17 +201,24 @@ describe('panel admin contra el simulador', () => {
       fireEvent.click(boton(accion))
       await screen.findByText(estado, { selector: '.estado' })
     }
+    // QA-A-01: con la ronda 2 cerrada, el paso que sigue es cerrar la sala, no «Reabrir ronda».
+    const principales = () => [...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)
+    expect(principales()).toEqual(['Cerrar sala'])
+    expect(boton('Reabrir ronda').className).toContain('hz-boton--secundario')
     // Cerrar sala pide confirmación.
     fireEvent.click(boton('Cerrar sala'))
     fireEvent.click(await screen.findByRole('button', { name: 'Sí, cerrar la sala' }))
     await screen.findByText('Sala cerrada', { selector: '.estado' })
     expect(boton('Reabrir sala').disabled).toBe(false)
+    // Con la sala cerrada lo que sigue es exportar; reabrir queda para corregir.
+    expect(principales()).toEqual(['Descargar los datos'])
+    expect(boton('Reabrir sala').className).not.toContain('hz-boton--primario')
   })
 
   it('marca Estratek: barra de producto carbón y una sola acción principal, el paso que sigue', async () => {
     montar('/admin/login')
     expect(screen.getByText('Horizontes').closest('[data-tema="carbon"]')).toBeTruthy()
-    expect(screen.getByText(/por Estratek/)).toBeTruthy()
+    expect(within(document.querySelector('.hz-producto') as HTMLElement).getByText(/por Estratek/)).toBeTruthy()
     await entrar('paola')
     fireEvent.change(screen.getByLabelText('Nombre del taller'), { target: { value: 'Marca' } })
     fireEvent.click(screen.getByRole('button', { name: 'Crear sala' }))
@@ -176,16 +226,21 @@ describe('panel admin contra el simulador', () => {
     await screen.findByText('Preparada', { selector: '.estado' })
     const principales = () => [...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)
     expect(principales()).toEqual(['Abrir inscripción'])
-    expect(screen.getByRole('button', { name: 'Cerrar sala' }).className).toContain('hz-boton--destructivo')
+    // Lo que cierra va aparte, en «Corregir», en contorno rojo: no compite con el paso que sigue.
+    const corregir = screen.getByRole('group', { name: 'Corregir' })
+    expect(within(corregir).getByRole('button', { name: 'Cerrar sala' }).className).toContain('hz-boton--peligro')
     expect(within(screen.getByRole('list', { name: 'Estado de la sala' })).getByText('Inscritos')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Abrir inscripción' }))
     await screen.findByText('Inscripción abierta', { selector: '.estado' })
     expect(principales()).toEqual(['Abrir ronda 1'])
     const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
-    for (const nombre of ['Tablero de toda la sala', /^Tablero de Mesa 1/, 'Ver como participante']) {
+    for (const nombre of ['En vivo, solo la gráfica', 'Con tabla', /^Tablero de Mesa 1/, 'Vista previa del celular']) {
       const href = within(enVivo).getByRole('link', { name: nombre }).getAttribute('href') ?? ''
       expect(href.startsWith('/')).toBe(true)
     }
+    // Dos modos de proyección del tablero de la sala, a elegir por evento (pedido de Nicolai, 20-oct).
+    const modo = (n: string) => new URL(within(enVivo).getByRole('link', { name: n }).getAttribute('href')!, 'http://x').searchParams.get('modo')
+    expect([modo('En vivo, solo la gráfica'), modo('Con tabla')]).toEqual(['vivo', 'tabla'])
   })
 
   it('duplica una sala para ensayo: copia vacía y abre su vista en vivo', async () => {
@@ -203,9 +258,11 @@ describe('panel admin contra el simulador', () => {
     montar('/admin/login')
     await entrar('jorge')
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Salud'))
-    expect(await screen.findByText('En línea')).toBeTruthy()
-    expect(screen.getByText('Versión desplegada: simulador')).toBeTruthy()
-    expect(screen.getByText('p95')).toBeTruthy()
+    // QA-A-27: semáforo en lenguaje llano, sin jerga (p95, modo).
+    expect(await screen.findByText('Todo bien')).toBeTruthy()
+    expect(screen.getByText(/^El servidor responde/)).toBeTruthy()
+    expect(screen.getByText(/Versión instalada: simulador\./)).toBeTruthy()
+    expect(screen.queryByText(/p95|Modo:/)).toBeNull()
   })
 
   it('avisa el precierre de una mesa sin cerrar la ronda y muestra el resultado preliminar', async () => {
@@ -220,7 +277,9 @@ describe('panel admin contra el simulador', () => {
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
     // Acta A3, A4 y P2: los 6 criterios; sin T2M, ejes ni votos. Preentrega 19-oct: sin fila «Total».
     const tabla = screen.getByRole('table', { name: 'INSUMEX' })
-    expect(within(tabla).getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
+    // Cada fila: el nombre del criterio y debajo su descripción corta (pedido del 20-oct).
+    expect(within(tabla).getAllByRole('rowheader').map((th) => th.querySelector('.tabla-criterio__desc')?.textContent)).toEqual(Object.values(DESCRIPCION_CRITERIO))
+    expect(within(tabla).getAllByRole('rowheader').map((th) => th.firstChild?.textContent)).toEqual([
       'Nivel de Alistamiento Técnico',
       'Nivel de Conocimiento del Cliente/Mercado',
       'Regulación',
@@ -231,7 +290,8 @@ describe('panel admin contra el simulador', () => {
     expect(within(tabla).getByRole('columnheader', { name: 'R1' }).querySelector('.ronda--1')).toBeTruthy()
     expect(within(tabla).queryByText(/eje|votos|time to market|total/i)).toBeNull()
     // Promedio del servidor con 2 decimales.
-    expect(within(tabla).getByRole('rowheader', { name: 'Regulación' }).parentElement?.textContent).toMatch(/^Regulación\d+,\d\d$/)
+    const regulacion = within(tabla).getByRole('rowheader', { name: /^Regulación/ }).parentElement!
+    expect(regulacion.querySelector('td')?.textContent).toMatch(/^\d+,\d\d$/)
   })
 
   it('una sala nueva muestra la sala completa tras votar y el país cambia la zona de los cierres', async () => {
@@ -243,7 +303,7 @@ describe('panel admin contra el simulador', () => {
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Configuración'))
     expect(((await screen.findByLabelText(/Todos ven la sala completa/)) as HTMLInputElement).checked).toBe(true)
-    expect((screen.getByLabelText(/Tablero en vivo/) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText(/Resultado en vivo/) as HTMLInputElement).checked).toBe(true)
     expect(screen.getByText(/^Hora de Bogotá \(UTC-5\)/)).toBeTruthy()
     fireEvent.change(screen.getByLabelText('País de la sala'), { target: { value: 'GT' } })
     expect(await screen.findByText('La sala quedó en Guatemala, con hora de Guatemala (UTC-6).')).toBeTruthy()
@@ -257,8 +317,10 @@ describe('panel admin contra el simulador', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Exportar'))
-    const ayuda = await screen.findByText('Registro interno, solo para gestión.')
-    expect(ayuda.parentElement?.textContent).toMatch(/país e IP.*siguen anónimos/)
+    // QA-A-30: el mismo aviso de datos personales que Participantes y Respuestas.
+    const ayuda = await screen.findByText('Solo administradores. No se proyecta.')
+    expect(ayuda.parentElement?.className).toContain('alerta--aviso')
+    expect(ayuda.parentElement?.textContent).toMatch(/Registro interno.*país e IP.*siguen anónimos/)
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Participantes'))
     expect(await screen.findByText('CO 181.50.12.10')).toBeTruthy()
   })
@@ -322,7 +384,13 @@ describe('rúbricas en la configuración de la sala', () => {
     expect(botonR('Guardar').disabled).toBe(true)
 
     fireEvent.change(nivel(1), { target: { value: 'Algo que se descarta' } })
-    expect((seccion().getByLabelText('Criterio') as HTMLSelectElement).disabled).toBe(true)
+    // QA-A-14: cambiar de criterio con cambios pendientes pregunta antes; «Seguir editando» los conserva.
+    fireEvent.change(seccion().getByLabelText('Criterio'), { target: { value: 'regulacion' } })
+    const dialogo = await screen.findByRole('dialog', { name: '¿Descartar los cambios?' })
+    expect(document.activeElement?.textContent).toBe('Seguir editando')
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Seguir editando' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(nivel(1).value).toBe('Algo que se descarta')
     fireEvent.click(botonR('Descartar cambios'))
     expect(nivel(1).value).toMatch(/^Inversión baja/)
 
@@ -434,7 +502,7 @@ describe('cambios del 19-oct en el panel', () => {
       ['Hojas', () => screen.findByRole('region', { name: 'INSUMEX' })],
       ['Configuración', () => screen.findByRole('heading', { name: 'Apertura y cierre programados' })],
       ['Exportar', () => screen.findByRole('heading', { name: 'Inscritos' })],
-      ['Salud', () => screen.findByText('En línea')],
+      ['Salud', () => screen.findByText('Todo bien')],
     ]
     for (const [seccion, ver] of esperado) {
       fireEvent.click(nav().getByText(seccion))
@@ -502,6 +570,9 @@ describe('cambios del 19-oct en el panel', () => {
     expect(screen.getByText('No hay respuestas con ese filtro.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Ronda'), { target: { value: '1' } })
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(1 + 8)
+    // Pedido del 20-oct: bajo la tabla, qué mide cada criterio en una línea (100 caracteres como máximo).
+    const leyenda = screen.getByLabelText('Qué mide cada criterio')
+    expect(within(leyenda).getAllByRole('definition').map((d) => d.textContent)).toEqual(Object.values(DESCRIPCION_CRITERIO))
   })
 
   it('Respuestas: error del servidor tal cual', async () => {
@@ -586,24 +657,31 @@ describe('cambios del 19-oct en el panel', () => {
     await abrirDemo('jorge')
     const seccion = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
     const b = (n: string) => seccion.getByRole('button', { name: n }) as HTMLButtonElement
-    expect(seccion.getByText('Pregunta 3 de 12 · ronda 1')).toBeTruthy()
+    // QA-A-08: la numeración es la del tablero, por proyecto.
+    expect(seccion.getByText('Pregunta 3 de 6 · INSUMEX · ronda 1')).toBeTruthy()
     expect(seccion.getByText('INSUMEX · Regulación')).toBeTruthy()
     fireEvent.click(b('Anterior'))
-    expect(await seccion.findByText('Pregunta 2 de 12 · ronda 1')).toBeTruthy()
+    expect(await seccion.findByText('Pregunta 2 de 6 · INSUMEX · ronda 1')).toBeTruthy()
     expect(seccion.getByText('INSUMEX · Nivel de Conocimiento del Cliente/Mercado')).toBeTruthy()
     await waitFor(() => expect(b('Siguiente').disabled).toBe(false))
     fireEvent.click(b('Siguiente'))
-    expect(await seccion.findByText('Pregunta 3 de 12 · ronda 1')).toBeTruthy()
+    expect(await seccion.findByText('Pregunta 3 de 6 · INSUMEX · ronda 1')).toBeTruthy()
 
     fireEvent.change(seccion.getByLabelText('Proyecto'), { target: { value: 'nutriwhat' } })
     fireEvent.change(seccion.getByLabelText('Pregunta'), { target: { value: 'inversion_requerida' } })
     fireEvent.click(b('Mostrar esta pregunta'))
-    expect(await seccion.findByText('Pregunta 12 de 12 · ronda 1')).toBeTruthy()
+    expect(await seccion.findByText('Pregunta 6 de 6 · NUTRIWHAT · ronda 1')).toBeTruthy()
     expect(seccion.getByText('NUTRIWHAT · Inversión Requerida para Probar')).toBeTruthy()
     await waitFor(() => expect(b('Siguiente').disabled).toBe(true))
     expect(b('Mostrar esta pregunta').disabled).toBe(true)
     // Queda en la bitácora.
-    expect(screen.getAllByText(/Pregunta guiada cambiada · jorge/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Pregunta en pantalla: NUTRIWHAT · Pregunta 6 de 6 · jorge/).length).toBeGreaterThan(0)
+
+    // QA-A-07: «Quitar la pregunta» vuelve a la matriz y queda en la bitácora.
+    fireEvent.click(b('Quitar la pregunta'))
+    expect(await seccion.findByText(/^Sin pregunta en pantalla: el tablero muestra la matriz/)).toBeTruthy()
+    await waitFor(() => expect(b('Quitar la pregunta').disabled).toBe(true))
+    expect(screen.getAllByText(/Pregunta quitada: vuelve la matriz · jorge/).length).toBeGreaterThan(0)
 
     // En automático no hay control; al volver a guiado la pregunta empieza de cero (el servidor la borra al cambiar el modo).
     fireEvent.click(nav().getByText('Configuración'))
@@ -617,10 +695,10 @@ describe('cambios del 19-oct en el panel', () => {
     expect(await screen.findByText('Modo guiado: todos ven la pregunta que elijas en Sala en vivo.')).toBeTruthy()
     fireEvent.click(nav().getByText('Sala en vivo'))
     const otra = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
-    expect(otra.getByText(/Aún no hay pregunta en pantalla/)).toBeTruthy()
+    expect(otra.getByText(/Sin pregunta en pantalla/)).toBeTruthy()
     expect((otra.getByRole('button', { name: 'Anterior' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(otra.getByRole('button', { name: 'Siguiente' }))
-    expect(await otra.findByText('Pregunta 1 de 12 · ronda 1')).toBeTruthy()
+    expect(await otra.findByText('Pregunta 1 de 6 · INSUMEX · ronda 1')).toBeTruthy()
     expect(otra.getByText('INSUMEX · Nivel de Alistamiento Técnico')).toBeTruthy()
   })
 

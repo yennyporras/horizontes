@@ -17,7 +17,7 @@ const CLAVE = 'clave-e2e-participante'
 
 /**
  * Navegador de Playwright instalado (misma revisión que playwright-core). Para Chromium también vale PW_EXE.
- * Con HZ_E2E=0 se omite, como el e2e del tablero: las pruebas en navegador se corren una sola vez con el candado.
+ * Con HZ_E2E=0 se omite, como el e2e del tablero: las pruebas en navegador cargan la máquina y se corren aparte.
  */
 export function hayNavegador(motor: Motor): boolean {
   if (process.env.HZ_E2E === '0') return false
@@ -105,8 +105,7 @@ export async function iniciar(): Promise<Entorno> {
   // reenvía /api. Más fiel que el servidor de desarrollo y gasta mucha menos CPU mientras el resto de
   // la suite corre en paralelo. Sin el plugin de React: esbuild compila el TSX.
   const salida = mkdtempSync(join(tmpdir(), 'hz-e2e-web-'))
-  const { build } = await import('vite')
-  await build({ configFile: false, root: join(RAIZ, 'web'), logLevel: 'silent', esbuild: { jsx: 'automatic' }, build: { outDir: salida, emptyOutDir: true } })
+  await construirProduccion(salida)
   const web_server = estatico(salida, apiUrl)
   await new Promise<void>((r) => web_server.listen(0, '127.0.0.1', r))
   const web = `http://127.0.0.1:${(web_server.address() as AddressInfo).port}`
@@ -148,6 +147,27 @@ export async function iniciar(): Promise<Entorno> {
     },
   }
   return entorno
+}
+
+/**
+ * Vitest corre con NODE_ENV=test y Vite lo respeta: sin forzarlo, el «build de producción» salía con React de
+ * desarrollo (StrictMode con efectos y consultas dobles, jsxDEV, import.meta.env.DEV verdadero y con él el simulador
+ * del panel y /m/_ui): más pesado y distinto de lo que recibe el celular (docs/DECISIONES.md, 20-oct).
+ */
+async function construirProduccion(salida: string) {
+  const { build } = await import('vite')
+  const antes = process.env.NODE_ENV
+  process.env.NODE_ENV = 'production'
+  try {
+    await build({ configFile: false, root: join(RAIZ, 'web'), logLevel: 'silent', esbuild: { jsx: 'automatic' }, build: { outDir: salida, emptyOutDir: true } })
+  } finally {
+    if (antes === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = antes
+  }
+  // Guardia: si React de desarrollo se cuela otra vez en el build, el e2e lo dice en vez de volverse intermitente.
+  const js = readdirSync(join(salida, 'assets')).filter((f) => f.endsWith('.js'))
+  const conDesarrollo = js.filter((f) => /react-devtools|jsxDEV/.test(readFileSync(join(salida, 'assets', f), 'utf8')))
+  if (conDesarrollo.length) throw new Error(`El build del e2e trae React de desarrollo (${conDesarrollo.join(', ')}): debe ser el de producción.`)
 }
 
 const TIPOS: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' }
@@ -218,6 +238,17 @@ export async function inscribirApi(e: Entorno, codigoMesa: string, nombre: strin
   if (r.status !== 201 && r.status !== 409) throw new Error(`inscripción: ${r.status} ${JSON.stringify(r.datos)}`)
   const d = r.datos as { token?: string; error?: { token?: string } }
   return (d.token ?? d.error?.token)!
+}
+
+/**
+ * «Dar acceso de nuevo» del panel (D1): enlace personal de un solo uso. Devuelve la ruta con su `?acceso=`,
+ * para abrirla en el estático del e2e (la URL del servidor trae su BASE_URL).
+ */
+export async function darAcceso(e: Entorno, participanteId: string): Promise<string> {
+  const r = await json(e, 'POST', `/api/admin/participantes/${participanteId}/acceso`, {}, { cookie: e.cookie })
+  if (r.status !== 200) throw new Error(`acceso: ${r.status} ${JSON.stringify(r.datos)}`)
+  const url = new URL((r.datos as { url: string }).url)
+  return `${url.pathname}${url.search}`
 }
 
 export const TODO_5 = {

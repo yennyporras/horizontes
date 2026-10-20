@@ -12,6 +12,8 @@ import { Aviso } from '../Aviso'
 import { MuestraUI } from '../MuestraUI'
 import { EncabezadoProducto } from '../EncabezadoProducto'
 import { useTemaDocumento } from '../tema'
+import { BarraAccion } from '../BarraAccion'
+import { readFileSync } from 'node:fs'
 
 afterEach(cleanup)
 
@@ -142,7 +144,7 @@ describe('Colores de ronda', () => {
 })
 
 describe('EncabezadoProducto', () => {
-  it('muestra el glifo, el nombre y la firma «por Estratek» con la » decorativa', () => {
+  it('muestra el logo, el nombre y la firma «por Estratek» con la » decorativa', () => {
     render(
       <EncabezadoProducto href="#inicio">
         <span>Mesa 2</span>
@@ -150,15 +152,26 @@ describe('EncabezadoProducto', () => {
     )
     const marca = screen.getByRole('link')
     expect(marca.getAttribute('href')).toBe('#inicio')
-    expect(marca.textContent).toBe('HHorizontespor Estratek »')
+    expect(marca.textContent).toBe('Horizontespor Estratek »')
+    // El logo es decorativo: el nombre va en texto al lado.
+    const logo = marca.querySelector('svg')!
+    expect(logo.getAttribute('aria-hidden')).toBe('true')
+    expect(logo.getAttribute('class')).toContain('hz-producto__glifo')
     expect(screen.getByText('»').getAttribute('aria-hidden')).toBe('true')
     expect(screen.getByRole('banner').textContent).toContain('Mesa 2')
   })
 
   it('sin href la marca no es enlace', () => {
-    render(<EncabezadoProducto nombre="IRMI" glifo="I" />)
+    render(<EncabezadoProducto nombre="IRMI" />)
     expect(screen.queryByRole('link')).toBeNull()
     expect(screen.getByRole('banner').textContent).toContain('IRMI')
+  })
+
+  it('con onIr el clic en la marca lo maneja la vista (navegar sin recargar)', () => {
+    const onIr = vi.fn((e: { preventDefault: () => void }) => e.preventDefault())
+    render(<EncabezadoProducto href="/admin/salas" onIr={onIr} />)
+    fireEvent.click(screen.getByRole('link'))
+    expect(onIr).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -173,5 +186,31 @@ describe('useTemaDocumento', () => {
     expect(document.documentElement.getAttribute('data-tema')).toBe('carbon')
     unmount()
     expect(document.documentElement.hasAttribute('data-tema')).toBe(false)
+  })
+})
+
+describe('ancho de página estándar de la familia Estratek (§5)', () => {
+  const css = readFileSync('web/shared/ui/componentes.css', 'utf8')
+  const tokens = readFileSync('web/shared/ui/tokens.css', 'utf8')
+  it('token de 1280 px, el del panel, con margen de 16, 24 y 32 px', () => {
+    expect(tokens).toMatch(/--hz-ancho-pagina: 1280px;/)
+    expect(tokens).toMatch(/--hz-margen-pagina: 1rem;/)
+    expect(tokens).toMatch(/@media \(min-width: 48rem\) \{ :root \{ --hz-margen-pagina: 1\.5rem; \} \}/)
+    expect(tokens).toMatch(/@media \(min-width: 80rem\) \{ :root \{ --hz-margen-pagina: 2rem; \} \}/)
+    expect(css).toMatch(/\.hz-pagina \{\s*width: 100%;\s*max-width: var\(--hz-ancho-pagina\);\s*margin-inline: auto;\s*padding-inline: var\(--hz-margen-pagina\);\s*\}/)
+  })
+  it('el encabezado de producto y la barra de acción usan el contenedor de página', () => {
+    const { container } = render(
+      <>
+        <EncabezadoProducto />
+        <BarraAccion>
+          <Boton>Seguir</Boton>
+        </BarraAccion>
+      </>,
+    )
+    expect(container.querySelector('.hz-producto__fila')!.classList.contains('hz-pagina')).toBe(true)
+    expect(container.querySelector('.hz-barra-accion__interior')!.classList.contains('hz-pagina')).toBe(true)
+    // La fila no pisa el margen lateral del contenedor.
+    expect(css).not.toMatch(/\.hz-producto__fila \{[^}]*padding:/)
   })
 })

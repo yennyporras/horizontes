@@ -1,137 +1,41 @@
-// Cliente del participante para el contrato v1 (docs/CONTRATO_API.md).
-// Provisional hasta que T1 publique web/shared/api/: misma forma, solo cambia el import.
-// Los tipos del 19-oct (modo de preguntas y pregunta guiada) ya vienen del contrato compartido.
-import type { ModoPreguntas, PreguntaGuiada } from '../shared/api/contrato'
+// Cliente del participante para el contrato v1 (docs/CONTRATO_API.md). Los tipos son los del contrato
+// compartido (web/shared/api/contrato.ts); aquí solo viven el transporte del celular y sus alias de nombre.
+import type {
+  Criterio,
+  CuerpoAcceso,
+  CuerpoVoto,
+  EstadoSala,
+  HojaPerfil,
+  InfoMesa,
+  ModoPreguntas,
+  Pais,
+  ParticipantePublico,
+  PreguntaGuiada,
+  ProgresoMesa,
+  RespuestaAcceso,
+  RespuestaInscripcion,
+  RespuestaVoto,
+  ResultadosParticipante,
+  RondaVivo,
+  Valor,
+  Voto,
+  Yo,
+} from '../shared/api/contrato'
 
-export type { ModoPreguntas, PreguntaGuiada }
+export type { Criterio, EstadoSala, ModoPreguntas, Pais, PreguntaGuiada, ProgresoMesa, RespuestaVoto, RondaVivo, Valor, Voto, Yo }
 
-export type EstadoSala = 'preparada' | 'inscripcion' | 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cerrada' | 'cerrada'
-export type Valor = 1 | 3 | 5 | 7 | 9
-
-/** País de la sala (R4_CONTRATO C4 y C6): define la ley que cita el aviso de datos. Sin dato, Colombia. */
-export type Pais = 'CO' | 'PE' | 'GT'
-
-export interface Mesa {
-  sala: { id: string; nombre: string; estado: EstadoSala; pais?: Pais }
-  mesa: { id: string; nombre: string }
-  inscripcion_abierta: boolean
-  consentimiento: { version: string; texto_autorizacion: string; politica_url: string }
-}
-
-export interface Perfil {
-  id: string
-  nombre: string
-}
-
-export interface ParticipanteYo {
-  id: string
-  nombre: string
-  mesa: { id: string; nombre: string }
-  perfil: Perfil
-  activo?: boolean
-}
-
-export interface Inscripcion {
-  token: string
-  participante: ParticipanteYo
-}
-
-export interface ProyectoPortafolio {
-  id: string
-  nombre: string
-  tipo?: string
-  sector?: string
-  descripcion?: string
-  modo: 'vivo' | 'fijo'
-}
-
-export interface HojaInfo {
-  proyecto_id: string
-  proyecto: string
-  perfil_id: string
-  perfil?: string
-  texto: string
-}
-
-export interface Criterio {
-  id: string
-  nombre: string
-  pregunta: string
-  rubrica: { valor: number; texto: string }[]
-}
-
-export interface Voto {
-  proyecto_id: string
-  ronda: number
-  respuestas: Record<string, number>
-  actualizado_at?: string
-}
-
-export interface ProgresoMesa {
-  inscritos: number
-  completos: number
-  precierre: boolean
-}
-
-export interface RondaVivo {
-  ronda: number
-  n_votos: number
-  promedios: Record<string, number> | null
-  distribucion?: Record<string, Record<string, number>> | null
-  t2m: number | null
-  eje_x: number | null
-  eje_y: number | null
-  /** eje X + eje Y, calculado en el servidor (R4_CONTRATO C1). null sin votos o bajo el mínimo. */
-  total?: number | null
-  /** Hay votos, pero menos que `minimo_votos`: el servidor no entrega promedios ni punto. */
-  bajo_minimo?: boolean
-}
-
-/** Misma forma que GET /api/tablero (recortada al alcance). Solo se muestra: el frontend nunca recalcula. */
-export interface Resultados {
-  version?: string
-  sala?: { id: string; nombre: string; estado: EstadoSala; ronda_actual: number }
-  alcance?: { tipo: 'mesa' | 'sala'; mesa_id?: string; mesa_nombre?: string }
-  progreso?: { inscritos: number; completos: number; precierre: boolean; por_mesa?: (ProgresoMesa & { mesa_id: string; nombre: string })[] }
-  ejes?: { x: { titulo: string; subtitulo?: string }; y: { titulo: string; subtitulo?: string } }
-  criterios?: { id: string; nombre: string }[]
-  proyectos_fijos?: { id: string; nombre: string; eje_x: number; eje_y: number; tam?: number }[]
-  proyectos_vivos: { id: string; nombre: string; tam?: number; rondas: RondaVivo[] }[]
-  preliminar?: boolean
-  /** Votos mínimos por proyecto, ronda y alcance para mostrar resultados (R4_CONTRATO C3: 3). */
-  minimo_votos?: number
-}
-
-export interface Yo {
-  version: string
-  participante: ParticipanteYo
-  sala: { id: string; nombre: string; estado: EstadoSala; ronda_actual: number; pregunta_guiada?: PreguntaGuiada | null }
-  config: {
-    vista_participante: 'registrado' | 'en_vivo'
-    alcance_resultados: 'mesa' | 'sala'
-    revelar_hojas: boolean
-    /** Sin dato, automático. */
-    modo_preguntas?: ModoPreguntas
-  }
-  contenido: {
-    caso: { titulo: string; descripcion_md: string; situacion_md: string }
-    portafolio: ProyectoPortafolio[]
-    hojas: HojaInfo[]
-  }
-  criterios: Criterio[]
-  escala?: number[]
-  mis_votos: Voto[]
-  pendientes: string[]
-  completo_ronda: boolean
-  progreso_mesa: ProgresoMesa
-  resultados: Resultados | null
-}
-
-export interface RespuestaVoto {
-  voto: Voto
-  completo_ronda: boolean
-  progreso_mesa: ProgresoMesa
-}
+/** GET /api/mesas/{codigo}. */
+export type Mesa = InfoMesa
+export type ParticipanteYo = ParticipantePublico
+export type HojaInfo = HojaPerfil
+export type ProyectoPortafolio = Yo['contenido']['portafolio'][number]
+/**
+ * Resultado del alcance en `/api/yo`: la forma de GET /api/tablero sin `progreso.por_mesa` (D2).
+ * Solo se muestra; el celular nunca recalcula.
+ */
+export type Resultados = ResultadosParticipante
+/** Inscripción y canje de un acceso nuevo: token y participante (la misma forma en los dos). */
+export type Sesion = RespuestaAcceso
 
 /** status 0 = sin red (fetch rechazado). */
 export class ErrorApi extends Error {
@@ -197,26 +101,24 @@ export async function obtenerMesa(codigo: string): Promise<Mesa> {
   return (await pedir(`/api/mesas/${encodeURIComponent(codigo)}`)).datos as Mesa
 }
 
-/** 409 CORREO_YA_INSCRITO no es error: el servidor devuelve el mismo participante con token nuevo. */
-export async function inscribirse(datos: {
-  codigoMesa: string
-  nombre: string
-  correo: string
-  version: string
-}): Promise<Inscripcion & { yaInscrito: boolean }> {
+/**
+ * POST /api/inscripcion. Un 409 `CORREO_YA_INSCRITO` es un error más (decisión D1 del 20-oct): ya no trae token,
+ * y quien perdió la sesión entra con el acceso nuevo que le da el facilitador.
+ */
+export async function inscribirse(datos: { codigoMesa: string; nombre: string; correo: string; version: string }): Promise<Sesion> {
   const cuerpo = { codigoMesa: datos.codigoMesa, nombre: datos.nombre, correo: datos.correo, consentimiento: { aceptado: true, version: datos.version } }
-  try {
-    const r = (await pedir('/api/inscripcion', { metodo: 'POST', cuerpo })).datos as Inscripcion
-    return { ...r, yaInscrito: false }
-  } catch (e) {
-    if (e instanceof ErrorApi && e.codigo === 'CORREO_YA_INSCRITO') {
-      const c = e.cuerpo as (Partial<Inscripcion> & { error?: Partial<Inscripcion> }) | null
-      const token = c?.token ?? c?.error?.token
-      const participante = c?.participante ?? c?.error?.participante
-      if (token && participante) return { token, participante, yaInscrito: true }
-    }
-    throw e
-  }
+  const r = (await pedir('/api/inscripcion', { metodo: 'POST', cuerpo })).datos as RespuestaInscripcion
+  return { token: r.token, participante: r.participante }
+}
+
+/**
+ * POST /api/acceso (D1): canjea el enlace de un solo uso que genera «Dar acceso de nuevo» en el panel
+ * por una sesión nueva. 410 `ACCESO_VENCIDO` · 404 `ACCESO_INVALIDO` · 409 `SALA_CERRADA` · 403 `PARTICIPANTE_INACTIVO` · 429.
+ */
+export async function canjearAcceso(acceso: string): Promise<Sesion> {
+  const cuerpo: CuerpoAcceso = { acceso }
+  const r = (await pedir('/api/acceso', { metodo: 'POST', cuerpo })).datos as Sesion
+  return { token: r.token, participante: r.participante }
 }
 
 /** Devuelve null si no hubo cambios (304). */
@@ -226,6 +128,7 @@ export async function obtenerYo(token: string, etag: string | null): Promise<{ y
   return { yo: r.datos as Yo, etag: r.etag ?? (r.datos as Yo).version ?? null }
 }
 
+/** PUT /api/votos con el voto completo. Lo marcado vive en el celular como `Record<string, number>` hasta aquí. */
 export async function guardarVoto(token: string, voto: { proyecto_id: string; ronda: number; respuestas: Record<string, number> }): Promise<RespuestaVoto> {
-  return (await pedir('/api/votos', { metodo: 'PUT', cuerpo: voto, token })).datos as RespuestaVoto
+  return (await pedir('/api/votos', { metodo: 'PUT', cuerpo: voto as CuerpoVoto, token })).datos as RespuestaVoto
 }

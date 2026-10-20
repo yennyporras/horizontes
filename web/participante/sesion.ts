@@ -51,28 +51,8 @@ export function guardarBorrador(codigo: string, proyecto: string, ronda: number,
   escribir(sesion, clave(`borrador_${proyecto}_r${ronda}`, codigo), respuestas ? JSON.stringify(respuestas) : null)
 }
 
-/** Nombre y correo de la inscripción, solo en este celular: rellenan la recuperación de sesión. */
-export function leerDatos(codigo: string): { nombre: string; correo: string } | null {
-  const t = leer(local, clave('datos', codigo))
-  if (!t) return null
-  try {
-    const d = JSON.parse(t) as { nombre?: unknown; correo?: unknown }
-    return typeof d.nombre === 'string' && typeof d.correo === 'string' ? { nombre: d.nombre, correo: d.correo } : null
-  } catch {
-    return null
-  }
-}
-export const guardarDatos = (codigo: string, datos: { nombre: string; correo: string }) => escribir(local, clave('datos', codigo), JSON.stringify(datos))
-/** Ley 1581: al cerrar la sala ya no hay sesión que recuperar; nombre y correo salen del celular. */
-export const olvidarDatos = (codigo: string) => escribir(local, clave('datos', codigo), null)
-
 /**
- * Sale de la sesión. Con `conservarLugar` (token vencido) se guardan la pantalla, los borradores
- * y la cola: al recuperar la sesión con el mismo correo retoma donde iba.
+ * Hasta el 20-oct el celular guardaba nombre y correo para recuperar la sesión con el correo. Desde la decisión D1
+ * el acceso nuevo lo da el facilitador: esos datos ya no se guardan y se borran si quedaron de antes.
  */
-export function olvidarSesion(codigo: string, conservarLugar = false) {
-  guardarToken(codigo, null)
-  if (conservarLugar) return
-  marcarBienvenida(codigo, false)
-  escribir(sesion, clave('vista', codigo), null)
-}
+export const olvidarDatos = (codigo: string) => escribir(local, clave('datos', codigo), null)

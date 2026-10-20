@@ -195,7 +195,7 @@ test('nombres de los fijos sin solaparse entre sí ni con otras etiquetas, con l
   }
   assert.deepEqual(fallas.slice(0, 15), [], `${fallas.length} solapes`);
   console.info(`[matriz] nombres de fijos omitidos en 360 px: ${omitidos} de ${pasos.length ** 2 * 8}`);
-  // Desde R4 la etiqueta de R1 lleva el nombre del vivo (se lee sin color): ocupa más y en 360 px
+  // Desde el 19-oct la etiqueta de R1 lleva el nombre del vivo (se lee sin color): ocupa más y en 360 px
   // se omiten unos pocos nombres más de fijos (10 de 392, antes 4).
   assert.ok(omitidos <= 12, `${omitidos} nombres omitidos`);
 });
@@ -220,4 +220,88 @@ test('colores solo con tokens semánticos (sirven en carbón y en claro), en reg
   // Ningún color fijo claro en atributos: todo pasa por las reglas (y var() no vale en un atributo).
   assert.ok(!/(fill|stroke)="(#|var)/.test(svg), 'color en atributo');
   assert.ok(!/#FFFFFF|#1C4587|#EEF4FB/i.test(svg));
+});
+
+// QA-T-01: en el proyector ningún texto de la matriz baja de la letra mínima (marcas, títulos, subtítulos y nombres).
+test('letra mínima de proyector: 20 px en 1280×720 y 24 px en 1920×1080, sin solapes', () => {
+  for (const [ancho, alto, min] of [[1247, 571, 20], [554, 583, 20], [1879, 889, 24], [875, 903, 24]]) {
+    for (const vista of [1, 2, 'comparacion'] as Vista[]) {
+      const L = calcularLayout(mock, { ancho, alto, vista, escalaTexto: 1.45, letraMin: min });
+      for (const [k, v] of Object.entries(L.letras)) assert.ok(v >= min, `${k} ${v} < ${min} a ${ancho}x${alto}`);
+      const svg = matrizSVG(mock, { ancho, alto, vista, escalaTexto: 1.45, letraMin: min });
+      const tamanos = [...svg.matchAll(/<text class="(?!hz-mz-texto hz-mz-horizonte)[^"]*"[^>]*font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+      assert.ok(Math.min(...tamanos) >= min, `texto de ${Math.min(...tamanos)} px a ${ancho}x${alto}`);
+      L.etiquetas.forEach((a, i) => L.etiquetas.slice(i + 1).forEach((b) => assert.ok(!solapan(a.caja, b.caja), `${a.texto} con ${b.texto} a ${ancho}x${alto}`)));
+      assert.equal(L.etiquetas.filter((e) => e.tipo === 'fijo').length, L.fijos.length, `faltan nombres de fijos a ${ancho}x${alto}`);
+    }
+  }
+  // Un lienzo chico limita la letra mínima (no se tapa la matriz de texto).
+  assert.ok(calcularLayout(mock, { ancho: 300, alto: 300, letraMin: 24 }).letras.marca < 24);
+});
+
+// QA-T-08 y QA-P-06: cada nombre queda pegado a su burbuja o, si quedó apartado, con una guía hasta ella.
+test('nombres pegados a su burbuja; los apartados llevan guía', () => {
+  for (const [ancho, alto, esc, min] of [[314, 330, 1, 0], [875, 903, 1.45, 24], [1247, 571, 1.45, 20]]) {
+    const L = calcularLayout(mock, { ancho, alto, escalaTexto: esc, letraMin: min });
+    for (const e of L.etiquetas) {
+      if (e.distancia > e.fs * 0.8) assert.ok(e.guia, `${e.texto} a ${Math.round(e.distancia)} px sin guía a ${ancho}px`);
+      else assert.equal(e.guia, null);
+    }
+    // Ningún nombre de un vivo queda a más de tres letras de su burbuja.
+    for (const e of L.etiquetas.filter((x) => x.prioridad)) assert.ok(e.distancia <= e.fs * 3, `${e.texto} a ${Math.round(e.distancia)} px a ${ancho}px`);
+  }
+});
+
+test('dos vivos en el mismo punto: un rótulo de dos líneas pegado a la burbuja (se lee que son dos)', () => {
+  const datos = structuredClone(mock);
+  datos.proyectos_vivos.forEach((v) => {
+    v.rondas = [{ ...v.rondas[0], ronda: 1, eje_x: 6.4, eje_y: 6.6 }, { ...v.rondas[1], ronda: 2, eje_x: 7.8, eje_y: 4.4 }];
+  });
+  for (const [ancho, alto, esc, min] of [[314, 330, 1, 0], [875, 903, 1.45, 24]]) {
+    const L = calcularLayout(datos, { ancho, alto, escalaTexto: esc, letraMin: min });
+    const pilas = L.etiquetas.filter((e) => e.lineas);
+    assert.equal(pilas.length, 2, `${ancho}px`);
+    for (const p of pilas) assert.deepEqual(p.lineas!.map((l) => l.nombre).sort(), ['INSUMEX', 'NUTRIWHAT']);
+    const svg = matrizSVG(datos, { ancho, alto, escalaTexto: esc, letraMin: min });
+    // Cada burbuja conserva su «R1»/«R2» escrito.
+    assert.equal((svg.match(/class="hz-etq-ronda"[^>]*>R1</g) || []).length, 2);
+    assert.equal((svg.match(/class="hz-etq-ronda"[^>]*>R2</g) || []).length, 2);
+  }
+});
+
+test('la marca de agua H1, H2 y H3 no queda debajo de ningún nombre', () => {
+  const datos = structuredClone(mock);
+  datos.proyectos_vivos.forEach((v) => {
+    v.rondas = [{ ...v.rondas[0], ronda: 1, eje_x: 6.4, eje_y: 6.6 }, { ...v.rondas[1], ronda: 2, eje_x: 7.8, eje_y: 4.4 }];
+  });
+  for (const d of [mock, datos]) {
+    for (const [ancho, alto, esc, min] of [[314, 330, 1, 0], [875, 903, 1.45, 24], [1247, 571, 1.45, 20]]) {
+      const L = calcularLayout(d, { ancho, alto, escalaTexto: esc, letraMin: min });
+      for (const m of L.marcasHorizonte) for (const e of L.etiquetas.filter((x) => x.prioridad)) assert.ok(!solapan(m.caja, e.caja), `${m.id} bajo ${e.texto} a ${ancho}px`);
+    }
+  }
+});
+
+test('F-13: descripción y títulos con coma decimal; la animación va limitada al SVG', () => {
+  const svg = matrizSVG(mock, { ancho: 900, animar: true, idPrefijo: 'qq' });
+  const desc = svg.match(/<desc[^>]*>(.*?)<\/desc>/)![1];
+  assert.match(desc, /eje X \d+,\d{2}, eje Y \d+,\d{2}/);
+  assert.ok(!/\d\.\d/.test(desc), desc);
+  for (const t of svg.matchAll(/<title>([^<]*)<\/title>/g)) assert.ok(!/ [XY] \d+\.\d/.test(t[1]), t[1]);
+  const estilo = svg.match(/<style>(.*?)<\/style>/)![1];
+  assert.ok(estilo.includes('#qq .hz-anim-mov{animation:qq-mover'));
+  assert.ok(estilo.includes('@keyframes qq-mover'));
+  assert.ok(!/(^|\})\.hz-anim/.test(estilo), 'regla de animación sin limitar');
+  assert.ok(!/@keyframes hz/.test(estilo));
+});
+
+test('modo en vivo: con valores anteriores, las burbujas que cambiaron se deslizan y sus nombres aparecen después', () => {
+  const v = mock.proyectos_vivos[0];
+  const r2 = v.rondas.find((r) => r.ronda === 2)!;
+  const svg = matrizSVG(mock, { ancho: 900, vista: 2, idPrefijo: 'tt', transicion: { valores: { [`${v.id}-2`]: { x: r2.eje_x! - 2, y: r2.eje_y! } } } });
+  assert.equal((svg.match(/<circle class="hz-r2 hz-anim-act"/g) || []).length, 1);
+  assert.ok(svg.includes('@keyframes tt-desliza'));
+  assert.ok(svg.includes('hz-etq hz-etq-vivo hz-mz-texto hz-anim-etq'));
+  // Sin cambios de posición, nada se anima.
+  assert.ok(!matrizSVG(mock, { ancho: 900, vista: 2, transicion: { valores: { [`${v.id}-2`]: { x: r2.eje_x!, y: r2.eje_y! } } } }).includes('hz-anim'));
 });

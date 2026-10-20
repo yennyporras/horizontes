@@ -8,4 +8,3 @@ vendor/
 dist/
 data/*.sqlite*
 .playwright-cli/
-.claude/launch.json

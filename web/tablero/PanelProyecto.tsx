@@ -1,6 +1,6 @@
 import type { DatosTablero, ProyectoVivo, RondaVivo, Vista } from './tipos'
-import { ColRonda } from './TablaComparada'
-import { cifraRonda, delta, mostrarR2, nombreCorto, rondaDe } from './logica'
+import { ColRonda, NombreCriterio } from './TablaComparada'
+import { cifraRonda, delta, mostrarR2, rondaDe } from './logica'
 
 /** Móvil y tableta: un panel por proyecto con R1, R2 y el cambio por criterio (sin fila «Total», preentrega del 19-oct). */
 export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVivo; datos: DatosTablero; vista: Vista }) {
@@ -8,10 +8,10 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
   const r2 = rondaDe(proyecto, 2)
   const conR2 = mostrarR2(datos)
   const idTitulo = `hz-panel-${proyecto.id}`
-  const fila = (clave: string, etiqueta: string, titulo: string | undefined, valor: (r: RondaVivo | null) => number | null | undefined) => (
-    <tr key={clave}>
-      <th scope="row" title={titulo}>
-        {etiqueta}
+  const fila = (c: { id: string; nombre: string }, valor: (r: RondaVivo | null) => number | null | undefined) => (
+    <tr key={c.id}>
+      <th scope="row" title={c.nombre}>
+        <NombreCriterio id={c.id} nombre={c.nombre} />
       </th>
       <td className={vista === 1 || vista === 'comparacion' ? 'hz-foco' : undefined}>{cifraRonda(r1, valor(r1))}</td>
       {conR2 && (
@@ -50,7 +50,7 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
             )}
           </tr>
         </thead>
-        <tbody>{datos.criterios.map((c) => fila(c.id, nombreCorto(c.id, c.nombre), c.nombre, (r) => r?.promedios?.[c.id]))}</tbody>
+        <tbody>{datos.criterios.map((c) => fila(c, (r) => r?.promedios?.[c.id]))}</tbody>
       </table>
     </section>
   )

@@ -15,16 +15,16 @@ En el portátil del facilitador, sin depender de internet: `deploy/plan_b/Planti
 Se genera desde `data/seed_foodsume.json` con `python deploy/plan_b/generar_plantilla.py` (si cambian pesos, textos o fijos, se vuelve a generar).
 - **Votos**: una fila por papeleta y proyecto: mesa, ronda, proyecto y los 6 valores (la celda solo acepta 1, 3, 5, 7 o 9).
 - **Resultados**: en `C2` escribe `Sala` o el número de la mesa. Calcula el promedio simple por criterio y aplica el motor con los pesos de la semilla: T2M 30/35/35, eje X 60/40, eje Y 70/30. Los 8 fijos vienen precargados. Si prefieres contar a mano, digita los promedios en las filas "Promedio digitado" y deja vacía la hoja Votos.
-- **Total** (acta A4 y P2): última columna de Resultados, eje X + eje Y, igual que la fila «Total» de la app. Para conversar con la sala muestra los 6 criterios y el Total; T2M, Eje X y Eje Y solo ubican la burbuja.
+- **Total** (acta A4 y P2): última columna de Resultados, eje X + eje Y. La app ya no muestra la fila «Total» (preentrega del 19-oct); en la plantilla queda como referencia. Para conversar con la sala muestra los 6 criterios; T2M, Eje X y Eje Y solo ubican la burbuja.
 - **Matriz**: gráfico de burbujas con los 8 fijos en gris y los 2 vivos en **R1 verde y hueco** y **R2 rojo y sólido** (acta P3), ejes de 0 a 9,5. Proyéctalo.
-- Verificado (R3): con votos de prueba, la plantilla da los mismos T2M, eje X y eje Y que el motor de la app. Total es la suma de esas dos celdas.
+- Verificado (16-oct): con votos de prueba, la plantilla da los mismos T2M, eje X y eje Y que el motor de la app. Total es la suma de esas dos celdas.
 
 **Si editaste las rúbricas en el panel:** la papeleta y la plantilla son estáticas y salen de la semilla, así que no se enteran. Antes de imprimir, regenéralas con las rúbricas de la sala:
 1. Con la sesión de admin abierta, abre en el navegador `/api/admin/salas/{id de la sala}/rubricas` y guarda la respuesta como `rubricas.json`.
 2. Corre `python deploy/plan_b/generar_plantilla.py --rubricas rubricas.json`. Reemplaza `papeleta.html` (los textos de cada nivel) y la plantilla Excel (que no lleva textos de rúbrica, pero queda del mismo día).
 3. Imprime la papeleta nueva. Sin `--rubricas` vuelven los textos de la semilla.
 
-**Confirmado el 19-oct (R4):** la papeleta y la plantilla siguen con los 6 criterios de la semilla y solo aceptan 1, 3, 5, 7 o 9 (la celda de la hoja Votos rechaza otros valores). La papeleta no lleva fila «Total»: el participante no calcula, solo califica; el Total sale en la plantilla.
+**Confirmado el 19-oct:** la papeleta y la plantilla siguen con los 6 criterios de la semilla y solo aceptan 1, 3, 5, 7 o 9 (la celda de la hoja Votos rechaza otros valores). La papeleta no lleva fila «Total»: el participante no calcula, solo califica; el Total sale en la plantilla.
 
 ## Cómo se corre el taller en plan B
 1. Reparte caso, hoja por perfil (cada persona recibe uno; la mesa reparte los 6) y una papeleta.

@@ -4,7 +4,7 @@
 #
 #   tools/deploy.sh verificar     build de la imagen + arranque local + /api/health y /admin (no publica nada)
 #   tools/deploy.sh local         imagen en http://localhost:3999 con volumen propio (ensayo tipo staging; parar: tools/deploy.sh parar-local)
-#   tools/deploy.sh staging       pruebas + push de main + dominio y variables en Coolify + deploy + HTTPS y salud
+#   tools/deploy.sh staging       pruebas + comprueba que el commit ya está en origin/main (vía PR) + dominio y variables en Coolify + deploy + HTTPS y salud
 #   tools/deploy.sh produccion    igual, solo si staging está sano (Auto Deploy apagado en prod)
 #   tools/deploy.sh revisar <staging|produccion>   solo comprueba DNS, HTTPS, /api/health y /admin
 #   tools/deploy.sh diagnostico [staging|produccion]  lista qué falta para desplegar (no cambia nada). Empieza por aquí.
@@ -12,7 +12,11 @@
 # Credenciales en deploy/.env.deploy (ignorado por git; plantilla en deploy/env.deploy.ejemplo) o en el entorno:
 #   COOLIFY_URL, COOLIFY_TOKEN, COOLIFY_APP_STAGING, COOLIFY_APP_PROD
 #   SUPERADMIN_CLAVE_STAGING, SUPERADMIN_CLAVE_PROD   (opcionales: si faltan, no se tocan en Coolify)
-# Opciones: SIN_PRUEBAS=1 salta tools/test.sh · SIN_PUSH=1 no empuja main · RAMA=main rama que construye Coolify · FORZAR=1 produccion sin igualar staging.
+# Opciones: SIN_PRUEBAS=1 salta tools/test.sh · RAMA=main rama que construye Coolify · FORZAR=1 produccion sin igualar staging.
+#   El script no empuja nada: a main se llega con pull request (CONTRIBUTING.md). Antes de desplegar exige que el commit
+#   local ya esté en origin/$RAMA, que es lo que construye Coolify.
+#   Ni el token de Coolify ni las claves van en los argumentos de curl (se verían en `ps`): el token va en un archivo
+#   temporal de configuración solo legible por el usuario y el cuerpo, por la entrada estándar.
 #   HZ_DOMINIO_PROD=horizontes.com.co cambia el dominio de producción (por defecto horizontes.estratek.com.co).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,7 +32,7 @@ DOMINIO_PROD="${HZ_DOMINIO_PROD:-horizontes.estratek.com.co}"
 
 info() { printf '== %s\n' "$*"; }
 falla() { printf '!! %s\n' "$1" >&2; exit "${2:-1}"; }
-falta() { falla "Falta $1. Ver deploy/README.md (Credenciales) y docs/BLOQUEOS.md." 2; }
+falta() { falla "Falta $1. Ver deploy/README.md (Credenciales) y docs/ENTREGA.md." 2; }
 
 dominio_de() { case "$1" in staging) echo staging-horizontes.estratek.com.co ;; produccion) echo "$DOMINIO_PROD" ;; *) falla "Ambiente desconocido: $1" ;; esac; }
 uuid_de() { case "$1" in staging) echo "${COOLIFY_APP_STAGING:-}" ;; produccion) echo "${COOLIFY_APP_PROD:-}" ;; esac; }
@@ -92,13 +96,22 @@ local_arriba() {
 
 # --- Coolify ---------------------------------------------------------------------------
 coolify() {
-  local metodo="$1" ruta="$2" cuerpo="${3:-}"
-  local args=(-fsS --max-time 30 -X "$metodo" -H "Authorization: Bearer $COOLIFY_TOKEN" -H 'Accept: application/json')
-  [ -n "$cuerpo" ] && args+=(-H 'Content-Type: application/json' --data "$cuerpo")
-  curl "${args[@]}" "${COOLIFY_URL%/}/api/v1$ruta"
+  local metodo="$1" ruta="$2" cuerpo="${3:-}" cfg r=0
+  # printf es interno de bash: el token y el cuerpo (que puede traer SUPERADMIN_CLAVE) no aparecen en la lista de procesos.
+  cfg=$(umask 077 && mktemp)
+  printf 'header = "Authorization: Bearer %s"\n' "$COOLIFY_TOKEN" >"$cfg"
+  local args=(-fsS --max-time 30 -X "$metodo" -K "$cfg" -H 'Accept: application/json')
+  if [ -n "$cuerpo" ]; then
+    printf '%s' "$cuerpo" | curl "${args[@]}" -H 'Content-Type: application/json' --data-binary @- "${COOLIFY_URL%/}/api/v1$ruta" || r=$?
+  else
+    curl "${args[@]}" "${COOLIFY_URL%/}/api/v1$ruta" || r=$?
+  fi
+  rm -f "$cfg"
+  return "$r"
 }
 
-json_escapar() { node -e 'process.stdout.write(JSON.stringify(process.argv[1]))' "$1"; }
+# El valor (puede ser SUPERADMIN_CLAVE) entra por stdin, no como argumento de node.
+json_escapar() { printf '%s' "$1" | node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>process.stdout.write(JSON.stringify(s)))'; }
 
 # Variables del servidor (el ".env" de la app en Coolify). Se reescriben con los mismos valores en cada corrida.
 variables() {
@@ -166,7 +179,8 @@ requisitos() {
 }
 
 desplegar() {
-  local amb="$1"
+  local amb="$1" uuid
+  uuid=$(uuid_de "$amb")
   requisitos "$amb"
   configurar_coolify "$amb"
   info "pidiendo deploy a Coolify"
@@ -208,11 +222,13 @@ diagnostico() {
   return "$ok"
 }
 
-empujar() {
-  [ "${SIN_PUSH:-0}" = 1 ] && { info "SIN_PUSH=1: no se empuja $RAMA"; return; }
+# Sin push: a main se llega por pull request. Coolify construye origin/$RAMA, así que lo probado aquí (HEAD) debe estar ahí.
+en_origin() {
   git remote get-url origin >/dev/null 2>&1 || falta "el remoto origin (repo de GitHub conectado a la GitHub App de Coolify)"
-  info "push de $RAMA a origin (sin forzar)"
-  git push origin "$RAMA"
+  info "comprobando que $(git rev-parse --short HEAD) ya está en origin/$RAMA"
+  git fetch --quiet origin "$RAMA" || falla "No se pudo leer origin/$RAMA."
+  git merge-base --is-ancestor HEAD "origin/$RAMA" ||
+    falla "El commit $(git rev-parse --short HEAD) no está en origin/$RAMA. Integra los cambios con un pull request y vuelve a correr el despliegue."
 }
 
 case "${1:-}" in
@@ -222,15 +238,16 @@ case "${1:-}" in
   diagnostico) diagnostico "${2:-staging}" ;;
   staging)
     requisitos staging
+    en_origin
     [ "${SIN_PRUEBAS:-0}" = 1 ] || tools/test.sh
-    empujar
     desplegar staging
     ;;
   produccion)
     requisitos produccion
     INTENTOS_SALUD=1 revisar staging >/dev/null 2>&1 || falla "Staging no está sano; no se despliega producción."
     v_staging=$(curl -fsS --max-time 10 "https://$(dominio_de staging)/api/health" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).version||""))}catch{}})')
-    v_main=$(git rev-parse "$RAMA")
+    git fetch --quiet origin "$RAMA" || falla "No se pudo leer origin/$RAMA."
+    v_main=$(git rev-parse "origin/$RAMA")
     case "$v_main" in
       "$v_staging"*) [ -n "$v_staging" ] && info "staging corre $v_staging = $RAMA" ;;
       *) [ "${FORZAR:-0}" = 1 ] || falla "Staging corre '${v_staging:-?}' y $RAMA está en ${v_main:0:7}: despliega y prueba staging primero (o FORZAR=1)." ;;
@@ -239,7 +256,7 @@ case "${1:-}" in
     ;;
   revisar) revisar "${2:-staging}" ;;
   *)
-    sed -n '2,16p' "$0"
+    sed -n '2,20p' "$0"
     exit 1
     ;;
 esac

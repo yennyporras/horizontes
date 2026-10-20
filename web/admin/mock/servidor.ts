@@ -1,5 +1,5 @@
 // Servidor simulado en memoria con la forma de docs/CONTRATO_API.md y los ejemplos de mocks/.
-// Solo para desarrollo (/admin?mock=1): usuarios de prueba paola/demo1234 (superadmin) y jorge/demo1234 (admin).
+// Solo para desarrollo (/admin?mock=1). Cuentas de prueba: las de `inicial()` (superadmin y admin), con CLAVE_DEMO.
 import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
@@ -23,7 +23,7 @@ const CONFIG_19OCT = {
 
 /** Orden del taller que valida el servidor (S2): cada hora no antes que la anterior; apertura y cierre de una etapa, estrictos. */
 const ORDEN_PROGRAMADO: { campo: keyof ConfigSala; etapa: string; nombre: string }[] = [
-  { campo: 'apertura_programada_sala_at', etapa: 'sala', nombre: 'la apertura de la sala' },
+  { campo: 'apertura_programada_sala_at', etapa: 'sala', nombre: 'la apertura de la inscripción' },
   { campo: 'apertura_programada_r1_at', etapa: 'r1', nombre: 'la apertura de la ronda 1' },
   { campo: 'cierre_programado_r1_at', etapa: 'r1', nombre: 'el cierre de la ronda 1' },
   { campo: 'apertura_programada_r2_at', etapa: 'r2', nombre: 'la apertura de la ronda 2' },
@@ -31,11 +31,19 @@ const ORDEN_PROGRAMADO: { campo: keyof ConfigSala; etapa: string; nombre: string
   { campo: 'cierre_programado_sala_at', etapa: 'sala', nombre: 'el cierre de la sala' },
 ]
 
+/**
+ * Hora del «servidor» en la zona de la sala como la escribe el servidor real (`HH:MM:SS`, con cero a la izquierda):
+ * `toLocaleTimeString` daba «3:08:24» antes de las 10 de la mañana.
+ */
+export function horaEnZona(ms: number, zona: string): string {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: zona, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(ms)
+}
+
 /** Como el servidor (S2): 422 HORA_PASADA y 422 ORDEN_INVALIDO, con sus mensajes. */
 function validarConfig(actual: ConfigSala, cambio: Record<string, unknown>): Respuesta | null {
   for (const [campo, v] of Object.entries(cambio)) {
     if (/_at$/.test(campo) && typeof v === 'string' && Date.parse(v) <= Date.now()) {
-      const hora = new Date().toLocaleTimeString('es-CO', { timeZone: actual.zona_horaria ?? 'America/Bogota', hour12: false })
+      const hora = horaEnZona(Date.now(), actual.zona_horaria ?? 'America/Bogota')
       return error(422, 'HORA_PASADA', `Esa hora ya pasó. En el servidor son las ${hora}; elige una hora posterior.`)
     }
   }
@@ -192,7 +200,7 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
     estado: 'preparada',
     ronda_actual: 0,
     creada_at: new Date().toISOString(),
-    // R4_CONTRATO C5: toda sala nueva o duplicada muestra los resultados de la sala tras votar.
+    // Acta del 16-oct, C5: toda sala nueva o duplicada muestra los resultados de la sala tras votar.
     config: {
       alcance_resultados: 'sala',
       vista_participante: 'en_vivo',
@@ -382,6 +390,16 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
 
   if (camino.startsWith('/api/admin/admins')) return admins(metodo, camino, b, a)
 
+  // Las salas nuevas vuelven a la rúbrica de la semilla en ese criterio (idempotente), como el servidor.
+  const plantilla = /^\/api\/admin\/rubricas-plantilla\/([^/]+)$/.exec(camino)
+  if (metodo === 'DELETE' && plantilla) {
+    const c = seed.motor.criterios.find((x) => x.id === decodeURIComponent(plantilla[1]))
+    if (!c) return error(422, 'CRITERIO_NO_EXISTE', 'Ese criterio no existe.')
+    const borrada = c.id in estado.rubricasNuevas
+    delete estado.rubricasNuevas[c.id]
+    return ok({ plantilla: 'foodsume_2026', criterio_id: c.id, borrada, rubrica: c.rubrica })
+  }
+
   if (camino === '/api/admin/salas') {
     if (metodo === 'GET') return ok(estado.salas.map(resumen))
     if (metodo === 'POST') return crearSala(b, por)
@@ -394,8 +412,10 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     const resto = m[2] ?? ''
     if (metodo === 'GET' && resto === '') {
       simularVoto(s)
-      if (etag && etag === s.version) return { status: 304, body: null, etag }
-      return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin }, etag: s.version }
+      // ETag fuerte entre comillas, como el servidor (RFC 9110): el navegador lo devuelve tal cual en If-None-Match.
+      const etagSala = `"${s.version}"`
+      if (etag && etag === etagSala) return { status: 304, body: null, etag: etagSala }
+      return { status: 200, body: { ...structuredClone(s), admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin }, etag: etagSala }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
       const r = crearSala({ nombre: (typeof b.nombre === 'string' && b.nombre.trim()) || `${s.sala.nombre} (copia)`, mesas: s.mesas.length || 1 }, por)
@@ -434,6 +454,15 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       return ok({ mesas: s.mesas }, 201)
     }
     if (metodo === 'POST' && resto === '/acciones') {
+      // Como el servidor (B-2): token nuevo del tablero en cualquier estado; los enlaces anteriores dejan de servir.
+      if (b.accion === 'regenerar_token_tablero') {
+        const t = `T${Date.now().toString(36)}`
+        const cambiar = (u: string) => u.replace(/t=[^&]*/, `t=${t}`)
+        if (s.sala.url_tablero) s.sala.url_tablero = cambiar(s.sala.url_tablero)
+        s.mesas.forEach((m) => (m.url_tablero = cambiar(m.url_tablero)))
+        tocar(s, 'token_tablero_regenerado', por)
+        return ok({ sala: s.sala })
+      }
       const accion = b.accion as Accion
       const destino = aplicarAccion(s, accion)
       if (!destino) return error(409, 'TRANSICION_INVALIDA', 'Esa acción no aplica en el estado actual de la sala.')
@@ -452,6 +481,23 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     }
   }
 
+  // D1: enlace personal de un solo uso que vence en 15 minutos (el servidor real lo implementa en POST .../acceso).
+  const acceso = /^\/api\/admin\/participantes\/([^/]+)\/acceso$/.exec(camino)
+  if (metodo === 'POST' && acceso) {
+    for (const s of estado.salas) {
+      const par = s.participantes.find((x) => x.id === acceso[1])
+      if (!par) continue
+      if (s.sala.estado === 'cerrada') return error(409, 'SALA_CERRADA', 'La sala está cerrada: ya no se puede dar acceso de nuevo.')
+      if (!par.activo) return error(409, 'PARTICIPANTE_INACTIVO', 'Ese participante está desactivado. Actívalo antes de darle acceso de nuevo.')
+      const mesaPar = s.mesas.find((m) => m.id === par.mesa_id)
+      const clave = Math.random().toString(36).slice(2, 12)
+      const venceAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+      tocar(s, 'acceso_reemitido', por, { participante_id: par.id, vence_at: venceAt })
+      return ok({ url: `${window.location.origin}/m/${mesaPar?.codigo ?? s.sala.codigo}?acceso=${clave}`, vence_at: venceAt })
+    }
+    return error(404, 'PARTICIPANTE_NO_EXISTE', 'Ese participante no existe.')
+  }
+
   const p = /^\/api\/admin\/participantes\/([^/]+)$/.exec(camino)
   if (metodo === 'PATCH' && p) {
     for (const s of estado.salas) {
@@ -468,3 +514,6 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
 
   return error(404, 'RUTA_NO_EXISTE', `El simulador no conoce ${metodo} ${camino}.`)
 }
+
+// usaMocks() reconoce el simulador por esta marca (las pruebas lo usan directo con usarTransporte).
+;(responderMock as typeof responderMock & { simulador?: true }).simulador = true

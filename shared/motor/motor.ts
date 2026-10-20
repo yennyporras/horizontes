@@ -57,9 +57,6 @@ export interface Agregado extends Punto {
   distribucion: Distribucion
 }
 
-/** Alias con el nombre del prompt R0: inputs (promedios) y pesos → {t2m, eje_x, eje_y, total}. */
-export const calcular = calcularPunto
-
 /** Promedio simple por criterio. `null` si no hay votos. */
 export function promediar(votos: Entradas[]): Entradas | null {
   if (votos.length === 0) return null
@@ -90,5 +87,5 @@ export function distribucion(votos: Entradas[]): Distribucion {
 export function agregar(votos: Entradas[], p: Pesos = PESOS_CANONICOS): Agregado | null {
   const promedios = promediar(votos)
   if (!promedios) return null
-  return { n_votos: votos.length, promedios, distribucion: distribucion(votos), ...calcular(promedios, p) }
+  return { n_votos: votos.length, promedios, distribucion: distribucion(votos), ...calcularPunto(promedios, p) }
 }

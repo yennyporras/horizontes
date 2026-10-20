@@ -1,4 +1,4 @@
-# Ensayo general automático (R3 · T1)
+# Ensayo general automático
 
 Ensayo del taller completo contra la API real: el servidor corre en un proceso aparte (puerto 4101) con una BD SQLite temporal y el simulador hace de admin, de tablero y de 40 celulares con polling cada 2,5 s.
 
@@ -15,7 +15,7 @@ Sale con 1 si hay errores HTTP, alguna verificación falla o el p95 del cliente 
 
 ## Qué cubre
 
-| Requisito del prompt R3 | Dónde se verifica |
+| Requisito | Dónde se verifica |
 |---|---|
 | 4 mesas, 40 participantes, 2 rondas | Inscripción con consentimiento, R1 y R2 completas, 160 votos en el export |
 | Precierre por mesa | Cada mesa entra en precierre al terminar, ve su resultado preliminar, las demás no ven nada, el admin recibe "Todos votaron en Mesa N" |
@@ -26,13 +26,13 @@ Sale con 1 si hay errores HTTP, alguna verificación falla o el p95 del cliente 
 | Golden | `--golden` usa los votos de `tests/golden/motor_golden.json` (prueba sintética) y compara los 4 puntos con tolerancia 0,001 |
 | Puntos | Sala y cada mesa contra un cálculo independiente del motor |
 
-Las corridas se hicieron con el endurecimiento de R3 ya puesto (cabeceras, validación estricta, límites por IP y por participante): ningún 429 ni 4xx inesperado con 40 celulares detrás de la misma IP.
+Las corridas se hicieron con el endurecimiento del 16-oct ya puesto (cabeceras, validación estricta, límites por IP y por participante): ningún 429 ni 4xx inesperado con 40 celulares detrás de la misma IP.
 
 ## Resultado
 
-Con el código de R4 (acta del 16-oct): mínimo de 3 votos por alcance, `total` verificado contra el cálculo independiente en la sala y en cada mesa, visibilidad por defecto y país por sala. El ensayo fija a propósito alcance mesa y vista registrado al empezar para medir los cambios en vivo.
+Con el código del acta del 16-oct: mínimo de 3 votos por alcance, `total` verificado contra el cálculo independiente en la sala y en cada mesa, visibilidad por defecto y país por sala. El ensayo fija a propósito alcance mesa y vista registrado al empezar para medir los cambios en vivo.
 
-### Corrida oficial R4 · Corrida 2026-10-19T12:22Z · realista · 40 personas · 4 mesas · local
+### Corrida oficial 19-oct · Corrida 2026-10-19T12:22Z · realista · 40 personas · 4 mesas · local
 
 Resultado: **OK** · sala HZ6DU · 11.2 min · 11382 peticiones · errores HTTP 0 · 5xx 0 · p95 cliente 7.8 ms · p95 servidor 2.8 ms
 
@@ -102,7 +102,7 @@ Resultado: **OK** · sala HZ6DU · 11.2 min · 11382 peticiones · errores HTTP 
 | POST /api/inscripcion | 40 | 2.8 | 5.3 | 9.2 |
 | PUT /api/votos | 160 | 4.2 | 7.1 | 27.8 |
 
-### Corrida R3 · Corrida 2026-10-16T11:07Z · realista · 40 personas · 4 mesas · local
+### Corrida 16-oct · Corrida 2026-10-16T11:07Z · realista · 40 personas · 4 mesas · local
 
 Resultado: **OK** · sala HZ9TP · 11.2 min · 11227 peticiones · errores HTTP 0 · 5xx 0 · p95 cliente 180.2 ms · p95 servidor 8.6 ms
 
@@ -178,11 +178,11 @@ Resultado: **OK** · 20 personas · 4 mesas · 129 s · 1222 peticiones · error
 
 ### Corrida anterior descartada (10:56Z)
 
-Misma prueba, todas las verificaciones OK y 0 errores 5xx, pero 1 de 11 394 peticiones (`GET /api/yo`) quedó sin respuesta del lado del cliente (`fetch failed`). En ese momento la máquina de desarrollo se quedó sin memoria virtual (4 terminales trabajando: `fork` fallaba en Git Bash y vitest no podía reservar memoria). Un celular real lo absorbe en el siguiente polling. Se repitió la corrida con la máquina estable y salió limpia (arriba).
+Misma prueba, todas las verificaciones OK y 0 errores 5xx, pero 1 de 11 394 peticiones (`GET /api/yo`) quedó sin respuesta del lado del cliente (`fetch failed`). En ese momento la máquina de desarrollo se quedó sin memoria virtual (varios procesos de desarrollo y pruebas en paralelo: `fork` fallaba en Git Bash y vitest no podía reservar memoria). Un celular real lo absorbe en el siguiente polling. Se repitió la corrida con la máquina estable y salió limpia (arriba).
 
 ## Lectura
 
 - **0 errores 5xx** en las tres corridas; **golden al 100 %**.
 - Los cambios en vivo (alcance y vista) llegan a los 40 celulares en ≤ 2,5 s: el máximo posible con polling de 2,5 s.
 - Los cierres programados los aplica el servidor con 0 a 2 s de desfase (el chequeo corre en cada petición y cada 15 s) y el último celular los ve en < 3 s.
-- El p95 dentro del servidor se mantiene < 10 ms. El p95 del cliente sube a 180 ms solo cuando la máquina está cargada por las otras terminales; con la máquina libre es de 8 a 21 ms.
+- El p95 dentro del servidor se mantiene < 10 ms. El p95 del cliente sube a 180 ms solo cuando la máquina está cargada por otros procesos; con la máquina libre es de 8 a 21 ms.

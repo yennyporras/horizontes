@@ -1,39 +1,50 @@
-import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSesion } from './sesion'
 import { api, lista, usaMocks } from './api'
+import { recordarSala, salaRecordada } from './memoria'
 import { dominioDistinto } from './textos'
 import { EncabezadoProducto } from '../shared/ui'
-
-const LLAVE_SALA = 'hz_admin_sala'
-
-export function recordarSala(id: string) {
-  localStorage.setItem(LLAVE_SALA, id)
-}
-
-export function salaRecordada(): string | null {
-  return localStorage.getItem(LLAVE_SALA)
-}
-
-/** La sala recordada ya no existe (otra base, sala de otro ambiente): las secciones vuelven a pedir sala. */
-export function olvidarSala(id: string) {
-  if (salaRecordada() === id) localStorage.removeItem(LLAVE_SALA)
-}
+import { ProveedorPendientes, usePendientes } from './componentes/Pendientes'
+import { useRecorrido } from './componentes/Recorrido'
 
 /** Navegación del panel. Las secciones de sala usan la sala abierta en la URL o la última que se usó. */
 export function Marco() {
+  return (
+    <ProveedorPendientes>
+      <MarcoInterno />
+    </ProveedorPendientes>
+  )
+}
+
+function MarcoInterno() {
   const { admin, salir } = useSesion()
   const { salaId } = useParams()
   const navegar = useNavigate()
   const { pathname } = useLocation()
-  const refNav = useRef<HTMLElement>(null)
-  // En celular el menú es una fila deslizable: lleva la sección actual a la vista.
+  const { confirmarSalida, hayPendientes } = usePendientes()
+  const [menuAbierto, setMenuAbierto] = useState(false)
+  const primeraVista = useRef(true)
+  // Recorrido guiado: solo la primera vez de cada admin en este navegador (y nunca con datos simulados).
+  const recorrido = useRecorrido(admin?.id, !usaMocks())
+
+  // Recordar la sala es un efecto, no algo que pasa en cada render.
   useEffect(() => {
-    const nav = refNav.current
-    const activo = nav?.querySelector<HTMLElement>('.nav__item--activo')
-    if (nav && activo && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = activo.offsetLeft - nav.offsetLeft - 16
+    if (salaId) recordarSala(salaId)
+  }, [salaId])
+
+  // QA-A-24: al cambiar de sección el foco va al título nuevo (el lector de pantalla anuncia la página) y el menú
+  // del celular se cierra. En la primera carga el foco se queda donde lo deja el navegador.
+  useEffect(() => {
+    setMenuAbierto(false)
+    if (primeraVista.current) {
+      primeraVista.current = false
+      return
+    }
+    const id = window.setTimeout(() => document.querySelector<HTMLElement>('#contenido h1')?.focus({ preventScroll: false }), 0)
+    return () => window.clearTimeout(id)
   }, [pathname])
-  if (salaId) recordarSala(salaId)
+
   const sala = salaId ?? salaRecordada()
   const enSala = (seccion: string) => (sala ? `/admin/salas/${sala}/${seccion}` : `/admin/sala/${seccion}`)
 
@@ -46,9 +57,17 @@ export function Marco() {
     { a: enSala('hojas'), texto: 'Hojas' },
     { a: enSala('configuracion'), texto: 'Configuración' },
     { a: enSala('export'), texto: 'Exportar' },
+    { a: '/admin/salud', texto: 'Salud' },
   ]
-  enlaces.push({ a: '/admin/salud', texto: 'Salud' })
   if (admin?.rol === 'superadmin') enlaces.push({ a: '/admin/administradores', texto: 'Administradores' })
+
+  /** QA-A-14: con cambios sin guardar, se pregunta antes de salir de la sección. */
+  const irA = (a: string) => async (e: MouseEvent) => {
+    // Abrir en otra pestaña (Ctrl, Cmd, Mayús o clic central) no sale de esta sección.
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !hayPendientes()) return
+    e.preventDefault()
+    if (await confirmarSalida()) navegar(a)
+  }
 
   return (
     <div className="marco">
@@ -56,10 +75,36 @@ export function Marco() {
         Saltar al contenido
       </a>
       <div className="cabecera" data-tema="carbon">
-        <EncabezadoProducto>
-          <nav aria-label="Secciones del panel" className="nav" ref={refNav}>
+        <EncabezadoProducto
+          href="/admin/salas"
+          onIr={async (e) => {
+            // El logo lleva al panel principal (Salas) sin recargar; con cambios sin guardar, pregunta antes.
+            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+            e.preventDefault()
+            if (await confirmarSalida()) navegar('/admin/salas')
+          }}
+        >
+          {/* QA-A-23: en el celular el menú se abre con un botón que dice en qué sección estás. */}
+          <button
+            type="button"
+            className="hz-boton hz-boton--secundario menu-boton"
+            aria-expanded={menuAbierto}
+            aria-controls="menu-panel"
+            onClick={() => setMenuAbierto((v) => !v)}
+          >
+            Menú<span className="menu-boton__actual"> · {enlaces.find((e) => (e.end ? pathname === e.a : pathname.startsWith(e.a)))?.texto ?? 'Panel'}</span>
+          </button>
+          <nav id="menu-panel" aria-label="Secciones del panel" className={menuAbierto ? 'nav nav--abierto' : 'nav'}>
             {enlaces.map((e) => (
-              <NavLink key={e.texto} to={e.a} end={e.end} className={({ isActive }) => (isActive ? 'nav__item nav__item--activo' : 'nav__item')}>
+              <NavLink
+                key={e.texto}
+                to={e.a}
+                end={e.end}
+                onClick={irA(e.a)}
+                className={({ isActive }) =>
+                  ['nav__item', isActive && 'nav__item--activo', recorrido.seccion === e.texto && 'nav__item--recorrido'].filter(Boolean).join(' ')
+                }
+              >
                 {e.texto}
               </NavLink>
             ))}
@@ -67,9 +112,18 @@ export function Marco() {
           <div className="usuario">
             <span className="usuario__nombre">{admin?.nombre}</span>
             <span className="etiqueta">{admin?.rol === 'superadmin' ? 'Superadmin' : 'Admin'}</span>
+            <button type="button" className="hz-boton hz-boton--fantasma" onClick={recorrido.abrir}>
+              Recorrido
+            </button>
+            {/* QA-A-22: cada quien cambia su clave cuando quiera. */}
+            <Link className="hz-boton hz-boton--fantasma" to="/admin/cambiar-clave" onClick={irA('/admin/cambiar-clave')}>
+              Cambiar mi clave
+            </Link>
             <button
+              type="button"
               className="hz-boton hz-boton--fantasma"
               onClick={async () => {
+                if (!(await confirmarSalida())) return
                 await salir()
                 navegar('/admin/login', { replace: true })
               }}
@@ -81,10 +135,23 @@ export function Marco() {
       </div>
       <AvisoDominio sala={sala} />
       {usaMocks() && <p className="aviso-mock">Modo simulado: los datos vienen de mocks/ y no se guardan.</p>}
-      <main id="contenido" className="contenido">
+      <main id="contenido" className="contenido hz-pagina">
         <Outlet />
       </main>
+      <PiePanel />
+      {recorrido.elemento}
     </div>
+  )
+}
+
+/** Pie del panel: en el mismo contenedor de página que la barra y el contenido (ancho común del 20-oct). */
+export function PiePanel() {
+  return (
+    <footer className="pie hz-pagina">
+      <p>
+        Horizontes, panel del facilitador · por Estratek <span className="pie__flecha" aria-hidden="true">»</span>
+      </p>
+    </footer>
   )
 }
 
@@ -107,7 +174,7 @@ function AvisoDominio({ sala }: { sala: string | null }) {
   }, [sala])
   if (!baseUrl || !dominioDistinto(baseUrl, window.location.origin)) return null
   return (
-    <p className="alerta alerta--error aviso-dominio" role="alert">
+    <p className="alerta alerta--error aviso-dominio no-imprimir" role="alert">
       Los QR apuntan a {baseUrl}, pero estás en {window.location.origin}. Corrige BASE_URL en Coolify.
     </p>
   )

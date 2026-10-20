@@ -1,17 +1,22 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import PaginaMesa from './participante/PaginaMesa'
-import PaginaTablero from './tablero/PaginaTablero'
-import PaginaAdmin from './admin/PaginaAdmin'
-import PaginaInicio from './inicio/PaginaInicio'
 
-// Rutas raíz. Cada terminal es dueña de su carpeta; aquí solo se montan.
+// Rutas raíz. Cada área es dueña de su carpeta; aquí solo se montan.
+// Cada área se carga aparte: el celular no descarga el panel ni el tablero (y al revés).
+const PaginaMesa = lazy(() => import('./participante/PaginaMesa'))
+const PaginaTablero = lazy(() => import('./tablero/PaginaTablero'))
+const PaginaAdmin = lazy(() => import('./admin/PaginaAdmin'))
+const PaginaInicio = lazy(() => import('./inicio/PaginaInicio'))
+
 export default function App() {
   return (
-    <Routes>
-      <Route path="/m/:codigo/*" element={<PaginaMesa />} />
-      <Route path="/tablero/:sala/*" element={<PaginaTablero />} />
-      <Route path="/admin/*" element={<PaginaAdmin />} />
-      <Route path="*" element={<PaginaInicio />} />
-    </Routes>
+    <Suspense fallback={<div className="hz-cargando-area" aria-busy="true" />}>
+      <Routes>
+        <Route path="/m/:codigo/*" element={<PaginaMesa />} />
+        <Route path="/tablero/:sala/*" element={<PaginaTablero />} />
+        <Route path="/admin/*" element={<PaginaAdmin />} />
+        <Route path="*" element={<PaginaInicio />} />
+      </Routes>
+    </Suspense>
   )
 }

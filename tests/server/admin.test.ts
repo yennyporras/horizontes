@@ -239,14 +239,15 @@ describe('gestión de administradores', () => {
 })
 
 describe('salas y mesas', () => {
-  it('POST /api/admin/salas crea 10 proyectos (8 fijos, 2 vivos) y N mesas CODIGO-n', async () => {
+  it('POST /api/admin/salas crea 10 proyectos (8 fijos, 2 vivos) y N mesas CODIGO+3 al azar-n', async () => {
     const r = await pedir('POST', '/api/admin/salas', e.cookie, { nombre: 'Taller Bogotá', plantilla: 'foodsume_2026', mesas: 3 })
     expect(r.statusCode).toBe(201)
     const s = r.json()
     expect(s.estado).toBe('preparada')
     expect(s.codigo).toMatch(/^HZ[A-Z0-9]{3}$/)
     expect(typeof s.token_tablero).toBe('string')
-    expect(s.mesas.map((m: { codigo: string }) => m.codigo)).toEqual([`${s.codigo}-1`, `${s.codigo}-2`, `${s.codigo}-3`])
+    // S-5: el código de la mesa ya no se deduce del de la sala (5 caracteres al azar antes del número, M-1c).
+    s.mesas.forEach((m: { codigo: string }, i: number) => expect(m.codigo).toMatch(new RegExp(`^${s.codigo}[A-HJ-NP-Z2-9]{5}-${i + 1}$`)))
 
     const proyectos = e.db.prepare('SELECT modo, COUNT(*) AS n FROM proyectos WHERE sala_id = ? GROUP BY modo ORDER BY modo').all(s.id) as { modo: string; n: number }[]
     expect(proyectos.map((p) => [p.modo, Number(p.n)])).toEqual([
@@ -365,7 +366,8 @@ describe('salas y mesas', () => {
     const s = await crearSala(e, 2)
     const r = await pedir('POST', `/api/admin/salas/${s.id}/mesas`, e.cookie, { cantidad: 2 })
     expect(r.statusCode).toBe(200)
-    expect(r.json().mesas.map((m: { codigo: string }) => m.codigo)).toEqual([1, 2, 3, 4].map((n) => `${s.codigo}-${n}`))
+    expect(r.json().mesas.map((m: { codigo: string }) => m.codigo.replace(/^HZ[A-Z0-9]{3}[A-Z0-9]{5}-/, 'n'))).toEqual(['n1', 'n2', 'n3', 'n4'])
+    expect(r.json().mesas.slice(0, 2).map((m: { codigo: string }) => m.codigo)).toEqual(s.mesas.map((m) => m.codigo))
     expect((await pedir('POST', `/api/admin/salas/${s.id}/mesas`, e.cookie, { cantidad: 0 })).statusCode).toBe(422)
     expect((await pedir('POST', `/api/admin/salas/${s.id}/mesas`, e.cookie, {})).statusCode).toBe(422)
   })

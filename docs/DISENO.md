@@ -179,7 +179,7 @@ Ruta base `/m/{codigoMesa}`. El estado se decide con `GET /api/mesas/{codigo}` a
 - Casilla de autorización: texto de `consentimiento.texto_autorizacion` + enlace "Lee la Política de Tratamiento de Datos Personales de Estratek" (`politica_url`, se abre en pestaña nueva).
 - Botón: **Inscribirme**. Deshabilitado sin casilla, con ayuda: "Para inscribirte necesitamos tu autorización de tratamiento de datos."
 - Errores de campo: "Escribe tu nombre." · "Escribe un correo válido, por ejemplo ana@empresa.com."
-- 409 `CORREO_YA_INSCRITO`: no es error. Aviso info: "Ya estabas inscrito con este correo. Retomas donde ibas." y entra.
+- 409 `CORREO_YA_INSCRITO` (desde el 20-oct, D1): error con el mensaje del servidor; no entra. Quien perdió la sesión la recibe del facilitador con «Dar acceso de nuevo» (enlace `/m/{codigo}?acceso=…` que el celular canjea con `POST /api/acceso`).
 - 422 `CONSENTIMIENTO_REQUERIDO`: "Marca la autorización de tratamiento de datos para continuar."
 
 ### 8.2 Mesa no existe (404 `MESA_NO_EXISTE`)
@@ -225,7 +225,7 @@ Ruta base `/m/{codigoMesa}`. El estado se decide con `GET /api/mesas/{codigo}` a
 - Botones: **Editar mis calificaciones** (secundario) y **Volver al caso** (fantasma).
 
 ### 8.10 En vivo (`vista_participante = en_vivo`)
-- Muestra el tablero del alcance (componente de T3) bajo el título **Resultados en vivo de {tu mesa | la sala}** con la insignia "Preliminar". Si aún no hay votos en el alcance: "Todavía no hay calificaciones en {tu mesa | la sala}. Los puntos aparecen con el primer voto."
+- Muestra el tablero del alcance (componente del tablero) bajo el título **Resultados en vivo de {tu mesa | la sala}** con la insignia "Preliminar". Si aún no hay votos en el alcance: "Todavía no hay calificaciones en {tu mesa | la sala}. Los puntos aparecen con el primer voto."
 
 ### 8.11 Precierre (derivado, `progreso_mesa.precierre = true` o sala en precierre)
 - Aviso alerta fijo arriba: título **Todos votaron en {Mesa N}**, texto "Este es un resultado preliminar. El facilitador cerrará la ronda; hasta entonces puedes editar tus calificaciones."
@@ -235,7 +235,7 @@ Ruta base `/m/{codigoMesa}`. El estado se decide con `GET /api/mesas/{codigo}` a
 - Título: **Ronda {n} cerrada**
 - Texto R1: "Este es el resultado de {tu mesa | la sala}. Discútanlo en la mesa antes de la ronda 2."
 - Texto R2: "Así se movieron INSUMEX y NUTRIWHAT de la ronda 1 a la ronda 2 en {tu mesa | la sala}."
-- Resultado del alcance (matriz y promedios por criterio, componente de T3). Nunca respuestas individuales ni nombres.
+- Resultado del alcance (matriz y promedios por criterio, componente del tablero). Nunca respuestas individuales ni nombres.
 
 ### 8.13 Sala cerrada (`cerrada`)
 - Título: **El taller terminó**
@@ -247,7 +247,7 @@ Ruta base `/m/{codigoMesa}`. El estado se decide con `GET /api/mesas/{codigo}` a
 
 ### 8.15 Sesión no válida (401 o token desconocido)
 - Título: **Tu sesión ya no está activa**
-- Texto: "Inscríbete otra vez con el mismo correo y retomas donde ibas." Botón **Volver a inscribirme** (borra el token local).
+- Texto (desde D1, 20-oct): "Puede que hayas entrado desde otro celular o que el facilitador te haya dado acceso nuevo. Pídele al facilitador que te dé acceso de nuevo: en su panel, «Dar acceso de nuevo» te muestra un QR o un enlace para entrar. Lo que habías marcado sigue en este celular." Sin botón: no hay recuperación con el correo.
 
 ### 8.16 Participante desactivado (`activo = false`)
 - Título: **El facilitador te retiró de esta mesa**

@@ -70,7 +70,7 @@ export function detalleSala(db: Db, idOCodigo: string, baseUrl: string) {
   const sala = cargarSala(db, idOCodigo)
   const ronda = rondaReferencia(sala)
   const nVivos = vivos(db, sala.id).length
-  // IP y país del primer aviso aceptado: los inscritos antes de R4 no tienen participantes.ip, su consentimiento sí.
+  // IP y país del primer aviso aceptado: los inscritos antes del 19-oct no tienen participantes.ip, su consentimiento sí.
   const participantes = todos<ParticipanteFila & { votos: number; consentimiento_at: string | null; ip_aviso: string | null; pais: string }>(
     db,
     `SELECT p.*,
@@ -158,12 +158,13 @@ export function editarParticipante(db: Db, id: string, d: CambiosParticipante, a
     const antes = progreso(db, sala)
     const detalle: Record<string, unknown> = { participante_id: id }
     if (d.perfil_id !== undefined) {
-      if (!perfiles().some((x) => x.id === d.perfil_id)) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Ese perfil no existe.')
+      if (typeof d.perfil_id !== 'string' || !perfiles().some((x) => x.id === d.perfil_id)) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Ese perfil no existe.')
       ejecutar(db, 'UPDATE participantes SET perfil_id = ? WHERE id = ?', d.perfil_id, id)
       detalle.perfil_id = d.perfil_id
     }
     if (d.mesa_id !== undefined) {
-      const m = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ? AND sala_id = ?', d.mesa_id, p.sala_id)
+      // Solo texto: un booleano o un objeto llegaban a SQLite y terminaban en 500 (S-9).
+      const m = typeof d.mesa_id === 'string' ? uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ? AND sala_id = ?', d.mesa_id, p.sala_id) : undefined
       if (!m) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Esa mesa no pertenece a la sala del participante.')
       ejecutar(db, 'UPDATE participantes SET mesa_id = ? WHERE id = ?', m.id, id)
       detalle.mesa_id = m.id
@@ -203,7 +204,7 @@ export function exportInscritos(db: Db, salaId: string) {
     sala.id,
   )
   return csv([
-    // `ip` y `pais` (del aviso aceptado) al final (R4): quien ya lee el archivo por posición no se rompe.
+    // `ip` y `pais` (del aviso aceptado) al final (acta del 16-oct): quien ya lee el archivo por posición no se rompe.
     ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'politica_url', 'ip', 'pais'],
     ...filas.map((p) => [
       p.nombre,
@@ -232,7 +233,7 @@ export function exportVotos(db: Db, salaId: string) {
   )
   return csv([
     // `activo`: los votos de desactivados no cuentan en la matriz; con esta columna Excel cuadra con el tablero.
-    // `ip` (del último guardado del voto) y `pais` (del aviso aceptado) al final (R4).
+    // `ip` (del último guardado del voto) y `pais` (del aviso aceptado) al final (acta del 16-oct).
     ['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', ...CRITERIOS, 'activo', 'ip', 'pais'],
     ...filas.map((f) => [
       sha256(`${sala.id}:${f.participante_id}`).slice(0, 12),

@@ -2,9 +2,9 @@
 // Safari iOS (WebKit, el motor real de Safari) y Samsung Internet (Chromium con su user agent).
 // Inscripción, 2 rondas de votación, resultado de la ronda 1, comparación R1→R2, recarga y sala cerrada.
 // Sin WebKit instalado (`npx playwright-core install webkit`), ese perfil se omite con aviso. Sin Chromium, en CI falla.
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { calificar, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
-import { sinNavegador } from '../../../tests/navegador'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { avisarSiCongelada, calificar, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
+import { REINTENTOS_E2E, sinNavegador } from '../../../tests/navegador'
 import { accion, celularPerfil, crearSala, hayNavegador, iniciar, inscribirApi, PERFILES_MOVILES, votarApi, type Entorno } from './entorno'
 
 const disponibles = PERFILES_MOVILES.filter((p) => hayNavegador(p.motor))
@@ -14,7 +14,7 @@ for (const p of PERFILES_MOVILES.filter((x) => x.motor !== 'chromium' && !dispon
   console.warn(`[e2e perfiles] No hay ${p.motor} de Playwright: se omite ${p.nombre}.`)
 }
 
-describe.skipIf(disponibles.length === 0)('recorrido del participante en celulares emulados', () => {
+describe.skipIf(disponibles.length === 0)('recorrido del participante en celulares emulados', { retry: REINTENTOS_E2E }, () => {
   let e: Entorno
   beforeAll(async () => {
     e = await iniciar()
@@ -32,6 +32,7 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
       await accion(e, sala.id, 'abrir_inscripcion')
       const ctx = await celularPerfil(e, perfil)
       const p = await ctx.newPage()
+      onTestFailed(() => avisarSiCongelada(p))
       const errores: string[] = []
       p.on('pageerror', (err) => errores.push(err.message))
       // WebKit en Windows es varias veces más lento que Chromium con la suite completa en paralelo.
@@ -69,9 +70,9 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
           await sinDesborde(p)
           await p.getByRole('button', { name: 'Guardar calificación' }).click()
         }
-        // Por defecto (acta A2, C5): tras votar, el consolidado de la sala en vivo. Con 1 voto, el aviso de mínimo.
-        await titulo(p, 'Resultados en vivo de la sala', espera)
-        await ver(p, 'Hace falta al menos 3 votos para mostrar estos resultados.', espera)
+        // Por defecto (acta A2, C5): tras votar, el consolidado parcial de la sala (D2: se renueva de 3 en 3). Con 1 voto, el aviso de mínimo.
+        await titulo(p, 'Resultado parcial de la sala', espera)
+        await ver(p, 'Hacen falta al menos 3 votos para mostrar estos resultados.', espera)
         await votarApi(e, tokenB, 'insumex', 1)
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)

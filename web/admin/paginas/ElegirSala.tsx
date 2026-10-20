@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, lista } from '../api'
 import type { SalaResumen } from '../tipos'
 import { ESTADOS } from '../textos'
+import { useTituloPagina } from './EncabezadoSala'
 
 /**
  * Sección de sala sin sala elegida en este navegador (por ejemplo, un admin que entra por primera vez desde su equipo).
@@ -12,6 +13,7 @@ export function ElegirSala() {
   const { seccion = 'vivo' } = useParams()
   const [salas, setSalas] = useState<SalaResumen[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  useTituloPagina('Elige una sala')
 
   useEffect(() => {
     api
@@ -22,7 +24,7 @@ export function ElegirSala() {
 
   return (
     <section className="panel" aria-labelledby="t-elegir">
-      <h1 id="t-elegir">Elige una sala</h1>
+      <h1 id="t-elegir" tabIndex={-1}>Elige una sala</h1>
       <p>Esta sección trabaja sobre una sala. Elige con cuál sigues.</p>
       {error ? (
         <p className="alerta alerta--error" role="alert">

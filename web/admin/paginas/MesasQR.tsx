@@ -18,6 +18,10 @@ function srcQR(m: Mesa) {
 /** Dominio y ruta sin protocolo, para leer en la hoja impresa. */
 const urlCorta = (u: string) => u.replace(/^https?:\/\//, '')
 
+/**
+ * QA-A-26: la acción principal es imprimir la hoja de QR (agregar mesas es raro y va al final, en secundario). Cada
+ * tarjeta impresa lleva la llamada a la acción «Escanea para entrar». QA-A-31: la URL va en Montserrat.
+ */
 export function MesasQR() {
   const { salaId } = useParams()
   const { datos, error, refrescar } = useSala(salaId)
@@ -25,9 +29,15 @@ export function MesasQR() {
   const [cantidad, setCantidad] = useState(1)
   const [aviso, setAviso] = useState<{ tono: 'exito' | 'error'; texto: string } | null>(null)
   const [copiada, setCopiada] = useState<string | null>(null)
+  const [agregando, setAgregando] = useState(false)
+  const enCurso = useRef(false)
 
   const agregar = async (e: FormEvent) => {
     e.preventDefault()
+    // F-6: un doble clic no crea las mesas dos veces.
+    if (enCurso.current) return
+    enCurso.current = true
+    setAgregando(true)
     setAviso(null)
     try {
       await api.post(`/api/admin/salas/${salaId}/mesas`, { cantidad })
@@ -35,6 +45,9 @@ export function MesasQR() {
       setAviso({ tono: 'exito', texto: cantidad === 1 ? 'Agregamos 1 mesa.' : `Agregamos ${cantidad} mesas.` })
     } catch (err) {
       setAviso({ tono: 'error', texto: err instanceof Error ? err.message : 'No se pudieron agregar las mesas.' })
+    } finally {
+      enCurso.current = false
+      setAgregando(false)
     }
   }
 
@@ -51,33 +64,23 @@ export function MesasQR() {
     <ConSala titulo="Mesas y QR" datos={datos} error={error}>
       {(d) => (
         <>
-          <section className="panel no-imprimir" aria-labelledby="t-agregar">
-            <h2 id="t-agregar">Agregar mesas</h2>
-            <form className="fila-form" onSubmit={agregar}>
-              <label className="campo campo--corto">
-                <span>Cantidad</span>
-                <input type="number" min={1} max={20} required value={cantidad} onChange={(e) => setCantidad(Number(e.target.value))} />
-              </label>
-              <button className="hz-boton hz-boton--primario" type="submit">
-                Agregar
-              </button>
-              <button className="hz-boton hz-boton--secundario" type="button" onClick={() => window.print()} disabled={d.mesas.length === 0}>
-                Imprimir hoja de QR
-              </button>
-            </form>
+          <section className="panel no-imprimir" aria-labelledby="t-hoja">
+            <h2 id="t-hoja">Hoja de QR</h2>
             <p>
               <strong>Imprime el QR de cada mesa y ponlo en su mesa; no lo proyectes, así cada persona entra a su mesa.</strong>
             </p>
-            <p className="pista">La hoja imprimible trae cuatro mesas por página A4, con código y enlace.</p>
-            {aviso && (
-              <p className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
-                {aviso.texto}
-              </p>
-            )}
+            <div className="acciones">
+              <button className="hz-boton hz-boton--primario" type="button" onClick={() => window.print()} disabled={d.mesas.length === 0} aria-describedby="ayuda-hoja">
+                Imprimir hoja de QR
+              </button>
+            </div>
+            <p id="ayuda-hoja" className="pista">
+              La hoja trae cuatro mesas por página A4, cada una con su QR, su código y su enlace.
+            </p>
           </section>
 
           {d.mesas.length === 0 ? (
-            <p className="vacio">Esta sala aún no tiene mesas. Agrega la primera con el formulario de arriba.</p>
+            <p className="vacio">Esta sala aún no tiene mesas. Agrega la primera con el formulario de abajo.</p>
           ) : (
             <ul className="qr-lista">
               {d.mesas.map((m) => (
@@ -85,17 +88,18 @@ export function MesasQR() {
                   <h2>{m.nombre}</h2>
                   <p className="pista">{d.sala.nombre}</p>
                   <img src={srcQR(m)} alt={`Código QR de ${m.nombre}: ${m.url_participante}`} />
+                  <p className="qr-tarjeta__cta">Escanea para entrar</p>
                   <p>
                     Código <strong>{m.codigo}</strong>
                   </p>
                   <p>
-                    <code>{urlCorta(m.url_participante)}</code>
+                    <span className="url">{urlCorta(m.url_participante)}</span>
                   </p>
                   <div className="acciones no-imprimir">
-                    <button className="hz-boton hz-boton--secundario hz-boton--chico" onClick={() => setProyectada(m)}>
+                    <button className="hz-boton hz-boton--secundario hz-boton--chico" type="button" onClick={() => setProyectada(m)}>
                       Proyectar QR
                     </button>
-                    <button className="hz-boton hz-boton--secundario hz-boton--chico" onClick={() => copiar(m)}>
+                    <button className="hz-boton hz-boton--secundario hz-boton--chico" type="button" onClick={() => copiar(m)}>
                       {copiada === m.id ? 'Enlace copiado' : 'Copiar enlace'}
                     </button>
                   </div>
@@ -103,6 +107,25 @@ export function MesasQR() {
               ))}
             </ul>
           )}
+
+          <section className="panel no-imprimir seccion-final" aria-labelledby="t-agregar">
+            <h2 id="t-agregar">Agregar mesas</h2>
+            <p className="pista">Solo si llegó más gente de la esperada: una mesa por cada 6 personas.</p>
+            <form className="fila-form" onSubmit={agregar}>
+              <label className="campo campo--corto">
+                <span>Cantidad</span>
+                <input type="number" min={1} max={20} required value={cantidad} onChange={(e) => setCantidad(Number(e.target.value))} />
+              </label>
+              <button className="hz-boton hz-boton--secundario" type="submit" disabled={agregando} aria-busy={agregando}>
+                {agregando ? 'Agregando…' : 'Agregar'}
+              </button>
+            </form>
+            {aviso && (
+              <p className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
+                {aviso.texto}
+              </p>
+            )}
+          </section>
           {proyectada && <Proyectar mesa={proyectada} sala={d.sala.nombre} alCerrar={() => setProyectada(null)} />}
         </>
       )}
@@ -110,7 +133,10 @@ export function MesasQR() {
   )
 }
 
-/** QR a pantalla completa para el proyector. Esc o el botón lo cierran. */
+/**
+ * QR a pantalla completa para el proyector. Esc o el botón lo cierran. F-14: el foco queda atrapado en el diálogo (su
+ * único control es Cerrar) y al cerrar vuelve al botón que lo abrió.
+ */
 function Proyectar({ mesa, sala, alCerrar }: { mesa: Mesa; sala: string; alCerrar: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const boton = useRef<HTMLButtonElement>(null)
@@ -118,23 +144,36 @@ function Proyectar({ mesa, sala, alCerrar }: { mesa: Mesa; sala: string; alCerra
   cerrar.current = alCerrar
 
   useEffect(() => {
+    const origen = document.activeElement instanceof HTMLElement ? document.activeElement : null
     boton.current?.focus()
     const el = ref.current
     if (el?.requestFullscreen) el.requestFullscreen().catch(() => undefined)
-    const tecla = (e: KeyboardEvent) => e.key === 'Escape' && cerrar.current()
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cerrar.current()
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        boton.current?.focus()
+      }
+    }
+    const dentro = (e: FocusEvent) => {
+      if (el && e.target instanceof Node && !el.contains(e.target)) boton.current?.focus()
+    }
     const salioPantallaCompleta = () => !document.fullscreenElement && cerrar.current()
     window.addEventListener('keydown', tecla)
+    document.addEventListener('focusin', dentro)
     document.addEventListener('fullscreenchange', salioPantallaCompleta)
     return () => {
       window.removeEventListener('keydown', tecla)
+      document.removeEventListener('focusin', dentro)
       document.removeEventListener('fullscreenchange', salioPantallaCompleta)
       if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined)
+      if (origen?.isConnected) origen.focus()
     }
   }, [])
 
   return (
     <div ref={ref} className="proyectar" role="dialog" aria-modal="true" aria-labelledby="t-proyectar">
-      <button ref={boton} className="hz-boton hz-boton--secundario" onClick={alCerrar}>
+      <button ref={boton} type="button" className="hz-boton hz-boton--secundario" onClick={alCerrar}>
         Cerrar
       </button>
       <h2 id="t-proyectar">{mesa.nombre}</h2>

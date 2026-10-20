@@ -14,6 +14,33 @@ export async function titulo(p: Page, nombre: string | RegExp, timeout = ESPERA)
 }
 
 /**
+ * Diagnóstico al fallar: si la página no responde en 5 s, Chromium la congeló (máquina sin memoria libre; ver
+ * REINTENTOS_E2E en tests/navegador.ts) y el fallo no dice nada de la app. Si responde, el fallo es real.
+ */
+export async function avisarSiCongelada(p: Page) {
+  if (p.isClosed()) return
+  const estado = await Promise.race([
+    p
+      .evaluate(() => ({
+        url: location.pathname + location.search,
+        historial: { largo: history.length, estado: history.state as unknown },
+        titulo: document.querySelector('h1')?.textContent ?? null,
+        vista: sessionStorage.getItem(Object.keys(sessionStorage).find((k) => k.startsWith('hz_vista:')) ?? ''),
+        texto: (document.querySelector('main')?.textContent ?? '').replace(/\s+/g, ' ').slice(0, 300),
+      }))
+      .catch(() => null),
+    new Promise<false>((r) => setTimeout(() => r(false), 5000)),
+  ])
+  if (estado === false)
+    console.warn(
+      '[e2e celular] La página no responde: Chromium la dejó quieta por falta de memoria en la máquina (ni temporizadores ni polling). ' +
+        'Este fallo no es de la app: vuelve a correr la prueba con la máquina más libre.',
+    )
+  // La página responde: qué pantalla quedó, para distinguir un error real de una espera de la prueba.
+  else if (estado) console.warn(`[e2e celular] Pantalla al fallar: ${JSON.stringify(estado)}`)
+}
+
+/**
  * Responde con el mismo valor las 6 preguntas (o las indicadas, de 0 a 5). Una pregunta por pantalla (C19-5):
  * desde el resumen entra por el botón de esa pregunta; al elegir, la pantalla pasa sola a la siguiente.
  */
@@ -79,7 +106,7 @@ export async function sinDesborde(p: Page, ancho = p.viewportSize()?.width ?? 36
 }
 
 /**
- * Objetivos táctiles de 44 px o más: botones, pestañas, opciones de rúbrica y la casilla.
+ * Objetivos táctiles de 48 px o más (familia Estratek §5): botones, pestañas, opciones de rúbrica y la casilla.
  * Los enlaces dentro de un párrafo quedan exentos (WCAG 2.5.8, excepción en línea).
  */
 export async function tactiles(p: Page) {
@@ -88,7 +115,7 @@ export async function tactiles(p: Page) {
     return [...document.querySelectorAll<HTMLElement>(sel)]
       .filter((el) => el.offsetParent !== null && !el.closest('.hz-visual-oculto'))
       .map((el) => ({ el: `${el.tagName}.${el.className} "${el.textContent?.trim().slice(0, 30)}"`, r: el.getBoundingClientRect() }))
-      .filter(({ r }) => r.height < 44 || r.width < 44)
+      .filter(({ r }) => r.height < 48 || r.width < 48)
       .map(({ el, r }) => `${el} ${Math.round(r.width)}×${Math.round(r.height)}`)
   })
   expect(chicos).toEqual([])

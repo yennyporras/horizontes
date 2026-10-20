@@ -1,5 +1,5 @@
 /*
- * Tablero (T3) en el tema carbón de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md §3): el elemento raíz
+ * Tablero en el tema carbón de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md §3): el elemento raíz
  * lleva data-tema="carbon" y aquí solo se usan los tokens semánticos --hz-* de web/shared/ui/tokens.css.
  * El azul de acción (--hz-accion) va como texto solo sobre el fondo o la superficie 1 (sobre la 2 no llega a AA);
  * como relleno, con --hz-sobre-accion encima. El degradado de marca es solo la línea bajo el encabezado y la
@@ -90,6 +90,16 @@ body:has(> #root > .hz-tablero) {
   color: var(--hz-tinta-2);
   white-space: nowrap;
 }
+.hz-firma-enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+}
+.hz-firma-enlace:hover { text-decoration: underline; text-underline-offset: 3px; }
+.hz-firma-logo { flex: none; width: 1.4em; height: 1.4em; }
 .hz-firma-flecha {
   font-weight: var(--hz-fw-display);
   color: var(--hz-accion);
@@ -134,17 +144,6 @@ body:has(> #root > .hz-tablero) {
   gap: 0.5em;
   font-weight: 600;
   color: var(--hz-tinta-2);
-}
-/* Proyector de hasta 1600 px: «Alcance» solo para el lector de pantalla; el valor del selector ya lo dice. */
-@media (min-width: 1100px) and (max-width: 1599px) {
-  .hz-alcance > span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
 }
 .hz-alcance select {
   min-height: 2.4em;
@@ -203,86 +202,58 @@ body:has(> #root > .hz-tablero) {
   width: 100%;
   aspect-ratio: 1 / 1;
   max-height: 85vh;
+  cursor: pointer;
 }
 .hz-lienzo svg {
   display: block;
 }
-/* Zoom (T1): sin zoom, el dedo sigue desplazando la página en vertical; con zoom, arrastra la matriz. */
-.hz-lienzo {
-  touch-action: pan-y;
-}
-.hz-lienzo.hz-con-zoom {
-  touch-action: none;
-  cursor: grab;
-}
-.hz-lienzo.hz-arrastrando {
-  cursor: grabbing;
-}
+/* Pie de la matriz: leyenda en una línea; en vivo, la explicación breve (si cabe) y la pantalla completa. */
 .hz-pie-matriz {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.3em 1em;
+  gap: 0.3em 1.4em;
   margin-top: 0.4em;
 }
 .hz-pie-matriz .hz-leyenda {
   margin: 0;
 }
-.hz-zoom {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.1em;
-  padding: 0.1em;
-  font-size: 0.8em;
-  background: var(--hz-superficie-1);
-  border: 1px solid var(--hz-borde);
-  border-radius: 999px;
+.hz-pie-matriz .hz-pie-controles {
+  margin: 0 0 0 auto;
 }
-.hz-zoom button {
-  min-width: 2em;
-  min-height: 2em;
-  padding: 0 0.6em;
-  font: inherit;
-  font-weight: 800;
-  color: var(--hz-tinta);
-  background: transparent;
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.hz-zoom button:hover:not(:disabled) {
-  background: var(--hz-superficie-3);
-}
-.hz-zoom button:disabled {
-  color: var(--hz-tinta-3);
-  cursor: default;
-}
-.hz-zoom output {
-  min-width: 3.2em;
-  text-align: center;
-  font-weight: 700;
+.hz-explica-breve {
+  margin: 0;
   color: var(--hz-tinta-2);
+}
+.hz-explica-breve b {
+  color: var(--hz-tinta);
 }
 
-/* Qué significa cada eje y cada punto (T2): dos o tres líneas bajo la matriz, sin pesos ni fórmulas. */
-.hz-explica {
-  margin: 0.35em 0 0;
-  font-size: 0.8em;
-  line-height: 1.35;
-  color: var(--hz-tinta-2);
-}
-.hz-explica b {
-  color: var(--hz-tinta);
-}
 .hz-pie-controles {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4em;
+  margin-top: 0.5em;
+}
+.hz-lateral .hz-pie-controles {
+  margin-top: 0;
+}
+/* Fila del panel: Promedios o «Cómo votó», la nota de la foto (D2) y los botones. */
+.hz-detalle-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em 1em;
+}
+.hz-nota-foto {
+  margin: 0;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--hz-tinta-2);
 }
 
-/* Pregunta guiada (T3): la pregunta del facilitador, en grande, en lugar de la matriz. */
+/* Pregunta guiada (C19-5): la pregunta del facilitador, en grande, en lugar de la matriz. */
 .hz-guiada {
   min-width: 0;
   padding: 1em 1.2em;
@@ -374,6 +345,7 @@ body:has(> #root > .hz-tablero) {
   background: var(--hz-tinta-3);
 }
 
+
 /* Marcas de ronda (leyenda, tablas y franja): R1 aro hueco verde, R2 punto sólido rojo. */
 .hz-marca-r1,
 .hz-marca-r2 {
@@ -408,6 +380,9 @@ body:has(> #root > .hz-tablero) {
 /* Franja de fase: qué se hace en la ronda abierta (texto --hz-sobre-r* sobre el color de la ronda, AA). */
 .hz-franja {
   display: flex;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
   gap: 0.2em;
   margin: 0.6em 0 0;
@@ -418,15 +393,16 @@ body:has(> #root > .hz-tablero) {
   border-radius: 10px;
 }
 .hz-franja-r1 {
-  color: var(--hz-sobre-r1);
-  background: var(--hz-r1);
+  color: var(--hz-r1);
+  background: var(--hz-fondo);
+  border: 3px solid var(--hz-r1);
 }
 .hz-franja-r2 {
   color: var(--hz-sobre-r2);
   background: var(--hz-r2);
 }
 .hz-franja .hz-marca-r1 {
-  border-color: currentColor;
+  border-color: var(--hz-r1);
 }
 .hz-franja .hz-marca-r2 {
   background: currentColor;
@@ -580,6 +556,19 @@ body:has(> #root > .hz-tablero) {
   color: var(--hz-tinta-3);
   white-space: nowrap;
 }
+/* Nombre del criterio y su descripción corta (máximo 100 caracteres) debajo. */
+.hz-crit-nombre {
+  display: block;
+}
+.hz-crit-desc {
+  display: block;
+  margin-top: 0.1em;
+  font-size: max(14px, 0.82em);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--hz-tinta-2);
+  white-space: normal;
+}
 .hz-tabla td.hz-foco {
   font-weight: 800;
   color: var(--hz-tinta);
@@ -660,55 +649,47 @@ body:has(> #root > .hz-tablero) {
     flex-direction: row;
     min-height: 0;
   }
+  /* Con tabla: la matriz es casi cuadrada y su ancho sigue al alto disponible (sin encabezado ni el pie de
+     una línea, --hz-pie); el resto va a la tabla. */
   .hz-zona-matriz {
-    /* La matriz es casi cuadrada: su ancho sigue al alto disponible (sin encabezado, leyenda y
-       explicación, --hz-pie) y el resto va al panel. */
-    --hz-pie: 5.5em;
-    --hz-ancho-max: 56vw;
+    --hz-pie: 2.6em;
+    --hz-ancho-max: 52vw;
     flex: 0 1 auto;
     width: min(calc(100dvh - 7.5em - var(--hz-pie)), var(--hz-ancho-max));
   }
   .hz-tablero:has(.hz-franja) .hz-zona-matriz {
     width: min(calc(100dvh - 10.5em - var(--hz-pie)), var(--hz-ancho-max));
   }
-  /* Matriz sola (por defecto): sin panel lateral. La matriz toma todo el alto y la leyenda, el zoom y la
-     explicación van en una columna a su derecha, abajo, junto al eje X. */
+  /* En vivo (por defecto): la matriz ocupa todo el ancho y el alto bajo el encabezado; el pie va en una línea. */
   .hz-matriz-sola .hz-zona-matriz {
-    display: grid;
     flex: 1 1 auto;
-    grid-template-columns: minmax(0, calc(100dvh - 7.5em)) minmax(12em, 22em);
-    grid-template-rows: 1fr auto auto auto;
-    justify-content: center;
-    column-gap: 1.5em;
     width: auto;
   }
-  .hz-tablero.hz-matriz-sola:has(.hz-franja) .hz-zona-matriz {
-    grid-template-columns: minmax(0, calc(100dvh - 10.5em)) minmax(12em, 22em);
+  .hz-pie-matriz {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    container-type: inline-size;
   }
-  .hz-matriz-sola .hz-lienzo {
-    grid-column: 1;
-    grid-row: 1 / -1;
+  .hz-pie-matriz .hz-leyenda {
+    flex-wrap: nowrap;
+    gap: 0.3em 0.9em;
+    font-size: max(20px, 1.2em);
   }
-  .hz-matriz-sola .hz-vacio,
-  .hz-matriz-sola .hz-pie-matriz,
-  .hz-matriz-sola .hz-explica {
-    grid-column: 2;
+  .hz-leyenda .hz-ley-largo {
+    display: none;
   }
-  .hz-matriz-sola .hz-vacio {
-    grid-row: 2;
+  .hz-explica-breve {
+    overflow: hidden;
+    font-size: max(18px, 1em);
   }
-  .hz-matriz-sola .hz-pie-matriz {
-    grid-row: 3;
-    flex-direction: column;
-    align-items: flex-start;
+  .hz-boton-pantalla {
+    font-size: max(16px, 0.9em);
   }
-  .hz-matriz-sola .hz-leyenda {
-    flex-direction: column;
-  }
-  .hz-matriz-sola .hz-explica {
-    grid-row: 4;
-    margin-top: 0.8em;
-    font-size: 0.9em;
+  /* La explicación breve va solo si cabe entera en la línea (proyector de 1920): si no, estorbaría. */
+  @container (max-width: 1839px) {
+    .hz-explica-breve {
+      display: none;
+    }
   }
   .hz-guiada {
     flex: 1.3 1 0;
@@ -719,6 +700,10 @@ body:has(> #root > .hz-tablero) {
     aspect-ratio: auto;
     max-height: none;
     min-height: 0;
+  }
+  /* Datos abiertos: leyenda en una línea y en letra de proyector. */
+  .hz-zona-matriz .hz-leyenda {
+    font-size: max(20px, 1.2em);
   }
   .hz-lateral {
     flex: 1 1 0;
@@ -749,8 +734,31 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Proyector de 1280×720 o 1366×768: poco alto. El panel se compacta para que nada quede oculto. */
+/* Proyector de 1280×720 o 1366×768: poco alto. El panel se compacta para que nada quede oculto: el
+   progreso queda en una línea (las cifras grandes ya están en el encabezado, «20 de 20 votaron»), el título
+   de la tabla solo para el lector de pantalla. */
 @media (min-width: 1100px) and (max-height: 820px) {
+  .hz-lateral .hz-cifras {
+    display: none;
+  }
+  .hz-lateral .hz-progreso .hz-sub {
+    display: inline;
+    margin-right: 1em;
+  }
+  .hz-lateral .hz-mesas {
+    display: inline-flex;
+  }
+  .hz-comparada .hz-sub {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .hz-lateral .hz-mesas {
+    margin-top: 0;
+  }
   .hz-cuerpo {
     gap: 0.8em;
     margin-top: 0.5em;
@@ -784,6 +792,21 @@ body:has(> #root > .hz-tablero) {
   }
   .hz-tablero:not(.hz-matriz-sola) .hz-guiada {
     font-size: 0.85em;
+  }
+}
+
+@media (min-width: 1100px) and (max-width: 1599px) {
+  .hz-cab {
+    gap: 0.5em 1em;
+  }
+  .hz-cab-controles {
+    gap: 0.5em 0.6em;
+  }
+  .hz-segmento button {
+    padding: 0.3em 0.75em;
+  }
+  .hz-cab h1 {
+    font-size: 1.35em;
   }
 }
 
@@ -825,9 +848,20 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Pantalla completa (tecla F): sin controles; la vista se cambia con 1, 2 y C. */
-.hz-boton-pantalla,
-.hz-boton-datos {
+/* Pantalla completa (tecla F): el tablero en el modo elegido llena la pantalla del navegador, sin los controles
+   del encabezado; quedan la firma, la sala, la ronda, la vista y los votos recibidos. Sin la API, igual se
+   ocultan los controles. */
+.hz-pantalla-completa .hz-cab-controles {
+  display: none;
+}
+.hz-cab-vista {
+  font-weight: 800;
+  color: var(--hz-tinta);
+}
+.hz-pie-guiada {
+  justify-content: flex-end;
+}
+.hz-boton-pantalla {
   min-height: 2.4em;
   padding: 0.3em 0.9em;
   font: inherit;
@@ -838,13 +872,11 @@ body:has(> #root > .hz-tablero) {
   border-radius: 999px;
   cursor: pointer;
 }
-.hz-boton-datos {
-  min-height: 2em;
-  padding: 0.15em 0.7em;
-  font-size: 0.8em;
+.hz-boton-pantalla {
+  font-weight: 700;
+  white-space: nowrap;
 }
-.hz-boton-pantalla kbd,
-.hz-boton-datos kbd {
+.hz-boton-pantalla kbd {
   margin-left: 0.3em;
   padding: 0 0.35em;
   font: inherit;
@@ -852,17 +884,14 @@ body:has(> #root > .hz-tablero) {
   border: 1px solid var(--hz-borde);
   border-radius: 4px;
 }
-.hz-pantalla-completa .hz-cab-controles {
-  display: none;
-}
-.hz-cab-vista {
-  margin: 0;
-  font-size: 1.2em;
-  font-weight: 800;
-  color: var(--hz-tinta);
-}
+/* Celular y tableta: sin pantalla completa ni pistas de teclas (QA-T-11: no hay teclado físico). */
 @media (max-width: 1099px) {
   .hz-boton-pantalla {
+    display: none;
+  }
+}
+@media (max-width: 1099px), (hover: none) {
+  .hz-boton-pantalla kbd {
     display: none;
   }
 }

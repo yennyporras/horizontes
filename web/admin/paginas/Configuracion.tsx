@@ -1,28 +1,66 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
 import { Rubricas } from './Rubricas'
 import type { ConfigSala, EstadoSala, Pais, SalaDetalle, ZonaHoraria } from '../tipos'
-import { PAISES, ZONAS, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala, type CampoProgramado } from '../textos'
+import { PAISES, ZONAS, conPunto, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala, type CampoProgramado } from '../textos'
 
-type Aviso = { tono: 'exito' | 'error'; texto: string } | null
+/** QA-A-13: el resultado de cada cambio sale junto al control que lo produjo (`lugar`), no arriba de la página. */
+type Aviso = { lugar: string; tono: 'exito' | 'error' | 'aviso'; texto: string } | null
 type GuardarCampo = (cambio: Partial<ConfigSala>) => Promise<void>
+type Guardar = (cambio: Partial<ConfigSala>, texto: string, lugar: string) => Promise<boolean>
+
+const CAMPOS_PROGRAMADOS: CampoProgramado[] = [
+  'apertura_programada_sala_at',
+  'apertura_programada_r1_at',
+  'cierre_programado_r1_at',
+  'apertura_programada_r2_at',
+  'cierre_programado_r2_at',
+  'cierre_programado_sala_at',
+]
+
+/**
+ * F-7 y QA-A-10: al cambiar la zona de la sala, las horas ya programadas conservan la hora del reloj en la zona nueva
+ * (23:39 sigue siendo 23:39, ahora de Guatemala). Devuelve los campos con su ISO nuevo y las horas que se movieron.
+ */
+export function moverProgramacion(c: Partial<Record<CampoProgramado, string | null>>, de: ZonaHoraria, a: ZonaHoraria) {
+  const cambio: Partial<Record<CampoProgramado, string>> = {}
+  const horas: string[] = []
+  if (de === a) return { cambio, horas }
+  for (const campo of CAMPOS_PROGRAMADOS) {
+    const v = c[campo]
+    if (!v) continue
+    const local = isoAHoraLocal(v, de)
+    const iso = horaLocalAIso(local, a)
+    if (!iso) continue
+    cambio[campo] = iso
+    horas.push(local.slice(11))
+  }
+  return { cambio, horas }
+}
 
 export function Configuracion() {
   const { salaId } = useParams()
   const { datos, error, refrescar } = useSala(salaId)
   const [aviso, setAviso] = useState<Aviso>(null)
+  /** QA-A-13: lo que se acaba de elegir se ve marcado de inmediato, mientras responde el servidor. */
+  const [pendiente, setPendiente] = useState<Partial<ConfigSala>>({})
 
-  const guardar = async (cambio: Partial<ConfigSala>, texto: string) => {
+  const guardar: Guardar = async (cambio, texto, lugar) => {
     setAviso(null)
+    setPendiente((p) => ({ ...p, ...cambio }))
     try {
       await api.patch(`/api/admin/salas/${salaId}/config`, cambio)
       await refrescar()
-      setAviso({ tono: 'exito', texto })
+      setAviso({ lugar, tono: 'exito', texto })
+      return true
     } catch (e) {
-      setAviso({ tono: 'error', texto: e instanceof Error ? e.message : 'No se pudo guardar el cambio.' })
+      setAviso({ lugar, tono: 'error', texto: e instanceof Error ? e.message : 'No se pudo guardar el cambio.' })
+      return false
+    } finally {
+      setPendiente({})
     }
   }
 
@@ -34,145 +72,159 @@ export function Configuracion() {
 
   return (
     <ConSala titulo="Configuración" datos={datos} error={error}>
-      {(d) => (
-        <>
-          <p className="pista">Los cambios se aplican de inmediato y los celulares los ven en menos de 5 segundos.</p>
-          {aviso && (
-            <p className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
-              {aviso.texto}
-            </p>
-          )}
-          <div className="rejilla">
-            <Visibilidad d={d} guardar={guardar} />
-            <PaisSala d={d} guardar={guardar} />
-          </div>
-          <Programacion d={d} guardarCampo={guardarCampo} />
-          <Rubricas salaId={d.sala.id} version={d.version} />
-        </>
-      )}
+      {(d) => {
+        const vista: SalaDetalle = { ...d, sala: { ...d.sala, config: { ...d.sala.config, ...pendiente } } }
+        return (
+          <>
+            <p className="pista">Los cambios se aplican de inmediato y los celulares los ven en menos de 5 segundos.</p>
+            <div className="rejilla">
+              <Visibilidad d={vista} guardar={guardar} aviso={aviso} />
+              <PaisSala d={vista} guardar={guardar} aviso={aviso} setAviso={setAviso} />
+            </div>
+            <Programacion d={d} guardarCampo={guardarCampo} />
+            <Rubricas salaId={d.sala.id} version={d.version} />
+          </>
+        )
+      }}
     </ConSala>
   )
 }
 
 interface PropsSeccion {
   d: SalaDetalle
-  guardar: (cambio: Partial<ConfigSala>, texto: string) => Promise<void>
+  guardar: Guardar
+  aviso: Aviso
 }
 
-function Visibilidad({ d, guardar }: PropsSeccion) {
+/** El aviso del último cambio, si fue en este lugar. */
+function AvisoEn({ aviso, lugar }: { aviso: Aviso; lugar: string }) {
+  if (!aviso || aviso.lugar !== lugar) return null
+  return (
+    <p className={`alerta alerta--${aviso.tono} aviso-campo`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
+      {aviso.texto}
+    </p>
+  )
+}
+
+function Opcion({ children, ...input }: { children: ReactNode } & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <label className="opcion">
+      <input {...input} />
+      <span>{children}</span>
+    </label>
+  )
+}
+
+function Visibilidad({ d, guardar, aviso }: PropsSeccion) {
   const c = d.sala.config
   return (
     <section className="panel" aria-labelledby="t-visibilidad">
       <h2 id="t-visibilidad">Qué ven los participantes</h2>
       <fieldset>
         <legend>Alcance de los resultados</legend>
-        <label className="opcion">
-          <input
-            type="radio"
-            name="alcance"
-            checked={c.alcance_resultados === 'sala'}
-            onChange={() => guardar({ alcance_resultados: 'sala' }, 'Ahora todos ven el resultado de toda la sala.')}
-          />
-          <span>
-            Todos ven la sala completa <span className="etiqueta">Por defecto</span>
-            <small>Promedio de todas las mesas en una sola matriz.</small>
-          </span>
-        </label>
-        <label className="opcion">
-          <input
-            type="radio"
-            name="alcance"
-            checked={c.alcance_resultados === 'mesa'}
-            onChange={() => guardar({ alcance_resultados: 'mesa' }, 'Ahora cada mesa ve solo su resultado.')}
-          />
-          <span>
-            Cada mesa ve su resultado
-            <small>Cada mesa funciona como una empresa y discute su propia matriz.</small>
-          </span>
-        </label>
+        <Opcion type="radio" name="alcance" checked={c.alcance_resultados === 'sala'} onChange={() => guardar({ alcance_resultados: 'sala' }, 'Ahora todos ven el resultado de toda la sala.', 'alcance')}>
+          Todos ven la sala completa <span className="etiqueta">Por defecto</span>
+          <small>Promedio de todas las mesas en una sola matriz.</small>
+        </Opcion>
+        <Opcion type="radio" name="alcance" checked={c.alcance_resultados === 'mesa'} onChange={() => guardar({ alcance_resultados: 'mesa' }, 'Ahora cada mesa ve solo su resultado.', 'alcance')}>
+          Cada mesa ve su resultado
+          <small>Cada mesa funciona como una empresa y discute su propia matriz.</small>
+        </Opcion>
+        <AvisoEn aviso={aviso} lugar="alcance" />
       </fieldset>
       <fieldset>
         <legend>Después de votar</legend>
-        <label className="opcion">
-          <input
-            type="radio"
-            name="vista"
-            checked={c.vista_participante === 'en_vivo'}
-            onChange={() => guardar({ vista_participante: 'en_vivo' }, 'Tras votar, el participante ve el tablero en vivo.')}
-          />
-          <span>
-            Tablero en vivo <span className="etiqueta">Por defecto</span>
-            <small>Apenas vota, cada persona ve el resultado consolidado moverse mientras los demás votan.</small>
-          </span>
-        </label>
-        <label className="opcion">
-          <input
-            type="radio"
-            name="vista"
-            checked={c.vista_participante === 'registrado'}
-            onChange={() => guardar({ vista_participante: 'registrado' }, 'Tras votar, el participante ve "Voto registrado".')}
-          />
-          <span>
-            Voto registrado
-            <small>Ven el progreso de su mesa hasta que cierres la ronda o llegue el precierre.</small>
-          </span>
-        </label>
+        <Opcion
+          type="radio"
+          name="vista"
+          checked={c.vista_participante === 'en_vivo'}
+          onChange={() => guardar({ vista_participante: 'en_vivo' }, 'Tras votar, el participante ve el resultado en vivo.', 'vista')}
+        >
+          Resultado en vivo <span className="etiqueta">Por defecto</span>
+          {/* D2: el consolidado en vivo se renueva de 3 en 3 votos. */}
+          <small>Apenas vota, cada persona ve el resultado consolidado. Se renueva cada 3 votos nuevos, así nadie deduce el voto de otro; al cerrar la ronda queda el exacto.</small>
+        </Opcion>
+        <Opcion
+          type="radio"
+          name="vista"
+          checked={c.vista_participante === 'registrado'}
+          onChange={() => guardar({ vista_participante: 'registrado' }, 'Tras votar, el participante ve «Voto registrado».', 'vista')}
+        >
+          Voto registrado
+          <small>Ven el progreso de su mesa hasta que cierres la ronda o llegue el precierre.</small>
+        </Opcion>
+        <AvisoEn aviso={aviso} lugar="vista" />
       </fieldset>
       <fieldset>
         <legend>Hojas de información</legend>
-        <label className="opcion">
-          <input
-            type="checkbox"
-            checked={c.revelar_hojas}
-            onChange={(e) =>
-              guardar(
-                { revelar_hojas: e.target.checked },
-                e.target.checked ? 'Todos ven ahora las 6 hojas.' : 'Cada participante ve ahora solo la hoja de su perfil.',
-              )
-            }
-          />
-          <span>
-            Mostrar las 6 hojas a todos
-            <small>Se enciende sola al abrir la ronda 2. Puedes apagarla o encenderla cuando quieras.</small>
-          </span>
-        </label>
+        <Opcion
+          type="checkbox"
+          checked={c.revelar_hojas}
+          onChange={(e) =>
+            guardar(
+              { revelar_hojas: e.target.checked },
+              e.target.checked ? 'Todos ven ahora las 6 hojas.' : 'Cada participante ve ahora solo la hoja de su perfil.',
+              'hojas',
+            )
+          }
+        >
+          Mostrar las 6 hojas a todos
+          <small>Se enciende sola al abrir la ronda 2. Puedes apagarla o encenderla cuando quieras.</small>
+        </Opcion>
+        <AvisoEn aviso={aviso} lugar="hojas" />
       </fieldset>
       <fieldset>
         <legend>Preguntas en el celular</legend>
-        <label className="opcion">
-          <input
-            type="radio"
-            name="modo"
-            checked={c.modo_preguntas !== 'guiado'}
-            onChange={() => guardar({ modo_preguntas: 'automatico' }, 'Cada persona avanza sola: al responder pasa a la siguiente pregunta.')}
-          />
-          <span>
-            Automático <span className="etiqueta">Por defecto</span>
-            <small>Una pregunta por pantalla. Al responder, pasa sola a la siguiente.</small>
-          </span>
-        </label>
-        <label className="opcion">
-          <input
-            type="radio"
-            name="modo"
-            checked={c.modo_preguntas === 'guiado'}
-            onChange={() => guardar({ modo_preguntas: 'guiado' }, 'Modo guiado: todos ven la pregunta que elijas en Sala en vivo.')}
-          />
-          <span>
-            Guiado
-            <small>Todos ven la misma pregunta y tú decides cuándo pasar a la siguiente, desde Sala en vivo.</small>
-          </span>
-        </label>
+        <Opcion
+          type="radio"
+          name="modo"
+          checked={c.modo_preguntas !== 'guiado'}
+          onChange={() => guardar({ modo_preguntas: 'automatico' }, 'Cada persona avanza sola: al responder pasa a la siguiente pregunta.', 'modo')}
+        >
+          Automático <span className="etiqueta">Por defecto</span>
+          <small>Una pregunta por pantalla. Al responder, pasa sola a la siguiente.</small>
+        </Opcion>
+        <Opcion
+          type="radio"
+          name="modo"
+          checked={c.modo_preguntas === 'guiado'}
+          onChange={() => guardar({ modo_preguntas: 'guiado' }, 'Modo guiado: todos ven la pregunta que elijas en Sala en vivo.', 'modo')}
+        >
+          Guiado
+          <small>Todos ven la misma pregunta y tú decides cuándo pasar a la siguiente, desde Sala en vivo. El tablero la muestra en grande.</small>
+        </Opcion>
+        <AvisoEn aviso={aviso} lugar="modo" />
       </fieldset>
     </section>
   )
 }
 
-/** País de la sala: define la ley que cita el aviso de datos y la hora de los cierres (R4_CONTRATO C4 y C6). */
-function PaisSala({ d, guardar }: PropsSeccion) {
+/**
+ * País de la sala: define la ley que cita el aviso de datos y la hora de los cierres (acta del 16-oct, C4 y C6).
+ * F-7 y QA-A-10: si hay horas programadas, conservan su hora de reloj en la zona nueva y el aviso lo dice.
+ * QA-A-17: si la zona no es la del país, se advierte.
+ */
+function PaisSala({ d, guardar, aviso, setAviso }: PropsSeccion & { setAviso: (a: Aviso) => void }) {
   const c = d.sala.config
   const pais = c.pais ?? 'CO'
   const zona = zonaSala(c)
+  const zonaDelPais = PAISES[pais].zona
+
+  const cambiarZona = async (cambioBase: Partial<ConfigSala>, zonaNueva: ZonaHoraria, texto: string) => {
+    const { cambio, horas } = moverProgramacion(d.sala.config, zona, zonaNueva)
+    if (horas.length === 0) return void guardar(cambioBase, texto, 'pais')
+    const nombreZona = ZONAS[zonaNueva].nombre.replace(/ \(.*\)$/, '')
+    const ok = await guardar(
+      { ...cambioBase, ...cambio },
+      `${texto} Las horas programadas siguen en el mismo reloj, ahora en hora de ${nombreZona}: ${horas.join(', ')}. Revísalas en Apertura y cierre programados.`,
+      'pais',
+    )
+    if (ok) return
+    // El servidor rechazó alguna hora movida (por ejemplo, ya pasó en la zona nueva): se cambia la zona sin moverlas.
+    if (await guardar(cambioBase, texto, 'pais'))
+      setAviso({ lugar: 'pais', tono: 'aviso', texto: `${texto} No pudimos mantener las horas programadas en el mismo reloj: revísalas en Apertura y cierre programados.` })
+  }
+
   return (
     <section className="panel" aria-labelledby="t-pais">
       <h2 id="t-pais">País y hora</h2>
@@ -183,7 +235,7 @@ function PaisSala({ d, guardar }: PropsSeccion) {
             value={pais}
             onChange={(e) => {
               const p = e.target.value as Pais
-              void guardar({ pais: p, zona_horaria: PAISES[p].zona }, `La sala quedó en ${PAISES[p].nombre}, con hora de ${ZONAS[PAISES[p].zona].nombre}.`)
+              void cambiarZona({ pais: p, zona_horaria: PAISES[p].zona }, PAISES[p].zona, `La sala quedó en ${PAISES[p].nombre}, con hora de ${ZONAS[PAISES[p].zona].nombre}.`)
             }}
           >
             {(Object.keys(PAISES) as Pais[]).map((p) => (
@@ -197,9 +249,10 @@ function PaisSala({ d, guardar }: PropsSeccion) {
           <span>Zona horaria</span>
           <select
             value={zona}
+            aria-describedby={zona !== zonaDelPais ? 'zona-distinta' : undefined}
             onChange={(e) => {
               const z = e.target.value as ZonaHoraria
-              void guardar({ zona_horaria: z }, `Los cierres programados quedan en hora de ${ZONAS[z].nombre}.`)
+              void cambiarZona({ zona_horaria: z }, z, `Las aperturas y los cierres programados quedan en hora de ${ZONAS[z].nombre}.`)
             }}
           >
             {(Object.keys(ZONAS) as ZonaHoraria[]).map((z) => (
@@ -210,7 +263,14 @@ function PaisSala({ d, guardar }: PropsSeccion) {
           </select>
         </label>
       </div>
-      <p className="pista">El aviso de datos que firma cada participante cita la ley del país de la sala. La zona horaria se ajusta sola al cambiar el país.</p>
+      {zona !== zonaDelPais && (
+        <p id="zona-distinta" className="alerta alerta--aviso">
+          La zona no es la de {PAISES[pais].nombre} ({ZONAS[zonaDelPais].nombre}). Las aperturas y los cierres se aplican en {ZONAS[zona].nombre}. Si no es lo que quieres, elige la
+          zona del país.
+        </p>
+      )}
+      <AvisoEn aviso={aviso} lugar="pais" />
+      <p className="pista">Elige el país antes de programar horas. El aviso de datos que firma cada participante cita la ley del país de la sala. La zona horaria se ajusta sola al cambiar el país.</p>
     </section>
   )
 }
@@ -339,7 +399,7 @@ function Programacion({ d, guardarCampo }: { d: SalaDetalle; guardarCampo: Guard
                 valor={c[p.campo] ?? null}
                 bloqueo={d.sala.estado === 'cerrada' ? 'La sala está cerrada.' : p.yaNo(d.sala.estado, ronda)}
                 alGuardar={(iso) => guardarCampo({ [p.campo]: iso })}
-                exito={(iso) => (iso ? `${p.efecto} el ${fechaHora(iso, zona)}.` : p.quitado)}
+                exito={(iso) => (iso ? conPunto(`${p.efecto} el ${fechaHora(iso, zona)}`) : p.quitado)}
               />
             ))}
           </fieldset>

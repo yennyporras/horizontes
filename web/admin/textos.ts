@@ -13,7 +13,7 @@ export const PROYECTOS_VIVOS = seed.plantilla.proyectos.filter((p) => p.modo ===
 
 export const nombreProyecto = (id: string) => seed.plantilla.proyectos.find((p) => p.id === id)?.nombre ?? id
 
-/** País de la sala (R4_CONTRATO C4) con su zona horaria por defecto. */
+/** País de la sala (acta del 16-oct, C4) con su zona horaria por defecto. */
 export const PAISES: Record<Pais, { nombre: string; zona: ZonaHoraria }> = {
   CO: { nombre: 'Colombia', zona: 'America/Bogota' },
   PE: { nombre: 'Perú', zona: 'America/Lima' },
@@ -68,7 +68,7 @@ export const ACCIONES: Record<Accion, string> = {
   reabrir_sala: 'Reabrir sala',
 }
 
-/** Orden fijo de los botones en Sala en vivo: el admin siempre ve el ciclo completo. */
+/** Orden del ciclo del taller; también el de las acciones para corregir en Sala en vivo. */
 export const ORDEN_ACCIONES: Accion[] = [
   'abrir_inscripcion',
   'abrir_ronda_1',
@@ -92,6 +92,38 @@ export const ACCIONES_POR_ESTADO: Record<EstadoSala, Accion[]> = {
   cerrada: ['reabrir_sala'],
 }
 
+/**
+ * QA-A-01: el paso que sigue en el taller, el único botón principal de Sala en vivo. Nunca es una acción que deshace
+ * (Reabrir). Con la ronda 2 cerrada, lo que sigue es cerrar la sala; con la sala cerrada, exportar (no es una acción
+ * de la sala: el panel muestra el enlace a Exportar).
+ */
+export const PASO_SIGUIENTE: Record<EstadoSala, Accion | null> = {
+  preparada: 'abrir_inscripcion',
+  inscripcion: 'abrir_ronda_1',
+  r1_abierta: 'cerrar_ronda_1',
+  r1_cerrada: 'abrir_ronda_2',
+  r2_abierta: 'cerrar_ronda_2',
+  r2_cerrada: 'cerrar_sala',
+  cerrada: null,
+}
+
+/** QA-A-05: lo posible en este estado que no es el paso que sigue; va aparte, en «Corregir». */
+export const accionesParaCorregir = (estado: EstadoSala): Accion[] =>
+  ORDEN_ACCIONES.filter((a) => ACCIONES_POR_ESTADO[estado].includes(a) && a !== PASO_SIGUIENTE[estado])
+
+/** Qué pasa al pulsar cada acción, en una línea, junto al botón. */
+export const QUE_PASA: Record<Accion, string> = {
+  abrir_inscripcion: 'Los QR empiezan a funcionar: cada persona se inscribe, recibe su perfil y lee el caso.',
+  abrir_ronda_1: 'Cada persona califica INSUMEX y NUTRIWHAT sola y en silencio, con la hoja de su perfil.',
+  cerrar_ronda_1: 'Nadie más responde la ronda 1 y queda su resultado final.',
+  abrir_ronda_2: 'Se abren las 6 hojas para todos. Cada mesa conversa y vuelve a calificar.',
+  cerrar_ronda_2: 'Nadie más responde la ronda 2. Después pon el tablero en Comparación (tecla C).',
+  reabrir_ronda: 'La última ronda vuelve a recibir votos. Los que ya llegaron siguen ahí.',
+  reiniciar_ronda: 'Borra todos los votos de la ronda actual. Solo para ensayos.',
+  cerrar_sala: 'El taller termina: nadie más se inscribe ni vota, y los resultados quedan a la vista.',
+  reabrir_sala: 'La sala vuelve a quedar con la ronda 2 cerrada, como antes de cerrarla.',
+}
+
 /** Acciones que piden confirmación: título, texto y botón del diálogo. */
 export const CONFIRMACIONES: Partial<Record<Accion, { titulo: string; texto: string; boton: string }>> = {
   reiniciar_ronda: {
@@ -104,6 +136,37 @@ export const CONFIRMACIONES: Partial<Record<Accion, { titulo: string; texto: str
     texto: 'Nadie más podrá inscribirse ni votar. Los resultados quedan visibles. Puedes reabrirla después si lo necesitas.',
     boton: 'Sí, cerrar la sala',
   },
+}
+
+/** Acciones que borran o cierran: en rojo (contorno), aparte del paso que sigue. */
+export const ES_DESTRUCTIVA: Partial<Record<Accion, true>> = { reiniciar_ronda: true, cerrar_sala: true }
+
+/**
+ * QA-A-06: cerrar la ronda con personas sin terminar pide confirmación. Devuelve null si todas terminaron.
+ * `pendientes` son las personas activas que aún no completan la ronda.
+ */
+export function confirmacionCierreRonda(ronda: number, pendientes: number, inscritos: number): { titulo: string; texto: string; boton: string } | null {
+  if (pendientes <= 0) return null
+  const quien = pendientes === 1 ? '1 persona' : `${pendientes} personas`
+  return {
+    titulo: `¿Cerrar la ronda ${ronda} con ${quien} sin terminar?`,
+    texto:
+      `${quien[0].toUpperCase()}${quien.slice(1)} de ${inscritos} ${pendientes === 1 ? 'no ha' : 'no han'} terminado de votar. Si cierras ahora, ya no ` +
+      `${pendientes === 1 ? 'puede' : 'pueden'} responder la ronda ${ronda}` +
+      (ronda === 2 ? ' y la comparación R1 y R2 mezcla grupos de distinto tamaño.' : '.') +
+      ' Si te equivocas, puedes reabrir la ronda.',
+    boton: `Sí, cerrar la ronda ${ronda}`,
+  }
+}
+
+/** QA-A-16: agrega el punto final sin duplicarlo («11:39 p. m.» ya termina en punto). */
+export const conPunto = (t: string) => (/[.!?…]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`)
+
+/** QA-A-11 y QA-A-29: nombre de la copia de ensayo, sin «(ensayo) (ensayo)» y dentro de los 120 caracteres. */
+export function nombreEnsayo(nombre: string, maximo = 120): string {
+  const sufijo = ' (ensayo)'
+  const base = nombre.replace(/(\s*\((ensayo|copia)\))+\s*$/i, '').trim()
+  return `${base.slice(0, maximo - sufijo.length).trimEnd()}${sufijo}`
 }
 
 /** Ronda abierta según el estado (null si no hay ronda abierta). */
@@ -160,6 +223,29 @@ export function enEsteServidor(url: string | null | undefined): string | null {
   }
 }
 
+/**
+ * Modos de proyección del tablero (pedido de Nicolai, 20-oct): `vivo`, solo la matriz moviéndose a toda la
+ * pantalla, o `tabla`, la matriz con el progreso y los promedios. Se elige por evento desde Ver en vivo.
+ */
+export function conModo(url: string | null | undefined, modo: 'vivo' | 'tabla'): string | null {
+  if (!url) return null
+  const u = new URL(url, 'http://x')
+  u.searchParams.set('modo', modo)
+  return `${u.pathname}${u.search}${u.hash}`
+}
+
+/**
+ * QA-A-04: la vista previa del celular de una mesa, en este servidor y en modo de solo lectura (`?vista=previa`): el
+ * facilitador mira sin inscribirse.
+ */
+export function urlVistaPrevia(urlParticipante: string | null | undefined): string | null {
+  const ruta = enEsteServidor(urlParticipante)
+  if (!ruta) return null
+  const u = new URL(ruta, 'http://x')
+  u.searchParams.set('vista', 'previa')
+  return `${u.pathname}${u.search}${u.hash}`
+}
+
 /** Ruta interna del tablero (sin dominio) para pedir su JSON: /tablero/HZ7K2?mesa=m1&t=TOKEN → /api/tablero/{salaId}?... */
 export function rutaApiTablero(salaId: string, urlTablero: string, mesaId?: string): string {
   const u = new URL(urlTablero, 'http://x')
@@ -178,7 +264,10 @@ export const fechaHora = (iso: string | null, zona: ZonaHoraria = 'America/Bogot
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, dateStyle: 'medium', timeStyle: 'short' }) : 'Sin definir'
 
 const TEXTO_EVENTO: Record<string, string> = {
+  token_tablero_regenerado: 'Enlace del tablero cambiado: los anteriores dejaron de funcionar',
   sala_creada: 'Sala creada',
+  sala_duplicada: 'Sala creada como copia para ensayo',
+  sala_reiniciada: 'Sala reiniciada',
   inscripcion_abierta: 'Inscripción abierta',
   inscripcion: 'Nueva inscripción',
   ronda_abierta: 'Ronda abierta',
@@ -187,25 +276,159 @@ const TEXTO_EVENTO: Record<string, string> = {
   reinicio: 'Votos de la ronda reiniciados',
   sala_cerrada: 'Sala cerrada',
   sala_reabierta: 'Sala reabierta',
-  precierre: 'Precierre',
+  precierre: 'Todos votaron',
   config: 'Configuración cambiada',
   participante_editado: 'Participante editado',
   cierre_programado: 'Cierre programado aplicado',
-  cierre_programado_descartado: 'Cierre programado descartado',
+  cierre_programado_descartado: 'Cierre programado descartado: a esa hora no aplicaba',
   apertura_programada: 'Apertura programada aplicada',
-  apertura_programada_descartada: 'Apertura programada descartada',
-  pregunta_guiada: 'Pregunta guiada cambiada',
+  apertura_programada_descartada: 'Apertura programada descartada: a esa hora no aplicaba',
+  pregunta_guiada: 'Pregunta en pantalla',
   rubrica_editada: 'Rúbrica editada',
+  mesas_agregadas: 'Mesas agregadas',
+  acceso_reemitido: 'Acceso de nuevo',
+  acceso_canjeado: 'Volvió a entrar con el acceso de nuevo',
+  voto: 'Voto recibido',
 }
 
-/** Texto legible de un evento de la bitácora de la sala. */
-export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown> | null; por: string }): string {
+/** Nombres de los campos de configuración, para decir qué cambió («Configuración: país y zona horaria»). */
+const CAMPO_CONFIG: Record<string, string> = {
+  alcance_resultados: 'qué resultado ven',
+  vista_participante: 'qué ven tras votar',
+  revelar_hojas: 'hojas de información',
+  pais: 'país',
+  zona_horaria: 'zona horaria',
+  modo_preguntas: 'preguntas en el celular',
+  apertura_programada_sala_at: 'apertura programada de la inscripción',
+  cierre_programado_sala_at: 'cierre programado de la sala',
+  apertura_programada_r1_at: 'apertura programada de la ronda 1',
+  cierre_programado_r1_at: 'cierre programado de la ronda 1',
+  apertura_programada_r2_at: 'apertura programada de la ronda 2',
+  cierre_programado_r2_at: 'cierre programado de la ronda 2',
+  cierre_programado_ronda_at: 'cierre programado de la ronda',
+}
+
+/** «a, b y c». */
+const enumerar = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`)
+
+/** Lo que la bitácora necesita de la sala para decir nombres en vez de identificadores. */
+export interface ContextoEvento {
+  mesas?: { id: string; nombre: string }[]
+  participantes?: { id: string; nombre: string }[]
+}
+
+/**
+ * QA-A-15: texto legible de un evento de la bitácora: qué cambió, quién y dónde. Los textos del servidor en imperativo
+ * («Puedes cerrar la ronda») se reescriben como hechos, con el número de ronda.
+ */
+export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown> | null; por: string }, ctx: ContextoEvento = {}): string {
   const d = ev.detalle ?? {}
-  if (typeof d.mensaje === 'string') return d.mensaje
-  let t = TEXTO_EVENTO[ev.tipo] ?? ev.tipo.replace(/_/g, ' ')
-  if (/^ronda_/.test(ev.tipo) && typeof d.ronda === 'number') t = t.replace('Ronda', `Ronda ${d.ronda}`)
-  const por = ev.por === 'sistema' ? '' : ev.por === 'programado' ? ' · automático' : ` · ${ev.por.replace(/^admin:/, '')}`
+  const mesa = (id: unknown) => ctx.mesas?.find((m) => m.id === id)?.nombre
+  const persona = (id: unknown) => ctx.participantes?.find((p) => p.id === id)?.nombre
+  const ronda = typeof d.ronda === 'number' ? d.ronda : null
+  const por = ev.por === 'sistema' || ev.por === 'participante' ? '' : ev.por === 'programado' ? ' · a la hora programada' : ` · ${ev.por.replace(/^admin:/, '')}`
+  let t = TEXTO_EVENTO[ev.tipo] ?? `${ev.tipo.charAt(0).toUpperCase()}${ev.tipo.slice(1).replace(/_/g, ' ')}`
+
+  switch (ev.tipo) {
+    case 'ronda_abierta':
+    case 'ronda_cerrada':
+    case 'ronda_reabierta':
+      if (ronda) t = t.replace('Ronda', `Ronda ${ronda}`)
+      break
+    case 'reinicio':
+      if (ronda) t = `Votos de la ronda ${ronda} reiniciados`
+      if (typeof d.votos_borrados === 'number') t += ` (${d.votos_borrados} ${d.votos_borrados === 1 ? 'borrado' : 'borrados'})`
+      break
+    case 'precierre': {
+      const delMensaje = typeof d.mensaje === 'string' ? /en (.+?)\./.exec(d.mensaje)?.[1] : undefined
+      const donde = d.alcance === 'sala' ? 'la sala' : (mesa(d.mesa_id) ?? delMensaje ?? 'una mesa')
+      t = `Todos votaron en ${donde}${ronda ? ` (ronda ${ronda})` : ''}`
+      break
+    }
+    case 'inscripcion': {
+      const quien = persona(d.participante_id)
+      const donde = mesa(d.mesa_id)
+      t = quien ? `${quien} se inscribió${donde ? ` en ${donde}` : ''}` : `Nueva inscripción${donde ? ` en ${donde}` : ''}`
+      break
+    }
+    case 'config': {
+      const campos = Object.keys(d).map((k) => CAMPO_CONFIG[k]).filter(Boolean)
+      if (campos.length) t = `Configuración: ${enumerar([...new Set(campos)])}`
+      break
+    }
+    case 'participante_editado': {
+      const quien = persona(d.participante_id ?? d.id) ?? 'Un participante'
+      const cambios: string[] = []
+      if (d.mesa_id !== undefined) cambios.push(`pasó a ${mesa(d.mesa_id) ?? 'otra mesa'}`)
+      if (typeof d.perfil_id === 'string') cambios.push(`ahora tiene el perfil ${nombrePerfil(d.perfil_id)}`)
+      if (d.activo === false) cambios.push('quedó inactivo')
+      if (d.activo === true) cambios.push('volvió a estar activo')
+      t = cambios.length ? `${quien} ${enumerar(cambios)}` : `${quien}: datos editados`
+      break
+    }
+    case 'pregunta_guiada':
+      t =
+        typeof d.proyecto_id === 'string' && typeof d.criterio_id === 'string'
+          ? `Pregunta en pantalla: ${nombreProyecto(d.proyecto_id)} · ${numeroPregunta({ proyecto_id: d.proyecto_id, criterio_id: d.criterio_id as CriterioId }).texto}`
+          : 'Pregunta quitada: vuelve la matriz'
+      break
+    case 'mesas_agregadas':
+      if (typeof d.cantidad === 'number') t = d.cantidad === 1 ? 'Se agregó 1 mesa' : `Se agregaron ${d.cantidad} mesas`
+      break
+    case 'rubrica_editada':
+      if (typeof d.criterio_id === 'string') t = `Rúbrica editada: ${CRITERIOS.find((c) => c.id === d.criterio_id)?.nombre ?? d.criterio_id}`
+      break
+    case 'acceso_reemitido': {
+      const quien = persona(d.participante_id)
+      t = quien ? `Acceso de nuevo para ${quien}` : 'Acceso de nuevo para un participante'
+      break
+    }
+    case 'acceso_canjeado': {
+      const quien = persona(d.participante_id)
+      t = `${quien ?? 'Un participante'} volvió a entrar con el acceso de nuevo`
+      break
+    }
+  }
   return t + por
+}
+
+export interface LineaBitacora {
+  at: string
+  texto: string
+  /** Cuántos eventos seguidos iguales resume esta línea. */
+  veces: number
+}
+
+/** Transiciones que puede aplicar la programación; su evento «… programada aplicada» las repite. */
+const TRANSICIONES = new Set(['inscripcion_abierta', 'ronda_abierta', 'ronda_cerrada', 'sala_cerrada'])
+
+/**
+ * QA-A-15: la bitácora en orden, lo más reciente primero, sin ruido: los eventos seguidos con el mismo texto van en una
+ * sola línea («12 veces») y «Apertura programada aplicada» no repite la transición que ya dice «a la hora programada».
+ */
+export function bitacora(eventos: { at: string; tipo: string; detalle?: Record<string, unknown> | null; por: string }[], ctx: ContextoEvento = {}): LineaBitacora[] {
+  const cerca = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) <= 5000
+  const utiles = eventos.filter(
+    (ev, i) =>
+      !(
+        (ev.tipo === 'apertura_programada' || ev.tipo === 'cierre_programado') &&
+        [eventos[i - 1], eventos[i + 1]].some((o) => o && o.por === 'programado' && TRANSICIONES.has(o.tipo) && cerca(o.at, ev.at))
+      ),
+  )
+  const lineas: LineaBitacora[] = []
+  for (const ev of utiles) {
+    const texto = textoEvento(ev, ctx)
+    const ultima = lineas[lineas.length - 1]
+    if (ultima && ultima.texto === texto) ultima.veces += 1
+    else lineas.push({ at: ev.at, texto, veces: 1 })
+  }
+  return lineas
+}
+
+/** QA-A-08: número de la pregunta dentro de su proyecto, como el tablero: «Pregunta 3 de 6». */
+export function numeroPregunta(p: { proyecto_id: string; criterio_id: CriterioId }): { n: number; de: number; texto: string } {
+  const n = CRITERIOS.findIndex((c) => c.id === p.criterio_id) + 1
+  return { n, de: CRITERIOS.length, texto: `Pregunta ${n} de ${CRITERIOS.length}` }
 }
 
 /** Orden de las preguntas en modo guiado (C19-5): los proyectos vivos y, en cada uno, los 6 criterios. */

@@ -1,8 +1,8 @@
 # Migración del repo a la cuenta corporativa de GitHub (acta A11)
 
-Hoy el código vive en `github.com/yennyporras/horizontes` (privado, rama `main`). Pasa a la organización de Estratek en GitHub. **Lo hace Paola, no un agente.** Ningún secreto está en el repo: las claves viven en Coolify y en `deploy/.env.deploy` (que no se sube), así que no hay que mover claves por git.
+Hoy el código vive en `github.com/yennyporras/horizontes` (privado, rama `main`). Pasa a la organización de Estratek en GitHub. **Lo hace Paola.** Ningún secreto está en el repo: las claves viven en Coolify y en `deploy/.env.deploy` (que no se sube), así que no hay que mover claves por git.
 
-Antes de empezar: que no haya una ronda de agentes corriendo (los scripts de `tools/` publican `main` en `origin`).
+Antes de empezar: avisa al equipo para que nadie publique en `main` durante el cambio (los scripts de `tools/` publican `main` en `origin`).
 
 En los pasos, `<org>` es el nombre de la organización (por ejemplo `estratek`).
 
@@ -27,7 +27,7 @@ En los pasos, `<org>` es el nombre de la organización (por ejemplo `estratek`).
 3. Repo viejo → **Settings** → **Archive this repository**, para que nadie siga subiendo ahí.
 
 ## 3. Apuntar los clones al repo nuevo
-En `C:\Users\ypaol\horizontes` (los worktrees `hz-t1` a `hz-t4` comparten su `.git`, basta una vez):
+En `C:\Users\ypaol\horizontes` (las copias de trabajo adicionales comparten su `.git`: basta una vez):
 ```sh
 git remote set-url origin https://github.com/<org>/horizontes.git
 git remote -v        # debe mostrar <org>/horizontes en fetch y push

@@ -3,12 +3,13 @@ import { Insignia } from '../../shared/ui'
 import { MatrizHorizontes, type DatosTablero, type Vista } from '../../tablero'
 import type { Criterio, Resultados, RondaVivo, Voto } from '../api'
 import { cifra } from '../Comun'
+import { descripcionCriterio } from '../../shared/criterios'
 
 export const textoAlcance = (r: Resultados | null, alcance: 'mesa' | 'sala') => ((r?.alcance?.tipo ?? alcance) === 'sala' ? 'la sala' : 'tu mesa')
 
 /**
  * SPEC §7 y acta A1: ningún resultado muestra respuestas individuales. Con 1 voto el promedio ES esa respuesta;
- * con 2, quien votó despeja la del otro (otro = 2 · promedio − propia). Por eso 3 (R4_CONTRATO C3).
+ * con 2, quien votó despeja la del otro (otro = 2 · promedio − propia). Por eso 3 (acta del 16-oct, C3).
  * Manda `minimo_votos` del servidor; ocultar no es recalcular.
  */
 export const MIN_VOTOS = 3
@@ -25,6 +26,13 @@ function sinIndividuales(r: Resultados, min: number): Resultados {
       rondas: p.rondas.map((x) => (conVotos(x, min) ? x : { ...x, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null })),
     })),
   }
+}
+
+/** Hay algo que mostrar: al menos un proyecto con una ronda sobre el mínimo de votos. */
+export function resultadoVisible(r: Resultados | null | undefined): boolean {
+  if (!r) return false
+  const min = minimoDe(r)
+  return (r.proyectos_vivos ?? []).some((p) => p.rondas.some((x) => conVotos(x, min)))
 }
 
 /** Ronda 1: solo R1. Con votos en las 2 rondas: comparación (R1 hueco, R2 sólido y flecha). */
@@ -51,7 +59,7 @@ function usarEscalaTexto(): number {
 }
 
 /**
- * Resultado del alcance (mesa o sala): matriz de T3 (solo props) y promedio por criterio.
+ * Resultado del alcance (mesa o sala): matriz del tablero (solo props) y promedio por criterio.
  * Solo muestra lo que calcula el servidor; el celular nunca recalcula.
  * C19-3 (P3): con `misVotos` (los de `/api/yo`, solo de esta persona) cada promedio lleva debajo «Tu calificación».
  */
@@ -73,7 +81,7 @@ export function ResultadoAlcance({
   const donde = textoAlcance(resultados, alcance)
   const min = minimoDe(resultados)
   const vivos = resultados.proyectos_vivos ?? []
-  const hayVotos = vivos.some((p) => p.rondas.some((x) => conVotos(x, min)))
+  const hayVotos = resultadoVisible(resultados)
   const hayPocos = vivos.some((p) => p.rondas.some((x) => pocosVotos(x, min)))
   const marcarPreliminar = preliminar ?? resultados.preliminar
 
@@ -81,7 +89,7 @@ export function ResultadoAlcance({
     return (
       <p className="hz-texto-2">
         {hayPocos
-          ? `Hace falta al menos ${min} votos para mostrar estos resultados. Así nadie ve las respuestas de otra persona.`
+          ? `Hacen falta al menos ${min} votos para mostrar estos resultados. Así nadie ve las respuestas de otra persona.`
           : `Todavía no hay votos en ${donde}. Los resultados aparecen con los primeros ${min}.`}
       </p>
     )
@@ -106,11 +114,11 @@ export function ResultadoAlcance({
           return (
             <article key={p.id} className="hzp-resultado__proyecto">
               <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
-              <p className="hz-texto-3">{ocultas.length ? `Hace falta al menos ${min} votos para mostrar este proyecto.` : 'Sin votos todavía.'}</p>
+              <p className="hz-texto-3">{ocultas.length ? `Hacen falta al menos ${min} votos para mostrar este proyecto.` : 'Sin votos todavía.'}</p>
             </article>
           )
         }
-        const mia = (ronda: number, criterio: string) => misVotos.find((v) => v.proyecto_id === p.id && v.ronda === ronda)?.respuestas[criterio]
+        const mia = (ronda: number, criterio: string) => misVotos.find((v) => v.proyecto_id === p.id && v.ronda === ronda)?.respuestas[criterio as keyof Voto['respuestas']]
         const conMias = visibles.some((r) => criterios.some((c) => mia(r.ronda, c.id) !== undefined))
         return (
           <article key={p.id} className="hzp-resultado__proyecto">
@@ -132,7 +140,11 @@ export function ResultadoAlcance({
               <tbody>
                 {criterios.map((c) => (
                   <tr key={c.id}>
-                    <th scope="row">{c.nombre}</th>
+                    {/* abbr: el lector de pantalla anuncia cada celda con el nombre corto, sin repetir la descripción. */}
+                    <th scope="row" abbr={c.nombre}>
+                      {c.nombre}
+                      {descripcionCriterio(c.id) && <span className="hzp-tabla__desc">{descripcionCriterio(c.id)}</span>}
+                    </th>
                     {visibles.map((r) => {
                       const tuya = mia(r.ronda, c.id)
                       return (
@@ -154,7 +166,7 @@ export function ResultadoAlcance({
             </table>
             {ocultas.length > 0 && (
               <p className="hzp-resultado__pie">
-                {ocultas.map((r) => `Ronda ${r.ronda}: hace falta al menos ${min} votos para mostrarla.`).join(' ')}
+                {ocultas.map((r) => `Ronda ${r.ronda}: hacen falta al menos ${min} votos para mostrarla.`).join(' ')}
               </p>
             )}
           </article>

@@ -3,8 +3,9 @@
 import { type Db, ejecutar, todos, transaccion } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { CRITERIOS } from '../../shared/motor/motor.js'
-import { preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
-import { type EstadoSala, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
+import { borrarFotos, fijarFotosExactas } from './fotos.js'
+import { contenido, preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
+import { type EstadoSala, type SalaFila, cargarSala, mesasDeSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
 import { DESFASES, PAISES, type ZonaHoraria, ZONA_POR_PAIS, isoEnZona, isoUtc } from './util.js'
 
 export const ACCIONES = [
@@ -19,6 +20,9 @@ export const ACCIONES = [
   'reabrir_sala',
 ] as const
 export type Accion = (typeof ACCIONES)[number]
+
+/** Acción del panel que no cambia el estado de la sala y vale en cualquiera (B-2): el tablero estrena enlace. */
+export const REGENERAR_TOKEN_TABLERO = 'regenerar_token_tablero'
 
 interface Transicion {
   desde: EstadoSala[]
@@ -48,7 +52,7 @@ const TRANSICIONES: Record<Exclude<Accion, 'reiniciar_ronda'>, Transicion> = {
  * solo si la transición es válida en ese momento. Una transición (manual o programada) consume lo programado para ella.
  */
 export const PROGRAMACION = [
-  { col: 'apertura_programada_sala_at', accion: 'abrir_inscripcion', etapa: 'sala', apertura: true, nombre: 'la apertura de la sala' },
+  { col: 'apertura_programada_sala_at', accion: 'abrir_inscripcion', etapa: 'sala', apertura: true, nombre: 'la apertura de la inscripción' },
   { col: 'apertura_programada_r1_at', accion: 'abrir_ronda_1', etapa: 'r1', apertura: true, nombre: 'la apertura de la ronda 1' },
   { col: 'cierre_programado_r1_at', accion: 'cerrar_ronda_1', etapa: 'r1', apertura: false, nombre: 'el cierre de la ronda 1' },
   { col: 'apertura_programada_r2_at', accion: 'abrir_ronda_2', etapa: 'r2', apertura: true, nombre: 'la apertura de la ronda 2' },
@@ -84,6 +88,7 @@ export interface OpcionesAccion {
 
 /** Aplica una acción del admin (o del programador). 409 TRANSICION_INVALIDA si no aplica. */
 export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: number, por: string, op: OpcionesAccion = {}): SalaFila {
+  if (accion === REGENERAR_TOKEN_TABLERO) return regenerarTokenTablero(db, salaId, ahora, por)
   if (!(ACCIONES as readonly string[]).includes(accion)) {
     throw new ErrorApi(422, 'ACCION_INVALIDA', `La acción "${accion}" no existe.`)
   }
@@ -98,6 +103,7 @@ export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: num
         throw new ErrorApi(409, 'TRANSICION_INVALIDA', 'No hay votos de esa ronda para reiniciar en el estado actual de la sala.')
       }
       const borrados = ejecutar(db, 'DELETE FROM votos WHERE sala_id = ? AND ronda = ?', s.id, ronda).changes
+      borrarFotos(db, s.id, ronda)
       registrarEvento(db, s.id, ahora, 'reinicio', por, { ronda, votos_borrados: Number(borrados) })
       tocar(db, s.id)
       return cargarSala(db, s.id)
@@ -107,6 +113,19 @@ export function aplicarAccion(db: Db, salaId: string, accion: string, ahora: num
       throw new ErrorApi(409, 'TRANSICION_INVALIDA', `No se puede ${accion.replace(/_/g, ' ')}: la sala está ${NOMBRE_ESTADO[s.estado]}.`)
     }
     const hacia = typeof t.hacia === 'function' ? t.hacia(s) : t.hacia
+    // D2: al reabrir una ronda, la foto de partida es el resultado exacto que se mostró con la ronda cerrada; si no,
+    // la primera foto nueva podría diferir del exacto en un solo voto.
+    if (accion === 'reabrir_ronda') {
+      fijarFotosExactas(
+        db,
+        s.id,
+        s.ronda_actual,
+        s.version,
+        contenido(db, s.id).pesos,
+        vivos(db, s.id).map((p) => p.id),
+        mesasDeSala(db, s.id).map((m) => m.id),
+      )
+    }
     const sets: string[] = ['estado = ?']
     const params: unknown[] = [hacia]
     if (t.ronda) {
@@ -144,20 +163,31 @@ export interface CambiosConfig {
 }
 
 /**
+ * ISO-8601 con fecha, hora y zona, y año de 4 dígitos (S-7, S-8): `2026-10-20T15:00:00-05:00`, `…:00.000Z` o sin segundos.
+ * Sin zona dependería del huso del proceso; en texto libre («October 21, 2026») o con año extendido (`+020266-…`)
+ * Date.parse acepta cosas que luego se comparaban mal.
+ */
+const RE_ISO_CON_ZONA = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/
+
+/**
  * Valida una hora de apertura o cierre programado. Manda la hora del servidor, no la del navegador del admin:
  * una hora que ya pasó se rechaza (si se aceptara, la ronda se cerraría de golpe en la siguiente petición).
  */
 function fechaOpcional(campo: string, v: unknown, ahora: number, zona: ZonaHoraria): string | null {
   if (v === null || v === '') return null
-  if (typeof v !== 'string' || Number.isNaN(Date.parse(v))) {
-    throw new ErrorApi(422, 'CONFIG_INVALIDA', `${campo} debe ser una fecha ISO-8601 con zona o null.`)
+  const ms = typeof v === 'string' && RE_ISO_CON_ZONA.test(v) ? Date.parse(v) : Number.NaN
+  if (Number.isNaN(ms)) {
+    throw new ErrorApi(422, 'CONFIG_INVALIDA', `${campo} debe ser una fecha ISO-8601 con zona (por ejemplo 2026-10-20T15:00:00-05:00) o null.`)
   }
-  if (Date.parse(v) <= ahora) {
+  if (ms <= ahora) {
     const hora = (isoEnZona(ahora, zona) ?? '').slice(11, 19)
     throw new ErrorApi(422, 'HORA_PASADA', `Esa hora ya pasó. En el servidor son las ${hora}; elige una hora posterior.`)
   }
-  return isoUtc(Date.parse(v))
+  return isoUtc(ms)
 }
+
+/** Milisegundos de una hora guardada (NaN si no es una fecha). Se compara en milisegundos, no como texto (S-7). */
+const msDe = (v: string | null) => (v ? Date.parse(v) : Number.NaN)
 
 /**
  * Orden de la programación: cada hora no antes que la anterior del taller y cada apertura antes de su cierre
@@ -267,6 +297,10 @@ export function fijarPreguntaGuiada(db: Db, salaId: string, cuerpo: unknown, aho
     const s = cargarSala(db, salaId)
     const ronda = rondaAbierta(s)
     if (!ronda) throw new ErrorApi(409, 'RONDA_CERRADA', 'No hay una ronda abierta: abre una ronda para guiar las preguntas.')
+    // En automático los celulares no la usan: fijarla dejaría una pregunta fantasma en el tablero (S-10). Quitarla sí se puede.
+    if (proyecto && s.modo_preguntas !== 'guiado') {
+      throw new ErrorApi(409, 'MODO_NO_GUIADO', 'La sala está en modo automático. Cambia a modo guiado para fijar la pregunta.')
+    }
     ejecutar(db, 'UPDATE salas SET pregunta_guiada_proyecto_id = ?, pregunta_guiada_criterio_id = ? WHERE id = ?', proyecto, criterio, s.id)
     registrarEvento(db, s.id, ahora, 'pregunta_guiada', por, { ronda, proyecto_id: proyecto, criterio_id: criterio })
     tocar(db, s.id)
@@ -284,8 +318,10 @@ export function fijarPreguntaGuiada(db: Db, salaId: string, cuerpo: unknown, aho
  * salas quedaron cerradas y cuáles arrancaron (salieron de `preparada`).
  */
 export function aplicarCierresProgramados(db: Db, ahora: number): { aplicados: number; salasCerradas: string[]; salasIniciadas: string[] } {
-  const corte = isoUtc(ahora)
-  const vencidas = todos<{ id: string }>(db, `SELECT id FROM salas WHERE ${PROGRAMACION.map((p) => `(${p.col} IS NOT NULL AND ${p.col} <= ?)`).join(' OR ')}`, ...PROGRAMACION.map(() => corte))
+  const vence = (v: string | null) => msDe(v) <= ahora
+  const vencidas = todos<SalaFila>(db, `SELECT * FROM salas WHERE ${PROGRAMACION.map((p) => `${p.col} IS NOT NULL`).join(' OR ')}`).filter((s) =>
+    PROGRAMACION.some((p) => vence(s[p.col])),
+  )
   let aplicados = 0
   const salasCerradas: string[] = []
   const salasIniciadas: string[] = []
@@ -294,7 +330,7 @@ export function aplicarCierresProgramados(db: Db, ahora: number): { aplicados: n
       // Uno a la vez: cada paso cambia el estado y consume su hora, así el siguiente se evalúa sobre la sala al día.
       for (;;) {
         const s = cargarSala(db, id)
-        const p = PROGRAMACION.filter((x) => s[x.col] && s[x.col]! <= corte).sort((a, b) => s[a.col]!.localeCompare(s[b.col]!))[0]
+        const p = PROGRAMACION.filter((x) => vence(s[x.col])).sort((a, b) => msDe(s[a.col]) - msDe(s[b.col]))[0]
         if (!p) break
         const programado_at = s[p.col]
         if (TRANSICIONES[p.accion].desde.includes(s.estado)) {

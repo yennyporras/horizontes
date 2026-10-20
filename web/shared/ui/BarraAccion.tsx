@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 
-/** Barra inferior fija para la acción principal de la pantalla (zona del pulgar). */
+/** Barra inferior fija para la acción principal de la pantalla (zona del pulgar), alineada con el contenedor de página. */
 export function BarraAccion({ children, nota }: { children: ReactNode; nota?: ReactNode }) {
   return (
     <div className="hz-barra-accion">
-      <div className="hz-barra-accion__interior">
+      <div className="hz-barra-accion__interior hz-pagina">
         {nota && (
           <p className="hz-barra-accion__nota" aria-live="polite">
             {nota}

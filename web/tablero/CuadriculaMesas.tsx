@@ -1,13 +1,29 @@
 import type React from 'react'
 import { MatrizHorizontes } from './MatrizHorizontes'
 import { usePollingTablero } from './usePollingTablero'
-import { esPreliminar, mensajeVacio, rondaAbierta, urlApiTablero } from './logica'
+import { conteoMesa, esPreliminar, mensajeVacio, rondaAbierta, urlApiTablero } from './logica'
 import type { DatosTablero, ProgresoMesa, Vista } from './tipos'
 
 // Con muchas mesas cada una hace su propio polling: más lento que el tablero principal para no cargar el servidor.
 const INTERVALO_MESAS_MS = 5000
 
-function CeldaMesa({ sala, token, mesa, vista, escalaTexto, llenar }: { sala: string; token: string | null; mesa: ProgresoMesa; vista: Vista; escalaTexto: number; llenar: boolean }) {
+function CeldaMesa({
+  sala,
+  token,
+  mesa,
+  vista,
+  escalaTexto,
+  letraMin,
+  llenar,
+}: {
+  sala: string
+  token: string | null
+  mesa: ProgresoMesa
+  vista: Vista
+  escalaTexto: number
+  letraMin: number
+  llenar: boolean
+}) {
   const { datos, error } = usePollingTablero(urlApiTablero(sala, { mesa: mesa.mesa_id, t: token }), INTERVALO_MESAS_MS)
   const vacio = datos ? mensajeVacio(datos, vista) : null
   const idTitulo = `hz-celda-${mesa.mesa_id}`
@@ -19,8 +35,9 @@ function CeldaMesa({ sala, token, mesa, vista, escalaTexto, llenar }: { sala: st
     <section className="hz-celda-mesa" aria-labelledby={idTitulo}>
       <header className="hz-celda-cab">
         <h2 id={idTitulo}>{mesa.nombre}</h2>
+        {/* QA-T-04: el conteo es el de la ronda que se ve (en Comparación, las dos), no el de la ronda en curso. */}
         <span className={lista ? 'hz-mesa-n hz-ok-texto' : 'hz-mesa-n'}>
-          {propia.completos} de {propia.inscritos}
+          {conteoMesa(datos, propia, vista)}
           {lista ? ', todos votaron' : ''}
         </span>
         {datos && esPreliminar(datos) && <span className="hz-insignia hz-insignia-alerta">Preliminar</span>}
@@ -32,14 +49,29 @@ function CeldaMesa({ sala, token, mesa, vista, escalaTexto, llenar }: { sala: st
       )}
       {vacio && <p className="hz-vacio">{vacio}</p>}
       <div className="hz-celda-lienzo">
-        <MatrizHorizontes datos={datos} vista={vista} escalaTexto={escalaTexto} llenar={llenar} animarComparacion={false} />
+        <MatrizHorizontes datos={datos} vista={vista} escalaTexto={escalaTexto} letraMin={letraMin} llenar={llenar} animarComparacion={false} />
       </div>
     </section>
   )
 }
 
 /** Vista "todas las mesas": una matriz por mesa para comparar equipos. Solo con token de tablero. */
-export function CuadriculaMesas({ sala, token, datos, vista, escalaTexto }: { sala: string; token: string | null; datos: DatosTablero; vista: Vista; escalaTexto: number }) {
+export function CuadriculaMesas({
+  sala,
+  token,
+  datos,
+  vista,
+  escalaTexto,
+  letraMin = 0,
+}: {
+  sala: string
+  token: string | null
+  datos: DatosTablero
+  vista: Vista
+  escalaTexto: number
+  /** Proyector: letra mínima de cada matriz (con muchas mesas la limita el tamaño de la celda). */
+  letraMin?: number
+}) {
   const mesas = (datos.progreso?.por_mesa ?? []).filter((m) => m.inscritos > 0)
   if (!mesas.length) {
     return (
@@ -56,7 +88,7 @@ export function CuadriculaMesas({ sala, token, datos, vista, escalaTexto }: { sa
   return (
     <div className="hz-cuadricula" style={{ '--hz-cols': columnas, '--hz-filas': filas } as React.CSSProperties}>
       {mesas.map((m) => (
-        <CeldaMesa key={m.mesa_id} sala={sala} token={token} mesa={m} vista={vista} escalaTexto={escalaTexto} llenar={proyector} />
+        <CeldaMesa key={m.mesa_id} sala={sala} token={token} mesa={m} vista={vista} escalaTexto={escalaTexto} letraMin={letraMin} llenar={proyector} />
       ))}
     </div>
   )

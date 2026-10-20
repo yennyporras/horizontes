@@ -1,6 +1,6 @@
 # Stack
 
-- Repo del IRMI (ruta): `C:\Users\ypaol\irmi` (en Git Bash: `../irmi` desde cada worktree). Monorepo pnpm + turbo, `apps/irmi/server` (Fastify 5 + TS + Drizzle + Postgres 17) y `apps/irmi/web` (React 18 + Vite 6 + react-router 7 + Montserrat). Se despliega con `Dockerfile` en Coolify v4 sobre el VPS (servidor cloud) de Hostinger: `develop` → staging, `main` → producción.
+- Repo del IRMI (ruta): `C:\Users\ypaol\irmi` (en Git Bash: `../irmi` desde la carpeta del repo). Monorepo pnpm + turbo, `apps/irmi/server` (Fastify 5 + TS + Drizzle + Postgres 17) y `apps/irmi/web` (React 18 + Vite 6 + react-router 7 + Montserrat). Se despliega con `Dockerfile` en Coolify v4 sobre el VPS (servidor cloud) de Hostinger: `develop` → staging, `main` → producción.
 - Backend: **Node 24 + Fastify 5 + TypeScript** (ejecutado con `tsx`, sin paso de compilación). Mismo framework que el IRMI.
 - Frontend: **React 18 + Vite 6 + react-router-dom 7 + TypeScript**, fuente `@fontsource-variable/montserrat`. Una sola SPA con 4 rutas raíz: `/` (landing), `/m/:codigo` (participante), `/tablero/:sala` (tablero) y `/admin` (panel).
 - Base de datos: **SQLite** con el módulo nativo `node:sqlite` (sin compilación nativa, funciona igual en Windows y Linux). Archivo en `DB_PATH` (por defecto `data/horizontes.sqlite`, ignorado por git). En producción vive en un volumen persistente del contenedor. Ver decisión en `docs/DECISIONES.md`.

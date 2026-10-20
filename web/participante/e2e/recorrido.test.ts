@@ -1,16 +1,16 @@
 // Recorrido completo del participante en un celular de 360 px contra la API real (BD en memoria):
 // inscripción con consentimiento, perfil, caso y hoja, 2 rondas de votación, edición, sin señal (cola),
-// recarga, precierre con resultado preliminar, token reemplazado (recuperar sesión), 6 hojas en R2,
+// recarga, precierre con resultado preliminar, sesión reemplazada y acceso nuevo del facilitador (D1), 6 hojas en R2,
 // ronda cerrada mientras califica, comparación R1→R2 en la matriz y sala cerrada.
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ESPERA, calificar, capturar, focoVisible, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
-import { sinNavegador } from '../../../tests/navegador'
-import { accion, celular, configurar, crearSala, fijarPregunta, hayChromium, iniciar, inscribirApi, votarApi, type Entorno } from './entorno'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { ESPERA, avisarSiCongelada, calificar, capturar, focoVisible, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
+import { REINTENTOS_E2E, sinNavegador } from '../../../tests/navegador'
+import { accion, celular, configurar, crearSala, darAcceso, fijarPregunta, hayChromium, iniciar, inscribirApi, votarApi, type Entorno } from './entorno'
 
 const conNavegador = hayChromium()
 if (!conNavegador) sinNavegador('[e2e participante]', 'No hay Chromium de Playwright para el recorrido.')
 
-describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la API real', () => {
+describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la API real', { retry: REINTENTOS_E2E }, () => {
   let e: Entorno
   beforeAll(async () => {
     e = await iniciar()
@@ -20,14 +20,15 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
   }, 30_000)
 
   it('2 rondas completas con resiliencia, precierre y comparación R1→R2', async () => {
-    const sala = await crearSala(e, 'Ensayo e2e T2')
+    const sala = await crearSala(e, 'Ensayo e2e celular')
     const mesa = sala.mesas[0].codigo
     // Este recorrido prueba «Voto registrado» y el resultado de la mesa. Por defecto (C5) una sala nueva muestra
-    // el consolidado de la sala en vivo; eso lo prueba el segundo caso.
+    // el consolidado parcial de la sala; eso lo prueba el segundo caso.
     await configurar(e, sala.id, { vista_participante: 'registrado', alcance_resultados: 'mesa' })
     await accion(e, sala.id, 'abrir_inscripcion')
     const ctx = await celular(e)
     const p = await ctx.newPage()
+    onTestFailed(() => avisarSiCongelada(p))
     const errores: string[] = []
     p.on('pageerror', (err) => errores.push(err.message))
     // Saltos de diseño (CLS) acumulados desde la primera carga.
@@ -136,7 +137,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await titulo(p, 'Voto guardado en este celular')
     await capturar(p, '03-sin-senal')
     await ctx.setOffline(false)
-    await ver(p, 'Volvió la señal: enviamos tu calificación de NUTRIWHAT.')
+    await ver(p, 'Enviamos tu calificación de NUTRIWHAT.')
     await titulo(p, 'Voto registrado')
     await ver(p, '1 de 3 completaron en Mesa 1')
 
@@ -179,15 +180,44 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     expect(await insumexR1.locator('.hzp-tabla__mia').allTextContents()).toEqual(['Tu calificación: Tú 9', ...Array(5).fill('Tu calificación: Tú 7')])
     await sinDesborde(p)
 
-    // Se inscribe con el mismo correo en otro celular: este pierde la sesión y la recupera.
-    await inscribirApi(e, mesa, 'Ana Pérez', 'ana.e2e@empresa.com')
-    await titulo(p, 'Tu sesión ya no está activa')
-    await p.getByRole('button', { name: 'Recuperar mi sesión' }).click()
-    await titulo(p, 'Recupera tu sesión')
-    expect(await p.getByLabel('Tu correo').inputValue()).toBe('ana.e2e@empresa.com')
-    await p.getByRole('checkbox').check()
-    await p.getByRole('button', { name: 'Recuperar mi sesión' }).click()
+    // D1: con el mismo correo ya no se entra a la sesión de nadie; el acceso nuevo lo da el facilitador.
+    const otro = await celular(e)
+    const q = await otro.newPage()
+    await q.goto(`${e.web}/m/${mesa}`)
+    await q.getByLabel('Tu nombre').fill('Otra Persona', { timeout: 60_000 })
+    await q.getByLabel('Tu correo').fill('ANA.E2E@empresa.com')
+    await q.getByRole('checkbox').check()
+    await q.getByRole('button', { name: 'Inscribirme' }).click()
+    await ver(q, /ya está inscrito/)
+    expect(await q.evaluate((c) => localStorage.getItem(`hz_token:${c}`), mesa.toUpperCase())).toBeNull()
+    await sinDesborde(q)
+    // Este celular sigue con su sesión: nadie la tomó con el correo.
+    await p.waitForTimeout(3000)
     await titulo(p, 'Ronda 1 cerrada')
+    // El facilitador le da acceso en el otro celular: entra, el enlace sale de la URL y este celular pierde la sesión.
+    const pid = await p.evaluate(async (c) => {
+      const r = await fetch('/api/yo', { headers: { 'X-Participante-Token': localStorage.getItem(`hz_token:${c}`) ?? '' } })
+      return ((await r.json()) as { participante: { id: string } }).participante.id
+    }, mesa.toUpperCase())
+    const primero = await darAcceso(e, pid)
+    await q.goto(`${e.web}${primero}`)
+    await ver(q, 'Listo, entraste de nuevo. Retomas donde ibas.')
+    await titulo(q, 'Ronda 1 cerrada')
+    expect(q.url()).not.toContain('acceso=')
+    await titulo(p, 'Tu sesión ya no está activa')
+    await ver(p, /«Dar acceso de nuevo»/)
+    expect(await p.getByRole('button', { name: /Recuperar/ }).count()).toBe(0)
+    await sinDesborde(p)
+    // Acceso nuevo para este celular: retoma donde iba.
+    await p.goto(`${e.web}${await darAcceso(e, pid)}`)
+    await ver(p, 'Listo, entraste de nuevo. Retomas donde ibas.')
+    await titulo(p, 'Ronda 1 cerrada')
+    expect(p.url()).not.toContain('acceso=')
+    // Un enlace ya usado no sirve otra vez.
+    await q.goto(`${e.web}${primero}`)
+    await titulo(q, 'Este enlace ya venció')
+    await sinDesborde(q)
+    await otro.close()
 
     // Ronda 2: se revelan las 6 hojas, con la propia primero.
     await accion(e, sala.id, 'abrir_ronda_2')
@@ -269,31 +299,41 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ctx.close()
   }, 240_000)
 
-  it('por defecto (acta A2, C5): tras votar ve el consolidado de la sala en vivo, sin la fila Total', async () => {
+  it('por defecto (acta A2, C5): tras votar ve el consolidado parcial de la sala (D2), sin la fila Total', async () => {
     // Sin tocar la configuración: una sala nueva nace con alcance «sala» y vista «en vivo».
-    const sala = await crearSala(e, 'En vivo e2e T2')
+    const sala = await crearSala(e, 'En vivo e2e celular')
     await accion(e, sala.id, 'abrir_ronda_1')
     const otro = await inscribirApi(e, sala.mesas[1].codigo, 'Caro Díaz', 'caro.e2e@empresa.com')
     await votarApi(e, otro, 'insumex', 1)
     const otro2 = await inscribirApi(e, sala.mesas[1].codigo, 'Gabo Paz', 'gabo.e2e@empresa.com')
     await votarApi(e, otro2, 'insumex', 1)
-    // Alguien de la mesa 1 aún no vota: sin precierre, la pantalla es la de resultados en vivo.
+    // Alguien de la mesa 1 aún no vota: sin precierre, la pantalla es la del resultado parcial.
     await inscribirApi(e, sala.mesas[0].codigo, 'Eli Mora', 'eli.e2e@empresa.com')
     const ctx = await celular(e)
     const p = await ctx.newPage()
+    onTestFailed(() => avisarSiCongelada(p))
     await p.goto(`${e.web}/m/${sala.mesas[0].codigo}`)
-    await p.getByLabel('Tu nombre').fill('Dani Gómez', { timeout: 60_000 })
+    // Un nombre largo sin espacios no ensancha la bienvenida (QA-P-04).
+    await p.getByLabel('Tu nombre').fill(`Dani${'a'.repeat(76)}`, { timeout: 60_000 })
     await p.getByLabel('Tu correo').fill('dani.e2e@empresa.com')
     await p.getByRole('checkbox').check()
     await p.getByRole('button', { name: 'Inscribirme' }).click()
+    await titulo(p, /^Tu perfil es /)
+    await sinDesborde(p)
     await p.getByRole('button', { name: 'Leer el caso' }).click()
     await p.getByRole('button', { name: 'Calificar proyectos' }).click()
+    // El botón atrás del celular vuelve al caso y no sale de la app (QA-P-02).
+    await titulo(p, 'Ronda 1: califica los 2 proyectos')
+    await p.goBack()
+    await titulo(p, 'El caso y tu hoja')
+    await p.goForward()
+    await titulo(p, 'Ronda 1: califica los 2 proyectos')
     for (const nombre of ['INSUMEX', 'NUTRIWHAT']) {
       await p.getByRole('button', { name: `Calificar ${nombre}` }).click()
       await calificar(p, 5)
       await p.getByRole('button', { name: 'Guardar calificación' }).click()
     }
-    await titulo(p, 'Resultados en vivo de la sala').catch(async (err) => {
+    await titulo(p, 'Resultado parcial de la sala').catch(async (err) => {
       console.log(await p.locator('body').innerText())
       throw err
     })
@@ -301,18 +341,19 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     // INSUMEX suma 3 votos en la sala (2 de la mesa 2 y el propio): tabla con los promedios del servidor y tu calificación, sin Total.
     // NUTRIWHAT tiene 1: no se muestra.
     await revisarTabla(p, sala.mesas[0].codigo)
-    await ver(p, 'Hace falta al menos 3 votos para mostrar este proyecto.')
+    await ver(p, 'Hacen falta al menos 3 votos para mostrar este proyecto.')
     await sinDesborde(p)
     await ctx.close()
   }, 120_000)
 
   it('modo guiado (C19-5, P1): ve solo la pregunta del facilitador, envía al completar el proyecto y corrige', async () => {
-    const sala = await crearSala(e, 'Guiado e2e T2')
+    const sala = await crearSala(e, 'Guiado e2e celular')
     // La pregunta guiada se borra con cada cambio de estado o de modo: primero el modo y la ronda, después la pregunta.
     await configurar(e, sala.id, { modo_preguntas: 'guiado' })
     await accion(e, sala.id, 'abrir_ronda_1')
     const ctx = await celular(e)
     const p = await ctx.newPage()
+    onTestFailed(() => avisarSiCongelada(p))
     const errores: string[] = []
     p.on('pageerror', (err) => errores.push(err.message))
     const codigo = sala.mesas[0].codigo

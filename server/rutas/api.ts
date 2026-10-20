@@ -16,6 +16,7 @@ import {
   logout,
   DURACION_SESION_MS,
 } from '../dominio/admins.js'
+import { canjearAcceso, darAcceso } from '../dominio/accesos.js'
 import { LimitadorPeticiones } from '../dominio/mantenimiento.js'
 import { aplicarAccion, cambiarConfig, fijarPreguntaGuiada } from '../dominio/estados.js'
 import {
@@ -32,10 +33,10 @@ import {
 } from '../dominio/gestion.js'
 import { autenticarParticipante, hojasDeSala, infoMesa, inscribir, resultadosParticipante, vistaYo, votar } from '../dominio/participantes.js'
 import { construirTablero, rondaCerrada } from '../dominio/resultados.js'
-import { type CambioRubrica, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
-import { type MesaFila, agregarMesas, cargarSala, crearSalaDesdePlantilla, duplicarSala } from '../dominio/salas.js'
+import { type CambioRubrica, borrarRubricaPlantilla, editarRubrica, rubricasSala } from '../dominio/rubricas.js'
+import { type MesaFila, agregarMesas, buscarSala, cargarSala, crearSalaDesdePlantilla, duplicarSala, tokenTableroValido } from '../dominio/salas.js'
 import type { Reloj } from '../dominio/util.js'
-import { isoEnZona, sha256 } from '../dominio/util.js'
+import { isoEnZona, tokenAleatorio } from '../dominio/util.js'
 import { uno } from '../db/index.js'
 
 export interface OpcionesApi {
@@ -52,6 +53,9 @@ export interface OpcionesApi {
 
 const COOKIE = 'hz_admin'
 
+/** Contra qué comparar el `?t=` cuando la sala no existe: la respuesta y el trabajo son los mismos que con una sala real. */
+const SALA_FICTICIA = { token_tablero: tokenAleatorio() }
+
 declare module 'fastify' {
   interface FastifyRequest {
     admin?: AdminFila
@@ -62,39 +66,64 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   const { db, ahora } = op
 
   // Chequeo perezoso: los cierres programados vencidos se aplican antes de responder cualquier petición.
+  // El healthcheck no: debe ser barato y responder 503 propio si la BD falla.
   app.addHook('onRequest', async (req) => {
-    if (req.url.startsWith('/api/')) op.revisarCierres()
+    if (req.url.startsWith('/api/') && req.routeOptions.url !== '/api/health') op.revisarCierres()
   })
 
-  // Límite por IP en las rutas de escritura abiertas. Todos los celulares del taller salen por la IP del wifi:
-  // los topes cubren una sala de 300 personas inscribiéndose en el mismo minuto (probado con `npm run simular -- --personas 200`).
+  // Límites de peticiones. Todos los celulares del taller salen por la IP del wifi, así que un tope por IP nunca rechaza
+  // una petición válida (M-3): la inscripción tiene un cupo holgado por IP (una sala de 300 personas inscribiéndose en el
+  // mismo minuto, probado con `npm run simular -- --personas 200`); la consulta de mesa, el canje del acceso y el login
+  // solo cuentan los fallos, y el voto se limita por participante.
+  // La clave es la ruta registrada (`req.routeOptions.url`), no la URL cruda: `/api/admin/%6Cogin` o `/api/admin/login?x`
+  // llegan a la misma ruta y cuentan en el mismo cupo (S-3).
   // Ojo en pruebas: la ventana usa el reloj inyectado; con el reloj fijo no se reinicia.
+  const demasiadas = (mensaje = 'Hay demasiados intentos desde esta red. Espera un minuto e intenta de nuevo.') =>
+    new ErrorApi(429, 'DEMASIADAS_PETICIONES', mensaje)
   const limites: Record<string, LimitadorPeticiones> = {
     'POST /api/inscripcion': new LimitadorPeticiones(600, 60_000),
-    'PUT /api/votos': new LimitadorPeticiones(2000, 60_000),
-    'POST /api/admin/login': new LimitadorPeticiones(20, 60_000),
   }
+  // Fastify crea un HEAD por cada GET con el mismo manejador: HEAD cuenta como GET y gasta el mismo cupo (M-1a).
+  const metodoDeCupo = (req: FastifyRequest) => (req.method === 'HEAD' ? 'GET' : req.method)
   app.addHook('onRequest', async (req) => {
-    const clave = `${req.method} ${req.url.split('?')[0]}`
+    const clave = `${metodoDeCupo(req)} ${req.routeOptions.url ?? ''}`
     const l = limites[clave]
-    if (l && !l.permitir(`${req.ip}|${clave}`, ahora())) {
-      throw new ErrorApi(429, 'DEMASIADAS_PETICIONES', 'Hay demasiados intentos desde esta red. Espera un minuto e intenta de nuevo.')
-    }
+    if (l && !l.permitir(`${req.ip}|${clave}`, ahora())) throw demasiadas()
   })
+
+  /**
+   * Cuenta por IP solo las respuestas fallidas (`estados`) y, pasado el tope, las cambia por 429. Una petición válida
+   * siempre responde: el tope frena a quien recorre códigos o enlaces sin dejar al salón sin entrar (M-3).
+   */
+  const contandoFallos = <T>(l: LimitadorPeticiones, req: FastifyRequest, estados: number[], fn: () => T): T => {
+    try {
+      return fn()
+    } catch (err) {
+      if (err instanceof ErrorApi && estados.includes(err.status) && !l.permitir(req.ip, ahora())) throw demasiadas()
+      throw err
+    }
+  }
+  // Cada celular consulta su mesa al abrir el QR; el tope frena a quien recorre códigos para adivinar mesas (S-5).
+  const fallosMesa = new LimitadorPeticiones(600, 60_000)
+  // El enlace de acceso trae 24 bytes al azar: el tope es una defensa más, no la única.
+  const fallosAcceso = new LimitadorPeticiones(60, 60_000)
+  // Login: los fallos se cuentan por IP y usuario, así nadie en el wifi del taller bloquea al facilitador (M-3).
+  const fallosLogin = new LimitadorPeticiones(20, 60_000)
 
   // --- Participante -------------------------------------------------------------------
 
-  app.get<{ Params: { codigo: string } }>('/api/mesas/:codigo', async (req) => infoMesa(db, req.params.codigo))
+  app.get<{ Params: { codigo: string } }>('/api/mesas/:codigo', async (req) => contandoFallos(fallosMesa, req, [404], () => infoMesa(db, req.params.codigo)))
 
-  app.post<{ Body: Record<string, never> }>('/api/inscripcion', async (req, reply) => {
-    const r = inscribir(db, (req.body ?? {}) as never, { ip: req.ip, userAgent: req.headers['user-agent'] }, ahora())
-    if (r.nuevo) return reply.code(201).send({ token: r.token, participante: r.participante })
-    return reply.code(409).send({
-      error: { codigo: 'CORREO_YA_INSCRITO', mensaje: 'Ese correo ya estaba inscrito en esta sala. Recuperamos tu sesión.' },
-      token: r.token,
-      participante: r.participante,
-    })
-  })
+  // Un correo ya inscrito responde 409 CORREO_YA_INSCRITO sin token ni datos (D1): la sesión la devuelve el facilitador.
+  app.post<{ Body: Record<string, never> }>('/api/inscripcion', async (req, reply) =>
+    reply.code(201).send(inscribir(db, (req.body ?? {}) as never, { ip: req.ip, userAgent: req.headers['user-agent'] }, ahora())),
+  )
+
+  // Canje del enlace de «Dar acceso de nuevo»: misma forma que la inscripción exitosa.
+  // Cuentan los enlaces inválidos, vencidos o de una sala cerrada (404, 410 y 409).
+  app.post<{ Body: { acceso?: unknown } }>('/api/acceso', async (req) =>
+    contandoFallos(fallosAcceso, req, [404, 409, 410], () => canjearAcceso(db, req.body?.acceso, ahora())),
+  )
 
   const participante = (req: FastifyRequest) => autenticarParticipante(db, req.headers['x-participante-token'] as string | undefined)
 
@@ -106,7 +135,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     return responderConVersion(req, reply, vistaYo(db, p))
   })
 
-  // Además del tope por IP, uno por participante: un celular con un bucle de reintentos no se come el cupo del wifi.
+  // Sin tope por IP (M-3): el de por participante basta y un celular con un bucle de reintentos no frena al resto del salón.
   const votosPorParticipante = new LimitadorPeticiones(120, 60_000)
   app.put('/api/votos', async (req) => {
     const p = participante(req)
@@ -128,12 +157,17 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   // --- Tablero --------------------------------------------------------------------------
 
   app.get<{ Params: { salaId: string }; Querystring: { alcance?: string; mesa?: string; t?: string } }>('/api/tablero/:salaId', async (req, reply) => {
-    const sala = cargarSala(db, req.params.salaId)
     const sesion = adminDeSesion(db, req.cookies[COOKIE], ahora())
     const esAdmin = Boolean(sesion && !sesion.debe_cambiar_clave)
-    if (!esAdmin && (!req.query.t || sha256(req.query.t) !== sala.token_tablero_hash)) {
+    // Sin sesión admin ni token válido responde siempre el mismo 401, exista o no la sala: el 404 permitía saber qué
+    // salas existen (M-1b). La comparación corre igual con una sala inexistente, para no delatarla por el tiempo.
+    const existente = buscarSala(db, req.params.salaId)
+    // `?t=a&t=b` llega como arreglo: no es un token (antes terminaba en 500, S-9).
+    const tokenOk = typeof req.query.t === 'string' && tokenTableroValido(existente ?? SALA_FICTICIA, req.query.t) && Boolean(existente)
+    if (!esAdmin && !tokenOk) {
       throw new ErrorApi(401, 'TOKEN_TABLERO_INVALIDO', 'El enlace del tablero no es válido. Pide el enlace actualizado al facilitador.')
     }
+    const sala = existente ?? cargarSala(db, req.params.salaId)
     let alcance: { tipo: 'sala' } | { tipo: 'mesa'; mesa: MesaFila } = { tipo: 'sala' }
     if (req.query.alcance === 'mesa' || (req.query.mesa && req.query.alcance !== 'sala')) {
       const clave = String(req.query.mesa ?? '')
@@ -159,7 +193,18 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     reply.setCookie(COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure: req.protocol === 'https', maxAge: DURACION_SESION_MS / 1000 })
 
   app.post<{ Body: { usuario?: unknown; clave?: unknown } }>('/api/admin/login', async (req, reply) => {
-    const { token, admin } = login(db, req.body?.usuario, req.body?.clave, ahora())
+    const usuario = typeof req.body?.usuario === 'string' ? req.body.usuario.trim().toLowerCase().slice(0, 100) : ''
+    const claveFallos = `${req.ip}|${usuario}`
+    // Con el cupo de fallos gastado se rechaza también la clave correcta: si no, el tope no frenaría a quien la adivina.
+    if (fallosLogin.agotado(claveFallos, ahora())) throw demasiadas('Hay demasiados intentos fallidos con este usuario. Espera un minuto e intenta de nuevo.')
+    let sesion: ReturnType<typeof login>
+    try {
+      sesion = login(db, req.body?.usuario, req.body?.clave, ahora())
+    } catch (err) {
+      if (err instanceof ErrorApi && err.status === 401) fallosLogin.permitir(claveFallos, ahora())
+      throw err
+    }
+    const { token, admin } = sesion
     ponerCookie(req, reply, token)
     return { ok: true, admin: adminPublico(admin) }
   })
@@ -190,15 +235,15 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   })
 
   app.post<{ Body: { actual?: unknown; nueva?: unknown } }>('/api/admin/cambiar-clave', async (req) => {
-    cambiarClave(db, req.admin!, req.body?.actual, req.body?.nueva)
+    cambiarClave(db, req.admin!, req.body?.actual, req.body?.nueva, req.cookies[COOKIE])
     return { ok: true }
   })
 
   app.get('/api/admin/salas', async () => ({ salas: listarSalas(db) }))
 
-  app.post<{ Body: { nombre?: string; plantilla?: string; mesas?: number } }>('/api/admin/salas', async (req, reply) => {
+  app.post<{ Body: { nombre?: unknown; plantilla?: unknown; mesas?: unknown } }>('/api/admin/salas', async (req, reply) => {
     const b = req.body ?? {}
-    const sala = crearSalaDesdePlantilla(db, { nombre: b.nombre ?? '', plantilla: b.plantilla ?? 'foodsume_2026', mesas: b.mesas ?? 1 }, ahora(), por(req))
+    const sala = crearSalaDesdePlantilla(db, { nombre: b.nombre, plantilla: b.plantilla ?? 'foodsume_2026', mesas: b.mesas ?? 1 }, ahora(), por(req))
     return reply.code(201).send({ ...salaResumen(sala, op.baseUrl), mesas: mesasAdmin(db, sala, op.baseUrl) })
   })
 
@@ -230,7 +275,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     const sala = cargarSala(db, req.params.id)
     const accion = String(req.body?.accion ?? '')
     // Respaldo antes de que la sala reciba datos (arranque) y antes de borrar votos (reinicio de ronda).
-    // Solo si la acción aplica en el estado actual: un clic repetido que termina en 409 no gasta la rotación de 30 respaldos.
+    // Solo si la acción aplica en el estado actual: un clic repetido que termina en 409 no gasta la rotación de respaldos de la sala.
     if ((accion === 'abrir_inscripcion' || accion === 'abrir_ronda_1') && sala.estado === 'preparada') op.respaldar?.(sala.id, 'inicio')
     if (accion === 'reiniciar_ronda' && sala.estado !== 'cerrada' && sala.ronda_actual >= 1) op.respaldar?.(sala.id, 'antes_reinicio')
     const s = aplicarAccion(db, sala.id, accion, ahora(), por(req), { ronda: req.body?.ronda })
@@ -248,6 +293,11 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   app.put<{ Params: { id: string; criterio: string }; Body: CambioRubrica }>('/api/admin/salas/:id/rubricas/:criterio', async (req) =>
     editarRubrica(db, req.params.id, req.params.criterio, req.body ?? {}, ahora(), por(req)),
+  )
+
+  // Quita la rúbrica guardada para las salas nuevas: vuelven a la de la semilla en ese criterio (idempotente).
+  app.delete<{ Params: { criterio: string }; Querystring: { plantilla?: unknown } }>('/api/admin/rubricas-plantilla/:criterio', async (req) =>
+    borrarRubricaPlantilla(db, req.params.criterio, req.query.plantilla),
   )
 
   // Solo lectura: el facilitador lee las 6 hojas de cada proyecto vivo, aunque la sala aún no las revele.
@@ -276,6 +326,9 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   app.patch<{ Params: { id: string } }>('/api/admin/participantes/:id', async (req) =>
     editarParticipante(db, req.params.id, (req.body ?? {}) as never, ahora(), por(req)),
   )
+
+  // «Dar acceso de nuevo» (D1): enlace personal de un solo uso que vence a los 15 min. La URL no se vuelve a mostrar.
+  app.post<{ Params: { id: string } }>('/api/admin/participantes/:id/acceso', async (req) => darAcceso(db, req.params.id, op.baseUrl, ahora(), por(req)))
 
   app.get('/api/admin/admins', async (req) => {
     exigirSuperadmin(req.admin!)

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, api } from '../api'
+import { useConfirmar } from '../componentes/Confirmar'
+import { usePendiente } from '../componentes/Pendientes'
 import type { RubricasSala } from '../tipos'
 
 /** Criterio que se abre por defecto: el de los rangos de inversión, el que más puede cambiar. */
@@ -21,6 +23,7 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
   const [paraNuevas, setParaNuevas] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState<Aviso>(null)
+  const [dialogo, confirmar] = useConfirmar()
 
   const cargar = useCallback(async () => {
     try {
@@ -38,6 +41,35 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
   const texto = (valor: number, original: string) => borrador?.[valor] ?? original
   const cambiado = Boolean(borrador && criterio?.rubrica.some((r) => texto(r.valor, r.texto) !== r.texto))
   const editable = Boolean(datos?.editable)
+  // QA-A-14: con cambios sin guardar, salir de la sección o del panel pregunta antes de descartarlos.
+  usePendiente(cambiado && criterio ? `Tienes cambios sin guardar en la rúbrica de ${criterio.nombre}. Si sales, se pierden.` : null)
+
+  /**
+   * Quita la rúbrica guardada con «Usar también en las salas nuevas» (DELETE /api/admin/rubricas-plantilla/{criterio}):
+   * las salas nuevas vuelven a la original en ese criterio. Esta sala y las existentes no cambian. Idempotente.
+   */
+  const quitarDeNuevas = async () => {
+    if (!criterio) return
+    const ok = await confirmar(
+      `¿Quitar la rúbrica de ${criterio.nombre} de las salas nuevas?`,
+      'Las salas que crees después usarán la rúbrica original de la plantilla en este criterio. Esta sala y las que ya existen no cambian.',
+      'Sí, quitar',
+      { tono: 'primario' },
+    )
+    if (!ok) return
+    setAviso(null)
+    try {
+      const r = await api.delete<{ borrada?: boolean }>(`/api/admin/rubricas-plantilla/${encodeURIComponent(criterio.id)}`)
+      setAviso({
+        tono: 'exito',
+        texto: r?.borrada
+          ? `Las salas nuevas vuelven a usar la rúbrica original de ${criterio.nombre}.`
+          : `Las salas nuevas ya usaban la rúbrica original de ${criterio.nombre}.`,
+      })
+    } catch (e) {
+      setAviso({ tono: 'error', texto: e instanceof Error ? e.message : 'No se pudo quitar la rúbrica de las salas nuevas.' })
+    }
+  }
 
   const descartar = () => {
     setBorrador(null)
@@ -72,6 +104,7 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
 
   return (
     <section className="panel" aria-labelledby="t-rubricas" aria-busy={!datos && !errorCarga}>
+      {dialogo}
       <h2 id="t-rubricas">Rúbricas</h2>
       <p className="pista">
         Lo que ve cada participante al calificar. Cambias solo los textos: los valores 1, 3, 5, 7 y 9 y el cálculo quedan igual. Se pueden editar hasta el primer voto.
@@ -99,10 +132,18 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
               <span>Criterio</span>
               <select
                 value={criterio.id}
-                disabled={cambiado}
                 aria-describedby={cambiado ? 'rubricas-pendiente' : undefined}
-                onChange={(e) => {
-                  setCriterioId(e.target.value)
+                onChange={async (e) => {
+                  const nuevo = e.target.value
+                  // QA-A-14: cambiar de criterio con cambios pendientes pregunta antes de descartarlos.
+                  if (
+                    cambiado &&
+                    !(await confirmar('¿Descartar los cambios?', `Tienes cambios sin guardar en la rúbrica de ${criterio.nombre}. Si cambias de criterio, se pierden.`, 'Descartar y cambiar', {
+                      cancelar: 'Seguir editando',
+                    }))
+                  )
+                    return
+                  setCriterioId(nuevo)
                   descartar()
                 }}
               >
@@ -115,7 +156,7 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
             </label>
             {cambiado && (
               <p id="rubricas-pendiente" className="pista">
-                Guarda o descarta los cambios para pasar a otro criterio.
+                Tienes cambios sin guardar. Guárdalos antes de cambiar de criterio o de sección.
               </p>
             )}
             <p className="rubrica-pregunta">{criterio.pregunta}</p>
@@ -166,6 +207,15 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
               <button className="hz-boton hz-boton--secundario" type="button" disabled={!borrador || guardando} onClick={descartar}>
                 Descartar cambios
               </button>
+            </div>
+            {/* Funciona aunque esta sala ya tenga votos: no la toca, solo cambia lo que reciben las salas nuevas. */}
+            <div className="acciones rubricas-nuevas">
+              <button className="hz-boton hz-boton--secundario" type="button" aria-describedby="ayuda-quitar-nuevas" onClick={() => void quitarDeNuevas()}>
+                Quitar de las salas nuevas
+              </button>
+              <p id="ayuda-quitar-nuevas" className="pista">
+                Si guardaste esta rúbrica para las salas nuevas y ya no la quieres, las próximas salas vuelven a la original.
+              </p>
             </div>
           </>
         )

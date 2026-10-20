@@ -6,26 +6,34 @@ import { useConfirmar } from '../componentes/Confirmar'
 import { ConSala } from './EncabezadoSala'
 import { ComoVoto } from '../../tablero'
 import type { CriterioId } from '../../shared/api/contrato'
+import { descripcionCriterio } from '../../shared/criterios'
 import type { Accion, PreguntaGuiada, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
 import {
   ACCIONES,
-  ACCIONES_POR_ESTADO,
   CONFIRMACIONES,
   CRITERIOS,
-  ORDEN_ACCIONES,
+  ES_DESTRUCTIVA,
   ORDEN_PREGUNTAS,
+  PASO_SIGUIENTE,
   PROYECTOS_VIVOS,
+  QUE_PASA,
+  ZONAS,
+  accionesParaCorregir,
+  bitacora,
+  confirmacionCierreRonda,
   decimal,
   enEsteServidor,
   faltan,
-  nombreProyecto,
-  programaciones,
   fechaHora,
   estadoMesa,
+  nombreProyecto,
+  numeroPregunta,
+  programaciones,
   rondaAbierta,
   rutaApiTablero,
-  textoEvento,
   urlTableroSala,
+  urlVistaPrevia,
+  conModo,
   zonaSala,
 } from '../textos'
 
@@ -39,17 +47,71 @@ function useAhora() {
   return ahora
 }
 
+/**
+ * Orden de la vista (QA-A-05): primero las cifras y el control (el paso que sigue queda arriba aunque se abra un
+ * resultado), luego la pregunta guiada y el resultado preliminar, y después «Ver en vivo», el único lugar con los
+ * accesos al tablero y a la vista previa del celular (QA-A-03).
+ */
 export function SalaEnVivo() {
   const { salaId } = useParams()
   const { datos, error, refrescar } = useSala(salaId)
+  const [verResultado, setVerResultado] = useState<string | null>(null)
+
+  return (
+    <ConSala titulo="Sala en vivo" datos={datos} error={error}>
+      {(d) => (
+        <>
+          <Cifras d={d} />
+          <Control d={d} salaId={d.sala.id} refrescar={refrescar} verResultado={verResultado} setVerResultado={setVerResultado} />
+          {d.sala.config.modo_preguntas === 'guiado' && <PreguntaEnPantalla d={d} refrescar={refrescar} />}
+          {verResultado && rondaAbierta(d.sala.estado) && (
+            <ResultadoPreliminar key={verResultado} d={d} mesaId={verResultado === 'sala' ? undefined : verResultado} ronda={rondaAbierta(d.sala.estado)!} />
+          )}
+          <VerEnVivo d={d} refrescar={refrescar} />
+          {d.sala.ronda_actual ? <ComoVotoSala d={d} /> : null}
+          <Mesas d={d} />
+          <Eventos d={d} />
+        </>
+      )}
+    </ConSala>
+  )
+}
+
+/** Personas activas que aún no completan la ronda abierta, y cuántas hay inscritas. */
+function avance(d: SalaDetalle) {
+  const inscritos = d.mesas.reduce((s, m) => s + m.inscritos, 0)
+  const completos = d.mesas.reduce((s, m) => s + m.completos, 0)
+  return { inscritos, completos, pendientes: Math.max(0, inscritos - completos) }
+}
+
+interface PropsControl {
+  d: SalaDetalle
+  salaId: string
+  refrescar: () => Promise<void>
+  verResultado: string | null
+  setVerResultado: (v: string | null) => void
+}
+
+/**
+ * Control de la sala (QA-A-01 y QA-A-05): un solo botón principal, el paso que sigue, con una línea de qué pasa.
+ * Debajo, aparte, solo las acciones posibles para corregir; las que borran o cierran van en rojo y piden confirmación.
+ * Las acciones que no aplican en el estado actual no se muestran.
+ */
+function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsControl) {
   const [errorAccion, setErrorAccion] = useState<string | null>(null)
   const [enCurso, setEnCurso] = useState<Accion | null>(null)
   const [dialogo, confirmar] = useConfirmar()
-  const siguiente = datos && siguientePaso(datos.sala.estado)
+  const estado = d.sala.estado
+  const siguiente = PASO_SIGUIENTE[estado]
+  const corregir = accionesParaCorregir(estado)
+  const ronda = rondaAbierta(estado)
 
   const ejecutar = async (accion: Accion) => {
-    const c = CONFIRMACIONES[accion]
-    if (c && !(await confirmar(c.titulo, c.texto, c.boton))) return
+    const { pendientes, inscritos } = avance(d)
+    const c = accion === 'cerrar_ronda_1' || accion === 'cerrar_ronda_2' ? confirmacionCierreRonda(ronda ?? 1, pendientes, inscritos) : CONFIRMACIONES[accion]
+    // Cerrar la sala al final del taller es el paso normal: se confirma, pero no se presenta como algo que borra.
+    const tono = ES_DESTRUCTIVA[accion] && accion !== siguiente ? 'destructivo' : 'primario'
+    if (c && !(await confirmar(c.titulo, c.texto, c.boton, { tono }))) return
     setErrorAccion(null)
     setEnCurso(accion)
     try {
@@ -62,106 +124,73 @@ export function SalaEnVivo() {
     }
   }
 
-  return (
-    <ConSala titulo="Sala en vivo" datos={datos} error={error}>
-      {(d) => (
-        <>
-          {dialogo}
-          <Cifras d={d} />
-          <VerEnVivo d={d} />
-          <Precierre d={d} />
-          <section className="panel" aria-labelledby="t-control">
-            <h2 id="t-control">Control de la sala</h2>
-            <p className="pista" id="pista-acciones">
-              Solo se activan las acciones posibles en el estado actual.
-            </p>
-            <div className="acciones">
-              {ORDEN_ACCIONES.map((a) => {
-                const valida = ACCIONES_POR_ESTADO[d.sala.estado].includes(a)
-                // Una sola acción principal: el siguiente paso del taller. Las que borran o cierran van en rojo.
-                const variante = CONFIRMACIONES[a] ? 'destructivo' : a === siguiente ? 'primario' : 'secundario'
-                return (
-                  <button
-                    key={a}
-                    className={`hz-boton hz-boton--${variante}`}
-                    disabled={!valida || enCurso !== null}
-                    aria-describedby="pista-acciones"
-                    aria-busy={enCurso === a}
-                    onClick={() => ejecutar(a)}
-                  >
-                    {enCurso === a ? 'Aplicando…' : ACCIONES[a]}
-                  </button>
-                )
-              })}
-            </div>
-            {errorAccion && (
-              <p className="alerta alerta--error" role="alert">
-                {errorAccion}
-              </p>
-            )}
-            <Programado d={d} />
-          </section>
-          {d.sala.config.modo_preguntas === 'guiado' && <PreguntaEnPantalla d={d} refrescar={refrescar} />}
-          {d.sala.ronda_actual ? <ComoVotoSala d={d} /> : null}
-          <Mesas d={d} />
-          <Eventos d={d} />
-        </>
-      )}
-    </ConSala>
+  const boton = (a: Accion, clase: string) => (
+    <button
+      key={a}
+      type="button"
+      className={`hz-boton ${clase}`}
+      disabled={enCurso !== null}
+      aria-busy={enCurso === a}
+      aria-describedby={`que-pasa-${a}`}
+      onClick={() => void ejecutar(a)}
+    >
+      {enCurso === a ? 'Aplicando…' : ACCIONES[a]}
+    </button>
   )
-}
 
-/**
- * Accesos directos para ver la sala en vivo: el tablero de toda la sala (el que se proyecta), el de cada mesa y lo
- * que ve un participante. Se abren en otra pestaña del mismo servidor y se actualizan solos.
- */
-function VerEnVivo({ d }: { d: SalaDetalle }) {
-  const [mesaId, setMesaId] = useState(d.mesas[0]?.id ?? '')
-  const mesa = d.mesas.find((m) => m.id === mesaId) ?? d.mesas[0]
-  const tableroSala = enEsteServidor(urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero))
   return (
-    <section className="panel" aria-labelledby="t-en-vivo">
-      <h2 id="t-en-vivo">Ver en vivo</h2>
-      <p className="pista">Se abre en otra pestaña y se actualiza sola. Lleva el tablero de la sala al proyector; el de cada mesa y la vista del participante sirven para seguir el avance.</p>
-      <div className="acciones">
-        {tableroSala && (
-          <a className="hz-boton hz-boton--secundario" href={tableroSala} target="_blank" rel="noreferrer">
-            Tablero de toda la sala
-          </a>
+    <section className="panel" aria-labelledby="t-control">
+      {dialogo}
+      <h2 id="t-control">Control de la sala</h2>
+      <AvisoPrecierre d={d} ver={verResultado} setVer={setVerResultado} />
+      <div className="paso-siguiente">
+        <p className="paso-siguiente__rotulo">Paso que sigue</p>
+        {siguiente ? (
+          <>
+            {boton(siguiente, 'hz-boton--primario')}
+            <p id={`que-pasa-${siguiente}`} className="pista">
+              {QUE_PASA[siguiente]}
+            </p>
+          </>
+        ) : (
+          <>
+            <Link className="hz-boton hz-boton--primario" to={`/admin/salas/${d.sala.id}/export`}>
+              Descargar los datos
+            </Link>
+            <p className="pista">El taller terminó. En Exportar están los inscritos y los votos.</p>
+          </>
         )}
       </div>
-      {mesa && (
-        <div className="acciones">
-          <label htmlFor="ver-mesa">Mesa</label>
-          <select id="ver-mesa" value={mesa.id} onChange={(e) => setMesaId(e.target.value)}>
-            {d.mesas.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nombre} · {m.codigo}
-              </option>
+      {errorAccion && (
+        <p className="alerta alerta--error" role="alert">
+          {errorAccion}
+        </p>
+      )}
+      {corregir.length > 0 && (
+        <div className="corregir" role="group" aria-labelledby="t-corregir">
+          <h3 id="t-corregir">Corregir</h3>
+          <p className="pista">Para deshacer un paso o terminar antes de tiempo. Lo que borra o cierra pide confirmación.</p>
+          <ul className="corregir__lista">
+            {corregir.map((a) => (
+              <li key={a}>
+                {boton(a, ES_DESTRUCTIVA[a] ? 'hz-boton--peligro' : 'hz-boton--secundario')}
+                <span id={`que-pasa-${a}`} className="pista">
+                  {QUE_PASA[a]}
+                </span>
+              </li>
             ))}
-          </select>
-          <a className="hz-boton hz-boton--secundario" href={enEsteServidor(mesa.url_tablero) ?? undefined} target="_blank" rel="noreferrer">
-            Tablero de {mesa.nombre}
-          </a>
-          <a className="hz-boton hz-boton--secundario" href={enEsteServidor(mesa.url_participante) ?? undefined} target="_blank" rel="noreferrer">
-            Ver como participante
-          </a>
+          </ul>
         </div>
       )}
+      <Programado d={d} />
     </section>
   )
-}
-
-/** El paso que sigue en el taller: la primera acción posible que no pide confirmación. */
-function siguientePaso(estado: SalaDetalle['sala']['estado']) {
-  return ORDEN_ACCIONES.find((a) => ACCIONES_POR_ESTADO[estado].includes(a) && !CONFIRMACIONES[a])
 }
 
 /** Cifras de la sala arriba de la vista: ronda, inscritos, avance de la ronda y mesas. */
 function Cifras({ d }: { d: SalaDetalle }) {
   const ronda = rondaAbierta(d.sala.estado)
-  const inscritos = d.mesas.reduce((s, m) => s + m.inscritos, 0)
-  const completos = d.mesas.reduce((s, m) => s + m.completos, 0)
+  const { inscritos, completos } = avance(d)
   const cifras = [
     { rotulo: ronda || !d.sala.ronda_actual ? 'Ronda en curso' : 'Última ronda', valor: ronda ?? (d.sala.ronda_actual || 'Ninguna') },
     { rotulo: 'Inscritos', valor: inscritos },
@@ -180,16 +209,16 @@ function Cifras({ d }: { d: SalaDetalle }) {
   )
 }
 
-/** Aperturas y cierres programados con cuenta regresiva, y los atajos a la proyección y la configuración. */
+/** Aperturas y cierres programados con cuenta regresiva, en la hora de la sala (QA-A-17: dice cuál es). */
 function Programado({ d }: { d: SalaDetalle }) {
   const ahora = useAhora()
   const programados = programaciones(d.sala.config)
-  const tablero = enEsteServidor(urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero))
   const zona = zonaSala(d.sala.config)
 
   return (
-    <>
+    <div className="programado-bloque">
       <h3>Programado</h3>
+      {programados.length > 0 && <p className="pista">Horas de {ZONAS[zona].nombre}.</p>}
       <ul className="pista programado" aria-label="Programado">
         {programados.length === 0 ? (
           <li>Sin aperturas ni cierres programados.</li>
@@ -207,20 +236,8 @@ function Programado({ d }: { d: SalaDetalle }) {
           ))
         )}
       </ul>
-      <div className="acciones">
-        {tablero && (
-          <a className="hz-boton hz-boton--secundario" href={tablero} target="_blank" rel="noreferrer">
-            Abrir tablero de la sala
-          </a>
-        )}
-        <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${d.sala.id}/configuracion`}>
-          Cambiar configuración
-        </Link>
-        <Link className="hz-boton hz-boton--secundario" to={`/admin/salas/${d.sala.id}/mesas`}>
-          Mesas y QR
-        </Link>
-      </div>
-    </>
+      <Link to={`/admin/salas/${d.sala.id}/configuracion`}>Cambiar la programación en Configuración</Link>
+    </div>
   )
 }
 
@@ -229,7 +246,8 @@ const mismaPregunta = (a: PreguntaGuiada, b: PreguntaGuiada) => a.proyecto_id ==
 
 /**
  * Modo guiado (C19-5): todos los celulares muestran la pregunta que elige el admin. Anterior y Siguiente recorren
- * los proyectos vivos y, en cada uno, los 6 criterios; la lista salta a cualquiera.
+ * los proyectos vivos y, en cada uno, los 6 criterios; la lista salta a cualquiera. QA-A-07: «Quitar la pregunta»
+ * vuelve a mostrar la matriz en el tablero. QA-A-08: la numeración es la del tablero, «Pregunta N de 6» por proyecto.
  */
 function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<void> }) {
   const ronda = rondaAbierta(d.sala.estado)
@@ -242,7 +260,7 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
     if (actual) setElegida(actual)
   }, [actual?.proyecto_id, actual?.criterio_id])
 
-  const mostrar = async (p: PreguntaGuiada) => {
+  const mostrar = async (p: PreguntaGuiada | null) => {
     setEnviando(true)
     setError(null)
     try {
@@ -259,14 +277,14 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
     <section className="panel" aria-labelledby="t-guiada">
       <h2 id="t-guiada">Pregunta en pantalla</h2>
       {!ronda ? (
-        <p className="pista">Modo guiado. Al abrir una ronda, aquí eliges qué pregunta ven todos los celulares.</p>
+        <p className="pista">Modo guiado. Al abrir una ronda, aquí eliges qué pregunta ven todos los celulares y el tablero.</p>
       ) : (
         <>
           <div className="pregunta-actual" role="status">
             {actual ? (
               <>
                 <p className="pista">
-                  Pregunta {indice + 1} de {ORDEN_PREGUNTAS.length} · ronda {ronda}
+                  {numeroPregunta(actual).texto} · {nombreProyecto(actual.proyecto_id)} · ronda {ronda}
                 </p>
                 <p className="pregunta-actual__titulo">
                   {nombreProyecto(actual.proyecto_id)} · {nombreCriterio(actual.criterio_id)}
@@ -274,7 +292,7 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
                 <p>{CRITERIOS.find((c) => c.id === actual.criterio_id)?.pregunta}</p>
               </>
             ) : (
-              <p>Aún no hay pregunta en pantalla. Los celulares esperan la primera. Usa Siguiente para empezar.</p>
+              <p>Sin pregunta en pantalla: el tablero muestra la matriz y los celulares esperan. Usa Siguiente para empezar.</p>
             )}
           </div>
           <div className="acciones">
@@ -289,7 +307,13 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
             >
               Siguiente
             </button>
+            <button className="hz-boton hz-boton--secundario" type="button" disabled={enviando || !actual} onClick={() => void mostrar(null)} aria-describedby="quitar-pregunta">
+              Quitar la pregunta
+            </button>
           </div>
+          <p id="quitar-pregunta" className="pista">
+            Quitar la pregunta vuelve a mostrar la matriz en el tablero. Los votos no cambian.
+          </p>
           <div className="fila-form">
             <label className="campo">
               <span>Proyecto</span>
@@ -326,43 +350,45 @@ function PreguntaEnPantalla({ d, refrescar }: { d: SalaDetalle; refrescar: () =>
   )
 }
 
-function Precierre({ d }: { d: SalaDetalle }) {
+/** Aviso de precierre dentro del control: quién terminó y los botones para ver el resultado preliminar. */
+function AvisoPrecierre({ d, ver, setVer }: { d: SalaDetalle; ver: string | null; setVer: (v: string | null) => void }) {
   const ronda = rondaAbierta(d.sala.estado)
-  const [ver, setVer] = useState<string | null>(null)
   if (!ronda) return null
   const conInscritos = d.mesas.filter((m) => m.inscritos > 0)
   const enPrecierre = conInscritos.filter((m) => m.precierre)
   if (enPrecierre.length === 0) return null
   const salaCompleta = enPrecierre.length === conInscritos.length
+  const alternar = (v: string) => setVer(ver === v ? null : v)
 
-  // El resultado va fuera del aviso: más ancho en el celular y el lector de pantalla no lo repite en cada actualización.
   return (
-    <>
-      <section className="alerta alerta--exito" role="status" aria-labelledby="t-precierre">
-        <strong id="t-precierre">
-          {salaCompleta
-            ? `Todos votaron en la sala. Puedes cerrar la ronda ${ronda}.`
-            : `Todos votaron en ${enPrecierre.map((m) => m.nombre).join(', ')}. Puedes cerrar la ronda ${ronda} cuando las demás mesas terminen.`}
-        </strong>
-        <p>La ronda sigue abierta: los votos se pueden editar hasta que la cierres. El resultado se muestra como preliminar.</p>
-        <div className="acciones">
-          {salaCompleta && (
-            <button className="hz-boton hz-boton--secundario hz-boton--chico" aria-expanded={ver === 'sala'} onClick={() => setVer(ver === 'sala' ? null : 'sala')}>
-              Ver resultado preliminar de la sala
-            </button>
-          )}
-          {enPrecierre.map((m) => (
-            <button key={m.id} className="hz-boton hz-boton--secundario hz-boton--chico" aria-expanded={ver === m.id} onClick={() => setVer(ver === m.id ? null : m.id)}>
-              Ver resultado de {m.nombre}
-            </button>
-          ))}
-        </div>
-      </section>
-      {ver && <ResultadoPreliminar d={d} mesaId={ver === 'sala' ? undefined : ver} ronda={ronda} />}
-    </>
+    <section className="alerta alerta--exito" role="status" aria-labelledby="t-precierre">
+      <strong id="t-precierre">
+        {salaCompleta
+          ? `Todos votaron en la sala. Puedes cerrar la ronda ${ronda}.`
+          : `Todos votaron en ${enPrecierre.map((m) => m.nombre).join(', ')}. Puedes cerrar la ronda ${ronda} cuando las demás mesas terminen.`}
+      </strong>
+      {/* D2: el resultado en vivo es una foto que se renueva de 3 en 3 votos; al cerrar la ronda queda el exacto. */}
+      <p>La ronda sigue abierta y los votos se pueden editar hasta que la cierres. El resultado preliminar se renueva cada 3 votos nuevos; al cerrar la ronda queda el exacto.</p>
+      <div className="acciones">
+        {salaCompleta && (
+          <button type="button" className="hz-boton hz-boton--secundario hz-boton--chico" aria-expanded={ver === 'sala'} onClick={() => alternar('sala')}>
+            Ver resultado preliminar de la sala
+          </button>
+        )}
+        {enPrecierre.map((m) => (
+          <button key={m.id} type="button" className="hz-boton hz-boton--secundario hz-boton--chico" aria-expanded={ver === m.id} onClick={() => alternar(m.id)}>
+            Ver resultado de {m.nombre}
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }
 
+/**
+ * Resultado preliminar de la sala o de una mesa. F-8: mientras llega la lectura nueva se conserva la anterior (no
+ * parpadea) y una respuesta vieja que llega tarde no pisa a la nueva.
+ */
 function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: string; ronda: number }) {
   const [t, setT] = useState<TableroResumen | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -371,26 +397,40 @@ function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: st
 
   useEffect(() => {
     if (!urlTablero) return
-    setT(null)
-    setError(null)
+    let vigente = true
     consultar<TableroResumen>(rutaApiTablero(d.sala.id, urlTablero, mesaId))
-      .then((r) => r && setT(r.datos))
-      .catch((e: Error) => setError(e.message))
+      .then((r) => {
+        if (!vigente || !r) return
+        setT(r.datos)
+        setError(null)
+      })
+      .catch((e: Error) => vigente && setError(e.message))
+    return () => {
+      vigente = false
+    }
   }, [d.sala.id, d.version, urlTablero, mesaId])
 
-  if (error) return <p className="alerta alerta--error">No pudimos cargar el resultado preliminar. {error}</p>
-  if (!t) return <p role="status">Cargando resultado…</p>
+  const titulo = `Resultado preliminar · ${mesaId ? mesa?.nombre : 'toda la sala'} · ronda ${ronda}`
+  if (!t) {
+    return (
+      <section className="panel" aria-label={titulo}>
+        {error ? <p className="alerta alerta--error">No pudimos cargar el resultado preliminar. {error}</p> : <p role="status">Cargando resultado…</p>}
+      </section>
+    )
+  }
   const rondas = ronda === 2 ? [1, 2] : [1]
   const minimo = t.minimo_votos ?? 3
   const bajoMinimo = t.proyectos_vivos.some((p) => p.rondas.some((r) => rondas.includes(r.ronda) && r.bajo_minimo))
   return (
-    <div className="panel">
-      <h3>
-        Resultado preliminar · {mesaId ? mesa?.nombre : 'toda la sala'} · ronda {ronda}
-      </h3>
+    <section className="panel" aria-labelledby="t-preliminar">
+      <h2 id="t-preliminar" className="titulo-3">
+        {titulo}
+      </h2>
+      <p className="pista">Se renueva cada 3 votos nuevos. Para verlo en la matriz, usa Ver en vivo.</p>
+      {error && <p className="alerta alerta--aviso">No pudimos actualizarlo. Mostramos la última lectura. {error}</p>}
       {bajoMinimo && (
         <p className="alerta alerta--info">
-          Hace falta al menos {minimo} votos para mostrar {mesaId ? 'esta mesa' : 'estos resultados'}.
+          Hacen falta al menos {minimo} votos para mostrar {mesaId ? 'esta mesa' : 'estos resultados'}.
         </p>
       )}
       <div className="rejilla">
@@ -398,12 +438,7 @@ function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: st
           <TablaResultado key={p.id} proyecto={p} criterios={t.criterios} rondas={rondas} />
         ))}
       </div>
-      {urlTablero && (
-        <a href={enEsteServidor(urlTablero) ?? undefined} target="_blank" rel="noreferrer">
-          Abrir la matriz en el tablero
-        </a>
-      )}
-    </div>
+    </section>
   )
 }
 
@@ -433,7 +468,10 @@ function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResu
         <tbody>
           {criterios.map((c) => (
             <tr key={c.id}>
-              <th scope="row">{c.nombre}</th>
+              <th scope="row" abbr={c.nombre}>
+                {c.nombre}
+                {descripcionCriterio(c.id) && <span className="tabla-criterio__desc">{descripcionCriterio(c.id)}</span>}
+              </th>
               {porRonda.map((r, i) => (
                 <td key={rondas[i]} className="num">
                   {valor(r, r?.promedios?.[c.id])}
@@ -444,6 +482,110 @@ function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResu
         </tbody>
       </table>
     </div>
+  )
+}
+
+/**
+ * QA-A-03: el único lugar con los accesos para ver la sala en vivo, cada uno con un solo nombre: «Tablero de la sala»
+ * (el del proyector), «Tablero de Mesa N» y «Vista previa del celular». QA-A-04: la vista previa abre el celular en
+ * modo de solo lectura (`?vista=previa`) y avisa que no hay que inscribirse ahí.
+ */
+function VerEnVivo({ d, refrescar }: { d: SalaDetalle; refrescar: () => Promise<unknown> | void }) {
+  const [mesaId, setMesaId] = useState(d.mesas[0]?.id ?? '')
+  const [dialogo, confirmar] = useConfirmar()
+  const [cambiando, setCambiando] = useState(false)
+  const [avisoEnlace, setAvisoEnlace] = useState<{ ok: boolean; texto: string } | null>(null)
+  // B-2: si un enlace del tablero se compartió o se vio en un ensayo, uno nuevo deja sin acceso a los anteriores.
+  const cambiarEnlace = async () => {
+    const ok = await confirmar(
+      'Cambiar el enlace del tablero',
+      'Los enlaces del tablero que ya se abrieron o compartieron, de la sala y de cada mesa, dejan de funcionar. Tendrás que abrir el tablero de nuevo desde aquí.',
+      'Cambiar el enlace',
+      { tono: 'primario' },
+    )
+    if (!ok) return
+    setCambiando(true)
+    setAvisoEnlace(null)
+    try {
+      await api.post(`/api/admin/salas/${d.sala.id}/acciones`, { accion: 'regenerar_token_tablero' })
+      await refrescar()
+      setAvisoEnlace({ ok: true, texto: 'Listo: el tablero tiene un enlace nuevo y los anteriores ya no funcionan.' })
+    } catch (e) {
+      setAvisoEnlace({ ok: false, texto: `No pudimos cambiar el enlace. ${e instanceof Error ? e.message : ''}`.trim() })
+    } finally {
+      setCambiando(false)
+    }
+  }
+  const mesa = d.mesas.find((m) => m.id === mesaId) ?? d.mesas[0]
+  const tableroSala = enEsteServidor(urlTableroSala(d.sala.url_tablero, d.mesas[0]?.url_tablero))
+  return (
+    <section className="panel" aria-labelledby="t-en-vivo">
+      <h2 id="t-en-vivo">Ver en vivo</h2>
+      <p className="pista">Cada enlace se abre en otra pestaña y se actualiza solo.</p>
+      <ul className="en-vivo">
+        {tableroSala && (
+          <li>
+            <p className="en-vivo__titulo">Tablero de la sala</p>
+            <div className="acciones">
+              <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'vivo') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
+                En vivo, solo la gráfica
+              </a>
+              <a className="hz-boton hz-boton--secundario" href={conModo(tableroSala, 'tabla') ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-sala">
+                Con tabla
+              </a>
+            </div>
+            <p id="ayuda-tablero-sala" className="pista">
+              El que se proyecta, con la matriz de toda la sala. Elige el modo según el evento: en vivo muestra solo la matriz moviéndose; con tabla suma el progreso y los promedios. En el
+              tablero, F pone pantalla completa, V y T cambian de modo y 1, 2 y C cambian entre ronda 1, ronda 2 y comparación.
+            </p>
+          </li>
+        )}
+        {mesa && (
+          <li>
+            <div className="en-vivo__mesa">
+              <label className="campo-linea" htmlFor="ver-mesa">
+                Mesa
+              </label>
+              <select id="ver-mesa" value={mesa.id} onChange={(e) => setMesaId(e.target.value)}>
+                {d.mesas.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre} · {m.codigo}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="acciones">
+              <a className="hz-boton hz-boton--secundario" href={enEsteServidor(mesa.url_tablero) ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-tablero-mesa">
+                Tablero de {mesa.nombre}
+              </a>
+              <a className="hz-boton hz-boton--secundario" href={urlVistaPrevia(mesa.url_participante) ?? undefined} target="_blank" rel="noreferrer" aria-describedby="ayuda-vista-previa">
+                Vista previa del celular
+              </a>
+            </div>
+            <p id="ayuda-tablero-mesa" className="pista">
+              El tablero de una mesa sirve para seguir su avance o proyectarla sola.
+            </p>
+            <p id="ayuda-vista-previa" className="pista">
+              La vista previa muestra la entrada a {mesa.nombre} tal como la ve un participante, solo para mirar: no inscribe a nadie ni cuenta en el avance.
+            </p>
+          </li>
+        )}
+      </ul>
+      <div className="en-vivo__enlace">
+        <button type="button" className="hz-boton hz-boton--secundario" disabled={cambiando} aria-busy={cambiando} aria-describedby="ayuda-cambiar-enlace" onClick={() => void cambiarEnlace()}>
+          Cambiar el enlace del tablero
+        </button>
+        <p id="ayuda-cambiar-enlace" className="pista">
+          Si el enlace del tablero se compartió o se vio en un ensayo, crea uno nuevo: los anteriores dejan de funcionar.
+        </p>
+        {avisoEnlace && (
+          <p className={avisoEnlace.ok ? 'alerta alerta--exito' : 'alerta alerta--error'} role={avisoEnlace.ok ? 'status' : 'alert'}>
+            {avisoEnlace.texto}
+          </p>
+        )}
+      </div>
+      {dialogo}
+    </section>
   )
 }
 
@@ -508,6 +650,7 @@ function EtiquetaMesa({ estado, mesa }: { estado: SalaDetalle['sala']['estado'];
   return <span className={tono ? `etiqueta etiqueta--${tono}` : 'etiqueta'}>{texto}</span>
 }
 
+/** Avance por mesa. Sin enlaces: los tableros están en «Ver en vivo» (QA-A-03 y QA-A-25). */
 function Mesas({ d }: { d: SalaDetalle }) {
   return (
     <section className="panel" aria-labelledby="t-mesas">
@@ -526,7 +669,6 @@ function Mesas({ d }: { d: SalaDetalle }) {
                 </th>
                 <th scope="col">Completaron</th>
                 <th scope="col">Estado</th>
-                <th scope="col">Enlaces</th>
               </tr>
             </thead>
             <tbody>
@@ -534,7 +676,9 @@ function Mesas({ d }: { d: SalaDetalle }) {
                 <tr key={m.id}>
                   <th scope="row">{m.nombre}</th>
                   <td data-label="Código">{m.codigo}</td>
-                  <td className="num" data-label="Inscritos">{m.inscritos}</td>
+                  <td className="num" data-label="Inscritos">
+                    {m.inscritos}
+                  </td>
                   <td data-label="Completaron">
                     <span>
                       {m.completos} de {m.inscritos}
@@ -546,16 +690,6 @@ function Mesas({ d }: { d: SalaDetalle }) {
                   <td data-label="Estado">
                     <EtiquetaMesa estado={d.sala.estado} mesa={m} />
                   </td>
-                  <td data-label="Enlaces">
-                    <span className="enlaces">
-                      <a href={enEsteServidor(m.url_tablero) ?? undefined} target="_blank" rel="noreferrer">
-                        Tablero de {m.nombre}
-                      </a>
-                      <a href={enEsteServidor(m.url_participante) ?? undefined} target="_blank" rel="noreferrer">
-                        Vista participante
-                      </a>
-                    </span>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -566,20 +700,39 @@ function Mesas({ d }: { d: SalaDetalle }) {
   )
 }
 
+const PRIMEROS_EVENTOS = 15
+
+/** QA-A-15: bitácora legible, lo más reciente arriba, sin repeticiones; muestra 15 y deja ver el resto. */
 function Eventos({ d }: { d: SalaDetalle }) {
+  const [todos, setTodos] = useState(false)
+  const lineas = bitacora(d.eventos, { mesas: d.mesas, participantes: d.participantes })
+  const visibles = todos ? lineas : lineas.slice(0, PRIMEROS_EVENTOS)
+  const zona = zonaSala(d.sala.config)
   return (
     <section className="panel" aria-labelledby="t-eventos">
       <h2 id="t-eventos">Bitácora de la sala</h2>
-      {d.eventos.length === 0 ? (
+      {lineas.length === 0 ? (
         <p className="vacio">Aún no hay eventos.</p>
       ) : (
-        <ol className="eventos">
-          {d.eventos.slice(0, 20).map((ev, i) => (
-            <li key={i}>
-              <time dateTime={ev.at}>{fechaHora(ev.at, zonaSala(d.sala.config))}</time> · {textoEvento(ev)}
-            </li>
-          ))}
-        </ol>
+        <>
+          <p className="pista">Lo más reciente arriba. Horas de {ZONAS[zona].nombre}.</p>
+          <ul className="eventos" aria-label="Eventos de la sala">
+            {visibles.map((l, i) => (
+              <li key={`${l.at}-${i}`}>
+                <time dateTime={l.at}>{fechaHora(l.at, zona)}</time>
+                <span>
+                  {l.texto}
+                  {l.veces > 1 && <span className="eventos__veces"> · {l.veces} veces</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {lineas.length > PRIMEROS_EVENTOS && (
+            <button type="button" className="hz-boton hz-boton--secundario" aria-expanded={todos} onClick={() => setTodos((v) => !v)}>
+              {todos ? 'Ver menos' : `Ver los ${lineas.length} eventos`}
+            </button>
+          )}
+        </>
       )}
     </section>
   )
