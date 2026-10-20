@@ -32,7 +32,11 @@
 .hz-admin h3 { font-size: var(--hz-fs-16); font-weight: var(--hz-fw-etiqueta); }
 .hz-admin p { margin: 0 0 var(--hz-sp-3); }
 .hz-admin :where(a:not(.hz-boton)) { color: var(--hz-accion); text-underline-offset: 3px; }
-.hz-admin code { font-size: var(--hz-fs-14); }
+.hz-admin code { font-size: var(--hz-fs-14); font-family: inherit; }
+/* QA-A-12: los <button> no heredan la fuente; sin esto salen en Arial junto a enlaces en Montserrat (marca §4). */
+.hz-admin button { font-family: inherit; }
+/* QA-A-31: las URL en Montserrat, partidas donde haga falta */
+.hz-admin .url { overflow-wrap: anywhere; font-weight: var(--hz-fw-etiqueta); }
 
 /* Foco (§5): contorno de 2 px en el color de foco del tema, separado 2 px */
 .hz-admin :focus-visible {
@@ -112,10 +116,16 @@
 }
 @media (min-width: 1440px) {
   .hz-admin .nav { order: 2; flex: 1; flex-basis: auto; }
-  .hz-admin .usuario { order: 3; margin-left: 0; }
+  .hz-admin .usuario { order: 3; margin-left: auto; }
 }
 
-.hz-admin .contenido { padding: var(--hz-sp-6) var(--hz-sp-4) var(--hz-sp-12); max-width: 1280px; margin: 0 auto; }
+/* Ancho de página común de la familia Estratek (20-oct): .hz-pagina (--hz-ancho-pagina, 1280 px) en la fila de la barra,
+   el contenido y el pie, así los tres comparten bordes. Aquí solo el aire vertical. */
+.hz-admin .marco { min-height: 100vh; display: flex; flex-direction: column; }
+.hz-admin .contenido { flex: 1; padding-block: var(--hz-sp-6) var(--hz-sp-12); }
+.hz-admin .pie { padding-block: 0 var(--hz-sp-6); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin .pie p { margin: 0; padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-borde); }
+.hz-admin .pie__flecha { color: var(--hz-accion); font-weight: var(--hz-fw-display); }
 .hz-admin .contenido > * { min-width: 0; }
 
 /* ── Encabezado de sección ───────────────────────────── */
@@ -186,7 +196,7 @@
   background: var(--hz-deshabilitado-fondo); color: var(--hz-deshabilitado-texto); border-color: var(--hz-deshabilitado-borde);
   cursor: not-allowed; transform: none; text-decoration: none;
 }
-.hz-admin .hz-boton--chico { min-height: 40px; padding: 0 var(--hz-sp-4); font-size: var(--hz-fs-14); }
+.hz-admin .hz-boton--chico { min-height: var(--hz-tactil); padding: 0 var(--hz-sp-4); font-size: var(--hz-fs-14); }
 
 /* ── Formularios (§6: etiqueta encima en 14/700, campos de radio 12) ── */
 .hz-admin .campo { display: flex; flex-direction: column; gap: var(--hz-sp-1); margin-bottom: var(--hz-sp-3); flex: 1; min-width: min(200px, 100%); }
@@ -210,7 +220,7 @@
 .hz-admin textarea:focus-visible { border-color: var(--hz-accion); }
 .hz-admin textarea { width: 100%; resize: vertical; line-height: 1.4; field-sizing: content; min-height: 4.5em; }
 .hz-admin .campo-linea { display: flex; align-items: center; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
-.hz-admin select.chico { min-height: 40px; font-size: var(--hz-fs-14); padding: var(--hz-sp-1) var(--hz-sp-2); }
+.hz-admin select.chico { min-height: var(--hz-tactil); font-size: var(--hz-fs-14); padding: var(--hz-sp-1) var(--hz-sp-2); }
 .hz-admin .fila-form { display: flex; flex-wrap: wrap; gap: 0 var(--hz-sp-4); align-items: flex-end; }
 .hz-admin .fila-form .hz-boton { margin-bottom: var(--hz-sp-3); }
 .hz-admin fieldset { border: 1px solid var(--hz-borde); border-radius: var(--hz-r-campo); padding: var(--hz-sp-3) var(--hz-sp-4); margin: 0 0 var(--hz-sp-4); background: var(--hz-fondo); }
@@ -283,7 +293,10 @@
 .hz-admin tbody th { font-weight: var(--hz-fw-etiqueta); }
 .hz-admin tr.inactivo td,
 .hz-admin tr.inactivo th { color: var(--hz-tinta-3); text-decoration: line-through; }
-.hz-admin .enlaces { display: flex; flex-wrap: wrap; gap: var(--hz-sp-1) var(--hz-sp-3); }
+.hz-admin .acciones--fila { margin: 0; flex-wrap: wrap; }
+/* QA-A-32: la nota al pie de una tabla no queda pegada a su borde */
+.hz-admin .tabla-envoltura + .pista,
+.hz-admin .nota-tabla { margin-top: var(--hz-sp-4); }
 .hz-admin .num { text-align: right; }
 .hz-admin caption { text-align: left; caption-side: top; padding: var(--hz-sp-3); font-size: var(--hz-fs-14); }
 
@@ -304,8 +317,16 @@
 
 /* ── Sala en vivo ────────────────────────────────────── */
 .hz-admin .programado { margin: 0 0 var(--hz-sp-4); padding-left: var(--hz-sp-5); }
-.hz-admin .eventos { padding-left: var(--hz-sp-5); margin: 0; font-size: var(--hz-fs-14); color: var(--hz-tinta-2); font-variant-numeric: tabular-nums; }
-.hz-admin .eventos li + li { margin-top: var(--hz-sp-1); }
+.hz-admin .programado-bloque { margin-top: var(--hz-sp-6); padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-borde); }
+/* QA-A-15: bitácora en dos columnas (hora y hecho), sin numerar; lo más reciente arriba */
+.hz-admin .eventos { list-style: none; padding: 0; margin: 0 0 var(--hz-sp-4); font-size: var(--hz-fs-14); color: var(--hz-tinta); }
+.hz-admin .eventos li { display: grid; grid-template-columns: minmax(9.5rem, max-content) minmax(0, 1fr); gap: var(--hz-sp-1) var(--hz-sp-4); padding: var(--hz-sp-2) 0; border-bottom: 1px solid var(--hz-borde); }
+.hz-admin .eventos li:last-child { border-bottom: 0; }
+.hz-admin .eventos time { color: var(--hz-tinta-2); font-variant-numeric: tabular-nums; }
+.hz-admin .eventos__veces { color: var(--hz-tinta-2); font-weight: var(--hz-fw-etiqueta); }
+@media (max-width: 480px) {
+  .hz-admin .eventos li { grid-template-columns: minmax(0, 1fr); }
+}
 .hz-admin .barra { height: 6px; margin-top: var(--hz-sp-1); background: var(--hz-superficie-3); border-radius: var(--hz-r-pill); overflow: hidden; min-width: 80px; }
 .hz-admin .barra > span { display: block; height: 100%; background: var(--hz-grad-marca); }
 
@@ -362,6 +383,8 @@
   padding: var(--hz-sp-6);
   max-width: 440px;
   width: calc(100% - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
   color: var(--hz-tinta);
   background: var(--hz-fondo);
   box-shadow: var(--hz-sombra);
@@ -370,7 +393,7 @@
 
 /* ── Login y cambio de clave: barra de producto y una caja ── */
 .hz-admin .login { min-height: 100vh; display: flex; flex-direction: column; background: var(--hz-superficie-1); }
-.hz-admin .login__cuerpo { flex: 1; display: grid; place-items: center; padding: var(--hz-sp-8) var(--hz-sp-4); }
+.hz-admin .login__cuerpo { flex: 1; display: grid; place-items: center; padding-block: var(--hz-sp-8); }
 .hz-admin .login__caja { width: 100%; max-width: 400px; margin: 0; background: var(--hz-fondo); }
 .hz-admin .login__caja h1 { font-size: var(--hz-fs-24); }
 
@@ -395,7 +418,8 @@
 @media (min-width: 641px) {
   .hz-admin .tabla-respuestas th,
   .hz-admin .tabla-respuestas td { padding: var(--hz-sp-2); }
-  .hz-admin .tabla-respuestas thead th.num { max-width: 9ch; white-space: normal; hyphens: auto; }
+  /* QA-A-28: los encabezados se parten entre palabras, nunca en sílabas */
+  .hz-admin .tabla-respuestas thead th.num { min-width: 10ch; white-space: normal; hyphens: manual; overflow-wrap: normal; }
   .hz-admin .tabla-respuestas tbody th { min-width: 14ch; }
   .hz-admin .tabla-respuestas .td-corto { white-space: nowrap; }
 }
@@ -421,14 +445,15 @@
   .hz-admin .tabla-tarjetas td .barra { display: none; }
   .hz-admin .tabla-tarjetas td.td-largo { display: block; text-align: left; }
   .hz-admin .tabla-tarjetas td.td-largo::before { display: block; max-width: none; }
-  .hz-admin .tabla-tarjetas td .enlaces { flex-direction: column; align-items: flex-end; gap: var(--hz-sp-1); }
-  .hz-admin .nav {
-    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
-    /* El borde derecho se desvanece: avisa que el menú sigue hacia el lado */
-    -webkit-mask-image: linear-gradient(to right, #000 82%, transparent);
-    mask-image: linear-gradient(to right, #000 82%, transparent);
-    padding-right: var(--hz-sp-10);
-  }
+  .hz-admin .tabla-tarjetas td .acciones--fila { justify-content: flex-end; }
+  /* QA-A-28: en Respuestas los 6 criterios van de a tres por fila (rótulo encima del número), no uno por fila */
+  .hz-admin .tabla-respuestas td.crit { display: inline-flex; flex-direction: column; align-items: flex-start; width: 33.33%; text-align: left; gap: 0; }
+  .hz-admin .tabla-respuestas td.crit::before { max-width: none; }
+  /* QA-A-23: en el celular el menú se abre con «Menú · sección actual»; abierto, cada sección es una fila de 48 px. */
+  .hz-admin .menu-boton { display: inline-flex; order: 3; flex-basis: 100%; justify-content: flex-start; }
+  .hz-admin .nav { display: none; order: 4; flex-direction: column; gap: 0; }
+  .hz-admin .nav--abierto { display: flex; }
+  .hz-admin .nav__item { min-height: var(--hz-tactil); font-size: var(--hz-fs-16); }
   /* Rúbricas: el rótulo «Nivel 9» ya dice el valor; el círculo le quitaría ancho al texto */
   .hz-admin .rubrica-nivel { grid-template-columns: minmax(0, 1fr); }
   .hz-admin .rubrica-valor { display: none; }
@@ -445,6 +470,9 @@
   .hz-admin .encabezado-sala,
   .hz-admin .cabecera,
   .hz-admin .aviso-mock,
+  .hz-admin .pie,
+  .hz-admin .aviso-dominio,
+  .hz-admin .alerta,
   .hz-admin .no-imprimir { display: none !important; }
   .hz-admin .contenido { padding: 0; max-width: none; }
   .hz-admin .qr-lista { grid-template-columns: 1fr 1fr; gap: 0; }
@@ -459,5 +487,58 @@
     justify-content: center;
   }
   .hz-admin .qr-tarjeta img { width: 85mm; height: 85mm; }
+  .hz-admin .qr-tarjeta__cta { font-size: 16pt; }
   @page { size: A4; margin: 6mm; }
 }
+
+/* ── Control de la sala (QA-A-01 y QA-A-05): el paso que sigue arriba; lo que corrige, aparte ── */
+.hz-admin .paso-siguiente { display: grid; justify-items: start; gap: var(--hz-sp-2); padding: var(--hz-sp-4); margin-bottom: var(--hz-sp-4); border: 1px solid var(--hz-borde); border-left: 4px solid var(--hz-accion); border-radius: var(--hz-r-campo); background: var(--hz-fondo); }
+.hz-admin .paso-siguiente__rotulo { margin: 0; font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin .paso-siguiente .pista { margin: 0; max-width: 70ch; }
+.hz-admin .corregir { margin-top: var(--hz-sp-6); padding-top: var(--hz-sp-4); border-top: 1px solid var(--hz-borde); }
+.hz-admin .corregir__lista { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--hz-sp-3); }
+.hz-admin .corregir__lista li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-1) var(--hz-sp-3); }
+.hz-admin .corregir__lista .pista { margin: 0; flex: 1 1 18rem; }
+/* Destructivo en contorno rojo: se distingue del paso que sigue sin competir con él (marca §6, rojo solo para lo que borra o cierra) */
+.hz-admin .hz-boton--peligro { background: transparent; color: var(--hz-error); border-color: var(--hz-error); }
+.hz-admin .hz-boton--peligro:hover { background: var(--hz-error-fondo); }
+.hz-admin .titulo-3 { font-size: var(--hz-fs-18); }
+
+/* ── Ver en vivo (QA-A-03): un solo lugar, cada acceso con su explicación ── */
+.hz-admin .en-vivo { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--hz-sp-4); }
+.hz-admin .en-vivo > li { display: grid; justify-items: start; gap: var(--hz-sp-2); }
+.hz-admin .en-vivo .pista { margin: 0; max-width: 70ch; }
+.hz-admin .en-vivo .acciones { margin: 0; }
+.hz-admin .en-vivo__mesa { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2); }
+
+/* Menú del celular: el botón solo existe bajo 641 px */
+@media (min-width: 641px) {
+  .hz-admin .menu-boton { display: none; }
+}
+
+/* Mesas y QR: llamada a la acción en cada tarjeta (también en la hoja impresa) */
+.hz-admin .qr-tarjeta__cta { font-weight: var(--hz-fw-titulo); font-size: var(--hz-fs-18); margin-bottom: var(--hz-sp-1); }
+.hz-admin .seccion-final { margin-top: var(--hz-sp-6); }
+
+/* Avisos junto al control que los produjo (QA-A-13) */
+.hz-admin .aviso-campo { margin: var(--hz-sp-2) 0 0; }
+.hz-admin .error-campo { color: var(--hz-error); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); }
+.hz-admin .semaforo { margin-bottom: var(--hz-sp-6); }
+.hz-admin .dialogo__texto p { max-width: 60ch; }
+
+/* D1: acceso de nuevo, con el QR grande sobre papel blanco */
+.hz-admin dialog.dialogo-acceso { max-width: 560px; }
+.hz-admin .acceso-qr { display: grid; place-items: center; min-height: 200px; padding: var(--hz-sp-3); margin-bottom: var(--hz-sp-3); border-radius: var(--hz-r-campo); background: var(--et-blanco); color: var(--et-carbon); }
+.hz-admin .acceso-qr img { width: min(320px, 70vw); height: auto; aspect-ratio: 1; display: block; }
+.hz-admin .acceso-enlace { padding: var(--hz-sp-2) var(--hz-sp-3); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-campo); background: var(--hz-superficie-1); }
+.hz-admin .acceso-vence { font-size: var(--hz-fs-14); }
+
+/* Las franjas de aviso van de borde a borde y su texto arranca en el borde del contenido. */
+.hz-admin .aviso-mock,
+.hz-admin .aviso-dominio { padding-inline: max(var(--hz-margen-pagina), calc((100% - var(--hz-ancho-pagina)) / 2 + var(--hz-margen-pagina))); }
+
+/* Pulcritud (20-oct): los nombres de las filas no se parten en dos líneas en escritorio; las URL de las tarjetas de QR en 14 px. */
+@media (min-width: 641px) {
+  .hz-admin .tabla-tarjetas tbody th { min-width: 12ch; }
+}
+.hz-admin .qr-tarjeta .url { font-size: var(--hz-fs-14); }

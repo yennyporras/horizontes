@@ -1,26 +1,39 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useSesion } from '../sesion'
 import { EncabezadoProducto } from '../../shared/ui'
+import { PiePanel } from '../Marco'
+import { useTituloPagina } from './EncabezadoSala'
 
+/**
+ * Cambio de clave. En el primer ingreso es obligatorio (la clave actual es la temporal); QA-A-22: después, cualquier
+ * admin entra aquí desde «Cambiar mi clave» y puede volver sin cambiarla.
+ */
 export function CambiarClave() {
-  const { refrescar } = useSesion()
+  const { admin, refrescar } = useSesion()
   const navegar = useNavigate()
+  const obligatorio = Boolean(admin?.debe_cambiar_clave)
   const [actual, setActual] = useState('')
   const [nueva, setNueva] = useState('')
   const [repetir, setRepetir] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [enviando, setEnviando] = useState(false)
+  useTituloPagina('Cambiar mi clave')
 
   const enviar = async (e: FormEvent) => {
     e.preventDefault()
     if (nueva !== repetir) return setError('Las dos claves nuevas no coinciden.')
+    setError(null)
+    setEnviando(true)
     try {
       await api.post('/api/admin/cambiar-clave', { actual, nueva })
       await refrescar()
-      navegar('/admin/salas', { replace: true })
+      navegar('/admin/salas', { replace: true, state: { claveCambiada: true } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cambiar la clave.')
+    } finally {
+      setEnviando(false)
     }
   }
 
@@ -29,12 +42,12 @@ export function CambiarClave() {
       <div data-tema="carbon">
         <EncabezadoProducto href="/" />
       </div>
-      <main className="login__cuerpo">
+      <main className="login__cuerpo hz-pagina">
         <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-clave">
-          <h1 id="titulo-clave">Cambia tu clave</h1>
-          <p>Es tu primer ingreso. Elige una clave propia de al menos 10 caracteres.</p>
+          <h1 id="titulo-clave">{obligatorio ? 'Cambia tu clave' : 'Cambiar mi clave'}</h1>
+          <p>{obligatorio ? 'Es tu primer ingreso. Elige una clave propia de al menos 10 caracteres.' : 'Escribe tu clave actual y elige una nueva de al menos 10 caracteres.'}</p>
           <label className="campo">
-            <span>Clave temporal</span>
+            <span>{obligatorio ? 'Clave temporal' : 'Clave actual'}</span>
             <input type="password" autoComplete="current-password" required value={actual} onChange={(e) => setActual(e.target.value)} />
           </label>
           <label className="campo">
@@ -50,11 +63,17 @@ export function CambiarClave() {
               {error}
             </p>
           )}
-          <button className="hz-boton hz-boton--primario hz-boton--bloque" type="submit">
-            Guardar clave
+          <button className="hz-boton hz-boton--primario hz-boton--bloque" type="submit" disabled={enviando} aria-busy={enviando}>
+            {enviando ? 'Guardando…' : 'Guardar clave'}
           </button>
+          {!obligatorio && (
+            <Link className="hz-boton hz-boton--secundario hz-boton--bloque" to="/admin/salas">
+              Volver sin cambiarla
+            </Link>
+          )}
         </form>
       </main>
+      <PiePanel />
     </div>
   )
 }
