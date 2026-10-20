@@ -288,8 +288,8 @@ describe('panel admin contra la API real', () => {
     const resp = (v: number) => ({ alistamiento_tecnico: v, conocimiento_cliente: v, regulacion: v, capacidades_organizacionales: v, alineacion_core: v, inversion_requerida: v })
     // Con 2 votos por proyecto la sala está bajo el mínimo: aviso, sin barras.
     for (const [i, v] of [1, 9].entries()) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[i], p, 1, resp(v))).statusCode).toBe(200)
-    // El texto viene del componente del tablero; la concordancia («Hacen falta», F-12) la corrige esa área.
-    expect(await screen.findByText(/^Hacen? falta al menos 3 votos para mostrar estos resultados en la ronda 1\.$/, {}, { timeout: 5000 })).toBeTruthy()
+    // El texto viene del componente del tablero, con la concordancia de F-12.
+    expect(await screen.findByText(/^Hacen falta al menos 3 votos para mostrar estos resultados en la ronda 1\.$/, {}, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryAllByRole('img', { name: /ronda 1:/ })).toHaveLength(0)
     for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[2], p, 1, resp(9))).statusCode).toBe(200)
     const barra = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })

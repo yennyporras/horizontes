@@ -2,6 +2,36 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versiones con [SemVer](https://semver.org/lang/es/).
 
+## [1.2.0] · 2026-10-20
+
+Auditoría de calidad y seguridad del 20-oct, pedidos de Nicolai para el proyector y pedidos de Paola sobre la marca y el panel.
+
+### Agregado
+- Tablero con dos modos de proyección, a elegir por evento: **En vivo** (solo la matriz moviéndose a toda la pantalla) y **Con tabla** (matriz, progreso y promedios). Se eligen en el encabezado, con las teclas V y T o desde «Ver en vivo» en el panel (`?modo=vivo|tabla`).
+- Pantalla completa del modo elegido, sin controles (botón o tecla F). Reemplaza el zoom por porcentaje.
+- Descripción corta de cada criterio (100 caracteres como máximo) en las tablas del tablero, del celular y del panel.
+- Logo de Horizontes (el sol sobre la línea del horizonte) y favicon. La marca lleva al inicio; en el panel y en el tablero del facilitador, a Salas.
+- Recorrido guiado para administradores: qué se hace en cada sección y qué esperar. Se abre solo la primera vez y después con el botón «Recorrido».
+- «Dar acceso de nuevo» en Participantes: enlace personal de un solo uso que vence en 15 minutos, con QR y enlace para copiar.
+- Vista previa del celular desde el panel, solo para mirar (no inscribe ni vota).
+- Ancho de página común de 1280 px: encabezado, contenido y pie alineados en la landing, el celular y el panel.
+- Servidor: compresión gzip y brotli, caché de un año para los archivos con hash, healthcheck que consulta la base y respaldos por sala.
+
+### Cambiado
+- Resultados en vivo como fotos que se renuevan cada 3 votos nuevos; al cerrar la ronda queda el exacto. Así nadie deduce un voto individual comparando dos actualizaciones.
+- Se acaba la recuperación de la sesión con solo el correo: la da el facilitador con «Dar acceso de nuevo».
+- Panel: un solo botón principal con el paso que sigue, «Corregir» aparte, confirmaciones con el foco en Cancelar, bitácora legible y «Ver en vivo» como único lugar con los accesos a tableros y vista previa.
+- Códigos de mesa con un sufijo al azar, más difíciles de adivinar.
+- Cada área de la app se descarga aparte: el celular ya no baja el código del panel ni del tablero.
+
+### Corregido
+- Más de 60 hallazgos de la QA del celular, el tablero y el panel, y de la auditoría del servidor y del frontend. Entre ellos: votos del modo guiado que no se reintentaban, sesión vencida del panel que no llevaba al login, doble clic que creaba mesas dos veces, fechas mal formadas que cerraban la ronda, límite de peticiones que se evitaba codificando la URL y errores 500 con datos inválidos.
+- Concordancia «Hacen falta al menos 3 votos» en todas las vistas.
+- El simulador del panel y sus datos de ejemplo ya no se publican en producción.
+
+### Seguridad
+- `@fastify/static` 10 por los avisos de `npm audit`. Cambiar la clave cierra las demás sesiones del admin. El token del tablero se guarda solo como hash.
+
 ## [1.1.0] · 2026-10-19
 
 Cambios pedidos por Paola tras la prueba en staging y acordados en la preentrega del 19-oct con Sebastian y Nicolai.
@@ -40,5 +70,6 @@ Primera versión para producción.
 ### Cambiado
 - Decisiones del acta del 16-oct: la tabla de resultados muestra los 6 criterios y «Total» (sin Time to Market, Eje X, Eje Y ni Votos); las salas nuevas muestran por defecto el consolidado de toda la sala tras votar.
 
+[1.2.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.2.0
 [1.1.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.1.0
 [1.0.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.0.0
