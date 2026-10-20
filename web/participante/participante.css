@@ -47,6 +47,8 @@
 .hzp-aviso-datos a { color: var(--hz-azul); font-weight: var(--hz-fw-etiqueta); text-underline-offset: 3px; }
 /* Enlaces del aviso de datos y de la casilla con área táctil de 48 px (familia Estratek §5). */
 .hzp-consentimiento a { display: inline-flex; align-items: center; min-height: var(--hz-tactil); }
+/* El correo va dentro del párrafo: enlace en línea (excepción de WCAG 2.5.8 para enlaces en texto), sin cortar la frase. */
+.hzp-consentimiento .hzp-aviso-datos a { display: inline; min-height: 0; }
 .hzp-consentimiento__titulo { font-size: var(--hz-fs-16); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 
 /* Esqueleto de carga */
