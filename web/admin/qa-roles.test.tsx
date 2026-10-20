@@ -518,3 +518,34 @@ describe('textos (Paula) y reglas compartidas con el servidor', () => {
     expect(css).toContain('.hz-admin .guia-uso h2:focus:not(:focus-visible) { outline: none; }')
   })
 })
+
+describe('guía de uso y guía del facilitador al día', () => {
+  const textoPaso = (titulo: string) => {
+    const p = PASOS_GUIA.find((x) => x.titulo === titulo)!
+    const { container } = render(
+      <>
+        {p.hace}
+        {p.espera}
+      </>,
+    )
+    const t = container.textContent ?? ''
+    cleanup()
+    return t
+  }
+
+  it('la guía de uso habla de las cifras, la demostración, Proyectar el tablero, la ronda 1 sin resultados y resultados.csv', () => {
+    expect(textoPaso('Salas')).toMatch(/cifras de los talleres con cliente.*Crear demostración/s)
+    const vivo = textoPaso('Sala en vivo')
+    for (const t of ['Proyectar el tablero', '→ y ←', 'C repite la animación', '? muestra la ayuda', 'Con la ronda 1 abierta', 'Ver quién falta', 'resumen del taller'])
+      expect(vivo).toContain(t)
+    expect(textoPaso('Exportar')).toMatch(/resultados\.csv y la matriz en SVG.*no se entregan al cliente/s)
+    expect(textoPaso('Mesas y QR')).toContain('Imprimir los QR')
+  })
+
+  it('docs/GUIA_FACILITADOR.md cubre lo mismo, sin rayas', () => {
+    const guia = readFileSync(join(__dirname, '..', '..', 'docs', 'GUIA_FACILITADOR.md'), 'utf8')
+    for (const t of ['Proyectar el tablero', 'Ronda 1 sin resultados en vivo', '**→** y **←**', '**?**', 'repite la animación', 'Crear demostración', 'resultados.csv', 'Resumen del taller', 'Ver quién falta', 'No se entregan al cliente', 'Imprimir los QR', 'plan B en papel'])
+      expect(guia).toContain(t)
+    expect(guia).not.toMatch(/[—–]|precierre|Ver en vivo/)
+  })
+})

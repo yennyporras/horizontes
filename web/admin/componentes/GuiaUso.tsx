@@ -32,11 +32,18 @@ export const PASOS_GUIA: PasoGuia[] = [
     seccion: 'Salas',
     hace: (
       <p>
-        Crea una sala por evento con el nombre del taller y el número de mesas, una por cada 6 personas. En la lista ves el
-        código y el estado de cada sala; «Duplicar para ensayo» crea una copia vacía para probar sin tocar la real.
+        Crea una sala por evento con el nombre del taller, el número de mesas (una por cada 6 personas) y si es un taller con
+        cliente o un ensayo; la empresa y el sector son opcionales. En la lista ves el código, las personas y el estado de cada
+        sala; «Duplicar para ensayo» crea una copia vacía para probar sin tocar la real.
       </p>
     ),
-    espera: <p>Cada sala tiene su código, sus mesas y su copia del caso. Lo que hagas en una no toca a las demás.</p>,
+    espera: (
+      <p>
+        Arriba están las cifras de los talleres con cliente: talleres, personas, quiénes completaron la ronda 2 y países. Los
+        ensayos no cuentan. Si eres superadmin, «Crear demostración» arma una sala con 24 personas simuladas que votan las dos
+        rondas en un minuto.
+      </p>
+    ),
   },
   {
     titulo: 'Configuración',
@@ -84,8 +91,10 @@ export const PASOS_GUIA: PasoGuia[] = [
     ),
     espera: (
       <p>
-        En «Ver en vivo» abres el tablero de la sala en uno de sus dos modos: Gráfica, solo la matriz moviéndose, o
-        Detallado, con el progreso y los promedios. En el tablero, F lo pone en pantalla completa.
+        En «Proyectar el tablero» abres el tablero de la sala en Gráfica o Detallado, con la lista de teclas (F pantalla
+        completa, → y ← cambian de vista, C repite la animación de la comparación, ? muestra la ayuda). Con la ronda 1 abierta
+        el tablero no muestra resultados hasta que todos voten o la cierres; tú sí los ves aquí. «Ver quién falta» en cada mesa
+        abre Participantes con los pendientes, y al cerrar la ronda 2 sale el resumen del taller.
       </p>
     ),
   },
@@ -109,8 +118,13 @@ export const PASOS_GUIA: PasoGuia[] = [
   {
     titulo: 'Exportar',
     seccion: 'Exportar',
-    hace: <p>Al terminar el taller, descarga inscritos.csv y votos.csv. Abren bien en Excel.</p>,
-    espera: <p>Son registro interno, con país e IP. Guárdalos solo donde lo permita la política de datos de Estratek.</p>,
+    hace: (
+      <p>
+        Al terminar el taller, descarga resultados.csv y la matriz en SVG: es lo que se entrega al cliente, sin nombres ni IP.
+        Inscritos y votos son registro interno.
+      </p>
+    ),
+    espera: <p>Inscritos y votos llevan país e IP y no se entregan al cliente. Guárdalos solo donde lo permita la política de datos de Estratek.</p>,
   },
   {
     titulo: 'Salud',
