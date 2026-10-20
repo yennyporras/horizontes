@@ -114,11 +114,35 @@ describe('estáticos de la SPA', () => {
     mkdirSync(join(dir, 'assets'))
     writeFileSync(join(dir, 'index.html'), '<!doctype html><title>Horizontes</title><script type="module" src="/assets/index-AbC123.js"></script>')
     writeFileSync(join(dir, 'assets', 'index-AbC123.js'), JS)
+    writeFileSync(join(dir, 'og-horizontes.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    writeFileSync(join(dir, 'favicon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>')
     app = await construirApp({ db: abrirDb(':memory:'), intervaloCierresMs: 0, webDir: dir })
   })
   afterEach(async () => {
     await app.close()
     rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('og:image y favicon: los robots de vista previa los pueden leer (robots.txt, sin X-Robots-Tag, CORP cross-origin)', async () => {
+    const robots = (await app.inject('/robots.txt')).body
+    expect(robots).toContain('Allow: /og-horizontes.png\n')
+    expect(robots).toContain('Allow: /favicon.svg\n')
+    expect(robots.trim().endsWith('Disallow: /')).toBe(true)
+    for (const url of ['/og-horizontes.png', '/favicon.svg', '/og-horizontes.png?v=2']) {
+      for (const method of ['GET', 'HEAD'] as const) {
+        const r = await app.inject({ method, url, headers: { 'user-agent': 'LinkedInBot/1.0' } })
+        expect(r.statusCode).toBe(200)
+        expect(r.headers['x-robots-tag']).toBeUndefined()
+        expect(r.headers['cross-origin-resource-policy']).toBe('cross-origin')
+      }
+    }
+    expect((await app.inject('/og-horizontes.png')).headers['content-type']).toBe('image/png')
+    // Lo demás sigue cerrado: otros estáticos y la SPA llevan noindex y CORP same-origin.
+    for (const url of ['/assets/index-AbC123.js', '/admin', '/og-otra.png']) {
+      const r = await app.inject(url)
+      expect(r.headers['x-robots-tag']).toBe('noindex, nofollow')
+      expect(r.headers['cross-origin-resource-policy']).toBe('same-origin')
+    }
   })
 
   it('/assets/* con hash: caché de un año immutable y comprimido con brotli o gzip', async () => {
