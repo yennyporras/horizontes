@@ -53,12 +53,14 @@ function Firma() {
 }
 
 /**
- * Menú del celular: por debajo de 64 rem las secciones y «Ingresar al panel» no caben en el encabezado.
- * Botón de 48 px que abre la lista debajo del encabezado; se cierra al elegir, con Escape o con el mismo botón.
+ * Menú del celular: por debajo de 72 rem (1152 px) las secciones y «Ingresar al panel» no caben en el encabezado.
+ * Botón de 48 px que abre la lista debajo del encabezado; se cierra al elegir, con Escape, con el mismo botón o con un
+ * toque fuera del menú.
  */
 function MenuMovil() {
   const [abierto, setAbierto] = useState(false)
   const boton = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLElement>(null)
   useEffect(() => {
     if (!abierto) return
     const alTeclear = (e: KeyboardEvent) => {
@@ -66,8 +68,17 @@ function MenuMovil() {
       setAbierto(false)
       boton.current?.focus()
     }
+    // Un toque fuera del menú (en la página) también lo cierra: el menú tapa el héroe.
+    const alTocar = (e: PointerEvent) => {
+      const t = e.target as Node
+      if (!menu.current?.contains(t) && !boton.current?.contains(t)) setAbierto(false)
+    }
     document.addEventListener('keydown', alTeclear)
-    return () => document.removeEventListener('keydown', alTeclear)
+    document.addEventListener('pointerdown', alTocar)
+    return () => {
+      document.removeEventListener('keydown', alTeclear)
+      document.removeEventListener('pointerdown', alTocar)
+    }
   }, [abierto])
   const cerrar = () => setAbierto(false)
   return (
@@ -82,7 +93,7 @@ function MenuMovil() {
       >
         {abierto ? 'Cerrar menú' : 'Menú'}
       </button>
-      <nav id="in-menu" className="in-menu" aria-label="Menú" hidden={!abierto}>
+      <nav ref={menu} id="in-menu" className="in-menu" aria-label="Menú" hidden={!abierto}>
         <ul>
           {SECCIONES.map((s) => (
             <li key={s.href}>

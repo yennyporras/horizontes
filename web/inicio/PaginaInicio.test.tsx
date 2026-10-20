@@ -193,7 +193,7 @@ describe('correcciones de la QA de la landing', () => {
     expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Menú' }))
     const css = readFileSync('web/inicio/inicio.css', 'utf8')
-    expect(css).toMatch(/@media \(min-width: 64rem\) \{ \.in-menu__boton, \.in-menu \{ display: none; \} \}/)
+    expect(css).toMatch(/@media \(min-width: 72rem\) \{ \.in-menu__boton, \.in-menu \{ display: none; \} \}/)
   })
 
   it('la ilustración no usa verde agua ni azul en los horizontes, junto a R1 y R2 (QA-P-20)', () => {
@@ -267,6 +267,15 @@ describe('auditoría final de la landing (20-oct)', () => {
     expect(texto).toContain('«Gráfica», con la matriz a pantalla completa, y «Detallado»')
     expect(texto).toContain('la «Guía de uso» del panel')
     expect(texto).not.toMatch(/Recorrido|recupera|mismo correo|Guardar calificación|seis hojas para todos|distinto al de los demás/)
+  })
+
+  it('el menú del celular se cierra con un toque fuera de él', () => {
+    montar()
+    fireEvent.click(screen.getByRole('button', { name: 'Menú' }))
+    fireEvent.pointerDown(screen.getByRole('navigation', { name: 'Menú' }))
+    expect(screen.getByRole('navigation', { name: 'Menú' })).toBeTruthy()
+    fireEvent.pointerDown(screen.getByRole('heading', { level: 1 }))
+    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
   })
 
   it('el ejemplo del campo es un código de mesa de hoy y la entrada lo acepta tal cual', () => {

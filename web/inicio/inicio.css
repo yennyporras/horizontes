@@ -40,13 +40,14 @@
 .in-nav__secciones ul { display: flex; gap: var(--hz-sp-1); }
 .in-nav__secciones a {
   display: inline-flex; align-items: center; min-height: var(--hz-tactil); padding: 0 var(--hz-sp-3);
-  font-size: var(--hz-fs-14); color: var(--hz-tinta) !important; text-decoration: none; border-radius: var(--hz-r-boton);
+  font-size: var(--hz-fs-14); color: var(--hz-tinta) !important; text-decoration: none; border-radius: var(--hz-r-boton); white-space: nowrap;
 }
 .in-nav__secciones a:hover { background: var(--hz-superficie-1); }
-/* En el celular el encabezado lleva solo la marca: el panel sigue en «Para facilitadores» y en el pie. */
+/* Bajo 480 px el encabezado lleva la marca y «Menú»: el panel está en el menú, en «Para facilitadores» y en el pie. */
 .in-nav__panel { display: none; padding-inline: var(--hz-sp-5); white-space: nowrap; }
 @media (min-width: 30rem) { .in-nav__panel { display: inline-flex; } }
-@media (min-width: 64rem) { .in-nav__secciones { display: block; } }
+/* Las cinco secciones caben en una línea desde 72 rem (1152 px); en 1024 px partían «Entrar a tu mesa» en dos. */
+@media (min-width: 72rem) { .in-nav__secciones { display: block; } }
 /* Menú del celular: el botón abre la lista de secciones y el panel debajo del encabezado. */
 .in-menu__boton { padding-inline: var(--hz-sp-5); }
 .in-menu {
@@ -61,7 +62,7 @@
   color: var(--hz-tinta) !important; text-decoration: none; border-radius: var(--hz-r-campo);
 }
 .in-menu a:hover { background: var(--hz-superficie-2); }
-@media (min-width: 64rem) { .in-menu__boton, .in-menu { display: none; } }
+@media (min-width: 72rem) { .in-menu__boton, .in-menu { display: none; } }
 
 /* ── Hero: el titular y la matriz con los horizontes a gran escala ── */
 /* Aire arriba y abajo: la matriz no toca la línea del encabezado y el pie de la ilustración no toca la sección siguiente. */
