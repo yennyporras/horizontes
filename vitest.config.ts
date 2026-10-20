@@ -10,8 +10,7 @@ export default defineConfig({
     environment: 'node',
     // Con la máquina de desarrollo cargada, las pruebas de UI en jsdom pasaban de 5 s y la suite fallaba al azar.
     testTimeout: 20_000,
-    // Los e2e en navegador real del celular y del tablero (playwright) fallaron una vez con la máquina sin memoria y pasaron solos.
-    // Un reintento evita que ese azar tumbe la suite; un fallo real falla las dos veces.
-    retry: 1,
+    // Sin reintentos: un fallo intermitente se investiga, no se repite hasta que pase. Solo las pruebas en navegador
+    // real reintentan, en local y por un motivo medido (REINTENTOS_E2E en tests/navegador.ts, docs/DECISIONES.md 20-oct).
   },
 })
