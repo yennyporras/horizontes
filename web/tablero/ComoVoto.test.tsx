@@ -48,7 +48,7 @@ test('bajo el mínimo (distribución null) muestra el aviso y no dibuja esa rond
     Object.assign(r2, { n_votos: 2, promedios: null, distribucion: null, bajo_minimo: true })
   })
   const { container } = render(<ComoVoto datos={datos} rondas={[1, 2]} />)
-  expect(screen.getByRole('status').textContent).toBe('Hace falta al menos 3 votos para mostrar esta mesa en la ronda 2.')
+  expect(screen.getByRole('status').textContent).toBe('Hacen falta al menos 3 votos para mostrar esta mesa en la ronda 2.')
   expect(container.querySelectorAll('.hz-cv-barras-r2')).toHaveLength(0)
   expect(container.querySelectorAll('.hz-cv-barras-r1')).toHaveLength(datos.proyectos_vivos.length * datos.criterios.length)
 })
@@ -68,4 +68,30 @@ test('un proyecto bajo el mínimo y el otro con datos: «Faltan votos» en sus c
   const segundo = screen.getByRole('region', { name: datos.proyectos_vivos[1].nombre })
   expect(within(segundo).getAllByText('Faltan votos')).toHaveLength(datos.criterios.length)
   expect(within(segundo).getByText(/R1/).textContent).toBe('R1 · 1 voto')
+})
+
+test('QA-T-03: una sola escala; el mismo conteo tiene la misma altura en R1 y en R2', () => {
+  const datos: DatosTablero = structuredClone(mock)
+  const [r1, r2] = [1, 2].map((n) => datos.proyectos_vivos[0].rondas.find((r) => r.ronda === n)!)
+  r1.n_votos = 6
+  r2.n_votos = 4
+  r1.distribucion!.regulacion = { '1': 0, '3': 4, '5': 2, '7': 0, '9': 0 }
+  r2.distribucion!.regulacion = { '1': 0, '3': 4, '5': 0, '7': 0, '9': 0 }
+  const { container } = render(<ComoVoto datos={datos} rondas={[1, 2]} />)
+  const alto = (n: number) =>
+    (screen.getByRole('img', { name: new RegExp(`^${datos.proyectos_vivos[0].nombre}, Regulación, ronda ${n}:`) }).querySelectorAll('.hz-cv-barra')[0] as HTMLElement).style.height
+  expect(alto(1)).toBe(alto(2))
+  // Ninguna barra pasa del alto de la pista.
+  for (const b of container.querySelectorAll<HTMLElement>('.hz-cv-barra')) expect(parseFloat(b.style.height)).toBeLessThanOrEqual(100)
+})
+
+test('D2: con la ronda abierta y sin conteos, dice que se actualizan cada 3 votos; la descripción del criterio va en su título', () => {
+  const datos = { ...structuredClone(mock), sala: { ...mock.sala, estado: 'r1_abierta' as const } }
+  datos.proyectos_vivos.forEach((p) => (p.rondas = p.rondas.filter((r) => r.ronda === 1).map((r) => ({ ...r, n_votos: 0, distribucion: null }))))
+  render(<ComoVoto datos={datos} rondas={[1]} />)
+  expect(screen.getByRole('status').textContent).toBe('Aún no hay resultados en la ronda 1. Se actualizan cada 3 votos nuevos.')
+  cleanup()
+  const { container } = render(<ComoVoto datos={mock} rondas={[1]} />)
+  const reg = [...container.querySelectorAll('.hz-cv-crit')].find((p) => p.textContent === 'Regulación')!
+  expect(reg.getAttribute('title')).toBe('Qué tantas barreras legales o normativas hay para entrar al mercado.')
 })

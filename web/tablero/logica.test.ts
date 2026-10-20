@@ -2,10 +2,16 @@ import { describe, expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import type { DatosTablero } from './tipos'
 import {
+  EN_VIVO,
   avisosPrecierre,
   cifraRonda,
+  conteoMesa,
   delta,
   esSinPermiso,
+  faltanVotos,
+  modoDeUrl,
+  rondaEnCurso,
+  votosRecibidos,
   esPreliminar,
   insigniaResultado,
   mensajeVacio,
@@ -42,9 +48,20 @@ describe('vista por defecto', () => {
 describe('estados vacíos', () => {
   test('sin votos en R1', () => {
     const d = sinVotos(sinVotos(mock, 1), 2)
+    d.sala.estado = 'r2_cerrada'
     expect(mensajeVacio(d, 1)).toBe('Aún no hay votos en la ronda 1')
     expect(mensajeVacio(d, 'comparacion')).toBe('Aún no hay votos en la ronda 1')
     expect(mensajeVacio(d, 2)).toBe('Aún no hay votos en la ronda 2')
+  })
+  test('D2: con la ronda abierta llega la última foto, así que no se afirma que no haya votos', () => {
+    const d = sinVotos(sinVotos(mock, 1), 2)
+    d.sala.estado = 'r2_abierta'
+    expect(mensajeVacio(d, 2)).toBe('Aún no hay resultados en la ronda 2. Se actualizan cada 3 votos nuevos')
+    expect(mensajeVacio(d, 1)).toBe('Aún no hay votos en la ronda 1')
+    expect(EN_VIVO.texto).toBe('En vivo, cada 3 votos')
+    expect(EN_VIVO.titulo).toMatch(/cada 3 votos nuevos y queda exacto al cerrarla/)
+    expect(rondaEnCurso('r1_abierta')).toBe(1)
+    expect(rondaEnCurso('r1_cerrada')).toBeNull()
   })
   test('R1 con votos y R2 vacía', () => {
     const d = sinVotos(mock, 2)
@@ -53,21 +70,27 @@ describe('estados vacíos', () => {
   })
   test('bajo el mínimo de votos: el aviso dice cuántos faltan, no «Aún no hay votos»', () => {
     const d = sinVotos(sinVotos(mock, 1), 2)
+    d.sala.estado = 'r2_cerrada'
     for (const v of d.proyectos_vivos) Object.assign(v.rondas[0], { n_votos: 2, bajo_minimo: true })
     d.minimo_votos = 3
     d.alcance = { tipo: 'mesa', mesa_id: 'm1', mesa_nombre: 'Mesa 1' }
-    expect(mensajeVacio(d, 1)).toBe('Hace falta al menos 3 votos para mostrar esta mesa')
-    expect(mensajeVacio(d, 'comparacion')).toBe('Hace falta al menos 3 votos para mostrar esta mesa')
+    expect(mensajeVacio(d, 1)).toBe('Hacen falta al menos 3 votos para mostrar esta mesa')
+    expect(mensajeVacio(d, 'comparacion')).toBe('Hacen falta al menos 3 votos para mostrar esta mesa')
     expect(mensajeVacio(d, 2)).toBe('Aún no hay votos en la ronda 2')
     d.alcance = { tipo: 'sala', mesa_id: null, mesa_nombre: null }
     delete d.minimo_votos
-    expect(mensajeVacio(d, 1)).toBe('Hace falta al menos 3 votos para mostrar estos resultados')
+    expect(mensajeVacio(d, 1)).toBe('Hacen falta al menos 3 votos para mostrar estos resultados')
     const r2 = sinVotos(mock, 2)
     for (const v of r2.proyectos_vivos) Object.assign(v.rondas[1], { n_votos: 1, bajo_minimo: true })
-    expect(mensajeVacio(r2, 'comparacion')).toBe('Hace falta al menos 3 votos para mostrar esta mesa. La comparación muestra solo la ronda 1.')
+    expect(mensajeVacio(r2, 'comparacion')).toBe('Hacen falta al menos 3 votos para mostrar esta mesa. La comparación muestra solo la ronda 1.')
     expect(cifraRonda(r2.proyectos_vivos[0].rondas[1], null)).toBe('Faltan votos')
     expect(cifraRonda(mock.proyectos_vivos[0].rondas[0], 4.567)).toBe('4,57')
     expect(cifraRonda(null, null)).toBe('Sin votos')
+  })
+  test('F-12: concordancia del mínimo de votos', () => {
+    expect(faltanVotos(3)).toBe('Hacen falta al menos 3 votos')
+    expect(faltanVotos(5)).toBe('Hacen falta al menos 5 votos')
+    expect(faltanVotos(1)).toBe('Hace falta al menos 1 voto')
   })
   test('columna R2 solo desde la ronda 2', () => {
     const d = sinVotos(mock, 2)
@@ -81,6 +104,35 @@ describe('estados vacíos', () => {
     expect(mensajeVacio(null, 1)).toBe('Aún no hay votos en la ronda 1')
     expect(avisosPrecierre(null)).toEqual([])
     expect(esPreliminar(null)).toBe(false)
+  })
+})
+
+describe('modos de proyección y votos recibidos', () => {
+  test('?modo=vivo|tabla; cualquier otro valor es en vivo', () => {
+    expect(modoDeUrl('tabla')).toBe('tabla')
+    expect(modoDeUrl('vivo')).toBe('vivo')
+    expect(modoDeUrl(null)).toBe('vivo')
+    expect(modoDeUrl('otro')).toBe('vivo')
+  })
+  test('indicador discreto: los de la sala o, con alcance mesa, los de esa mesa', () => {
+    const d = structuredClone(mock)
+    d.alcance = { tipo: 'sala', mesa_id: null, mesa_nombre: null }
+    expect(votosRecibidos(d)).toBe('14 de 20 votaron')
+    d.alcance = { tipo: 'mesa', mesa_id: 'm2', mesa_nombre: 'Mesa 2' }
+    expect(votosRecibidos(d)).toBe('4 de 7 votaron')
+    d.sala.ronda_actual = 0
+    expect(votosRecibidos(d)).toBeNull()
+    expect(votosRecibidos(null)).toBeNull()
+  })
+  test('QA-T-04: el conteo de cada mesa es el de la ronda que se ve', () => {
+    const d = structuredClone(mock)
+    d.sala.estado = 'r2_abierta'
+    for (const v of d.proyectos_vivos) v.rondas[0].n_votos = 2
+    const mesa = { inscritos: 2, completos: 0 }
+    expect(conteoMesa(d, mesa, 1)).toBe('R1: 2 de 2')
+    expect(conteoMesa(d, mesa, 2)).toBe('R2: 0 de 2')
+    expect(conteoMesa(d, mesa, 'comparacion')).toBe('R1: 2 de 2 · R2: 0 de 2')
+    expect(conteoMesa(null, mesa, 1)).toBe('0 de 2')
   })
 })
 
@@ -175,6 +227,12 @@ describe('polling con ETag', () => {
       throw new TypeError('Failed to fetch')
     }) as typeof fetch
     expect(await pedirTablero('/x', null, caido)).toMatchObject({ tipo: 'error', codigo: 'SIN_CONEXION' })
+
+    // QA-T-05: la sala existe pero la mesa del enlace no.
+    const f404 = (async () => respuesta(404, { error: { codigo: 'MESA_NO_EXISTE', mensaje: 'Esa mesa no existe en esta sala.' } })) as typeof fetch
+    expect(await pedirTablero('/x', null, f404)).toMatchObject({ codigo: 'MESA_NO_EXISTE', mensaje: 'No encontramos esta mesa en la sala. Revisa el enlace del tablero.' })
+    const sala404 = (async () => respuesta(404, { error: { codigo: 'SALA_NO_EXISTE', mensaje: 'x' } })) as typeof fetch
+    expect(await pedirTablero('/x', null, sala404)).toMatchObject({ mensaje: 'No encontramos esta sala. Revisa el enlace del tablero.' })
 
     const f500 = (async () => respuesta(500, { error: { codigo: 'ERROR_INTERNO', mensaje: 'Algo falló en el servidor.' } })) as typeof fetch
     expect(await pedirTablero('/x', null, f500)).toMatchObject({ mensaje: 'Algo falló en el servidor.' })
