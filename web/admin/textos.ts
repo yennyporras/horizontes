@@ -288,7 +288,11 @@ export function urlVistaPrevia(urlParticipante: string | null | undefined): stri
   return `${u.pathname}${u.search}${u.hash}`
 }
 
-/** Ruta interna del tablero (sin dominio) para pedir su JSON: /tablero/HZ7K2?mesa=m1&t=TOKEN → /api/tablero/{salaId}?... */
+/**
+ * Ruta interna del tablero (sin dominio) para pedir su JSON: /tablero/HZ7K2?mesa=m1&t=TOKEN → /api/tablero/{salaId}?...
+ * `vista=panel` (con la sesión de admin): el panel sí recibe el resultado preliminar de la ronda 1, que el tablero
+ * público y los celulares reciben oculto mientras la ronda está abierta (decisión de Paola del 20-oct).
+ */
 export function rutaApiTablero(salaId: string, urlTablero: string, mesaId?: string): string {
   const u = new URL(urlTablero, 'http://x')
   const q = new URLSearchParams()
@@ -296,6 +300,7 @@ export function rutaApiTablero(salaId: string, urlTablero: string, mesaId?: stri
   if (mesaId) q.set('mesa', mesaId)
   const t = u.searchParams.get('t')
   if (t) q.set('t', t)
+  q.set('vista', 'panel')
   return `/api/tablero/${salaId}?${q.toString()}`
 }
 

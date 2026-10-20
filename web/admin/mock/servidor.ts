@@ -196,9 +196,9 @@ function datosCliente(b: Record<string, unknown>): { cambio: Partial<Pick<SalaRe
   return { cambio }
 }
 
-/** GET /api/admin/metricas: solo talleres con cliente; completaron la ronda 2 quienes votaron los 2 vivos en R2. */
+/** GET /api/admin/metricas: solo talleres con cliente con al menos una persona activa; completaron la ronda 2 quienes votaron los 2 vivos en R2. */
 function metricas(): Metricas {
-  const talleres = estado.salas.filter((s) => (s.sala.tipo ?? 'taller') === 'taller')
+  const talleres = estado.salas.filter((s) => (s.sala.tipo ?? 'taller') === 'taller' && s.participantes.some((p) => p.activo))
   const activos = talleres.flatMap((s) => s.participantes.filter((p) => p.activo).map((p) => ({ p, s })))
   return {
     talleres: talleres.length,
@@ -250,7 +250,8 @@ function resumenTaller(s: SalaDetalle): NonNullable<SalaDetalle['resumen']> {
     const abre = cronologicos.find((e) => e.tipo === 'ronda_abierta' && e.detalle?.ronda === ronda)
     const cierra = [...cronologicos].reverse().find((e) => e.tipo === 'ronda_cerrada' && e.detalle?.ronda === ronda)
     if (!abre || !cierra) return null
-    return Math.max(0, Math.round((Date.parse(cierra.at) - Date.parse(abre.at)) / 60000))
+    // Como el servidor: minutos con un decimal.
+    return Math.max(0, Math.round((Date.parse(cierra.at) - Date.parse(abre.at)) / 6000) / 10)
   }
   const activos = s.participantes.filter((p) => p.activo)
   const r = s.sala.ronda_actual ?? 0
@@ -442,6 +443,9 @@ function simularVoto(s: SalaDetalle) {
   tocar(s, 'voto', 'participante')
 }
 
+/** Como el servidor en resultados.csv: coma decimal (6,33). */
+const coma = (n: number | null) => (n === null ? '' : String(n).replace('.', ','))
+
 const celda = (v: unknown) => {
   const t = String(v ?? '')
   return /[",;\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
@@ -455,7 +459,17 @@ function csv(s: SalaDetalle, archivo: string): string {
           ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'ip', 'pais'],
           ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.1', p.consentimiento_at, p.ip, p.pais]),
         ]
-      : [['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', 'alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida', 'activo', 'ip', 'pais']]
+      : archivo === 'resultados.csv'
+        ? [
+            // Como el servidor: sin datos personales, solo alcances con 3 votos o más (aquí, los del tablero de ejemplo).
+            ['alcance', 'ronda', 'proyecto', 'n_votos', ...CRITERIOS.map((c) => c.id), 't2m', 'eje_x', 'eje_y'],
+            ...tableroBase.proyectos_vivos.flatMap((p) =>
+              p.rondas
+                .filter((r) => r.n_votos >= 3 && r.promedios)
+                .map((r) => ['sala', r.ronda, p.nombre, r.n_votos, ...[...CRITERIOS.map((c) => (r.promedios as Record<string, number>)[c.id]), r.t2m, r.eje_x, r.eje_y].map(coma)]),
+            ),
+          ]
+        : [['id_hash', 'mesa', 'perfil', 'ronda', 'proyecto', 'alistamiento_tecnico', 'conocimiento_cliente', 'regulacion', 'capacidades_organizacionales', 'alineacion_core', 'inversion_requerida', 'activo', 'ip', 'pais']]
   return '﻿' + filas.map((f) => f.map(celda).join(',')).join('\n') + '\n'
 }
 

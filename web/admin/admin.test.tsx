@@ -77,8 +77,8 @@ describe('textos del panel', () => {
     const mesa = 'https://horizontes.estratek.com.co/tablero/HZ7K2?mesa=m1&t=TOK'
     expect(urlTableroSala(undefined, mesa)).toBe('https://horizontes.estratek.com.co/tablero/HZ7K2?t=TOK')
     expect(urlTableroSala('/x', mesa)).toBe('/x')
-    expect(rutaApiTablero('s_demo', mesa, 'm1')).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m1&t=TOK')
-    expect(rutaApiTablero('s_demo', mesa)).toBe('/api/tablero/s_demo?alcance=sala&t=TOK')
+    expect(rutaApiTablero('s_demo', mesa, 'm1')).toBe('/api/tablero/s_demo?alcance=mesa&mesa=m1&t=TOK&vista=panel')
+    expect(rutaApiTablero('s_demo', mesa)).toBe('/api/tablero/s_demo?alcance=sala&t=TOK&vista=panel')
   })
 
   it('los enlaces del panel abren en su propio servidor aunque BASE_URL apunte a otro ambiente', () => {
@@ -594,12 +594,12 @@ describe('cambios del 19-oct en el panel', () => {
   it('Respuestas: error del servidor tal cual', async () => {
     usarTransporte(async (metodo, ruta, cuerpo, etag) =>
       ruta === '/api/admin/salas/s_demo/respuestas'
-        ? { status: 403, body: { error: { codigo: 'CAMBIO_CLAVE_REQUERIDO', mensaje: 'Antes de continuar cambia tu clave temporal.' } } }
+        ? { status: 403, body: { error: { codigo: 'CAMBIO_CLAVE_REQUERIDO', mensaje: 'Antes de continuar, cambia tu clave temporal.' } } }
         : responderMock(metodo, ruta, cuerpo, etag),
     )
     await abrirDemo()
     fireEvent.click(nav().getByText('Respuestas'))
-    expect((await screen.findByRole('alert')).textContent).toBe('No pudimos cargar las respuestas. Antes de continuar cambia tu clave temporal.')
+    expect((await screen.findByRole('alert')).textContent).toBe('No pudimos cargar las respuestas. Antes de continuar, cambia tu clave temporal.')
   })
 
   it('Respuestas: sala sin votos', async () => {

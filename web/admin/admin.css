@@ -661,6 +661,7 @@
 .hz-admin .rejilla--campos { gap: var(--hz-sp-4); margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr)); }
 .hz-admin .rejilla--campos > fieldset { margin: 0; }
 /* Tarjetas con un botón al final (Exportar): el botón queda abajo y a la misma altura en todas. */
+.hz-admin .titulo-grupo { margin: var(--hz-sp-6) 0 var(--hz-sp-3); font-size: var(--hz-fs-18); }
 .hz-admin .tarjeta-accion { display: flex; flex-direction: column; align-items: flex-start; }
 .hz-admin .tarjeta-accion > .hz-boton { margin-top: auto; }
 /* Tarjetas de QR: mismas medidas en todas, las URL se parten en las barras y los dos botones uno bajo el otro y al pie. */

@@ -11,6 +11,8 @@ import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
 import { CRITERIOS_BASE, contenidoDe } from './contenido'
+import { svgDescargable } from './paginas/Exportar'
+import tableroEjemplo from '../../mocks/GET_api_tablero.json'
 import type { SalaDetalle } from './tipos'
 
 function montar(ruta: string) {
@@ -103,7 +105,7 @@ describe('Salas: cifras de los talleres, tipo de sala, empresa y sector (inversi
         .map((li) => [li.querySelector('.kpi__rotulo')!.textContent, li.querySelector('.cifra')!.textContent]),
     )
 
-  it('la franja muestra talleres, personas, completaron la ronda 2 y países, sin contar los ensayos', async () => {
+  it('la franja muestra talleres, personas, completaron la ronda 2 y países, sin contar ensayos ni talleres sin personas', async () => {
     await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
     await responderMock('POST', '/api/admin/salas', { nombre: 'Ensayo de Paola', mesas: 1, tipo: 'ensayo' })
     await responderMock('POST', '/api/admin/salas', { nombre: 'Taller Perú', mesas: 1 })
@@ -113,8 +115,9 @@ describe('Salas: cifras de los talleres, tipo de sala, empresa y sector (inversi
     montar('/admin/login')
     await entrar()
     await screen.findByRole('region', { name: 'Cifras de los talleres' })
-    expect(cifras()).toEqual({ Talleres: '2', Personas: '12', 'Completaron la ronda 2': '0', Países: '2' })
-    expect(screen.getByText('Colombia y Perú')).toBeTruthy()
+    // Como el servidor: el ensayo y el taller de Perú sin inscritos no cuentan.
+    expect(cifras()).toEqual({ Talleres: '1', Personas: '12', 'Completaron la ronda 2': '0', Países: '1' })
+    expect(screen.getByText('Colombia')).toBeTruthy()
     expect(screen.getByText('Solo talleres con cliente: los ensayos y las demostraciones no cuentan.')).toBeTruthy()
   })
 
@@ -327,7 +330,7 @@ describe('Sala en vivo (Nicolai, inversionista y decisión de Paola sobre la ron
       vi.setSystemTime(new Date('2026-10-20T15:12:00-05:00'))
       await accion('cerrar_ronda_1')
       await accion('abrir_ronda_2')
-      vi.setSystemTime(new Date('2026-10-20T15:30:00-05:00'))
+      vi.setSystemTime(new Date('2026-10-20T15:30:30-05:00'))
       await accion('cerrar_ronda_2')
       await responderMock('POST', '/api/admin/logout')
     } finally {
@@ -338,7 +341,7 @@ describe('Sala en vivo (Nicolai, inversionista y decisión de Paola sobre la ron
     const cifras = Object.fromEntries(within(resumen).getAllByRole('listitem').map((li) => [li.querySelector('.kpi__rotulo')!.textContent, li.querySelector('.cifra')!.textContent]))
     expect(cifras).toEqual({
       'Duración de la ronda 1': '12 min',
-      'Duración de la ronda 2': '18 min',
+      'Duración de la ronda 2': '18,5 min',
       'Completaron la ronda 1': '12 de 12',
       'Completaron la ronda 2': '0 de 12',
       'Accesos de nuevo': '1',
@@ -347,5 +350,89 @@ describe('Sala en vivo (Nicolai, inversionista y decisión de Paola sobre la ron
     expect(orden.indexOf('Resumen del taller')).toBe(orden.indexOf('Bitácora de la sala') - 1)
     // Sin ronda abierta, Mesas vuelve a su lugar después de Proyectar el tablero.
     expect(orden.indexOf('Mesas')).toBeGreaterThan(orden.indexOf('Proyectar el tablero'))
+  })
+})
+
+describe('Exportar (empresa cliente y Nicolai)', () => {
+  async function abrirExportar() {
+    await abrirDemo()
+    fireEvent.click(nav().getByRole('link', { name: 'Exportar' }))
+    return screen.findByRole('region', { name: 'Resultados' })
+  }
+
+  it('«Resultados» es el archivo para el cliente; inscritos y votos dicen que no se entregan y que los votos son dato personal', async () => {
+    const resultados = await abrirExportar()
+    expect(within(resultados).getByText('Promedios por criterio y posición de cada proyecto, por sala y por mesa, en R1 y R2. Sin nombres ni IP: es el archivo para entregar al cliente.')).toBeTruthy()
+    expect(within(resultados).getByRole('button', { name: 'Descargar resultados.csv' })).toBeTruthy()
+    expect(within(resultados).getByRole('button', { name: 'Descargar matriz (SVG)' })).toBeTruthy()
+    const inscritos = screen.getByRole('region', { name: 'Inscritos' })
+    expect(within(inscritos).getByText(/No se entregan al cliente\.$/)).toBeTruthy()
+    const votos = screen.getByRole('region', { name: 'Votos' })
+    expect(within(votos).getByText(/No se entregan al cliente\. Seudonimizado, no anónimo: con mesa, perfil e IP se sabe quién es\. Trátalo como dato personal\.$/)).toBeTruthy()
+    // Lo del cliente va antes que el registro interno.
+    expect([...document.querySelectorAll('.titulo-grupo')].map((h) => h.textContent)).toEqual(['Para entregar al cliente', 'Registro interno'])
+  })
+
+  it('el simulador entrega resultados.csv sin datos personales', async () => {
+    await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+    const csv = String((await responderMock('GET', '/api/admin/salas/s_demo/export/resultados.csv')).body)
+    const [encabezado] = csv.replace(/^﻿/, '').split('\n')
+    expect(encabezado.split(',')).toEqual([
+      'alcance',
+      'ronda',
+      'proyecto',
+      'n_votos',
+      'alistamiento_tecnico',
+      'conocimiento_cliente',
+      'regulacion',
+      'capacidades_organizacionales',
+      'alineacion_core',
+      'inversion_requerida',
+      't2m',
+      'eje_x',
+      'eje_y',
+    ])
+    expect(csv).not.toMatch(/@|181\.50/)
+  })
+
+  it('«Descargar matriz (SVG)» descarga la matriz del tablero de la sala con fondo', async () => {
+    const blobs: Blob[] = []
+    const crear = URL.createObjectURL
+    const revocar = URL.revokeObjectURL
+    URL.createObjectURL = (b: Blob) => {
+      blobs.push(b)
+      return 'blob:x'
+    }
+    URL.revokeObjectURL = () => undefined
+    const descargas: string[] = []
+    const clic = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      descargas.push(this.download)
+    }
+    try {
+      const resultados = await abrirExportar()
+      fireEvent.click(within(resultados).getByRole('button', { name: 'Descargar matriz (SVG)' }))
+      await waitFor(() => expect(descargas).toEqual(['HZ7K2-matriz.svg']))
+      expect(blobs[0].type).toContain('image/svg+xml')
+      const svg = await new Promise<string>((ok) => {
+        const r = new FileReader()
+        r.onload = () => ok(String(r.result))
+        r.readAsText(blobs[0])
+      })
+      expect(svg).toMatch(/^<svg[^>]*><rect width="100%" height="100%" fill="/)
+      expect(svg).toContain('INSUMEX')
+    } finally {
+      URL.createObjectURL = crear
+      URL.revokeObjectURL = revocar
+      HTMLAnchorElement.prototype.click = clic
+    }
+  })
+
+  it('el SVG descargado cambia los tokens de color por sus valores del tema', () => {
+    const valores: Record<string, string> = { '--hz-r1': '#1B7F3A', '--hz-r2': '#C62828', '--hz-fondo': '#FFFFFF' }
+    const estilo = { getPropertyValue: (n: string) => valores[n] ?? '' } as unknown as CSSStyleDeclaration
+    const svg = svgDescargable(tableroEjemplo, 'r2_cerrada', 2, estilo)
+    expect(svg).toContain('#C62828')
+    expect(svg).toContain('<rect width="100%" height="100%" fill="#FFFFFF"/>')
   })
 })

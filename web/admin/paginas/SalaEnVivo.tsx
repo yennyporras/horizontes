@@ -792,7 +792,8 @@ function Mesas({ d }: { d: SalaDetalle }) {
  */
 function ResumenTaller({ d }: { d: SalaDetalle }) {
   const r = d.resumen!
-  const minutos = (m: number | null) => (m === null ? 'Sin cerrar' : `${m} min`)
+  // El servidor manda los minutos con un decimal: «12,5 min»; sin decimal si es entero.
+  const minutos = (m: number | null) => (m === null ? 'Sin cerrar' : `${m.toLocaleString('es-CO', { maximumFractionDigits: 1 })} min`)
   const cifras = [
     { rotulo: 'Duración de la ronda 1', valor: minutos(r.minutos_r1) },
     { rotulo: 'Duración de la ronda 2', valor: minutos(r.minutos_r2) },
