@@ -88,6 +88,15 @@ describe('auditoría del panel (20-oct)', () => {
     expect(within(paso).getAllByRole('link').map((a) => a.textContent)).toEqual(['Configuración', 'Hojas', 'Mesas y QR'])
   })
 
+  it('Administradores: los botones de cada cuenta dicen de quién son y la clave temporal pide el mínimo del servidor', async () => {
+    montar('/admin/login')
+    await entrar()
+    fireEvent.click(nav().getByRole('link', { name: 'Administradores' }))
+    expect(await screen.findByRole('button', { name: 'Desactivar a Jorge Puentes' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Restablecer la clave de Jorge Puentes' }).getAttribute('type')).toBe('button')
+    expect(screen.getByLabelText('Clave temporal').getAttribute('minlength')).toBe(String(LARGO_SERVIDOR))
+  })
+
   it('los modos del tablero se llaman Gráfica y Detallado y van en el enlace como modo=grafica y modo=detallado', () => {
     expect(MODOS_TABLERO.map((m) => [m.nombre, m.modo, m.tecla])).toEqual([
       ['Gráfica', 'grafica', 'G'],

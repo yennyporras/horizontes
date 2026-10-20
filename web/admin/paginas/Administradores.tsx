@@ -196,11 +196,22 @@ export function Administradores() {
                       {a.rol === 'superadmin' ? (
                         <span className="pista">Se administra desde el servidor</span>
                       ) : (
-                        <span className="acciones">
-                          <button className="hz-boton hz-boton--secundario hz-boton--chico" onClick={() => restablecer(a)} disabled={!a.activo}>
+                        <span className="acciones acciones--fila">
+                          <button
+                            type="button"
+                            className="hz-boton hz-boton--secundario hz-boton--chico"
+                            aria-label={`Restablecer la clave de ${a.nombre}`}
+                            onClick={() => restablecer(a)}
+                            disabled={!a.activo}
+                          >
                             Restablecer clave
                           </button>
-                          <button className="hz-boton hz-boton--secundario hz-boton--chico" onClick={() => cambiarActivo(a)}>
+                          <button
+                            type="button"
+                            className="hz-boton hz-boton--secundario hz-boton--chico"
+                            aria-label={`${a.activo ? 'Desactivar' : 'Activar'} a ${a.nombre}`}
+                            onClick={() => cambiarActivo(a)}
+                          >
                             {a.activo ? 'Desactivar' : 'Activar'}
                           </button>
                         </span>
