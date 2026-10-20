@@ -1,4 +1,4 @@
-// Cambios del 19-oct (docs/CAMBIOS_19OCT_CONTRATO.md): programación por sala y ronda, respuestas por persona,
+// Cambios del 19-oct (docs/DECISIONES.md, pedidos del 19-oct): programación por sala y ronda, respuestas por persona,
 // modo guiado y base_url. API real con BD en memoria y reloj simulado.
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

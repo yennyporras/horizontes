@@ -1,4 +1,4 @@
-// Backlog T1: eventos paginados, límite por IP, respaldo al cerrar sala y caché del tablero.
+// Mantenimiento del servidor: eventos paginados, límite por IP, respaldo al cerrar sala y caché del tablero.
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
