@@ -3,6 +3,8 @@
 /* Sin el margen de 8 px del navegador: cabecera y fondos llegan al borde (triage #17).
    El fondo del tema también detrás de la página (rebote del desplazamiento, zonas sin contenido). */
 body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
+/* Mientras se descarga el área (React.lazy en web/App.tsx): la página no salta de alto. */
+.hz-cargando-area { min-height: 100vh; min-height: 100dvh; }
 
 .hz, .hz *, .hz *::before, .hz *::after { box-sizing: border-box; }
 
