@@ -35,7 +35,6 @@ const REGISTRO_INTERNO: Archivo[] = [
   },
 ]
 
-/** Lee un token de color (`var(--hz-x)`) en el panel, para que el SVG descargado no dependa de la hoja de estilos. */
 /**
  * SVG de la matriz de la sala para descargar: `svgMatriz` del tablero (fondo, sin animación, colores del tema escritos)
  * con la vista que corresponde al estado de la sala.
