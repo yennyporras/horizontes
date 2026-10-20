@@ -134,20 +134,20 @@ describe('POST /api/inscripcion', () => {
     expect(fila.token_hash).toMatch(/^[0-9a-f]{64}$/)
   })
 
-  it('mismo correo responde 409 CORREO_YA_INSCRITO con el mismo participante y token nuevo; el viejo deja de servir', async () => {
+  it('mismo correo responde 409 CORREO_YA_INSCRITO solo con el error: sin token, sin datos y sin tocar la sesión vigente (D1)', async () => {
     const s = await salaAbierta(1)
     const a = await inscrito(s.mesas[0].codigo, 'ana@correo.co', 'Ana Gómez')
     const r = await inscribir(e, s.mesas[0].codigo, ' ANA@correo.co ', 'Ana G')
     expect(r.statusCode).toBe(409)
-    const b = r.json()
-    expect(b.error.codigo).toBe('CORREO_YA_INSCRITO')
-    expect(b.participante.id).toBe(a.participante.id)
-    expect(b.token).not.toBe(a.token)
-    expect(r.body.toLowerCase()).not.toContain('ana@correo.co')
-
-    expect((await yo(a.token)).statusCode).toBe(401)
-    expect((await yo(b.token)).statusCode).toBe(200)
+    expect(r.json()).toEqual({
+      error: { codigo: 'CORREO_YA_INSCRITO', mensaje: 'Ese correo ya está inscrito en esta sala. Pide al facilitador que te dé acceso de nuevo.' },
+    })
+    expect(r.body).not.toContain('Ana')
+    expect(r.body).not.toContain(a.participante.id)
+    // La sesión de quien ya estaba sigue viva y no se guardó un consentimiento nuevo.
+    expect((await yo(a.token)).statusCode).toBe(200)
     expect(Number((e.db.prepare('SELECT COUNT(*) AS n FROM participantes').get() as { n: number }).n)).toBe(1)
+    expect(Number((e.db.prepare('SELECT COUNT(*) AS n FROM consentimientos').get() as { n: number }).n)).toBe(1)
   })
 
   it('el mismo correo puede inscribirse en salas distintas', async () => {
