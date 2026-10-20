@@ -56,9 +56,16 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 const esNumero = (v) => typeof v === 'number' && Number.isFinite(v);
 
-// Ancho aproximado de un texto en Montserrat 600 a 800 mayúsculas (sin medir en DOM para poder probar en Node).
+// Ancho aproximado de un texto en Montserrat 600 a 800 mayúsculas, con el avance de cada letra (medido en
+// Chromium; sin medir en el DOM para poder probar en Node). Una M o una W ocupan el triple que una I.
+const AVANCE = {
+  A: 0.74, B: 0.72, C: 0.7, D: 0.78, E: 0.64, F: 0.6, G: 0.76, H: 0.78, I: 0.3, J: 0.53, K: 0.7, L: 0.58, M: 0.92,
+  N: 0.78, O: 0.82, P: 0.69, Q: 0.82, R: 0.7, S: 0.62, T: 0.6, U: 0.76, V: 0.72, W: 1.06, X: 0.7, Y: 0.66, Z: 0.64, ' ': 0.26,
+};
 function anchoTexto(texto, fs) {
-  return String(texto).length * fs * 0.68 + fs * 0.3;
+  let em = 0;
+  for (const c of String(texto).toUpperCase()) em += AVANCE[c] ?? (/\d/.test(c) ? 0.62 : 0.72);
+  return em * 1.04 * fs + fs * 0.3;
 }
 
 function cajasSeSolapan(a, b) {
@@ -289,7 +296,7 @@ export function calcularLayout(datos, opciones = {}) {
         }
         for (const c of circulos) {
           if (propias.includes(c)) continue;
-          if (circuloEnCaja(c, caja)) costo += (prioridad ? 5000 : 500) + c.r * c.r;
+          if (circuloEnCaja(c, caja)) costo += (prioridad ? 5000 : 3000) + c.r * c.r;
         }
         for (const s of segmentos) if (segmentoEnCaja(s, caja)) costo += prioridad ? 4000 : 300;
         for (const m of marcasAgua) costo += areaSolape(caja, m) > 0 ? 150 + areaSolape(caja, m) * 0.05 : 0;

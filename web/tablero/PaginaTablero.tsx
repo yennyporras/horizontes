@@ -315,8 +315,13 @@ function Encabezado({
         </div>
         <p className="hz-cab-meta">
           <span>{nombreEstado(datos.sala?.estado)}</span>
-          <span aria-hidden="true">·</span>
-          <span>{alcanceTexto}</span>
+          {/* Con el selector de alcance a la vista no se repite; en pantalla completa (sin selector), sí. */}
+          {(!token || pantallaCompleta) && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{alcanceTexto}</span>
+            </>
+          )}
           {pantallaCompleta && (
             <>
               <span aria-hidden="true">·</span>
