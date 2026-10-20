@@ -3,17 +3,13 @@
 // Uso (local):      npm run sala:reiniciar -- --sala <id o código> --confirmar
 // Uso (producción): docker exec <contenedor> node_modules/.bin/tsx server/reiniciar_sala.ts --sala <código> --confirmar
 // Sin --confirmar solo muestra qué se borraría. Se puede correr con el servidor arriba (SQLite en WAL).
+import { argumento } from './cli.js'
 import { config } from './config.js'
 import { abrirDb, uno } from './db/index.js'
 import { reiniciarSalaLimpia, respaldarBd } from './dominio/mantenimiento.js'
 import { cargarSala } from './dominio/salas.js'
 
-const arg = (nombre: string) => {
-  const i = process.argv.indexOf(`--${nombre}`)
-  return i >= 0 ? process.argv[i + 1] : undefined
-}
-
-const salaArg = arg('sala')
+const salaArg = argumento('sala')
 if (!salaArg) {
   console.error('Falta --sala <id o código>.')
   process.exit(2)
