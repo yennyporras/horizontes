@@ -6,15 +6,16 @@
 /* Espacio final = alto medido del pie fijo (Marco) más un respiro; sin pie, solo el respiro. */
 .hz.hzp-vista { padding-bottom: calc(var(--hzp-alto-pie, 7.5rem) + var(--hz-sp-8)); }
 
-/* Sala y mesa debajo del encabezado de producto */
-.hzp-contexto { padding-block: var(--hz-sp-4) var(--hz-sp-2); display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
+/* Composición común (21-oct): la barra y el pie en el contenedor de página; el contexto, el contenido y la barra de
+   acción en la columna de lectura centrada (.hz-pagina--lectura). El pie queda al final aunque el contenido sea corto. */
+.hz.hzp-vista { display: flex; flex-direction: column; }
+.hzp-vista > main.hz-contenido { flex: 1 0 auto; align-content: start; }
+.hzp-pie-pagina { margin-top: var(--hz-sp-12); }
+
+/* Sala y mesa debajo de la barra: la línea de contexto de la cabecera de página. */
+.hzp-contexto { padding-block: var(--hz-sp-bloque) var(--hz-sp-2); display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); }
 .hzp-contexto__sala { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 .hzp-contexto__meta { color: var(--hz-tinta-2); }
-/* Contenedor de página (.hz-pagina): los bordes son los del panel; los textos conservan su medida de lectura.
-   El resultado (matriz y tablas) usa más ancho en escritorio. */
-.hzp-vista .hz-contenido > * { max-width: var(--hz-medida); }
-.hzp-vista .hz-contenido > .hzp-resultado, .hzp-vista .hz-contenido > .hzp-seccion { max-width: none; }
-.hzp-seccion > :not(.hzp-resultado) { max-width: var(--hz-medida); }
 
 /* Un nombre o una sala sin espacios no ensancha la página en 360 px. */
 .hzp-contexto p, .hzp-saludo { overflow-wrap: anywhere; }
@@ -65,7 +66,7 @@
 }
 
 /* Consentimiento (patrón del IRMI: bloque con título y casilla obligatoria) */
-.hzp-consentimiento { display: grid; gap: var(--hz-sp-2); padding: var(--hz-sp-4); }
+.hzp-consentimiento { display: grid; gap: var(--hz-sp-2); padding: var(--hz-sp-tarjeta); }
 .hzp-aviso-datos { margin: 0; display: grid; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 .hzp-aviso-datos dt { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 .hzp-aviso-datos dd { margin: 0; }
@@ -90,7 +91,7 @@
 .hzp-md strong { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 
 .hzp-proyectos { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--hz-sp-2); }
-.hzp-proyecto { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); }
+.hzp-proyecto { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-tarjeta); }
 /* Los 2 que se califican suben un escalón de superficie y llevan la insignia «Se califica». */
 .hzp-proyecto--vivo { background: var(--hz-superficie-2); border-color: var(--hz-borde-control); }
 .hzp-proyecto__nombre { display: flex; align-items: center; gap: var(--hz-sp-2); flex-wrap: wrap; font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
@@ -109,7 +110,7 @@
 
 /* Elegir proyecto: una tarjeta por proyecto */
 .hzp-elegir { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--hz-sp-3); }
-.hzp-elegir__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-4); }
+.hzp-elegir__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); padding: var(--hz-sp-tarjeta); }
 .hzp-elegir__info { display: grid; gap: var(--hz-sp-1); justify-items: start; }
 
 /* Calificar: una pregunta por pantalla (C19-5, P1) con las opciones como tarjetas táctiles a todo el ancho. */
@@ -129,7 +130,7 @@
 .hzp-navegacion > .hz-boton { width: 100%; min-height: var(--hz-tactil); }
 /* Resumen antes de guardar: una tarjeta con una fila por pregunta */
 .hzp-resumen { display: grid; gap: var(--hz-sp-4); }
-.hzp-resumen__lista { list-style: none; margin: 0; padding: 0 var(--hz-sp-4); display: grid; }
+.hzp-resumen__lista { list-style: none; margin: 0; padding: 0 var(--hz-sp-tarjeta); display: grid; }
 .hzp-resumen__fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--hz-sp-1) var(--hz-sp-3); padding: var(--hz-sp-3) 0; border-bottom: 1px solid var(--hz-borde); }
 .hzp-resumen__fila:last-child { border-bottom: 0; }
 /* El criterio comparte la fila con «Cambiar» y la respuesta usa todo el ancho debajo: en 360 px no queda una
@@ -144,11 +145,11 @@
 .hzp-resumen__fila > .hz-boton { grid-column: 2; grid-row: 1; min-height: var(--hz-tactil); min-width: var(--hz-tactil); }
 .hzp-hoja-plegable { display: grid; gap: var(--hz-sp-2); }
 .hzp-hoja-plegable > .hz-boton { justify-self: start; padding: 0; }
-.hzp-hoja-plegable__texto { padding: var(--hz-sp-4); font-size: var(--hz-fs-14); }
+.hzp-hoja-plegable__texto { padding: var(--hz-sp-tarjeta); font-size: var(--hz-fs-14); }
 
 /* Resultado del alcance */
 .hzp-resultado { display: grid; gap: var(--hz-sp-6); }
-.hzp-resultado__proyecto { display: grid; gap: var(--hz-sp-3); padding: var(--hz-sp-4); }
+.hzp-resultado__proyecto { display: grid; gap: var(--hz-sp-3); padding: var(--hz-sp-tarjeta); }
 .hzp-tabla { width: 100%; border-collapse: collapse; font-size: var(--hz-fs-14); }
 .hzp-tabla th, .hzp-tabla td { padding: var(--hz-sp-2) 0; border-bottom: 1px solid var(--hz-borde); text-align: left; vertical-align: top; }
 .hzp-tabla thead { font-size: var(--hz-fs-12); color: var(--hz-tinta-2); }
@@ -169,7 +170,7 @@
 .hzp-leyenda__rondas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--hz-sp-1) var(--hz-sp-4); color: var(--hz-tinta); }
 .hzp-leyenda__rondas .hz-insignia { margin-right: var(--hz-sp-1); }
 /* Cierre personal al cerrar la ronda 2: cuánto cambiaste y la pregunta para la mesa. */
-.hzp-cierre { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-left: 4px solid var(--hz-acento-producto); border-radius: var(--hz-r-l); }
+.hzp-cierre { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-tarjeta); background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-left: 4px solid var(--hz-acento-producto); border-radius: var(--hz-r-l); }
 .hzp-cierre__dato { font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 
 /* Matriz del tablero dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
@@ -179,17 +180,13 @@
 /* Las cifras de la tabla siguen en negrita y tabulares pese al blindaje de .hz-cifra (componentes.css). */
 .hz .hzp-tabla td { font-weight: var(--hz-fw-etiqueta); font-variant-numeric: tabular-nums; }
 
-/* Celular abierto en escritorio (triage #25): la matriz usa el ancho de la página (hasta 60 rem) y las tablas,
-   la medida de lectura. */
-.hzp-resultado > :not(.hzp-matriz) { max-width: var(--hz-medida); }
 /* En una laptop (800 px de alto) la matriz entera cabe en la pantalla: el ancho se limita también por el alto. */
 .hzp-matriz { max-width: min(60rem, 85vh); }
 
-/* Celular girado (poca altura): encabezado y contexto compactos y la barra al final del contenido,
+/* Celular girado (poca altura): contexto compacto y la barra al final del contenido (la barra superior mide lo mismo que en todas las vistas),
    para que la pregunta se vea sin desplazar. */
 @media (max-height: 30rem) and (orientation: landscape) {
   .hz.hzp-vista { padding-bottom: var(--hz-sp-4); }
-  .hzp-cabecera .hz-producto__fila { padding-block: var(--hz-sp-1) calc(var(--hz-sp-1) + 4px); }
   /* Solo el alto: el margen lateral es el del contenedor de página. */
   .hzp-contexto { display: flex; flex-wrap: wrap; column-gap: var(--hz-sp-3); padding-block: var(--hz-sp-2) 0; }
   .hzp-vista .hz-contenido { gap: var(--hz-sp-3); }
@@ -197,12 +194,7 @@
   .hzp-pie > .hz-barra-accion { box-shadow: none; }
 }
 
-/* Escritorio: el resultado usa el ancho de la página (las tablas de los 2 proyectos lado a lado bajo la matriz)
-   y las acciones de texto se alinean con el borde del contenido, como el resto de la página. */
-@media (min-width: 64rem) {
-  .hzp-resultado { grid-template-columns: repeat(2, minmax(0, var(--hz-medida))); column-gap: var(--hz-sp-6); align-items: start; }
-  .hzp-resultado > :not(.hzp-resultado__proyecto) { grid-column: 1 / -1; }
-}
+/* Escritorio: las acciones de texto se alinean con el borde de la columna de lectura, como el resto de la página. */
 @media (min-width: 48rem) {
   .hzp-acciones { justify-self: start; justify-items: start; }
 }

@@ -1,6 +1,8 @@
 // Ancho de página estándar (familia Estratek §5, 20-oct): en el celular y en la landing, encabezado, contenido y pie
 // comparten los mismos bordes izquierdo y derecho, los del panel (1280 px con margen de 16, 24 o 32 px).
-// Se mide en navegador real con getBoundingClientRect a 360, 768, 1280, 1440 y 1920 px.
+// Composición común (21-oct): la barra mide 64 px bajo 1024 px y 72 px desde ahí en todas las vistas, y en el celular
+// la columna de lectura (contexto, contenido y barra de acción) va centrada dentro del contenedor, de 640 px como máximo.
+// Se mide en navegador real con getBoundingClientRect a 320, 360, 390, 768, 1024, 1280, 1440 y 1920 px.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Page } from 'playwright-core'
 import { REINTENTOS_E2E, sinNavegador } from '../../../tests/navegador'
@@ -10,9 +12,11 @@ import { accion, crearSala, hayChromium, iniciar, type Entorno } from './entorno
 const conNavegador = hayChromium()
 if (!conNavegador) sinNavegador('[e2e ancho]', 'No hay Chromium de Playwright para medir el ancho de página.')
 
-const ANCHOS = [360, 768, 1280, 1440, 1920]
+const ANCHOS = [320, 360, 390, 768, 1024, 1280, 1440, 1920]
 const ANCHO_PAGINA = 1280
+const ANCHO_LECTURA = 640
 const margen = (w: number) => (w >= 1280 ? 32 : w >= 768 ? 24 : 16)
+const altoBarra = (w: number) => (w >= 1024 ? 72 : 64)
 
 /** Bordes del contenido (sin el margen interior) de cada franja. */
 function bordes(p: Page, selectores: string[]) {
@@ -27,9 +31,10 @@ function bordes(p: Page, selectores: string[]) {
   }, selectores)
 }
 
-async function revisar(p: Page, selectores: string[], ancho: number) {
+/** Bordes del contenido de las franjas: centradas en una caja de `maximo` px (más el margen) dentro de la ventana. */
+async function revisar(p: Page, selectores: string[], ancho: number, maximo = ANCHO_PAGINA) {
   const medidas = await bordes(p, selectores)
-  const caja = Math.min(ancho, ANCHO_PAGINA)
+  const caja = Math.min(ancho, maximo + (maximo === ANCHO_PAGINA ? 0 : 2 * margen(ancho)))
   const izq = Math.round((ancho - caja) / 2 + margen(ancho))
   const der = Math.round(ancho - (ancho - caja) / 2 - margen(ancho))
   for (const m of medidas) {
@@ -37,6 +42,8 @@ async function revisar(p: Page, selectores: string[], ancho: number) {
     expect(m.der, `${m.s} a ${ancho} px: borde derecho`).toBe(der)
   }
   expect(await p.evaluate(() => document.documentElement.scrollWidth), `sin desborde a ${ancho} px`).toBeLessThanOrEqual(ancho)
+  const barra = await p.evaluate(() => Math.round(document.querySelector('.hz-producto')!.getBoundingClientRect().height))
+  expect(barra, `alto de la barra a ${ancho} px`).toBe(altoBarra(ancho))
 }
 
 describe.skipIf(!conNavegador)('ancho de página estándar en navegador', { retry: REINTENTOS_E2E }, () => {
@@ -58,7 +65,8 @@ describe.skipIf(!conNavegador)('ancho de página estándar en navegador', { retr
     for (const ancho of ANCHOS) {
       await p.setViewportSize({ width: ancho, height: 900 })
       await p.waitForTimeout(100)
-      await revisar(p, ['.hz-producto__fila', '.hzp-contexto', 'main.hz-contenido', '.hz-barra-accion__interior'], ancho)
+      await revisar(p, ['.hz-producto__fila', 'footer.hz-pie > .hz-pagina'], ancho)
+      await revisar(p, ['.hzp-contexto', 'main.hz-contenido', '.hz-barra-accion__interior'], ancho, ANCHO_LECTURA)
       await capturar(p, `ancho-celular-${ancho}`)
     }
     await ctx.close()
@@ -73,7 +81,7 @@ describe.skipIf(!conNavegador)('ancho de página estándar en navegador', { retr
       await p.setViewportSize({ width: ancho, height: 900 })
       await p.waitForTimeout(100)
       await capturar(p, `ancho-landing-${ancho}`)
-      await revisar(p, ['.hz-producto__fila', '#inicio', '#entrar > .hz-pagina', '#como-funciona > .hz-pagina', '#privacidad > .hz-pagina', 'footer > .hz-pagina'], ancho)
+      await revisar(p, ['.hz-producto__fila', '#inicio', '#entrar > .hz-pagina', '#como-funciona > .hz-pagina', '#privacidad > .hz-pagina', 'footer.hz-pie > .hz-pagina'], ancho)
     }
     await ctx.close()
   }, 120_000)

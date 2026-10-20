@@ -570,6 +570,13 @@ describe('ancho de página estándar: encabezado, contenido y pie con el mismo c
     expect(raiz.classList.contains('hz-pagina')).toBe(false)
     for (const sel of ['.hz-producto__fila', '.hzp-contexto', 'main', '.hz-barra-accion__interior'])
       expect(container.querySelector(sel)!.classList.contains('hz-pagina'), sel).toBe(true)
+    // 21-oct: la columna de lectura va centrada dentro del contenedor (no pegada a la izquierda); la barra y el pie no.
+    for (const sel of ['.hzp-contexto', 'main', '.hz-barra-accion__interior'])
+      expect(container.querySelector(sel)!.classList.contains('hz-pagina--lectura'), sel).toBe(true)
+    expect(container.querySelector('.hz-producto__fila')!.classList.contains('hz-pagina--lectura')).toBe(false)
+    const pie = container.querySelector('footer.hz-pie')!
+    expect(pie.firstElementChild!.classList.contains('hz-pagina')).toBe(true)
+    expect(pie.firstElementChild!.classList.contains('hz-pagina--lectura')).toBe(false)
   })
 })
 
