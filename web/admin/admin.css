@@ -333,6 +333,7 @@
 .hz-admin .cifras-talleres { margin-bottom: var(--hz-sp-6); }
 .hz-admin .cifras-talleres .kpis { margin-bottom: var(--hz-sp-2); }
 .hz-admin .cifras-talleres .pista { margin: 0; }
+.hz-admin .demo .alerta { margin: var(--hz-sp-3) 0 0; }
 .hz-admin .kpi__detalle { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 .hz-admin .sin-corte { white-space: nowrap; }
 .hz-admin .acciones-sala { display: flex; flex-wrap: wrap; gap: var(--hz-sp-2); }

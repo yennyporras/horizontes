@@ -79,6 +79,8 @@ interface Estado {
   rubricas: Record<string, CriterioRubrica[]>
   /** Las que el admin marcó «Usar también en las salas nuevas», por criterio. */
   rubricasNuevas: Record<string, CriterioRubrica['rubrica']>
+  /** Modo demo: la sala «Demostración» que avanza sola y cuándo empezó (ms). */
+  demo: { salaId: string; inicio: number; terminada: boolean } | null
 }
 
 const NOMBRES = ['Ana Pérez', 'Luis Gómez', 'Marta Ríos', 'Carlos Díaz', 'Sofía Mejía', 'Andrés Rojas', 'Laura Vélez', 'Diego Castro', 'Paula Henao', 'Jorge Arango', 'Camila Ortiz', 'Felipe Duque']
@@ -137,6 +139,7 @@ function inicial(): Estado {
     salas: [base],
     rubricas: {},
     rubricasNuevas: {},
+    demo: null,
   }
 }
 
@@ -146,6 +149,7 @@ let estado = inicial()
 let simular = true
 export function reiniciarMock(opciones: { simularVotos?: boolean } = {}) {
   estado = inicial()
+  completaronR1.clear()
   simular = opciones.simularVotos ?? true
   sessionStorage.removeItem(LLAVE_SESION)
 }
@@ -218,6 +222,130 @@ const SIGUIENTE: Partial<Record<Accion, EstadoSala>> = {
   cerrar_ronda_2: 'r2_cerrada',
   cerrar_sala: 'cerrada',
   reabrir_sala: 'r2_cerrada',
+}
+
+/** Evento que el servidor anota por cada acción (server/dominio/estados.ts), con su ronda. */
+const EVENTO_ACCION: Record<Accion, { tipo: string; ronda?: 1 | 2 | 'actual' }> = {
+  abrir_inscripcion: { tipo: 'inscripcion_abierta' },
+  abrir_ronda_1: { tipo: 'ronda_abierta', ronda: 1 },
+  cerrar_ronda_1: { tipo: 'ronda_cerrada', ronda: 1 },
+  abrir_ronda_2: { tipo: 'ronda_abierta', ronda: 2 },
+  cerrar_ronda_2: { tipo: 'ronda_cerrada', ronda: 2 },
+  reabrir_ronda: { tipo: 'ronda_reabierta', ronda: 'actual' },
+  reiniciar_ronda: { tipo: 'reinicio', ronda: 'actual' },
+  cerrar_sala: { tipo: 'sala_cerrada' },
+  reabrir_sala: { tipo: 'sala_reabierta' },
+}
+
+/** Quiénes completaron la ronda 1 al cerrarla, por sala (el simulador solo guarda quién completó la ronda en curso). */
+const completaronR1 = new Map<string, number>()
+
+/**
+ * «Resumen del taller» del detalle (QA por roles, inversionista), como el servidor: minutos de la apertura al último
+ * cierre de cada ronda según la bitácora (null si no se cerró), completitud y accesos de nuevo.
+ */
+function resumenTaller(s: SalaDetalle): NonNullable<SalaDetalle['resumen']> {
+  const cronologicos = [...s.eventos].reverse()
+  const minutos = (ronda: number) => {
+    const abre = cronologicos.find((e) => e.tipo === 'ronda_abierta' && e.detalle?.ronda === ronda)
+    const cierra = [...cronologicos].reverse().find((e) => e.tipo === 'ronda_cerrada' && e.detalle?.ronda === ronda)
+    if (!abre || !cierra) return null
+    return Math.max(0, Math.round((Date.parse(cierra.at) - Date.parse(abre.at)) / 60000))
+  }
+  const activos = s.participantes.filter((p) => p.activo)
+  const r = s.sala.ronda_actual ?? 0
+  return {
+    minutos_r1: minutos(1),
+    minutos_r2: minutos(2),
+    inscritos: activos.length,
+    completaron_r1: r === 1 ? activos.filter((p) => p.completo_ronda).length : r === 2 ? (completaronR1.get(s.sala.id) ?? activos.length) : 0,
+    completaron_r2: r === 2 ? activos.filter((p) => p.completo_ronda).length : 0,
+    accesos_nuevos: s.eventos.filter((e) => e.tipo === 'acceso_reemitido').length,
+  }
+}
+
+/** Modo demo (`POST /api/admin/demo`): la sala «Demostración», 4 mesas y 24 personas de ejemplo (@example.com). */
+const DEMO_MS = { inscribir: 1000, abrirR1: 4000, votarR1: 25000, abrirR2: 1000, votarR2: 25000 }
+
+function crearDemo(por: string): Respuesta {
+  if (estado.demo && !estado.demo.terminada) return error(409, 'DEMO_EN_CURSO', 'Ya hay una demostración corriendo. Espera a que termine (dura un minuto) o ábrela desde Salas.')
+  const r = crearSala({ nombre: 'Demostración', mesas: 4, tipo: 'ensayo' }, por)
+  if (r.status !== 201) return r
+  const s = estado.salas[estado.salas.length - 1]
+  estado.demo = { salaId: s.sala.id, inicio: Date.now(), terminada: false }
+  return ok({ sala: resumen(s) }, 201)
+}
+
+/** La demostración avanza con el reloj: cada lectura la pone donde debería ir, como si el servidor la corriera en segundo plano. */
+function avanzarDemo() {
+  const d = estado.demo
+  if (!d || d.terminada) return
+  const s = salaPorId(d.salaId)
+  if (!s) {
+    estado.demo = null
+    return
+  }
+  const t = Date.now() - d.inicio
+  const abreR1 = DEMO_MS.inscribir + DEMO_MS.abrirR1
+  const cierraR1 = abreR1 + DEMO_MS.votarR1
+  const abreR2 = cierraR1 + DEMO_MS.abrirR2
+  const cierraR2 = abreR2 + DEMO_MS.votarR2
+  const accion = (a: Accion) => {
+    const destino = aplicarAccion(s, a)
+    if (!destino) return
+    s.sala.estado = destino
+    if (a === 'abrir_ronda_1' || a === 'abrir_ronda_2') s.participantes.forEach((p) => (p.completo_ronda = false))
+    if (destino === 'r1_abierta') s.sala.ronda_actual = 1
+    if (destino === 'r2_abierta') {
+      s.sala.ronda_actual = 2
+      s.sala.config.revelar_hojas = true
+    }
+    derivar(s)
+    const ev = EVENTO_ACCION[a]
+    tocar(s, ev.tipo, 'sistema', { accion: a, ...(typeof ev.ronda === 'number' ? { ronda: ev.ronda } : {}) })
+  }
+  const votar = (desde: number, dura: number) => {
+    const meta = Math.min(s.participantes.length, Math.floor((s.participantes.length * (t - desde)) / dura))
+    const faltan = meta - s.participantes.filter((p) => p.completo_ronda).length
+    for (const p of s.participantes.filter((x) => !x.completo_ronda).slice(0, Math.max(0, faltan))) {
+      p.completo_ronda = true
+      tocar(s, 'voto', 'participante')
+    }
+    derivar(s)
+  }
+  if (t >= DEMO_MS.inscribir && s.sala.estado === 'preparada') {
+    accion('abrir_inscripcion')
+    for (let i = 0; i < 24; i++) {
+      const m = s.mesas[i % s.mesas.length]
+      const id = `${s.sala.id}_p${i + 1}`
+      s.participantes.push({
+        id,
+        nombre: `Persona ${i + 1}`,
+        correo: `persona${i + 1}@example.com`,
+        mesa_id: m.id,
+        perfil_id: PERFILES[Math.floor(i / s.mesas.length) % PERFILES.length].id,
+        activo: true,
+        completo_ronda: false,
+        consentimiento_at: new Date().toISOString(),
+        ip: '127.0.0.1',
+        pais: 'CO',
+      })
+      tocar(s, 'inscripcion', 'participante', { participante_id: id, mesa_id: m.id })
+    }
+    derivar(s)
+  }
+  if (t >= abreR1 && s.sala.estado === 'inscripcion') accion('abrir_ronda_1')
+  if (s.sala.estado === 'r1_abierta') votar(abreR1, DEMO_MS.votarR1)
+  if (t >= cierraR1 && s.sala.estado === 'r1_abierta') {
+    completaronR1.set(s.sala.id, s.participantes.filter((p) => p.completo_ronda).length)
+    accion('cerrar_ronda_1')
+  }
+  if (t >= abreR2 && s.sala.estado === 'r1_cerrada') accion('abrir_ronda_2')
+  if (s.sala.estado === 'r2_abierta') votar(abreR2, DEMO_MS.votarR2)
+  if (t >= cierraR2 && s.sala.estado === 'r2_abierta') {
+    accion('cerrar_ronda_2')
+    d.terminada = true
+  }
 }
 
 function aplicarAccion(s: SalaDetalle, accion: Accion): EstadoSala | null {
@@ -398,6 +526,7 @@ function salaPorId(id: string) {
 export async function responderMock(metodo: string, ruta: string, cuerpo?: unknown, etag?: string): Promise<Respuesta> {
   const [camino, consulta = ''] = ruta.split('?')
   const b = (cuerpo ?? {}) as Record<string, unknown>
+  avanzarDemo()
 
   if (metodo === 'POST' && camino === '/api/admin/login') {
     const a = estado.admins.find((x) => x.usuario === b.usuario && x.activo)
@@ -455,6 +584,11 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
 
   if (metodo === 'GET' && camino === '/api/admin/metricas') return ok(metricas())
 
+  if (metodo === 'POST' && camino === '/api/admin/demo') {
+    if (a.rol !== 'superadmin') return error(403, 'SOLO_SUPERADMIN', 'Solo el superadmin puede crear una demostración.')
+    return crearDemo(por)
+  }
+
   const m = /^\/api\/admin\/salas\/([^/]+)(\/.*)?$/.exec(camino)
   if (m) {
     const s = salaPorId(m[1])
@@ -466,7 +600,12 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       const etagSala = `"${s.version}"`
       if (etag && etag === etagSala) return { status: 304, body: null, etag: etagSala }
       // Como el servidor: el detalle trae el catálogo de perfiles (no trae criterios ni proyectos vivos).
-      return { status: 200, body: { ...structuredClone(s), perfiles: PERFILES, admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin }, etag: etagSala }
+      const conResumen = s.sala.estado === 'r2_cerrada' || s.sala.estado === 'cerrada' ? { resumen: resumenTaller(s) } : {}
+      return {
+        status: 200,
+        body: { ...structuredClone(s), ...conResumen, perfiles: PERFILES, admin_actual: yo(a), servidor_at: new Date().toISOString(), base_url: window.location.origin },
+        etag: etagSala,
+      }
     }
     if (metodo === 'POST' && resto === '/duplicar') {
       // Como el servidor: duplicar para ensayo crea una sala `tipo: 'ensayo'` con la misma empresa y sector.
@@ -536,7 +675,8 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
         if (accion === 'abrir_ronda_2') s.sala.config.revelar_hojas = true
       }
       derivar(s)
-      tocar(s, accion, por)
+      const ev = EVENTO_ACCION[accion]
+      tocar(s, ev.tipo, por, { accion, ...(ev.ronda ? { ronda: ev.ronda === 'actual' ? s.sala.ronda_actual : ev.ronda } : {}) })
       return ok({ estado: destino })
     }
   }

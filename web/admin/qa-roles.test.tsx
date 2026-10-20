@@ -3,7 +3,7 @@
 // simulador: métricas y tipo de sala, modo demo, Sala en vivo, Exportar, el panel sin la semilla y los textos.
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
@@ -11,6 +11,7 @@ import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
 import { CRITERIOS_BASE, contenidoDe } from './contenido'
+import type { SalaDetalle } from './tipos'
 
 function montar(ruta: string) {
   return render(
@@ -181,10 +182,76 @@ describe('Salas: cifras de los talleres, tipo de sala, empresa y sector (inversi
     expect(lista.find((s) => s.id === 's_demo')).toMatchObject({ tipo: 'ensayo', empresa: 'Otra Empresa', sector: 'salud' })
   })
 
-  it('el simulador rechaza como el servidor una empresa de más de 80 caracteres o un sector fuera de la lista', async () => {
+  it('el simulador rechaza como el servidor una empresa de más de 80 caracteres, un sector fuera de la lista o un tipo desconocido', async () => {
     await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
     expect((await responderMock('PATCH', '/api/admin/salas/s_demo/config', { empresa: 'x'.repeat(81) })).status).toBe(422)
     expect((await responderMock('PATCH', '/api/admin/salas/s_demo/config', { sector: 'mineria' })).status).toBe(422)
     expect((await responderMock('POST', '/api/admin/salas', { nombre: 'X', mesas: 1, tipo: 'otro' })).status).toBe(422)
+  })
+})
+
+describe('modo demo (jurado)', () => {
+  it('solo el superadmin ve «Crear demostración», con la explicación en una línea, y abre Sala en vivo de la demostración', async () => {
+    montar('/admin/login')
+    await entrar()
+    const demo = screen.getByRole('region', { name: 'Demostración' })
+    expect(within(demo).getByText('Crea la sala «Demostración» con 24 personas simuladas y corre las dos rondas en un minuto. Es un ensayo: no cuenta en las cifras.')).toBeTruthy()
+    const boton = within(demo).getByRole('button', { name: 'Crear demostración' })
+    // Botón secundario: el principal de Salas sigue siendo «Crear sala».
+    expect(boton.className).toContain('hz-boton--secundario')
+    expect([...document.querySelectorAll('.hz-boton--primario')].map((b) => b.textContent)).toEqual(['Crear sala'])
+    fireEvent.click(boton)
+    await screen.findByRole('heading', { level: 1, name: 'Sala en vivo' })
+    const meta = (await screen.findByText('Demostración', { selector: '.encabezado-sala__meta strong' })).parentElement as HTMLElement
+    expect(within(meta).getByText('Ensayo').className).toContain('etiqueta--ensayo')
+    expect(document.title).toBe('Sala en vivo · Demostración · Horizontes')
+    const lista = (await responderMock('GET', '/api/admin/salas')).body as { id: string; nombre: string; tipo: string; mesas: number }[]
+    const sala = lista.find((s) => s.nombre === 'Demostración')!
+    expect([sala.tipo, sala.mesas]).toEqual(['ensayo', 4])
+  })
+
+  it('el admin no ve la demostración y el simulador le responde 403', async () => {
+    montar('/admin/login')
+    await entrar('jorge')
+    expect(screen.queryByRole('region', { name: 'Demostración' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Crear demostración' })).toBeNull()
+    expect((await responderMock('POST', '/api/admin/demo')).status).toBe(403)
+  })
+
+  it('una segunda demostración mientras corre la primera sale con el mensaje del servidor (409)', async () => {
+    await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+    expect((await responderMock('POST', '/api/admin/demo')).status).toBe(201)
+    await responderMock('POST', '/api/admin/logout')
+    montar('/admin/login')
+    await entrar()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear demostración' }))
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'No pudimos crear la demostración. Ya hay una demostración corriendo. Espera a que termine (dura un minuto) o ábrela desde Salas.',
+    )
+  })
+
+  it('el simulador corre la demostración como el servidor: 24 personas, las dos rondas en un minuto y el resumen al final', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date('2026-10-20T15:00:00-05:00'))
+      await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+      const { sala } = (await responderMock('POST', '/api/admin/demo')).body as { sala: { id: string } }
+      const detalle = async () => (await responderMock('GET', `/api/admin/salas/${sala.id}`)).body as SalaDetalle
+      vi.setSystemTime(new Date('2026-10-20T15:00:10-05:00'))
+      let d = await detalle()
+      expect([d.sala.estado, d.participantes.length, d.participantes.every((p) => p.correo.endsWith('@example.com'))]).toEqual(['r1_abierta', 24, true])
+      vi.setSystemTime(new Date('2026-10-20T15:00:40-05:00'))
+      d = await detalle()
+      expect(d.sala.estado).toBe('r2_abierta')
+      expect(d.resumen).toBeUndefined()
+      vi.setSystemTime(new Date('2026-10-20T15:01:10-05:00'))
+      d = await detalle()
+      expect(d.sala.estado).toBe('r2_cerrada')
+      expect(d.resumen).toMatchObject({ inscritos: 24, completaron_r1: 24, completaron_r2: 24, accesos_nuevos: 0 })
+      // Terminada la primera, se puede crear otra.
+      expect((await responderMock('POST', '/api/admin/demo')).status).toBe(201)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

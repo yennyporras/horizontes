@@ -4,6 +4,7 @@ import { api, lista } from '../api'
 import type { Metricas, SalaResumen, Sector, TipoSala } from '../tipos'
 import { ESTADOS, LARGO_MAXIMO_EMPRESA, SECTORES, TIPOS_SALA, enumerar, fechaHora, nombreEnsayo, nombrePais } from '../textos'
 import { useTituloPagina } from './EncabezadoSala'
+import { useSesion } from '../sesion'
 
 const personas = (n: number) => (n === 1 ? '1 persona' : `${n} personas`)
 
@@ -20,6 +21,7 @@ export function Salas() {
   const [duplicando, setDuplicando] = useState<string | null>(null)
   const [errorDuplicar, setErrorDuplicar] = useState<string | null>(null)
   const navegar = useNavigate()
+  const { admin } = useSesion()
   useTituloPagina('Salas')
   const claveCambiada = Boolean((useLocation().state as { claveCambiada?: boolean } | null)?.claveCambiada)
 
@@ -149,6 +151,7 @@ export function Salas() {
           </p>
         )}
       </section>
+      {admin?.rol === 'superadmin' && <Demostracion />}
 
       {error && (
         <p className="alerta alerta--error" role="alert">
@@ -199,6 +202,45 @@ export function Salas() {
         </ul>
       )}
     </>
+  )
+}
+
+/**
+ * Modo demo (QA por roles del 20-oct, jurado): solo el superadmin. El servidor crea la sala «Demostración» (un ensayo,
+ * con 4 mesas) e inscribe 24 personas simuladas que votan las dos rondas en un minuto; el panel abre Sala en vivo.
+ */
+function Demostracion() {
+  const navegar = useNavigate()
+  const [creando, setCreando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const crear = async () => {
+    setError(null)
+    setCreando(true)
+    try {
+      const r = await api.post<{ sala?: { id: string }; id?: string }>('/api/admin/demo')
+      const id = r?.sala?.id ?? r?.id
+      if (id) navegar(`/admin/salas/${id}/vivo`)
+    } catch (e) {
+      setError(e instanceof Error ? `No pudimos crear la demostración. ${e.message}` : 'No pudimos crear la demostración.')
+    } finally {
+      setCreando(false)
+    }
+  }
+  return (
+    <section className="panel demo" aria-labelledby="t-demo">
+      <h2 id="t-demo">Demostración</h2>
+      <p id="ayuda-demo" className="pista">
+        Crea la sala «Demostración» con 24 personas simuladas y corre las dos rondas en un minuto. Es un ensayo: no cuenta en las cifras.
+      </p>
+      <button type="button" className="hz-boton hz-boton--secundario" disabled={creando} aria-busy={creando} aria-describedby="ayuda-demo" onClick={() => void crear()}>
+        {creando ? 'Creando…' : 'Crear demostración'}
+      </button>
+      {error && (
+        <p className="alerta alerta--error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   )
 }
 
