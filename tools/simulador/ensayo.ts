@@ -1,4 +1,4 @@
-// Ensayo general del taller (R3): lo mismo que vive la sala, de punta a punta y con el reloj real.
+// Ensayo general del taller: lo mismo que vive la sala, de punta a punta y con el reloj real.
 //   - 4 mesas, 40 personas (la última llega tarde, en plena ronda 1), polling de celulares, proyector y panel cada 2,5 s.
 //   - Precierre mesa por mesa: cada mesa termina de votar a su turno; solo esa mesa ve su resultado preliminar,
 //     el panel recibe el aviso y la ronda sigue abierta. La llegada tarde deshace el precierre de su mesa.

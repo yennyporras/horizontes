@@ -28,7 +28,7 @@ DOMINIO_PROD="${HZ_DOMINIO_PROD:-horizontes.estratek.com.co}"
 
 info() { printf '== %s\n' "$*"; }
 falla() { printf '!! %s\n' "$1" >&2; exit "${2:-1}"; }
-falta() { falla "Falta $1. Ver deploy/README.md (Credenciales) y docs/BLOQUEOS.md." 2; }
+falta() { falla "Falta $1. Ver deploy/README.md (Credenciales) y docs/ENTREGA.md." 2; }
 
 dominio_de() { case "$1" in staging) echo staging-horizontes.estratek.com.co ;; produccion) echo "$DOMINIO_PROD" ;; *) falla "Ambiente desconocido: $1" ;; esac; }
 uuid_de() { case "$1" in staging) echo "${COOLIFY_APP_STAGING:-}" ;; produccion) echo "${COOLIFY_APP_PROD:-}" ;; esac; }

@@ -1,4 +1,4 @@
-// Endurecimiento HTTP (R3): cabeceras de seguridad, errores 4xx de Fastify con forma de contrato
+// Endurecimiento HTTP: cabeceras de seguridad, errores 4xx de Fastify con forma de contrato
 // y logs sin datos personales (Ley 1581: ni nombres, ni correos, ni tokens, ni IP en los logs de Coolify).
 import type { Writable } from 'node:stream'
 import type { FastifyError, FastifyInstance, FastifyServerOptions } from 'fastify'
