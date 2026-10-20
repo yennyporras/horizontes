@@ -13,7 +13,8 @@ import { bienvenidaPendiente, guardarBorrador, guardarToken, guardarVista, leerB
 import { usarYo } from './usarYo'
 
 // La muestra del sistema de diseño trae el mock de /api/yo: se carga aparte para no inflar el bundle.
-const MuestraUI = lazy(() => import('../shared/ui/MuestraUI').then((m) => ({ default: m.MuestraUI })))
+// Solo en desarrollo: en el build no hay import y la muestra no se publica.
+const MuestraUI = import.meta.env.DEV ? lazy(() => import('../shared/ui/MuestraUI').then((m) => ({ default: m.MuestraUI }))) : () => null
 
 /** Texto de la decisión D1 (20-oct): la sesión perdida la devuelve el facilitador desde su panel. */
 export const PIDE_ACCESO = 'Pídele al facilitador que te dé acceso de nuevo: en su panel, «Dar acceso de nuevo» te muestra un QR o un enlace para entrar.'
@@ -21,7 +22,8 @@ export const PIDE_ACCESO = 'Pídele al facilitador que te dé acceso de nuevo: e
 // Flujo del participante (DISENO §8). Ruta /m/:codigo; /m/_ui es la muestra del sistema de diseño.
 export default function PaginaMesa() {
   const { codigo = '' } = useParams()
-  if (codigo === '_ui')
+  // La muestra solo existe en desarrollo: en el build, /m/_ui es un código de mesa más (no existe).
+  if (import.meta.env.DEV && codigo === '_ui')
     return (
       <Suspense fallback={<Cargando />}>
         <MuestraUI />

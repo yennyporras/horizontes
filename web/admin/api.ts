@@ -1,4 +1,3 @@
-import { responderMock } from './mock/servidor'
 import { borrar, guardar, leer } from './memoria'
 
 export class ApiError extends Error {
@@ -32,16 +31,28 @@ const transporteReal: Transporte = async (metodo, ruta, cuerpo, etag) => {
 }
 
 // API real por defecto. Modo simulado (servidor en memoria del navegador) con VITE_ADMIN_MOCK=1
-// o abriendo /admin?mock=1 (queda guardado en este navegador; ?mock=0 lo apaga).
+// o abriendo /admin?mock=1 (queda guardado en este navegador; ?mock=0 lo apaga). Solo en desarrollo:
+// import.meta.env.DEV es false en el build, así el simulador y sus datos de ejemplo no llegan a producción.
 const LLAVE_MODO = 'hz_admin_modo'
 
+/** Transporte marcado como simulador (el del navegador o, en las pruebas, `responderMock`). */
+export type TransporteSimulado = Transporte & { simulador?: true }
+
+/** El simulador se descarga solo si se usa, y solo en desarrollo. */
+const transporteSimulado: TransporteSimulado = import.meta.env.DEV
+  ? Object.assign(
+      async (metodo: string, ruta: string, cuerpo?: unknown, etag?: string) => (await import('./mock/servidor')).responderMock(metodo, ruta, cuerpo, etag),
+      { simulador: true as const },
+    )
+  : transporteReal
+
 function modoInicial(): Transporte {
-  if (typeof window === 'undefined') return transporteReal
+  if (!import.meta.env.DEV || typeof window === 'undefined') return transporteReal
   const q = new URLSearchParams(window.location.search).get('mock')
   if (q === '1') guardar(LLAVE_MODO, 'mock')
   if (q === '0') borrar(LLAVE_MODO)
   const mock = import.meta.env.VITE_ADMIN_MOCK === '1' || leer(LLAVE_MODO) === 'mock'
-  return mock ? responderMock : transporteReal
+  return mock ? transporteSimulado : transporteReal
 }
 
 let transporte: Transporte = modoInicial()
@@ -50,7 +61,7 @@ export function usarTransporte(t: Transporte) {
   transporte = t
 }
 
-export const usaMocks = () => transporte === responderMock
+export const usaMocks = () => import.meta.env.DEV && (transporte as TransporteSimulado).simulador === true
 
 /**
  * F-5: la sesión del panel venció o se cerró (401 en una ruta del panel). La sesión se suscribe y manda al login.

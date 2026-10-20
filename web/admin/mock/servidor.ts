@@ -497,3 +497,6 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
 
   return error(404, 'RUTA_NO_EXISTE', `El simulador no conoce ${metodo} ${camino}.`)
 }
+
+// usaMocks() reconoce el simulador por esta marca (las pruebas lo usan directo con usarTransporte).
+;(responderMock as typeof responderMock & { simulador?: true }).simulador = true
