@@ -369,33 +369,40 @@ export function calcularLayout(datos, opciones = {}) {
         const py = clamp(cy, y, y + h);
         const distancia = Math.max(0, Math.hypot(cx - px, cy - py) - ancla.r);
         let costo = distancia * porPx + i * 0.5;
+        // Grave: fuera del plano o pisando otro nombre. Un fijo que solo cabe así se queda sin nombre.
+        let grave = false;
         if (x < limites.x || y < limites.y || x + w > limites.x + limites.w || y + h > limites.y + limites.h) {
           costo += 1e6;
+          grave = true;
         }
         for (const c of circulos) {
           if (propias.includes(c)) continue;
-          if (circuloEnCaja(c, caja)) costo += (prioridad ? 5000 : 3000) + c.r * c.r;
+          if (circuloEnCaja(c, caja)) costo += (prioridad ? 5000 : circulosVivos.includes(c) ? 5000 : 3000) + c.r * c.r;
         }
         for (const s of segmentos) if (segmentoEnCaja(s, caja)) costo += prioridad ? 4000 : 300;
         for (const m of marcasAgua) costo += areaSolape(caja, m) > 0 ? 150 + areaSolape(caja, m) * 0.05 : 0;
         // Tapar otro texto es peor que rozar una burbuja: el nombre de un fijo nunca pisa el de un vivo.
         // Entre nombres queda un espacio (sin él, dos nombres seguidos se leen como uno).
         const holgada = { x: x - sep, y: y - sep * 0.3, w: w + 2 * sep, h: h + sep * 0.6 };
-        for (const o of colocadas) costo += areaSolape(holgada, o.caja) * (o.prioridad ? 50 : 4) + (cajasSeSolapan(holgada, o.caja) ? (o.prioridad || cajasSeSolapan(caja, o.caja) ? 20000 : 1000) : 0);
+        for (const o of colocadas) {
+          const pisa = cajasSeSolapan(holgada, o.caja) && (o.prioridad || cajasSeSolapan(caja, o.caja));
+          if (pisa) grave = true;
+          costo += areaSolape(holgada, o.caja) * (o.prioridad ? 50 : 4) + (cajasSeSolapan(holgada, o.caja) ? (pisa ? 20000 : 1000) : 0);
+        }
         // Un nombre apartado lleva una guía hasta su burbuja: que no cruce otro nombre ni, si es de un fijo, un vivo.
         if (distancia > etq.fs * 0.8) {
           const tramo = { x1: cx, y1: cy, x2: px, y2: py };
           for (const o of colocadas) if (segmentoEnCaja(tramo, o.caja)) costo += o.prioridad ? 30000 : 600;
           if (!prioridad) for (const c of circulosVivos) if (segmentoCruzaCirculo(tramo, c, 2)) costo += 30000;
         }
-        if (!mejor || costo < mejor.costo) mejor = { caja, costo, distancia };
+        if (!mejor || costo < mejor.costo) mejor = { caja, costo, distancia, grave };
       });
       // Nada mejor puede aparecer más lejos que un lugar libre ya encontrado.
       if (mejor && mejor.costo <= (d + paso - ancla.r) * porPx) break;
     }
     // Un fijo cuyo nombre solo cabe pisando el de un vivo o fuera del plano se queda sin nombre
     // (pasa en 360 px con un vivo encima); la burbuja conserva su título.
-    if (!prioridad && mejor.costo >= 20000) return undefined;
+    if (!prioridad && mejor.grave) return undefined;
     const { caja } = mejor;
     // Si el nombre quedó apartado (la burbuja estaba rodeada), una guía fina lo une a su burbuja.
     let guia = null;
