@@ -179,7 +179,7 @@ describe('textos y utilidades de las correcciones', () => {
       expect(texto, f).not.toMatch(/Ver como participante|Tablero de toda la sala|Abrir tablero de la sala/)
     }
     const guia = readFileSync(join(__dirname, '../../docs/GUIA_FACILITADOR.md'), 'utf8')
-    for (const t of ['Tablero de la sala', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
+    for (const t of ['Tablero de la sala', 'En vivo, pantalla completa', 'Con tabla', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
     expect(guia).not.toMatch(/Abrir tablero de la sala|recuperar mi sesión|Hace falta al menos/)
   })
 })
@@ -234,7 +234,8 @@ describe('Sala en vivo', () => {
     await abrirDemo()
     const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
     const enlacesTablero = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="/tablero/"], a[href^="/m/"]')]
-    expect(enlacesTablero.length).toBe(3)
+    // Tablero de la sala en sus dos modos (en vivo y con tabla), tablero de la mesa y vista previa del celular.
+    expect(enlacesTablero.length).toBe(4)
     for (const a of enlacesTablero) expect(enVivo.contains(a)).toBe(true)
     const previa = within(enVivo).getByRole('link', { name: 'Vista previa del celular' })
     expect(previa.getAttribute('href')).toBe('/m/HZ7K2-1?vista=previa')

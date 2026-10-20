@@ -509,6 +509,7 @@
 .hz-admin .en-vivo > li { display: grid; justify-items: start; gap: var(--hz-sp-2); }
 .hz-admin .en-vivo .pista { margin: 0; max-width: 70ch; }
 .hz-admin .en-vivo .acciones { margin: 0; }
+.hz-admin .en-vivo__titulo { margin: 0; font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 .hz-admin .en-vivo__mesa { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2); }
 
 /* Menú del celular: el botón solo existe bajo 641 px */
