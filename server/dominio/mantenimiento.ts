@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { type Db, ejecutar, transaccion } from '../db/index.js'
-import { CONFIG_POR_DEFECTO, cargarSala, registrarEvento, tocar } from './salas.js'
+import { CONFIG_POR_DEFECTO, cargarSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
 import { type ZonaHoraria, isoEnZona } from './util.js'
 
 /** Respaldos que se conservan por sala (inicio, antes de cada reinicio y cierre). La rotación es por sala desde el 20-oct. */
@@ -72,7 +72,8 @@ export class LimitadorPeticiones {
 /**
  * Reinicio limpio de una sala (después del ensayo y antes del taller real): borra participantes, consentimientos,
  * votos y eventos, y la deja en `preparada` con la configuración por defecto. Conserva el id, el código, las mesas
- * (los QR impresos siguen sirviendo), el contenido y el token del tablero. Quien lo llame debe respaldar antes.
+ * (los QR impresos siguen sirviendo) y el contenido. El token del tablero cambia (B-2): quien vio el enlace en el
+ * ensayo no ve el taller real; el enlace nuevo está en el panel. Quien lo llame debe respaldar antes.
  */
 export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
   return transaccion(db, () => {
@@ -96,6 +97,7 @@ export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
       CONFIG_POR_DEFECTO.vista_participante,
       sala.id,
     )
+    regenerarTokenTablero(db, sala.id, ahora, 'sistema')
     registrarEvento(db, sala.id, ahora, 'sala_reiniciada', 'sistema', borrados)
     tocar(db, sala.id)
     return { sala: cargarSala(db, sala.id), borrados }
