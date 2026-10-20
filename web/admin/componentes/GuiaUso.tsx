@@ -121,7 +121,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     hace: (
       <p>
         Al terminar el taller, descarga resultados.csv y la matriz en SVG: es lo que se entrega al cliente, sin nombres ni IP.
-        Inscritos y votos son registro interno.
+        Inscritos y votos son registro interno. Arriba eliges de qué sala exportas, sin salir de la sección.
       </p>
     ),
     espera: <p>Inscritos y votos llevan país e IP y no se entregan al cliente. Guárdalos solo donde lo permita la política de datos de Estratek.</p>,

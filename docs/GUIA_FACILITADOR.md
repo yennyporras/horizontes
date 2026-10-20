@@ -76,7 +76,7 @@ Cuándo usarlo en la plenaria:
 - **La app no carga para nadie:** plan B en papel, con las plantillas que entrega Estratek (`docs/PLAN_B.md`). No pierdas más de 3 minutos intentando. **Salud** te dice en palabras simples si el servidor responde («Todo bien», «Lento» o «No responde»).
 
 ## Después
-- *Descargar los datos* lleva a **Exportar**, en dos grupos:
+- *Descargar los datos* lleva a **Exportar**. Arriba, *Sala de la que exportas* lista todas las salas (nombre, código, estado y si es ensayo): al cambiarla, la sección pasa a esa sala y el panel la recuerda. Con una sola sala el selector se ve, pero no se puede cambiar. Los archivos vienen en dos grupos:
   - **Para entregar al cliente:** `resultados.csv` (promedios por criterio y posición de cada proyecto, por sala y por mesa, en R1 y R2; sin nombres ni IP; solo mesas y rondas con 3 votos o más) y *Descargar matriz (SVG)*, la matriz del tablero de la sala como imagen que se abre en cualquier navegador o en PowerPoint.
   - **Registro interno:** `inscritos.csv` y `votos.csv`, con país e IP. **No se entregan al cliente.** Los votos están seudonimizados, no son anónimos: con mesa, perfil e IP se sabe quién es, así que trátalos como dato personal. Guárdalos solo donde lo permita la política de datos de Estratek.
 - El tablero, los celulares y el proyector nunca muestran nombres ni votos individuales.
