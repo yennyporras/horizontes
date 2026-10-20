@@ -638,14 +638,12 @@ async function modoEnVivo(page: Page, w: number) {
   for (const k of ['+', '-', '0']) await page.keyboard.press(k)
   expect(await page.locator('svg.hz-matriz').getAttribute('viewBox')).toBe(vb)
   // Clic sin arrastre: la tabla (y ?modo=tabla); otro clic (la matriz ahora es más angosta): de nuevo en vivo.
-  const centro = async () => {
-    const caja = (await page.locator('svg.hz-matriz').boundingBox())!
-    return [caja.x + caja.width / 2, caja.y + caja.height / 2] as const
-  }
-  await page.mouse.click(...(await centro()))
+  // locator.click espera a que la matriz deje de cambiar de tamaño y comprueba que el clic le llegue a ella: con
+  // coordenadas medidas a mano, en una máquina lenta el segundo clic caía sobre el panel lateral que aún se abría.
+  await page.locator('svg.hz-matriz').click()
   await page.waitForSelector('.hz-lateral')
   expect(new URL(page.url()).searchParams.get('modo')).toBe('tabla')
-  await page.mouse.click(...(await centro()))
+  await page.locator('svg.hz-matriz').click()
   await page.waitForSelector('.hz-lateral', { state: 'detached' })
   expect(new URL(page.url()).searchParams.get('modo')).toBe('vivo')
 }
