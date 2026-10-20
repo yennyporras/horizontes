@@ -316,6 +316,20 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
     setAvisoRonda(null)
     // Solo cuando cambia la entrada del historial.
   }, [ubicacion.key])
+  // El botón atrás del navegador se escucha directo. El router aplica la ubicación dentro de una transición: si la
+  // persona vuelve atrás justo después de cambiar de pantalla (un celular lento, un toque rápido), la entrada nueva
+  // y la vuelta se juntan, el router queda en la misma ubicación de antes y el efecto de arriba no se entera.
+  useEffect(() => {
+    const alVolver = (e: PopStateEvent) => {
+      const v = (e.state as { usr?: { hzVista?: Vista } } | null)?.usr?.hzVista
+      if (!v) return
+      setVistaEstado(v)
+      guardarVista(codigo, v)
+      setAvisoRonda(null)
+    }
+    window.addEventListener('popstate', alVolver)
+    return () => window.removeEventListener('popstate', alVolver)
+  }, [codigo])
 
   // Reenvío de la cola: al cargar, cada 4 s mientras haya algo pendiente y apenas vuelve la señal.
   const participanteId = yo?.participante.id
