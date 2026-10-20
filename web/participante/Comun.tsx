@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, type ReactNode } from 'react'
+import { useParams } from 'react-router-dom'
 import { Aviso, BarraAccion, Boton, EncabezadoProducto, Insignia, useTemaDocumento } from '../shared/ui'
 import './participante.css'
 
@@ -49,6 +50,7 @@ export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba' | 'flotantes
  */
 export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFoco, children }: MarcoProps) {
   useTemaDocumento('claro')
+  const inicio = inicioMesa(useParams().codigo)
   const ref = useRef<HTMLElement>(null)
   const vista = useRef<HTMLDivElement>(null)
   const pie = useRef<HTMLDivElement>(null)
@@ -79,7 +81,8 @@ export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFo
     <div ref={vista} className="hz hz-vista hzp-vista" data-tema="claro" lang="es-CO">
       {/* Barra superior carbón con la línea del degradado, igual que el panel (FAMILIA_ESTRATEK §6). */}
       <div className="hzp-cabecera" data-tema="carbon">
-        <EncabezadoProducto href="/" />
+        {/* El logo lleva a la entrada de la mesa, no a la landing: nadie sale del taller por tocarlo (QA por roles del 20-oct). */}
+        <EncabezadoProducto href={inicio} />
       </div>
       <div className="hzp-contexto hz-pagina">
         <p className="hzp-contexto__sala">{sala}</p>
@@ -97,6 +100,16 @@ export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFo
       )}
     </div>
   )
+}
+
+/**
+ * Entrada de la mesa (`/m/{codigo}`) para el logo del celular. La vista previa del facilitador conserva `?vista=previa`.
+ * Fuera de la ruta de una mesa, el logo no es enlace.
+ */
+export function inicioMesa(codigo: string | undefined): string | undefined {
+  if (!codigo) return undefined
+  const previa = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('vista') === 'previa'
+  return `/m/${encodeURIComponent(codigo)}${previa ? '?vista=previa' : ''}`
 }
 
 /** Pantalla de un solo mensaje: mesa no existe, sesión no válida, error del servidor... */

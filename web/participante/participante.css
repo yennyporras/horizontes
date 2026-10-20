@@ -28,6 +28,11 @@
 .hzp-pie > .hz-barra-accion { position: static; }
 .hzp-flotantes { padding-bottom: var(--hz-sp-2); display: grid; gap: var(--hz-sp-2); pointer-events: none; }
 .hzp-flotantes > * { pointer-events: auto; box-shadow: var(--hz-sombra); max-width: var(--hz-medida); }
+/* Aviso de conexión en una línea (chip): fondo del estado, icono y texto de la tinta, sin título que alarme. */
+.hzp-chip { display: flex; align-items: center; gap: var(--hz-sp-2); justify-self: start; padding: var(--hz-sp-2) var(--hz-sp-3); border-radius: var(--hz-r-l); border: 1px solid currentColor; font-size: var(--hz-fs-14); line-height: 1.35; }
+.hzp-chip > span { color: var(--hz-tinta); }
+.hzp-chip--alerta { color: var(--hz-alerta); background: var(--hz-alerta-fondo); }
+.hzp-chip--ok { color: var(--hz-ok); background: var(--hz-ok-fondo); }
 .hzp-pie--sin-barra { padding-bottom: calc(var(--hz-sp-2) + env(safe-area-inset-bottom)); }
 /* Nota de la barra con alto fijo de 2 líneas: la barra mide lo mismo con la ronda cerrada y abierta. */
 .hzp-nota-barra { display: block; min-height: calc(2 * var(--hz-lh) * 1em); }
@@ -40,6 +45,15 @@
 .hzp-vista .hz-contenido .hz-boton--fantasma { padding-inline: 0; }
 .hzp-seccion { display: grid; gap: var(--hz-sp-4); padding-top: var(--hz-sp-6); border-top: 1px solid var(--hz-borde); }
 .hzp-volver { justify-self: start; min-height: var(--hz-tactil); padding: 0; }
+/* Calificar (QA por roles del 20-oct): una línea «R1 · INSUMEX · Pregunta 1 de 6» con «Volver» pequeño al lado y la
+   barra de avance debajo, en vez del título grande y la fase. Deja la pregunta y sus opciones a la vista. */
+.hzp-cabeza { display: grid; gap: var(--hz-sp-1); }
+.hzp-cabeza__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3); }
+.hzp-cabeza__linea { min-width: 0; font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); line-height: 1.35; color: var(--hz-tinta-2); overflow-wrap: anywhere; }
+.hzp-cabeza__linea .hz-insignia { vertical-align: middle; }
+.hzp-cabeza .hzp-volver { flex: none; min-width: var(--hz-tactil); font-size: var(--hz-fs-14); }
+/* Cómo se lee la escala, fija bajo cada pregunta. */
+.hz-rubrica__escala { font-size: var(--hz-fs-14); line-height: 1.35; color: var(--hz-tinta-2); }
 /* Fase de la ronda (acta A7): insignia R1/R2 y su texto en una línea. */
 .hzp-fase { display: flex; align-items: center; flex-wrap: wrap; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
 
@@ -60,6 +74,8 @@
 .hzp-consentimiento a { display: inline-flex; align-items: center; min-height: var(--hz-tactil); }
 /* El correo va dentro del párrafo: enlace en línea (excepción de WCAG 2.5.8 para enlaces en texto), sin cortar la frase. */
 .hzp-consentimiento .hzp-aviso-datos a { display: inline; min-height: 0; }
+/* Falta la casilla: el error va debajo de ella, con el mismo patrón de los errores de los campos. */
+.hzp-error-casilla { display: flex; gap: var(--hz-sp-2); align-items: flex-start; font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-error); }
 .hzp-consentimiento__titulo { font-size: var(--hz-fs-16); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
 
 /* Esqueleto de carga */
@@ -80,6 +96,16 @@
 .hzp-proyecto__nombre { display: flex; align-items: center; gap: var(--hz-sp-2); flex-wrap: wrap; font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 .hzp-proyecto__desc { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 .hzp-grupo-hojas { display: grid; gap: var(--hz-sp-3); }
+/* Aviso de caso ficticio: primera línea del caso, en la voz del texto secundario. */
+.hzp-ficticio { font-size: var(--hz-fs-14); font-style: italic; color: var(--hz-tinta-2); }
+.hzp-lectura__bloque { display: grid; gap: var(--hz-sp-3); }
+/* Los otros proyectos del portafolio, plegados: el resumen es un control de 48 px con su flecha. */
+.hzp-plegable { display: grid; gap: var(--hz-sp-3); border-top: 1px solid var(--hz-borde); }
+.hzp-plegable__titulo { display: flex; align-items: center; gap: var(--hz-sp-2); min-height: var(--hz-tactil); cursor: pointer; list-style: none; font-weight: var(--hz-fw-etiqueta); color: var(--hz-azul); }
+.hzp-plegable__titulo::-webkit-details-marker { display: none; }
+.hzp-plegable__titulo::before { content: '▸'; content: '▸' / ''; transition: transform var(--hz-t-rapido); }
+.hzp-plegable[open] > .hzp-plegable__titulo::before { transform: rotate(90deg); }
+.hzp-plegable[open] > .hzp-proyectos { margin-bottom: var(--hz-sp-2); }
 
 /* Elegir proyecto: una tarjeta por proyecto */
 .hzp-elegir { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--hz-sp-3); }
@@ -87,11 +113,12 @@
 .hzp-elegir__info { display: grid; gap: var(--hz-sp-1); justify-items: start; }
 
 /* Calificar: una pregunta por pantalla (C19-5, P1) con las opciones como tarjetas táctiles a todo el ancho. */
-.hzp-pregunta { display: grid; gap: var(--hz-sp-6); min-width: 0; }
+/* Compacta (QA por roles del 20-oct): en 360 × 780 las 5 opciones de un criterio de texto corto caben sin desplazar. */
+.hzp-pregunta { display: grid; gap: var(--hz-sp-4); min-width: 0; }
 .hzp-pregunta .hz-rubrica__opciones { gap: var(--hz-sp-2); border-top: 0; }
 /* La pregunta es la leyenda del fieldset: la leyenda no respeta el gap de la rejilla y quedaba pegada a la primera opción. */
-.hzp-pregunta .hz-rubrica__encabezado { margin-bottom: var(--hz-sp-3); }
-.hzp-pregunta .hz-opcion { min-height: var(--hz-sp-16); background: var(--hz-fondo); border: 1px solid var(--hz-borde-control); border-radius: var(--hz-r-l); }
+.hzp-pregunta .hz-rubrica__encabezado { margin-bottom: var(--hz-sp-1); }
+.hzp-pregunta .hz-opcion { min-height: var(--hz-tactil); padding-block: var(--hz-sp-2); background: var(--hz-fondo); border: 1px solid var(--hz-borde-control); border-radius: var(--hz-r-l); }
 .hzp-pregunta .hz-opcion:has(.hz-opcion__input:checked) { border-color: transparent; }
 @media (prefers-reduced-motion: no-preference) {
   .hzp-pregunta .hz-rubrica { animation: hzp-entra var(--hz-t-medio) var(--hz-curva, ease-out); }
@@ -136,6 +163,14 @@
 .hzp-tabla__promedio, .hzp-tabla__mia { display: block; }
 .hz .hzp-tabla__desc { display: block; margin-top: 2px; font-size: var(--hz-fs-12); font-weight: var(--hz-fw-texto); line-height: 1.35; color: var(--hz-tinta-2); }
 .hz .hzp-tabla__mia { font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); white-space: nowrap; }
+
+/* Leyenda bajo la matriz: rondas con su insignia, tamaño de la burbuja y lectura de los ejes. */
+.hzp-leyenda { display: grid; gap: var(--hz-sp-1); font-size: var(--hz-fs-14); line-height: 1.35; color: var(--hz-tinta-2); }
+.hzp-leyenda__rondas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--hz-sp-1) var(--hz-sp-4); color: var(--hz-tinta); }
+.hzp-leyenda__rondas .hz-insignia { margin-right: var(--hz-sp-1); }
+/* Cierre personal al cerrar la ronda 2: cuánto cambiaste y la pregunta para la mesa. */
+.hzp-cierre { display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-4); background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-left: 4px solid var(--hz-acento-producto); border-radius: var(--hz-r-l); }
+.hzp-cierre__dato { font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 
 /* Matriz del tablero dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
    (min-width: auto): sin min-width 0, el SVG inicial de 360 px ensancha la página. */
