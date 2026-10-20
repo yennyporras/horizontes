@@ -4,7 +4,7 @@ import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
 import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Participante, RubricasSala, SalaDetalle, SalaResumen } from '../tipos'
-import { ACCIONES_POR_ESTADO, CRITERIOS, PERFILES, PROYECTOS_VIVOS, nombrePerfil, rondaAbierta } from '../textos'
+import { ACCIONES_POR_ESTADO, CRITERIOS, LARGO_MINIMO_CLAVE, PERFILES, PROYECTOS_VIVOS, nombrePerfil, rondaAbierta } from '../textos'
 import type { Respuesta } from '../api'
 import type { CriterioId } from '../../shared/api/contrato'
 
@@ -227,6 +227,7 @@ function admins(metodo: string, camino: string, b: Record<string, unknown>, a: A
   if (metodo === 'GET') return ok(estado.admins.map(filaPublica))
   if (metodo === 'POST') {
     if (!b.usuario || !b.nombre || !b.clave_temporal) return error(422, 'DATOS_INVALIDOS', 'Usuario, nombre y clave temporal son obligatorios.')
+    if (String(b.clave_temporal).length < LARGO_MINIMO_CLAVE) return error(422, 'CLAVE_INVALIDA', `La clave debe tener al menos ${LARGO_MINIMO_CLAVE} caracteres.`)
     if (estado.admins.some((x) => x.usuario === b.usuario)) return error(409, 'USUARIO_EXISTE', 'Ese usuario ya existe.')
     const nuevo: AdminInterno = {
       id: Math.max(...estado.admins.map((x) => x.id)) + 1,
@@ -382,7 +383,7 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
 
   if (metodo === 'POST' && camino === '/api/admin/cambiar-clave') {
     if (b.actual !== a.clave) return error(422, 'CLAVE_ACTUAL_INVALIDA', 'La clave actual no coincide.')
-    if (typeof b.nueva !== 'string' || b.nueva.length < 10) return error(422, 'CLAVE_DEBIL', 'La clave nueva debe tener al menos 10 caracteres.')
+    if (typeof b.nueva !== 'string' || b.nueva.length < LARGO_MINIMO_CLAVE) return error(422, 'CLAVE_INVALIDA', `La clave debe tener al menos ${LARGO_MINIMO_CLAVE} caracteres.`)
     a.clave = b.nueva
     a.debe_cambiar_clave = false
     return ok(yo(a))
