@@ -5,6 +5,7 @@ import { useSala } from '../useSala'
 import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import type { RespuestaPersona } from '../tipos'
+import { descripcionCriterio } from '../../shared/criterios'
 import { CRITERIOS, PROYECTOS_VIVOS, fechaHora, nombrePerfil, nombreProyecto, zonaSala } from '../textos'
 
 /**
@@ -110,7 +111,7 @@ export function Respuestas() {
                         <th scope="col">Ronda</th>
                         <th scope="col">Proyecto</th>
                         {CRITERIOS.map((c) => (
-                          <th key={c.id} scope="col" className="num" title={c.nombre}>
+                          <th key={c.id} scope="col" className="num" title={`${c.nombre}. ${descripcionCriterio(c.id) ?? ''}`.trim()}>
                             {c.corto}
                           </th>
                         ))}
@@ -149,6 +150,18 @@ export function Respuestas() {
                     </tbody>
                   </table>
                 </div>
+                {/* Pedido del 20-oct: cada criterio con su descripción corta (web/shared/criterios.ts). */}
+                <dl className="leyenda-criterios" aria-label="Qué mide cada criterio">
+                  {CRITERIOS.map((c) => (
+                    <div key={c.id}>
+                      <dt>
+                        {c.corto}
+                        {c.corto !== c.nombre && <span className="leyenda-criterios__nombre"> · {c.nombre}</span>}
+                      </dt>
+                      <dd>{descripcionCriterio(c.id)}</dd>
+                    </div>
+                  ))}
+                </dl>
                 </>
               )}
             </section>

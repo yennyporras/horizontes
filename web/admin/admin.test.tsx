@@ -6,6 +6,7 @@ import PaginaAdmin from './PaginaAdmin'
 import { usarTransporte } from './api'
 import { reiniciarMock, responderMock } from './mock/servidor'
 import { CLAVE_RECORRIDO } from './componentes/Recorrido'
+import { DESCRIPCION_CRITERIO } from '../shared/criterios'
 import {
   ACCIONES_POR_ESTADO,
   ORDEN_PREGUNTAS,
@@ -563,6 +564,9 @@ describe('cambios del 19-oct en el panel', () => {
     expect(screen.getByText('No hay respuestas con ese filtro.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Ronda'), { target: { value: '1' } })
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(1 + 8)
+    // Pedido del 20-oct: bajo la tabla, qué mide cada criterio en una línea (100 caracteres como máximo).
+    const leyenda = screen.getByLabelText('Qué mide cada criterio')
+    expect(within(leyenda).getAllByRole('definition').map((d) => d.textContent)).toEqual(Object.values(DESCRIPCION_CRITERIO))
   })
 
   it('Respuestas: error del servidor tal cual', async () => {
