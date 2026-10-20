@@ -145,6 +145,21 @@ export function urlTableroSala(urlSala: string | undefined, urlMesa: string | un
   }
 }
 
+/**
+ * Enlace para abrir desde el panel: misma ruta en el servidor donde está abierto el panel. Las URL que manda el
+ * servidor usan BASE_URL (la de los QR); si BASE_URL apunta a otro ambiente, el tablero se abriría allá y no
+ * encontraría la sala.
+ */
+export function enEsteServidor(url: string | null | undefined): string | null {
+  if (!url) return null
+  try {
+    const u = new URL(url, 'http://x')
+    return `${u.pathname}${u.search}${u.hash}`
+  } catch {
+    return null
+  }
+}
+
 /** Ruta interna del tablero (sin dominio) para pedir su JSON: /tablero/HZ7K2?mesa=m1&t=TOKEN → /api/tablero/{salaId}?... */
 export function rutaApiTablero(salaId: string, urlTablero: string, mesaId?: string): string {
   const u = new URL(urlTablero, 'http://x')
