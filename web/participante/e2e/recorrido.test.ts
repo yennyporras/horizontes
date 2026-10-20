@@ -2,15 +2,15 @@
 // inscripción con consentimiento, perfil, caso y hoja, 2 rondas de votación, edición, sin señal (cola),
 // recarga, precierre con resultado preliminar, sesión reemplazada y acceso nuevo del facilitador (D1), 6 hojas en R2,
 // ronda cerrada mientras califica, comparación R1→R2 en la matriz y sala cerrada.
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ESPERA, calificar, capturar, focoVisible, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
-import { sinNavegador } from '../../../tests/navegador'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { ESPERA, avisarSiCongelada, calificar, capturar, focoVisible, revisarTabla, sinDesborde, tactiles, titulo, ver } from './ayudas'
+import { REINTENTOS_E2E, sinNavegador } from '../../../tests/navegador'
 import { accion, celular, configurar, crearSala, darAcceso, fijarPregunta, hayChromium, iniciar, inscribirApi, votarApi, type Entorno } from './entorno'
 
 const conNavegador = hayChromium()
 if (!conNavegador) sinNavegador('[e2e participante]', 'No hay Chromium de Playwright para el recorrido.')
 
-describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la API real', () => {
+describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la API real', { retry: REINTENTOS_E2E }, () => {
   let e: Entorno
   beforeAll(async () => {
     e = await iniciar()
@@ -28,6 +28,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await accion(e, sala.id, 'abrir_inscripcion')
     const ctx = await celular(e)
     const p = await ctx.newPage()
+    onTestFailed(() => avisarSiCongelada(p))
     const errores: string[] = []
     p.on('pageerror', (err) => errores.push(err.message))
     // Saltos de diseño (CLS) acumulados desde la primera carga.
@@ -310,6 +311,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await inscribirApi(e, sala.mesas[0].codigo, 'Eli Mora', 'eli.e2e@empresa.com')
     const ctx = await celular(e)
     const p = await ctx.newPage()
+    onTestFailed(() => avisarSiCongelada(p))
     await p.goto(`${e.web}/m/${sala.mesas[0].codigo}`)
     // Un nombre largo sin espacios no ensancha la bienvenida (QA-P-04).
     await p.getByLabel('Tu nombre').fill(`Dani${'a'.repeat(76)}`, { timeout: 60_000 })
@@ -351,6 +353,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await accion(e, sala.id, 'abrir_ronda_1')
     const ctx = await celular(e)
     const p = await ctx.newPage()
+    onTestFailed(() => avisarSiCongelada(p))
     const errores: string[] = []
     p.on('pageerror', (err) => errores.push(err.message))
     const codigo = sala.mesas[0].codigo

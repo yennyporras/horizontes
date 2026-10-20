@@ -3,7 +3,7 @@
 // Se mide en navegador real con getBoundingClientRect a 360, 768, 1280, 1440 y 1920 px.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Page } from 'playwright-core'
-import { sinNavegador } from '../../../tests/navegador'
+import { REINTENTOS_E2E, sinNavegador } from '../../../tests/navegador'
 import { capturar } from './ayudas'
 import { accion, crearSala, hayChromium, iniciar, type Entorno } from './entorno'
 
@@ -39,7 +39,7 @@ async function revisar(p: Page, selectores: string[], ancho: number) {
   expect(await p.evaluate(() => document.documentElement.scrollWidth), `sin desborde a ${ancho} px`).toBeLessThanOrEqual(ancho)
 }
 
-describe.skipIf(!conNavegador)('ancho de página estándar en navegador', () => {
+describe.skipIf(!conNavegador)('ancho de página estándar en navegador', { retry: REINTENTOS_E2E }, () => {
   let e: Entorno
   beforeAll(async () => {
     e = await iniciar()

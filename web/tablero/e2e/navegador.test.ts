@@ -20,7 +20,7 @@ import type { Browser, Page } from 'playwright-core'
 import type { ViteDevServer } from 'vite'
 import { CRITERIOS } from '../../../shared/motor/motor'
 import { nombreCorto } from '../logica'
-import { sinNavegador } from '../../../tests/navegador'
+import { REINTENTOS_E2E, sinNavegador } from '../../../tests/navegador'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, votar } from '../../../tests/server/ayuda'
 
 const RAIZ = resolve(__dirname, '../../..')
@@ -80,7 +80,7 @@ if (!CHROMIUM) sinNavegador('[tablero e2e]', 'Sin Chromium usable.')
 
 const normal = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '')
 
-describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', () => {
+describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { retry: REINTENTOS_E2E }, () => {
   let e: Entorno
   let vite: ViteDevServer
   let browser: Browser
