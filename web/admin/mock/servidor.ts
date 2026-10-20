@@ -382,6 +382,16 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
 
   if (camino.startsWith('/api/admin/admins')) return admins(metodo, camino, b, a)
 
+  // Las salas nuevas vuelven a la rúbrica de la semilla en ese criterio (idempotente), como el servidor.
+  const plantilla = /^\/api\/admin\/rubricas-plantilla\/([^/]+)$/.exec(camino)
+  if (metodo === 'DELETE' && plantilla) {
+    const c = seed.motor.criterios.find((x) => x.id === decodeURIComponent(plantilla[1]))
+    if (!c) return error(422, 'CRITERIO_NO_EXISTE', 'Ese criterio no existe.')
+    const borrada = c.id in estado.rubricasNuevas
+    delete estado.rubricasNuevas[c.id]
+    return ok({ plantilla: 'foodsume_2026', criterio_id: c.id, borrada, rubrica: c.rubrica })
+  }
+
   if (camino === '/api/admin/salas') {
     if (metodo === 'GET') return ok(estado.salas.map(resumen))
     if (metodo === 'POST') return crearSala(b, por)
