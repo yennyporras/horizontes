@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import PaginaInicio from './PaginaInicio'
 import { codigoDeMesa } from './EntradaMesa'
+import { NOMBRE_CORTO } from '../shared/criterios'
 
 function Mesa() {
   return <p>Mesa destino {useParams().codigo}</p>
@@ -73,10 +74,10 @@ describe('landing de la raíz', () => {
     expect(document.documentElement.hasAttribute('data-tema')).toBe(false)
   })
 
-  it('explica los 6 criterios, los dos ejes y la escala impar sin pesos', () => {
+  it('explica los 6 criterios con su nombre corto, los dos ejes y la escala impar sin pesos', () => {
     const { container } = montar()
-    for (const n of ['Regulación', 'Capacidades Organizacionales', 'Inversión Requerida para Probar', 'Time 2 Market', 'Value Generation Capacity'])
-      expect(container.textContent).toContain(n)
+    for (const n of Object.values(NOMBRE_CORTO)) expect(container.textContent).toContain(`${n}.`)
+    for (const n of ['Time 2 Market', 'Value Generation Capacity']) expect(container.textContent).toContain(n)
     expect(container.textContent).toContain('1, 3, 5, 7 y 9')
     expect(container.textContent).not.toMatch(/0,3|0,35|0,6|0,7|30 ?%/)
     fireEvent.click(screen.getByRole('radio', { name: /^1:/ }))

@@ -1,0 +1,93 @@
+{
+  "escala": [
+    1,
+    3,
+    5,
+    7,
+    9
+  ],
+  "ejes": {
+    "x": [
+      {
+        "id": "alistamiento_tecnico",
+        "pregunta": "¿Desde el punto de vista técnico, qué tan lista está la solución?"
+      },
+      {
+        "id": "conocimiento_cliente",
+        "pregunta": "¿Qué tanto hemos descubierto de nuestro cliente potencial? ¿Tenemos adoptantes tempranos?"
+      },
+      {
+        "id": "regulacion",
+        "pregunta": "¿Qué tantas barreras de entrada tiene el mercado desde el punto de vista legal y normativo?"
+      },
+      {
+        "id": "capacidades_organizacionales",
+        "pregunta": "¿Con qué capacidades y recursos contamos para apalancar el desarrollo del nuevo negocio? (marca, secretos industriales, data, patentes, certificaciones, RRHH, licencias, instalaciones, equipos, bases de datos, capital relacional, entre otros)"
+      }
+    ],
+    "y": [
+      {
+        "id": "alineacion_core",
+        "pregunta": "¿Qué tan alineado está el core actual de la organización con el core del nuevo negocio?"
+      },
+      {
+        "id": "inversion_requerida",
+        "pregunta": "¿Cuál es el nivel y qué tipo de inversión se requiere para probar la solución?"
+      }
+    ]
+  },
+  "ejemplo": {
+    "id": "regulacion",
+    "pregunta": "¿Qué tantas barreras de entrada tiene el mercado desde el punto de vista legal y normativo?",
+    "rubrica": [
+      {
+        "valor": 9,
+        "texto": "Mercado extremadamente regulado (+5 años)"
+      },
+      {
+        "valor": 7,
+        "texto": "Mercado altamente regulado (3 a 5 años)"
+      },
+      {
+        "valor": 5,
+        "texto": "Mercado moderadamente regulado (2 a 3 años)"
+      },
+      {
+        "valor": 3,
+        "texto": "Mercado poco regulado (6 meses a 2 años)"
+      },
+      {
+        "valor": 1,
+        "texto": "Mercado no regulado"
+      }
+    ]
+  },
+  "horizontes": [
+    {
+      "id": "H1",
+      "radio": 4.5
+    },
+    {
+      "id": "H2",
+      "radio": 9
+    },
+    {
+      "id": "H3",
+      "radio": null
+    }
+  ],
+  "etiquetas_horizonte": {
+    "H1": [
+      1.3,
+      1.9
+    ],
+    "H2": [
+      4.3,
+      4
+    ],
+    "H3": [
+      8,
+      7.6
+    ]
+  }
+}

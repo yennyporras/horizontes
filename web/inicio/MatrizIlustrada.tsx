@@ -1,9 +1,9 @@
 import type { CSSProperties } from 'react'
-import seed from '../../data/seed_foodsume.json'
+import { GRAFICO } from './contenido'
 
 // Ilustración de la matriz (no son datos de ninguna sala): los horizontes de la semilla, ocho puntos fijos
 // y dos proyectos que se mueven de la ronda 1 (hueco, verde) a la ronda 2 (sólido, rojo).
-const { grafico } = seed.motor
+const grafico = GRAFICO
 const MAX = 9.5
 const X0 = 7
 const Y0 = 93
