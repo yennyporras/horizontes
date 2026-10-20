@@ -44,6 +44,33 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
   // QA-A-14: con cambios sin guardar, salir de la sección o del panel pregunta antes de descartarlos.
   usePendiente(cambiado && criterio ? `Tienes cambios sin guardar en la rúbrica de ${criterio.nombre}. Si sales, se pierden.` : null)
 
+  /**
+   * Quita la rúbrica guardada con «Usar también en las salas nuevas» (DELETE /api/admin/rubricas-plantilla/{criterio}):
+   * las salas nuevas vuelven a la original en ese criterio. Esta sala y las existentes no cambian. Idempotente.
+   */
+  const quitarDeNuevas = async () => {
+    if (!criterio) return
+    const ok = await confirmar(
+      `¿Quitar la rúbrica de ${criterio.nombre} de las salas nuevas?`,
+      'Las salas que crees después usarán la rúbrica original de la plantilla en este criterio. Esta sala y las que ya existen no cambian.',
+      'Sí, quitar',
+      { tono: 'primario' },
+    )
+    if (!ok) return
+    setAviso(null)
+    try {
+      const r = await api.delete<{ borrada?: boolean }>(`/api/admin/rubricas-plantilla/${encodeURIComponent(criterio.id)}`)
+      setAviso({
+        tono: 'exito',
+        texto: r?.borrada
+          ? `Las salas nuevas vuelven a usar la rúbrica original de ${criterio.nombre}.`
+          : `Las salas nuevas ya usaban la rúbrica original de ${criterio.nombre}.`,
+      })
+    } catch (e) {
+      setAviso({ tono: 'error', texto: e instanceof Error ? e.message : 'No se pudo quitar la rúbrica de las salas nuevas.' })
+    }
+  }
+
   const descartar = () => {
     setBorrador(null)
     setParaNuevas(false)
@@ -180,6 +207,15 @@ export function Rubricas({ salaId, version }: { salaId: string; version: string 
               <button className="hz-boton hz-boton--secundario" type="button" disabled={!borrador || guardando} onClick={descartar}>
                 Descartar cambios
               </button>
+            </div>
+            {/* Funciona aunque esta sala ya tenga votos: no la toca, solo cambia lo que reciben las salas nuevas. */}
+            <div className="acciones rubricas-nuevas">
+              <button className="hz-boton hz-boton--secundario" type="button" aria-describedby="ayuda-quitar-nuevas" onClick={() => void quitarDeNuevas()}>
+                Quitar de las salas nuevas
+              </button>
+              <p id="ayuda-quitar-nuevas" className="pista">
+                Si guardaste esta rúbrica para las salas nuevas y ya no la quieres, las próximas salas vuelven a la original.
+              </p>
             </div>
           </>
         )
