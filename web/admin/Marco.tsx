@@ -119,10 +119,22 @@ function MarcoInterno() {
       </div>
       <AvisoDominio sala={sala} />
       {usaMocks() && <p className="aviso-mock">Modo simulado: los datos vienen de mocks/ y no se guardan.</p>}
-      <main id="contenido" className="contenido">
+      <main id="contenido" className="contenido hz-pagina">
         <Outlet />
       </main>
+      <PiePanel />
     </div>
+  )
+}
+
+/** Pie del panel: en el mismo contenedor de página que la barra y el contenido (ancho común del 20-oct). */
+export function PiePanel() {
+  return (
+    <footer className="pie hz-pagina">
+      <p>
+        Horizontes, panel del facilitador · por Estratek <span className="pie__flecha" aria-hidden="true">»</span>
+      </p>
+    </footer>
   )
 }
 

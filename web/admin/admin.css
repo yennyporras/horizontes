@@ -119,7 +119,13 @@
   .hz-admin .usuario { order: 3; margin-left: 0; }
 }
 
-.hz-admin .contenido { padding: var(--hz-sp-6) var(--hz-sp-4) var(--hz-sp-12); max-width: 1280px; margin: 0 auto; }
+/* Ancho de página común de la familia Estratek (20-oct): .hz-pagina (--hz-ancho-pagina, 1280 px) en la fila de la barra,
+   el contenido y el pie, así los tres comparten bordes. Aquí solo el aire vertical. */
+.hz-admin .marco { min-height: 100vh; display: flex; flex-direction: column; }
+.hz-admin .contenido { flex: 1; padding-block: var(--hz-sp-6) var(--hz-sp-12); }
+.hz-admin .pie { padding-block: var(--hz-sp-4) var(--hz-sp-6); border-top: 1px solid var(--hz-borde); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin .pie p { margin: 0; }
+.hz-admin .pie__flecha { color: var(--hz-accion); font-weight: var(--hz-fw-display); }
 .hz-admin .contenido > * { min-width: 0; }
 
 /* ── Encabezado de sección ───────────────────────────── */
@@ -387,7 +393,7 @@
 
 /* ── Login y cambio de clave: barra de producto y una caja ── */
 .hz-admin .login { min-height: 100vh; display: flex; flex-direction: column; background: var(--hz-superficie-1); }
-.hz-admin .login__cuerpo { flex: 1; display: grid; place-items: center; padding: var(--hz-sp-8) var(--hz-sp-4); }
+.hz-admin .login__cuerpo { flex: 1; display: grid; place-items: center; padding-block: var(--hz-sp-8); }
 .hz-admin .login__caja { width: 100%; max-width: 400px; margin: 0; background: var(--hz-fondo); }
 .hz-admin .login__caja h1 { font-size: var(--hz-fs-24); }
 
@@ -466,6 +472,7 @@
   .hz-admin .encabezado-sala,
   .hz-admin .cabecera,
   .hz-admin .aviso-mock,
+  .hz-admin .pie,
   .hz-admin .aviso-dominio,
   .hz-admin .alerta,
   .hz-admin .no-imprimir { display: none !important; }
@@ -525,3 +532,7 @@
 .hz-admin .acceso-qr img { width: min(320px, 70vw); height: auto; aspect-ratio: 1; display: block; }
 .hz-admin .acceso-enlace { padding: var(--hz-sp-2) var(--hz-sp-3); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-campo); background: var(--hz-superficie-1); }
 .hz-admin .acceso-vence { font-size: var(--hz-fs-14); }
+
+/* Las franjas de aviso van de borde a borde y su texto arranca en el borde del contenido. */
+.hz-admin .aviso-mock,
+.hz-admin .aviso-dominio { padding-inline: max(var(--hz-margen-pagina), calc((100% - var(--hz-ancho-pagina)) / 2 + var(--hz-margen-pagina))); }

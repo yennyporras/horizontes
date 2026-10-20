@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useSesion } from '../sesion'
 import { ApiError, usaMocks } from '../api'
 import { EncabezadoProducto } from '../../shared/ui'
+import { PiePanel } from '../Marco'
 import { useTituloPagina } from './EncabezadoSala'
 import { faltan } from '../textos'
 
@@ -61,7 +62,7 @@ export function Login() {
       <div data-tema="carbon">
         <EncabezadoProducto />
       </div>
-      <main className="login__cuerpo">
+      <main className="login__cuerpo hz-pagina">
         <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-login">
           <h1 id="titulo-login">Panel de administración</h1>
           {vencida && (
@@ -98,6 +99,7 @@ export function Login() {
           {usaMocks() && <p className="pista">Modo simulado: los datos no se guardan.</p>}
         </form>
       </main>
+      <PiePanel />
     </div>
   )
 }
