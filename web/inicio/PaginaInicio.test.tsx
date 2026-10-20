@@ -58,13 +58,17 @@ describe('landing de la raíz', () => {
     expect(container.textContent).not.toContain('—')
   })
 
-  it('se ve en el tema carbón con la marca de Horizontes y el logo oficial de Estratek', () => {
+  it('se ve en el tema claro con la barra superior carbón, la marca de Horizontes y el logo oficial de Estratek (20-oct)', () => {
     const { container, unmount } = montar()
-    expect(container.querySelector('.hz-inicio')!.getAttribute('data-tema')).toBe('carbon')
-    expect(document.documentElement.getAttribute('data-tema')).toBe('carbon')
+    expect(container.querySelector('.hz-inicio')!.getAttribute('data-tema')).toBe('claro')
+    expect(document.documentElement.getAttribute('data-tema')).toBe('claro')
+    // El carbón queda solo en la barra: el <header> y nada más.
+    expect([...container.querySelectorAll('[data-tema="carbon"]')]).toEqual([screen.getByRole('banner')])
     expect(screen.getByRole('link', { name: /Horizontes\s*por Estratek/ }).getAttribute('href')).toBe('#inicio')
     expect(screen.getByRole('heading', { level: 1 }).querySelector('.in-clave')!.textContent).toBe('portafolio')
-    expect(screen.getByRole('img', { name: 'Estratek' }).getAttribute('src')).toContain('estratek-logo-blanco')
+    // Logo oficial pintado con la tinta del tema (carbón sobre el claro del pie).
+    expect(screen.getByRole('img', { name: 'Estratek' }).className).toContain('hz-logo-estratek')
+    expect(container.querySelector('footer')!.contains(screen.getByRole('img', { name: 'Estratek' }))).toBe(true)
     unmount()
     expect(document.documentElement.hasAttribute('data-tema')).toBe(false)
   })
@@ -189,7 +193,7 @@ describe('correcciones de la QA de la landing', () => {
     expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Menú' }))
     const css = readFileSync('web/inicio/inicio.css', 'utf8')
-    expect(css).toMatch(/@media \(min-width: 64rem\) \{ \.in-menu__boton, \.in-menu \{ display: none; \} \}/)
+    expect(css).toMatch(/@media \(min-width: 72rem\) \{ \.in-menu__boton, \.in-menu \{ display: none; \} \}/)
   })
 
   it('la ilustración no usa verde agua ni azul en los horizontes, junto a R1 y R2 (QA-P-20)', () => {
@@ -243,5 +247,79 @@ describe('ancho de página estándar', () => {
       expect(container.querySelector(`#${id} > .hz-pagina`), id).toBeTruthy()
     expect(container.querySelector('footer > .hz-pagina')).toBeTruthy()
     expect(readFileSync('web/inicio/inicio.css', 'utf8')).not.toMatch(/--in-ancho|--in-margen/)
+  })
+})
+
+describe('auditoría final de la landing (20-oct)', () => {
+  const css = readFileSync('web/inicio/inicio.css', 'utf8')
+
+  it('sin rayas en ningún texto visible ni en los textos de la página', () => {
+    const { container } = montar()
+    expect(container.textContent).not.toMatch(/[—–]/)
+    for (const f of ['web/inicio/PaginaInicio.tsx', 'web/inicio/EntradaMesa.tsx', 'web/inicio/MatrizIlustrada.tsx', 'web/inicio/contenido.ts'])
+      expect(readFileSync(f, 'utf8').replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ''), f).not.toMatch(/[—–]/)
+  })
+
+  it('habla de la app de hoy: acceso de nuevo por el facilitador, modos «Gráfica» y «Detallado» y «Guía de uso»', () => {
+    const { container } = montar()
+    const texto = container.textContent!
+    expect(texto).toContain('desde ahí le das acceso de nuevo')
+    expect(texto).toContain('«Gráfica», con la matriz a pantalla completa, y «Detallado»')
+    expect(texto).toContain('la «Guía de uso» del panel')
+    expect(texto).not.toMatch(/Recorrido|recupera|mismo correo|Guardar calificación|seis hojas para todos|distinto al de los demás/)
+  })
+
+  it('el menú del celular se cierra con un toque fuera de él', () => {
+    montar()
+    fireEvent.click(screen.getByRole('button', { name: 'Menú' }))
+    fireEvent.pointerDown(screen.getByRole('navigation', { name: 'Menú' }))
+    expect(screen.getByRole('navigation', { name: 'Menú' })).toBeTruthy()
+    fireEvent.pointerDown(screen.getByRole('heading', { level: 1 }))
+    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
+  })
+
+  it('el ejemplo del campo es un código de mesa de hoy y la entrada lo acepta tal cual', () => {
+    montar()
+    const campo = screen.getByLabelText('Código de tu mesa') as HTMLInputElement
+    expect(campo.placeholder).toBe('HZ7K2Q4M8P-1')
+    expect(codigoDeMesa(campo.placeholder)).toBe('HZ7K2Q4M8P-1')
+  })
+
+  it('los datos personales nombran los tres países de las salas y cada enlace de contacto va en su línea', () => {
+    montar()
+    const privacidad = document.getElementById('privacidad')!
+    expect(privacidad.textContent).toContain('en Colombia, la Ley 1581 de 2012; en Perú, la Ley 29733; en Guatemala, la política de Estratek')
+    const enlaces = privacidad.querySelector('.in-enlaces')!
+    expect([...enlaces.querySelectorAll('a')].map((a) => a.className)).toEqual(['in-enlace', 'in-enlace'])
+  })
+
+  it('el título de cada sección de dos columnas lleva su bajada al lado: la columna no queda vacía', () => {
+    montar()
+    for (const id of ['facilitadores', 'privacidad']) {
+      const columna = document.getElementById(id)!.querySelector('.in-dos > .in-texto')!
+      expect(columna.querySelector('h2'), id).toBeTruthy()
+      expect(columna.querySelector('.in-bajada'), id).toBeTruthy()
+    }
+    // «Ingresar al panel» de la sección queda junto al título, no al final de cuatro párrafos.
+    expect(document.getElementById('facilitadores')!.querySelector('.in-texto')!.querySelector('a[href="/admin"]')).toBeTruthy()
+  })
+
+  it('el héroe tiene aire arriba y abajo y pasa a dos columnas desde la tableta', () => {
+    expect(css).toMatch(/\.in-hero \{[^}]*padding-block: clamp\(2rem, 5vw, 4rem\)/)
+    expect(css).toMatch(/@media \(min-width: 48rem\) \{\s*\.in-hero \{ grid-template-columns/)
+  })
+
+  it('la ilustración: ejes del plano, horizontes con borde y R1 del lado contrario a la flecha', () => {
+    const { container } = montar()
+    expect(container.querySelector('.in-matriz__ejes')).toBeTruthy()
+    expect(css).toMatch(/\.in-matriz__ejes \{[^}]*stroke: var\(--hz-borde-control\)/)
+    expect(css).toMatch(/\.in-paso__horizonte \{[^}]*stroke: var\(--hz-borde-control\)/)
+    const r1 = [...container.querySelectorAll('.in-matriz__etiqueta')].filter((t) => t.textContent === 'R1')
+    expect(r1.map((t) => t.getAttribute('text-anchor'))).toEqual(['start', 'end'])
+  })
+
+  it('la landing no fuerza el carbón ni define colores propios', () => {
+    expect(readFileSync('web/inicio/PaginaInicio.tsx', 'utf8')).not.toMatch(/useTemaDocumento\('carbon'\)|data-tema="carbon"/)
+    expect(css.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i)
   })
 })

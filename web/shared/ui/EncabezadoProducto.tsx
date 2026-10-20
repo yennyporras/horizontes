@@ -14,10 +14,12 @@ export interface EncabezadoProductoProps {
 }
 
 /**
- * Encabezado de producto de la familia Estratek (FAMILIA_ESTRATEK §6): logo de Horizontes (el sol sobre la línea
- * del horizonte, en el acento de la herramienta), nombre, firma «por Estratek »» con la » en azul y la línea del
- * degradado debajo. El fondo y la línea van de borde a borde; la fila usa el contenedor de página (`.hz-pagina`),
- * así el encabezado se alinea con el contenido.
+ * Encabezado de producto de la familia Estratek (FAMILIA_ESTRATEK §6): la barra superior carbón de todas las vistas.
+ * Logo de Horizontes (el sol sobre la línea del horizonte, en el acento de la herramienta), nombre, firma
+ * «por Estratek »» con la » en azul y la línea del degradado debajo. El <header> lleva `data-tema="carbon"`: la barra
+ * y sus hijos (navegación, botones, menú) toman el tema carbón aunque la página sea clara, sin envoltorio en cada área.
+ * El fondo y la línea van de borde a borde; la fila usa el contenedor de página (`.hz-pagina`), así el encabezado se
+ * alinea con el contenido.
  */
 export function EncabezadoProducto({ nombre = 'Horizontes', href, onIr, children, className }: EncabezadoProductoProps) {
   const marca = (
@@ -32,7 +34,7 @@ export function EncabezadoProducto({ nombre = 'Horizontes', href, onIr, children
     </>
   )
   return (
-    <header className={['hz-producto', className].filter(Boolean).join(' ')}>
+    <header className={['hz-producto', className].filter(Boolean).join(' ')} data-tema="carbon">
       <div className="hz-producto__fila hz-pagina">
         {href ? (
           <a className="hz-producto__marca" href={href} onClick={onIr}>

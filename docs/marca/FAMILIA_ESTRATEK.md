@@ -2,6 +2,8 @@
 
 Fuente única de la identidad visual de las herramientas de Estratek: Horizontes, IRMI, Building y Motor Comercial. Aprobada por Paola el 19-oct-2026. Piloto: Horizontes.
 
+**Decisión de Paola del 20-oct-2026: una sola apariencia.** Todas las vistas (landing, celular, tablero y panel) usan el tema **claro**, con la **barra superior carbón** y la línea del degradado debajo. El carbón deja de ser el tema de la landing y del proyector: queda solo para la barra (§3). Así ninguna vista parece de otra página.
+
 Los colores de marca son **exactos** de estratek.com.co: kit de Elementor 1641, CSS adicional del tema y clase `.fondo-estratek`. No se inventan colores de marca. Los derivados (superficies, estados, azul profundo) existen solo para cumplir contraste AA y se documentan aquí.
 
 ## 1. Arquitectura de marca
@@ -38,15 +40,19 @@ Los colores de marca son **exactos** de estratek.com.co: kit de Elementor 1641, 
 
 **Reglas del degradado:** solo en líneas (la «raya» de 3 a 6 px bajo el encabezado), bordes, barras de progreso y elementos gráficos grandes. **Nunca detrás de texto.**
 
-## 3. Temas por contexto
+## 3. Temas: página clara y barra carbón (20-oct)
 Mismos nombres de tokens; solo cambian los valores.
 
-| Contexto | Tema |
+| Dónde | Tema |
 |---|---|
-| Landing pública y proyección (tablero) | **Carbón** |
-| Celular del participante y panel del facilitador | **Claro**. El panel lleva barra superior carbón con la línea del degradado. |
+| Todas las páginas: landing pública, celular del participante, tablero (proyección) y panel del facilitador | **Claro** |
+| La barra superior de todas las vistas, con la línea del degradado debajo | **Carbón**, solo dentro de la barra (`data-tema="carbon"` en su contenedor) |
 
-| Token semántico | Claro | Carbón |
+~~Landing pública y proyección (tablero) en carbón; celular y panel en claro, con la barra carbón solo en el panel~~ (19-oct). **Reemplazado el 20-oct** por la tabla de arriba: una sola apariencia.
+
+El tema carbón se mantiene como juego completo de tokens: lo que vaya dentro de la barra (navegación, botones, insignias, menú desplegable) se lee con los mismos componentes. El navegador pinta su barra (`theme-color`) en el carbón de la barra superior y la página declara `color-scheme: light`.
+
+| Token semántico | Claro (páginas) | Carbón (barra) |
 |---|---|---|
 | fondo | `#FFFFFF` | `#141414` |
 | superficie-1 | `#F3F8FF` | `#1B1D22` |
@@ -101,17 +107,17 @@ Todos los pares tinta/fondo y estado/fondo pasan AA. Contrastes medidos con WCAG
 - **Tabla:** encabezado fijo en superficie-1, cifras a la derecha y tabulares, filas de 40 a 48 px.
 - **Insignia de estado:** fondo del estado, texto del estado e ícono o símbolo; nunca solo color.
 - **Aviso y estado vacío:** título orientado a la acción, una frase y una acción.
-- **Encabezado de producto:** glifo del acento, nombre de la herramienta, «por Estratek » y línea del degradado.
-- **Logos oficiales** (PNG del sitio, no hay vector): `web/shared/ui/marca/estratek-logo-blanco.png` y `estratek-logo-hielo.png`. Solo sobre carbón.
+- **Encabezado de producto:** la barra superior carbón de todas las vistas, con el glifo del acento, el nombre de la herramienta, «por Estratek » y la línea del degradado.
+- **Logo oficial de Estratek** (PNG del sitio, de un solo color; no hay vector): `web/shared/ui/marca/estratek-logo.png`, recortado al borde del dibujo. Se usa como máscara pintada con la tinta del tema (componente `LogoEstratek`): carbón sobre el claro, hielo dentro de la barra carbón. ~~Logos blanco y hielo, solo sobre carbón~~ (19-oct, reemplazado el 20-oct: con todo claro, el blanco no se veía en el pie).
 
 ## 7. Visualización de datos
 - La forma y el texto acompañan siempre al color.
 - Paleta categórica en este orden: azul `#3487FF`, verde agua `#00CDA1`, violeta claro `#8B78F0`, hielo 2 `#BEDAFF`, ámbar `#FFBB44`.
 - Los colores semánticos (ok, alerta, error) no se usan como categorías.
-- Gráficos con 3:1 mínimo contra el fondo.
+- Gráficos con 3:1 mínimo contra el fondo. Sobre el claro, verde agua, hielo 2 y ámbar no llegan a 3:1 contra el blanco: si se usan como categoría, llevan el borde de control alrededor.
 - **Horizontes, por acta del 16-oct:** R1 verde hueco y R2 rojo sólido, siempre con «R1»/«R2».
 
-  | Ronda | Claro | Carbón |
+  | Ronda | Claro (páginas, también el tablero) | Carbón (solo si va dentro de la barra) |
   |---|---|---|
   | R1 | `#1B7F3A` | `#3FB25A` |
   | R2 | `#C62828`, texto blanco encima | `#F36363`, texto carbón encima |

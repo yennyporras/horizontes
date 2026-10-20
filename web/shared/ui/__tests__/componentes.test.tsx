@@ -13,7 +13,9 @@ import { MuestraUI } from '../MuestraUI'
 import { EncabezadoProducto } from '../EncabezadoProducto'
 import { useTemaDocumento } from '../tema'
 import { BarraAccion } from '../BarraAccion'
-import { readFileSync } from 'node:fs'
+import { LogoEstratek } from '../marca/LogoEstratek'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 
 afterEach(cleanup)
 
@@ -123,6 +125,7 @@ describe('BarraProgreso y Aviso', () => {
 describe('MuestraUI', () => {
   it('renderiza todos los componentes base sin rayas en los textos', () => {
     const { container } = render(<MuestraUI />)
+    expect(container.textContent).not.toContain('–')
     expect(screen.getAllByRole('radiogroup').length).toBeGreaterThan(0)
     expect(screen.getByRole('tablist')).toBeTruthy()
     expect(screen.getByRole('progressbar')).toBeTruthy()
@@ -172,6 +175,88 @@ describe('EncabezadoProducto', () => {
     render(<EncabezadoProducto href="/admin/salas" onIr={onIr} />)
     fireEvent.click(screen.getByRole('link'))
     expect(onIr).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('una sola apariencia: página clara y barra superior carbón (20-oct)', () => {
+  it('el encabezado de producto lleva el tema carbón en su <header>, sin envoltorio de cada área', () => {
+    render(
+      <div data-tema="claro">
+        <EncabezadoProducto href="/">
+          <button type="button">Menú</button>
+        </EncabezadoProducto>
+      </div>,
+    )
+    const barra = screen.getByRole('banner')
+    expect(barra.getAttribute('data-tema')).toBe('carbon')
+    // Lo que va dentro de la barra (navegación, botones, menú) también queda en carbón.
+    expect(screen.getByRole('button', { name: 'Menú' }).closest('[data-tema]')).toBe(barra)
+  })
+
+  it('la barra pinta su fondo y su tinta (no hereda la del claro)', () => {
+    const css = readFileSync('web/shared/ui/componentes.css', 'utf8')
+    expect(css).toMatch(/\.hz-producto \{ position: relative; background: var\(--hz-fondo\); color: var\(--hz-tinta\); \}/)
+  })
+
+  it('la muestra /m/_ui es clara con la barra carbón y ya no tiene un bloque carbón', () => {
+    const { container } = render(<MuestraUI />)
+    expect(container.querySelector('.hz-vista')!.getAttribute('data-tema')).toBe('claro')
+    expect([...container.querySelectorAll('[data-tema="carbon"]')].map((e) => e.tagName)).toEqual(['HEADER'])
+  })
+
+  it('el logo de Estratek es una imagen con nombre y se pinta con la tinta del tema', () => {
+    render(<LogoEstratek className="pie" />)
+    const logo = screen.getByRole('img', { name: 'Estratek' })
+    expect(logo.className).toBe('hz-logo-estratek pie')
+    const css = readFileSync('web/shared/ui/componentes.css', 'utf8')
+    expect(css).toMatch(/\.hz-logo-estratek \{[^}]*background: var\(--hz-tinta\);[^}]*mask: url\('\.\/marca\/estratek-logo\.png'\)/)
+    expect(css).toMatch(/forced-colors: active\) \{ \.hz-logo-estratek \{ forced-color-adjust: none; background: CanvasText; \}/)
+  })
+
+  it('index.html: color-scheme claro y theme-color en el carbón de la barra (el valor de --et-carbon)', () => {
+    const html = readFileSync('web/index.html', 'utf8')
+    const tokens = readFileSync('web/shared/ui/tokens.css', 'utf8')
+    expect(html).toMatch(/<meta name="color-scheme" content="light" \/>/)
+    const carbon = /--et-carbon: (#[0-9A-F]{6});/i.exec(tokens)![1]
+    expect(html).toContain(`<meta name="theme-color" content="${carbon}" />`)
+    expect(html).toMatch(/<html lang="es-CO">/)
+  })
+})
+
+/** Archivos de una carpeta, recursivo, con estas extensiones (sin pruebas). */
+function archivos(dir: string, ext: RegExp): string[] {
+  return readdirSync(dir).flatMap((n) => {
+    const r = join(dir, n)
+    if (statSync(r).isDirectory()) return n === 'node_modules' ? [] : archivos(r, ext)
+    return ext.test(n) && !/\.test\.tsx?$/.test(n) ? [r] : []
+  })
+}
+
+describe('tokens del sistema de diseño', () => {
+  const tokens = readFileSync('web/shared/ui/tokens.css', 'utf8')
+  const definidos = new Set([...tokens.matchAll(/(--(?:hz|et)-[a-z0-9-]+):/g)].map((m) => m[1]))
+
+  it('todo var(--hz-…) o var(--et-…) de la web existe en tokens.css (un token borrado no falla en silencio)', () => {
+    const textos = archivos('web', /\.(css|tsx?|js)$/).map((f) => [f, readFileSync(f, 'utf8')] as const)
+    // Variables propias que un área define en su CSS o en un style de React (por ejemplo --hz-cols del tablero).
+    const locales = new Set(textos.flatMap(([, t]) => [...t.matchAll(/['"]?(--(?:hz|et)-[a-z0-9-]+)['"]?\s*:/g)].map((m) => m[1])))
+    const faltan = textos.flatMap(([f, t]) =>
+      [...t.matchAll(/var\((--(?:hz|et)-[a-z0-9-]+)/g)].filter((m) => !definidos.has(m[1]) && !locales.has(m[1])).map((m) => `${f}: ${m[1]}`),
+    )
+    expect(faltan).toEqual([])
+  })
+
+  it('se quitaron los alias sin uso del tema anterior', () => {
+    for (const viejo of ['--hz-marca-teal', '--hz-marca-azul', '--hz-lienzo', '--hz-cielo', '--hz-acento-2', '--hz-borde-suave', '--hz-borde-fuerte', '--hz-superficie-4', '--hz-sobre-acento', '--hz-sp-seccion'])
+      expect(definidos.has(viejo), viejo).toBe(false)
+  })
+
+  it('sin colores en duro fuera de tokens.css en el sistema de diseño y la landing', () => {
+    const hex = /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i
+    const conColor = [...archivos('web/shared/ui', /\.(css|tsx?)$/), ...archivos('web/inicio', /\.(css|tsx?)$/)]
+      .filter((f) => f !== join('web', 'shared', 'ui', 'tokens.css'))
+      .filter((f) => hex.test(readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')))
+    expect(conColor).toEqual([])
   })
 })
 

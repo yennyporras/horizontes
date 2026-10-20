@@ -39,6 +39,8 @@ export function MatrizIlustrada() {
               <circle key={h.id} className="in-matriz__horizonte" cx={X0} cy={Y0} r={h.radio! * K} fill={i === 0 ? 'var(--hz-superficie-2)' : 'var(--hz-superficie-3)'} />
             ))}
         </g>
+        {/* Ejes: el plano se lee como gráfica también sobre el fondo blanco. */}
+        <path className="in-matriz__ejes" d={`M${X0} 0 V${Y0} H100`} />
         {Object.entries(grafico.etiquetas_horizonte).map(([id, [x, y]]) => (
           <text key={id} className="in-matriz__h" x={px(x)} y={py(y)}>
             {id}
@@ -56,7 +58,10 @@ export function MatrizIlustrada() {
             <g key={`${x1}-${y1}`}>
               <line className="in-matriz__traza" pathLength={1} x1={x1 + ux * R} y1={y1 + uy * R} x2={x2 - ux * (R + 2.6)} y2={y2 - uy * (R + 2.6)} />
               <circle className="in-matriz__r1" cx={x1} cy={y1} r={R} />
-              <text className="in-matriz__etiqueta" x={x1 + R + 1} y={y1 - R}>R1</text>
+              {/* «R1» del lado contrario a la flecha: si el proyecto se mueve a la derecha, la etiqueta va a la izquierda. */}
+              <text className="in-matriz__etiqueta" x={ux > 0 ? x1 - R - 1 : x1 + R + 1} y={y1 - R} textAnchor={ux > 0 ? 'end' : 'start'}>
+                R1
+              </text>
               <g className="in-matriz__mueve" style={{ '--dx': `${x1 - x2}px`, '--dy': `${y1 - y2}px` } as CSSProperties}>
                 <path className="in-matriz__punta" d="M0 -1.4 L2.4 0 L0 1.4 Z" transform={`translate(${x2 - ux * (R + 2.6)} ${y2 - uy * (R + 2.6)}) rotate(${angulo})`} />
                 <circle className="in-matriz__r2" cx={x2} cy={y2} r={R} />

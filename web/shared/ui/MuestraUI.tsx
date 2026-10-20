@@ -6,16 +6,16 @@ import { BarraProgreso } from './BarraProgreso'
 import { Boton } from './Boton'
 import { Campo } from './Campo'
 import { Casilla } from './Casilla'
-import { EncabezadoHorizonte } from './EncabezadoHorizonte'
 import { EncabezadoProducto } from './EncabezadoProducto'
 import { Hoja } from './Hoja'
 import { Insignia } from './Insignia'
+import { LogoEstratek } from './marca/LogoEstratek'
 import { Pestanas } from './Pestanas'
 import { Rubrica } from './Rubrica'
 
 const criterios = yo.criterios
 
-/** Página /m/_ui: todos los componentes base con contenido real del caso, en 360 px. */
+/** Página /m/_ui (solo en desarrollo): todos los componentes base con contenido real del caso, en el tema claro con la barra carbón. */
 export function MuestraUI() {
   const [correo, setCorreo] = useState('ana@')
   const [acepta, setAcepta] = useState(false)
@@ -26,12 +26,16 @@ export function MuestraUI() {
   const hojas = yo.contenido.hojas
 
   return (
-    <div className="hz hz-vista" lang="es-CO">
-      <EncabezadoProducto />
-      <EncabezadoHorizonte sala={yo.sala.nombre} meta={`${yo.participante.mesa.nombre} · Perfil ${yo.participante.perfil.nombre}`} />
+    <div className="hz hz-vista" data-tema="claro" lang="es-CO">
+      <EncabezadoProducto href="/">
+        <Boton variante="secundario">Menú</Boton>
+      </EncabezadoProducto>
       <main className="hz-contenido hz-pagina">
         <h1 className="hz-titulo">Componentes base</h1>
-        <p className="hz-texto-2">Muestra del sistema de diseño de Horizontes. Todo lo que ves aquí lo usan las pantallas del participante.</p>
+        <p className="hz-texto-2">
+          Muestra del sistema de diseño de Horizontes: tema claro con la barra superior carbón, la misma apariencia en la landing, el
+          celular, el tablero y el panel.
+        </p>
 
         <section className="hz-contenido" aria-labelledby="s-botones">
           <h2 id="s-botones" className="hz-subtitulo">Botones</h2>
@@ -153,15 +157,9 @@ export function MuestraUI() {
           </Aviso>
         </section>
 
-        <section className="hz-contenido hz-muestra-carbon" data-tema="carbon" aria-labelledby="s-carbon">
-          <h2 id="s-carbon" className="hz-subtitulo">Tema carbón (landing y tablero)</h2>
-          <Boton variante="secundario">Ver cómo funciona</Boton>
-          <p style={{ display: 'flex', gap: 'var(--hz-sp-2)', flexWrap: 'wrap' }}>
-            <Insignia tono="ok">Guardado</Insignia>
-            <Insignia tono="r1">R1</Insignia>
-            <Insignia tono="r2">R2</Insignia>
-          </p>
-          <Aviso tono="info">El tablero se proyecta en carbón.</Aviso>
+        <section className="hz-contenido" aria-labelledby="s-marca">
+          <h2 id="s-marca" className="hz-subtitulo">Logo de Estratek</h2>
+          <LogoEstratek />
         </section>
       </main>
       <BarraAccion nota="Llevas 1 de 2 proyectos">
