@@ -1,5 +1,5 @@
 import { type Db, todos } from '../db/index.js'
-import { type Entradas, type Pesos, calcularPunto } from '../../shared/motor/motor.js'
+import { CRITERIOS, type CriterioId, type Distribucion, type Entradas, type Pesos, calcularPunto } from '../../shared/motor/motor.js'
 import { VOTOS_POR_ACTUALIZACION, agregadoPublicado, votosDelAlcance } from './fotos.js'
 import type { CriterioSemilla } from './semilla.js'
 import { type MesaFila, type SalaFila, mesasDeSala } from './salas.js'
@@ -155,6 +155,11 @@ export interface OpcionesTablero {
   /** `progreso.por_mesa`: solo en el tablero; las vistas del participante no lo llevan (D2). Por defecto true. */
   porMesa?: boolean
   sufijoVersion?: string
+  /**
+   * R1 oculta (decisión 1 de Paola, 20-oct): con la ronda 1 abierta, el tablero público y el celular no muestran sus
+   * valores hasta que el alcance completo votó (precierre) o se cierra la ronda. Solo el panel del admin la ve antes.
+   */
+  verR1Abierta?: boolean
 }
 
 // Caché por sala y alcance: la vista de un alcance es la misma para el proyector y para cada celular que la consulta;
@@ -173,7 +178,26 @@ export function construirTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
     t = calcularTablero(db, sala, op)
     c.vistas.set(clave, t)
   }
-  return { version: `v-${sala.version}${op.sufijoVersion ?? ''}`, ...t }
+  // La caché guarda la vista completa; la máscara de R1 depende de quién pide y se aplica al responder.
+  const ocultar = sala.estado === 'r1_abierta' && !op.verR1Abierta && !t.precierreAlcance
+  return { version: `v-${sala.version}${op.sufijoVersion ?? ''}`, ...(ocultar ? ocultarR1(t.vista) : t.vista) }
+}
+
+type VistaTablero = ReturnType<typeof calcularTablero>['vista']
+
+/**
+ * La vista con la ronda 1 oculta: `oculta: true`, `n_votos` y nada más (promedios, distribución, punto y total en null).
+ * Sin convergencia: con R1 oculta no hay con qué comparar.
+ */
+function ocultarR1(v: VistaTablero): VistaTablero {
+  return {
+    ...v,
+    convergencia_alcance: undefined,
+    proyectos_vivos: v.proyectos_vivos.map(({ convergencia: _sin, ...p }) => ({
+      ...p,
+      rondas: p.rondas.map((r) => (r.ronda === 1 ? { ...rondaVacia(1), n_votos: r.n_votos, ...(r.bajo_minimo ? { bajo_minimo: true } : {}), oculta: true as const } : r)),
+    })),
+  }
 }
 
 /** Vistas en caché de una sala (pruebas: la caché es por alcance, no por participante). */
@@ -186,9 +210,32 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
   const prog = progreso(db, sala, mesas)
   const mesaId = op.alcance.tipo === 'mesa' ? op.alcance.mesa.id : undefined
   const porRonda = new Map(op.rondas.map((r) => [r, votosDelAlcance(db, sala.id, r, mesaId)]))
-  const vacia = (r: number) => ({ ronda: r, n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null })
+  const vacia = rondaVacia
+  const precierreAlcance = mesaId ? (prog.por_mesa.find((m) => m.mesa_id === mesaId)?.precierre ?? false) : prog.precierre
 
-  return {
+  const vivosConRondas: VivoPublicado[] = prs
+    .filter((p) => p.modo === 'vivo')
+    .map((p) => {
+      const rondas: RondaPublicada[] = op.rondas.map((r) => {
+        // D2: con la ronda abierta, la última foto del alcance (se renueva de 3 en 3); con la ronda cerrada, el exacto.
+        const { agregado: a, n_votos } = agregadoPublicado(
+          db,
+          { salaId: sala.id, alcance: mesaId ?? 'sala', ronda: r, proyectoId: p.id, versionSala: sala.version },
+          porRonda.get(r)?.get(p.id) ?? [],
+          c.pesos,
+          rondaCerrada(sala, r),
+        )
+        if (n_votos === 0) return vacia(r)
+        // SPEC §7: nunca respuestas individuales. Con pocos votos en el alcance, el promedio delata cada respuesta.
+        if (!a || a.n_votos < MINIMO_VOTOS) return { ...vacia(r), n_votos, bajo_minimo: true }
+        return { ronda: r, n_votos: a.n_votos, promedios: a.promedios, distribucion: a.distribucion, t2m: a.t2m, eje_x: a.eje_x, eje_y: a.eje_y, total: a.total }
+      })
+      const conv = convergencia(rondas.find((r) => r.ronda === 1), rondas.find((r) => r.ronda === 2))
+      return { id: p.id, nombre: p.nombre, sector: p.sector, modo: 'vivo' as const, tam: p.tam, rondas, ...(conv ? { convergencia: conv } : {}) }
+    })
+  const reducciones = vivosConRondas.flatMap((p) => (p.convergencia ? [p.convergencia.reduccion_pct] : []))
+
+  const vista = {
     sala: { id: sala.id, nombre: sala.nombre, estado: sala.estado, ronda_actual: sala.ronda_actual, pregunta_guiada: preguntaGuiada(sala) },
     alcance:
       op.alcance.tipo === 'mesa'
@@ -207,32 +254,91 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
         const e = JSON.parse(p.inputs_json ?? '{}') as Entradas
         return { id: p.id, nombre: p.nombre, sector: p.sector, modo: 'fijo', tam: p.tam, ...calcularPunto(e, c.pesos) }
       }),
-    proyectos_vivos: prs
-      .filter((p) => p.modo === 'vivo')
-      .map((p) => ({
-        id: p.id,
-        nombre: p.nombre,
-        sector: p.sector,
-        modo: 'vivo',
-        tam: p.tam,
-        rondas: op.rondas.map((r) => {
-          // D2: con la ronda abierta, la última foto del alcance (se renueva de 3 en 3); con la ronda cerrada, el exacto.
-          const { agregado: a, n_votos } = agregadoPublicado(
-            db,
-            { salaId: sala.id, alcance: mesaId ?? 'sala', ronda: r, proyectoId: p.id, versionSala: sala.version },
-            porRonda.get(r)?.get(p.id) ?? [],
-            c.pesos,
-            rondaCerrada(sala, r),
-          )
-          if (n_votos === 0) return vacia(r)
-          // SPEC §7: nunca respuestas individuales. Con pocos votos en el alcance, el promedio delata cada respuesta.
-          if (!a || a.n_votos < MINIMO_VOTOS) return { ...vacia(r), n_votos, bajo_minimo: true }
-          return { ronda: r, n_votos: a.n_votos, promedios: a.promedios, distribucion: a.distribucion, t2m: a.t2m, eje_x: a.eje_x, eje_y: a.eje_y, total: a.total }
-        }),
-      })),
+    proyectos_vivos: vivosConRondas,
     preliminar: op.preliminar,
     minimo_votos: MINIMO_VOTOS,
     votos_por_actualizacion: VOTOS_POR_ACTUALIZACION,
+    convergencia_alcance: (reducciones.length ? { reduccion_pct: Math.round(reducciones.reduce((a, b) => a + b, 0) / reducciones.length) } : undefined) as { reduccion_pct: number } | undefined,
+  }
+  return { vista, precierreAlcance }
+}
+
+// --- Convergencia R1 → R2 (QA por roles, 20-oct) ----------------------------------------
+
+export interface RondaPublicada {
+  ronda: number
+  n_votos: number
+  promedios: Entradas | null
+  distribucion: Distribucion | null
+  t2m: number | null
+  eje_x: number | null
+  eje_y: number | null
+  total: number | null
+  bajo_minimo?: boolean
+  /** R1 oculta: hay votos pero todavía no se muestran (ronda 1 abierta y el alcance sin precierre). */
+  oculta?: true
+}
+
+interface VivoPublicado {
+  id: string
+  nombre: string
+  sector: string
+  modo: 'vivo'
+  tam: number
+  rondas: RondaPublicada[]
+  convergencia?: Convergencia
+}
+
+const rondaVacia = (r: number): RondaPublicada => ({ ronda: r, n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null })
+
+export interface Convergencia {
+  dispersion_r1: number
+  dispersion_r2: number
+  reduccion_pct: number
+  criterio_mayor_cambio: CriterioId
+  delta_x: number
+  delta_y: number
+}
+
+const dosDecimales = (n: number) => Math.round(n * 100) / 100
+
+/**
+ * Dispersión de una ronda: promedio de las desviaciones estándar (poblacionales) de los 6 criterios, calculadas sobre
+ * la distribución publicada. Sale de lo publicado y no de los votos al día: con la ronda abierta no despeja un voto
+ * entre dos fotos.
+ */
+export function dispersion(d: Distribucion): number {
+  let suma = 0
+  for (const c of CRITERIOS) {
+    const pares = Object.entries(d[c]).map(([v, n]) => [Number(v), n] as const)
+    const n = pares.reduce((a, [, k]) => a + k, 0)
+    if (n === 0) continue
+    const media = pares.reduce((a, [v, k]) => a + v * k, 0) / n
+    suma += Math.sqrt(pares.reduce((a, [v, k]) => a + k * (v - media) ** 2, 0) / n)
+  }
+  return suma / CRITERIOS.length
+}
+
+/**
+ * Cuánto se juntó la mesa o la sala de R1 a R2 en un proyecto. Solo si las dos rondas tienen resultados visibles (con
+ * valores: ni ocultas ni bajo el mínimo). `reduccion_pct` puede ser negativa si la dispersión creció. Empate en el mayor
+ * cambio: el primero en el orden de los criterios.
+ */
+export function convergencia(r1: RondaPublicada | undefined, r2: RondaPublicada | undefined): Convergencia | null {
+  if (!r1?.promedios || !r1.distribucion || !r2?.promedios || !r2.distribucion) return null
+  if (r1.eje_x === null || r1.eje_y === null || r2.eje_x === null || r2.eje_y === null) return null
+  const d1 = dispersion(r1.distribucion)
+  const d2 = dispersion(r2.distribucion)
+  const cambio = (c: CriterioId) => Math.abs(r2.promedios![c] - r1.promedios![c])
+  let mayor: CriterioId = CRITERIOS[0]
+  for (const c of CRITERIOS) if (cambio(c) > cambio(mayor) + 1e-9) mayor = c
+  return {
+    dispersion_r1: dosDecimales(d1),
+    dispersion_r2: dosDecimales(d2),
+    reduccion_pct: d1 === 0 ? 0 : Math.round(((d1 - d2) / d1) * 100),
+    criterio_mayor_cambio: mayor,
+    delta_x: dosDecimales(r2.eje_x - r1.eje_x),
+    delta_y: dosDecimales(r2.eje_y - r1.eje_y),
   }
 }
 

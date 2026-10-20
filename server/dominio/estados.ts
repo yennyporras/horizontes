@@ -5,7 +5,7 @@ import { ErrorApi } from '../http.js'
 import { CRITERIOS } from '../../shared/motor/motor.js'
 import { borrarFotos, fijarFotosExactas } from './fotos.js'
 import { contenido, preguntaGuiada, rondaAbierta, rondaDelAlias, vivos } from './resultados.js'
-import { type EstadoSala, type SalaFila, cargarSala, mesasDeSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
+import { type EstadoSala, type SalaFila, cargarSala, clasificacionValida, mesasDeSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
 import { DESFASES, PAISES, type ZonaHoraria, ZONA_POR_PAIS, isoEnZona, isoUtc } from './util.js'
 
 export const ACCIONES = [
@@ -160,6 +160,10 @@ export interface CambiosConfig {
   modo_preguntas?: unknown
   pais?: unknown
   zona_horaria?: unknown
+  /** QA por roles (20-oct, migración 8): `taller` o `ensayo`, empresa cliente y sector. */
+  tipo?: unknown
+  empresa?: unknown
+  sector?: unknown
 }
 
 /**
@@ -247,6 +251,7 @@ export function cambiarConfig(db: Db, salaId: string, cambios: CambiosConfig, ah
     if (!['automatico', 'guiado'].includes(cambios.modo_preguntas as string)) throw new ErrorApi(422, 'CONFIG_INVALIDA', 'modo_preguntas debe ser "automatico" o "guiado".')
     poner('modo_preguntas', cambios.modo_preguntas)
   }
+  for (const [col, v] of Object.entries(clasificacionValida(cambios))) poner(col, v)
   // Programación: el alias de ronda escribe en la ronda abierta (o la siguiente); el campo propio de la ronda, si llega, manda.
   const actual = cargarSala(db, salaId)
   const programada: Partial<Record<ColumnaProgramada, string | null>> = {}

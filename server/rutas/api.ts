@@ -17,6 +17,7 @@ import {
   DURACION_SESION_MS,
 } from '../dominio/admins.js'
 import { canjearAcceso, darAcceso } from '../dominio/accesos.js'
+import { Demostracion, TIEMPOS_DEMO, type TiemposDemo } from '../dominio/demo.js'
 import { LimitadorPeticiones } from '../dominio/mantenimiento.js'
 import { aplicarAccion, cambiarConfig, fijarPreguntaGuiada } from '../dominio/estados.js'
 import {
@@ -24,9 +25,11 @@ import {
   editarParticipante,
   eventosPaginados,
   exportInscritos,
+  exportResultados,
   exportVotos,
   listarSalas,
   mesasAdmin,
+  metricas,
   respuestasPorPersona,
   salaResumen,
   urls,
@@ -49,6 +52,8 @@ export interface OpcionesApi {
   alCerrarSala: (salaId: string) => void
   /** Respaldo de la BD con una etiqueta de momento (antes de empezar la sala, antes de reiniciar una ronda). */
   respaldar?: (salaId: string, momento: string) => void
+  /** Tiempos del modo demo (las pruebas los acortan). */
+  demo?: Partial<TiemposDemo>
 }
 
 const COOKIE = 'hz_admin'
@@ -156,7 +161,7 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   // --- Tablero --------------------------------------------------------------------------
 
-  app.get<{ Params: { salaId: string }; Querystring: { alcance?: string; mesa?: string; t?: string } }>('/api/tablero/:salaId', async (req, reply) => {
+  app.get<{ Params: { salaId: string }; Querystring: { alcance?: string; mesa?: string; t?: string; vista?: string } }>('/api/tablero/:salaId', async (req, reply) => {
     const sesion = adminDeSesion(db, req.cookies[COOKIE], ahora())
     const esAdmin = Boolean(sesion && !sesion.debe_cambiar_clave)
     // Sin sesión admin ni token válido responde siempre el mismo 401, exista o no la sala: el 404 permitía saber qué
@@ -177,11 +182,15 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     }
     const ronda = sala.ronda_actual
     const rondas = ronda >= 2 ? [1, 2] : [1]
+    // R1 oculta (decisión 1 de Paola, 20-oct): solo el panel ve la ronda 1 abierta antes del precierre. No basta la cookie:
+    // el proyector suele abrirse en el mismo navegador del facilitador. El panel lo pide con `vista=panel` y sesión admin.
+    const panel = esAdmin && req.query.vista === 'panel'
     const t = construirTablero(db, sala, {
       alcance,
       rondas,
       preliminar: ronda > 0 && !rondaCerrada(sala, ronda),
-      sufijoVersion: alcance.tipo === 'mesa' ? `-${alcance.mesa.id}` : '-sala',
+      sufijoVersion: `${alcance.tipo === 'mesa' ? `-${alcance.mesa.id}` : '-sala'}${panel ? '-panel' : ''}`,
+      verR1Abierta: panel,
     })
     return responderConVersion(req, reply, t)
   })
@@ -241,9 +250,26 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   app.get('/api/admin/salas', async () => ({ salas: listarSalas(db) }))
 
-  app.post<{ Body: { nombre?: unknown; plantilla?: unknown; mesas?: unknown } }>('/api/admin/salas', async (req, reply) => {
+  // Modo demo: sala «Demostración» que se juega sola en cerca de un minuto. Solo la cuenta superadministradora.
+  const demo = new Demostracion(db, ahora, { ...TIEMPOS_DEMO, ...op.demo }, (e) => app.log.warn({ err: e }, 'la demostración se detuvo'))
+  app.addHook('onClose', async () => demo.detener())
+  app.post('/api/admin/demo', async (req, reply) => {
+    if (req.admin!.rol !== 'superadmin') throw new ErrorApi(403, 'SOLO_SUPERADMIN', 'Solo la cuenta superadministradora puede iniciar la demostración.')
+    const sala = demo.iniciar(por(req))
+    return reply.code(201).send({ sala: salaResumen(sala, op.baseUrl) })
+  })
+
+  // Cifras del negocio para la franja de Salas: solo talleres (sin ensayos ni demostraciones). Admin y superadmin.
+  app.get('/api/admin/metricas', async () => metricas(db))
+
+  app.post<{ Body: { nombre?: unknown; plantilla?: unknown; mesas?: unknown; tipo?: unknown; empresa?: unknown; sector?: unknown } }>('/api/admin/salas', async (req, reply) => {
     const b = req.body ?? {}
-    const sala = crearSalaDesdePlantilla(db, { nombre: b.nombre, plantilla: b.plantilla ?? 'foodsume_2026', mesas: b.mesas ?? 1 }, ahora(), por(req))
+    const sala = crearSalaDesdePlantilla(
+      db,
+      { nombre: b.nombre, plantilla: b.plantilla ?? 'foodsume_2026', mesas: b.mesas ?? 1, tipo: b.tipo, empresa: b.empresa, sector: b.sector },
+      ahora(),
+      por(req),
+    )
     return reply.code(201).send({ ...salaResumen(sala, op.baseUrl), mesas: mesasAdmin(db, sala, op.baseUrl) })
   })
 
@@ -340,8 +366,9 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   app.get<{ Params: { id: string; archivo: string } }>('/api/admin/salas/:id/export/:archivo', async (req, reply) => {
     const sala = cargarSala(db, req.params.id)
     const archivo = req.params.archivo
-    if (archivo !== 'inscritos.csv' && archivo !== 'votos.csv') throw new ErrorApi(404, 'NO_ENCONTRADO', 'Ese archivo no existe. Usa inscritos.csv o votos.csv.')
-    const cuerpo = archivo === 'inscritos.csv' ? exportInscritos(db, sala.id) : exportVotos(db, sala.id)
+    const generar: Record<string, (db: Db, salaId: string) => string> = { 'inscritos.csv': exportInscritos, 'votos.csv': exportVotos, 'resultados.csv': exportResultados }
+    if (!Object.hasOwn(generar, archivo)) throw new ErrorApi(404, 'NO_ENCONTRADO', 'Ese archivo no existe. Usa inscritos.csv, votos.csv o resultados.csv.')
+    const cuerpo = generar[archivo](db, sala.id)
     return reply
       .type('text/csv; charset=utf-8')
       .header('Content-Disposition', `attachment; filename="${sala.codigo}_${archivo}"`)

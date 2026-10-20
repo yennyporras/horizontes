@@ -35,6 +35,52 @@ export interface SalaFila {
   token_tablero: string
   version: number
   creada_at: string
+  /** Migración 8: `ensayo` no cuenta en las métricas del negocio. Duplicar una sala crea un ensayo. */
+  tipo: TipoSala
+  /** Empresa cliente (opcional, hasta 80 caracteres). */
+  empresa: string | null
+  sector: Sector | null
+}
+
+export const TIPOS_SALA = ['taller', 'ensayo'] as const
+export type TipoSala = (typeof TIPOS_SALA)[number]
+export const SECTORES = ['alimentos', 'energia', 'financiero', 'comercio', 'salud', 'manufactura', 'otro'] as const
+export type Sector = (typeof SECTORES)[number]
+export const LARGO_MAXIMO_EMPRESA = 80
+
+/** Sin caracteres de control ni marcado: la empresa sale en el panel y en los nombres de archivo del cliente. */
+const RE_TEXTO_PROHIBIDO = /[\u0000-\u001f\u007f<>{}\\`]/
+
+export interface DatosClasificacion {
+  tipo?: unknown
+  empresa?: unknown
+  sector?: unknown
+}
+
+/**
+ * Valida `tipo`, `empresa` y `sector` del cuerpo (todos opcionales). Devuelve solo los que llegaron, listos para guardar.
+ * `empresa` vacía o null la quita; `sector` null lo quita. 422 DATOS_INVALIDOS con un mensaje por campo.
+ */
+export function clasificacionValida(d: DatosClasificacion): Partial<Pick<SalaFila, 'tipo' | 'empresa' | 'sector'>> {
+  const r: Partial<Pick<SalaFila, 'tipo' | 'empresa' | 'sector'>> = {}
+  if (d.tipo !== undefined) {
+    if (!(TIPOS_SALA as readonly unknown[]).includes(d.tipo)) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'El tipo de sala debe ser "taller" o "ensayo".')
+    r.tipo = d.tipo as TipoSala
+  }
+  if (d.empresa !== undefined) {
+    if (d.empresa !== null && typeof d.empresa !== 'string') throw new ErrorApi(422, 'DATOS_INVALIDOS', 'La empresa debe ser texto.')
+    const e = (d.empresa ?? '').trim().replace(/\s+/g, ' ')
+    if (e.length > LARGO_MAXIMO_EMPRESA) throw new ErrorApi(422, 'DATOS_INVALIDOS', `El nombre de la empresa admite hasta ${LARGO_MAXIMO_EMPRESA} caracteres.`)
+    if (RE_TEXTO_PROHIBIDO.test(e)) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'El nombre de la empresa solo puede tener letras, números y signos comunes.')
+    r.empresa = e || null
+  }
+  if (d.sector !== undefined) {
+    if (d.sector !== null && !(SECTORES as readonly unknown[]).includes(d.sector)) {
+      throw new ErrorApi(422, 'DATOS_INVALIDOS', `El sector debe ser uno de: ${SECTORES.join(', ')}.`)
+    }
+    r.sector = d.sector as Sector | null
+  }
+  return r
 }
 
 export interface MesaFila {
@@ -119,7 +165,7 @@ export function agregarMesas(db: Db, salaId: string, cantidad: number) {
   })
 }
 
-export interface NuevaSala {
+export interface NuevaSala extends DatosClasificacion {
   nombre: unknown
   plantilla: unknown
   mesas: unknown
@@ -145,6 +191,7 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
   if (!nombre || nombre.length > 120) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Escribe un nombre para la sala (máximo 120 caracteres).')
   const nMesas = datos.mesas ?? 1
   if (typeof nMesas !== 'number' || !Number.isInteger(nMesas) || nMesas < 1 || nMesas > MAX_MESAS) throw new ErrorApi(422, 'CANTIDAD_INVALIDA', `Indica entre 1 y ${MAX_MESAS} mesas.`)
+  const clasif = clasificacionValida(datos)
 
   return transaccion(db, () => {
     let id = idAleatorio('s', 6)
@@ -153,8 +200,8 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
     while (uno(db, 'SELECT 1 FROM salas WHERE codigo = ?', codigo)) codigo = codigoSala()
     ejecutar(
       db,
-      `INSERT INTO salas (id, codigo, nombre, plantilla, estado, alcance_resultados, vista_participante, token_tablero_hash, token_tablero, creada_at)
-       VALUES (?, ?, ?, ?, 'preparada', ?, ?, '', ?, ?)`,
+      `INSERT INTO salas (id, codigo, nombre, plantilla, estado, alcance_resultados, vista_participante, token_tablero_hash, token_tablero, creada_at, tipo, empresa, sector)
+       VALUES (?, ?, ?, ?, 'preparada', ?, ?, '', ?, ?, ?, ?, ?)`,
       id,
       codigo,
       nombre,
@@ -163,6 +210,9 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
       CONFIG_POR_DEFECTO.vista_participante,
       tokenAleatorio(),
       isoUtc(ahora),
+      clasif.tipo ?? 'taller',
+      clasif.empresa ?? null,
+      clasif.sector ?? null,
     )
     for (const p of sem.plantilla.proyectos) {
       ejecutar(
@@ -193,19 +243,27 @@ export function crearSalaDesdePlantilla(db: Db, datos: NuevaSala, ahora: number,
       JSON.stringify({ ejes: sem.motor.ejes, grafico: sem.motor.grafico, escala: sem.motor.escala_permitida }),
     )
     agregarMesas(db, id, nMesas)
-    registrarEvento(db, id, ahora, 'sala_creada', por, { plantilla: sem.plantilla.id, mesas: nMesas })
+    registrarEvento(db, id, ahora, 'sala_creada', por, { plantilla: sem.plantilla.id, mesas: nMesas, tipo: clasif.tipo ?? 'taller' })
     return cargarSala(db, id)
   })
 }
 
-/** Sala nueva para ensayos: misma plantilla, mismas mesas, mismo país y mismas rúbricas; visibilidad por defecto; sin inscritos ni votos. */
+/**
+ * Sala nueva para ensayos (`tipo: 'ensayo'`, QA por roles del 20-oct: no cuenta en las métricas): misma plantilla, mismas
+ * mesas, mismo país, misma empresa y sector, y mismas rúbricas; visibilidad por defecto; sin inscritos ni votos.
+ */
 export function duplicarSala(db: Db, idOCodigo: string, nombre: unknown, ahora: number, por: string) {
   const orig = cargarSala(db, idOCodigo)
   const nMesas = mesasDeSala(db, orig.id).length
   if (nombre !== undefined && nombre !== null && typeof nombre !== 'string') throw new ErrorApi(422, 'DATOS_INVALIDOS', 'El nombre de la sala debe ser texto.')
   const nuevoNombre = (nombre ?? '').trim() || `${orig.nombre.slice(0, 110)} (copia)`
   return transaccion(db, () => {
-    const s = crearSalaDesdePlantilla(db, { nombre: nuevoNombre, plantilla: orig.plantilla, mesas: Math.max(1, nMesas) }, ahora, por)
+    const s = crearSalaDesdePlantilla(
+      db,
+      { nombre: nuevoNombre, plantilla: orig.plantilla, mesas: Math.max(1, nMesas), tipo: 'ensayo', empresa: orig.empresa, sector: orig.sector },
+      ahora,
+      por,
+    )
     ejecutar(db, 'UPDATE salas SET pais = ?, zona_horaria = ? WHERE id = ?', orig.pais, orig.zona_horaria, s.id)
     ejecutar(db, 'UPDATE contenido_sala SET criterios_json = (SELECT criterios_json FROM contenido_sala WHERE sala_id = ?) WHERE sala_id = ?', orig.id, s.id)
     registrarEvento(db, s.id, ahora, 'sala_duplicada', por, { desde: orig.id })
