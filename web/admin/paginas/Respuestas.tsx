@@ -6,7 +6,7 @@ import { ConSala } from './EncabezadoSala'
 import { AvisoPrivado } from '../componentes/AvisoPrivado'
 import type { RespuestaPersona } from '../tipos'
 import { descripcionCriterio } from '../../shared/criterios'
-import { CRITERIOS, PROYECTOS_VIVOS, fechaHora, nombrePerfil, nombreProyecto, zonaSala } from '../textos'
+import { CRITERIOS, PROYECTOS_VIVOS, fechaCorta, nombrePerfil, nombreProyecto, zonaSala } from '../textos'
 
 /**
  * Respuestas de cada persona por ronda (C19-3). Solo para administradores: la API responde 401/403 al resto
@@ -102,7 +102,7 @@ export function Respuestas() {
                   {visibles.length} {visibles.length === 1 ? 'voto' : 'votos'}. Cada fila es una persona, una ronda y un proyecto.
                 </p>
                 <div className="tabla-envoltura">
-                  <table className="tabla-tarjetas tabla-respuestas" aria-describedby="t-conteo-respuestas">
+                  <table className="tabla-tarjetas tabla-tarjetas--ancha tabla-respuestas" aria-describedby="t-conteo-respuestas">
                     <thead>
                       <tr>
                         <th scope="col">Nombre</th>
@@ -142,8 +142,18 @@ export function Respuestas() {
                               {f.respuestas[c.id] ?? 'Sin dato'}
                             </td>
                           ))}
-                          <td data-label="Fecha" className="td-corto">
-                            {fechaHora(f.actualizado_at, zona)}
+                          {/* Día y hora pueden ir en dos líneas, nunca partidos por dentro: la tabla cabe en 1280 px. */}
+                          <td data-label="Fecha">
+                            <span>
+                              {fechaCorta(f.actualizado_at, zona)
+                                .split(/(?<=,)\s+/)
+                                .map((parte, i) => (
+                                  <span key={i} className="sin-corte">
+                                    {i > 0 && ' '}
+                                    {parte}
+                                  </span>
+                                ))}
+                            </span>
                           </td>
                         </tr>
                       ))}

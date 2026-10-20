@@ -3,6 +3,7 @@ import { api, lista } from '../api'
 import { useConfirmar } from '../componentes/Confirmar'
 import type { AdminFila } from '../tipos'
 import { useTituloPagina } from './EncabezadoSala'
+import { LARGO_MINIMO_CLAVE } from '../textos'
 
 /** QA-A-21: la regla del usuario, visible y en español (antes vivía en un `title` que no se ve en el celular). */
 export const REGLA_USUARIO = 'Entre 3 y 30 caracteres: minúsculas, números, punto o guion. Sin espacios ni tildes.'
@@ -145,7 +146,7 @@ export function Administradores() {
           </label>
           <label className="campo">
             <span>Clave temporal</span>
-            <input required minLength={10} value={clave} onChange={(e) => setClave(e.target.value)} />
+            <input required minLength={LARGO_MINIMO_CLAVE} value={clave} onChange={(e) => setClave(e.target.value)} />
           </label>
           <button className="hz-boton hz-boton--primario" type="submit">
             Crear administrador
@@ -195,11 +196,22 @@ export function Administradores() {
                       {a.rol === 'superadmin' ? (
                         <span className="pista">Se administra desde el servidor</span>
                       ) : (
-                        <span className="acciones">
-                          <button className="hz-boton hz-boton--secundario hz-boton--chico" onClick={() => restablecer(a)} disabled={!a.activo}>
+                        <span className="acciones acciones--fila">
+                          <button
+                            type="button"
+                            className="hz-boton hz-boton--secundario hz-boton--chico"
+                            aria-label={`Restablecer la clave de ${a.nombre}`}
+                            onClick={() => restablecer(a)}
+                            disabled={!a.activo}
+                          >
                             Restablecer clave
                           </button>
-                          <button className="hz-boton hz-boton--secundario hz-boton--chico" onClick={() => cambiarActivo(a)}>
+                          <button
+                            type="button"
+                            className="hz-boton hz-boton--secundario hz-boton--chico"
+                            aria-label={`${a.activo ? 'Desactivar' : 'Activar'} a ${a.nombre}`}
+                            onClick={() => cambiarActivo(a)}
+                          >
                             {a.activo ? 'Desactivar' : 'Activar'}
                           </button>
                         </span>

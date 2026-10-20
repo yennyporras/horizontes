@@ -157,7 +157,7 @@ export function Participantes() {
                 <p className="vacio">Nadie coincide con ese filtro.</p>
               ) : (
                 <div className="tabla-envoltura">
-                  <table className="tabla-tarjetas">
+                  <table className="tabla-tarjetas tabla-tarjetas--ancha">
                     <thead>
                       <tr>
                         <th scope="col">Nombre</th>
@@ -215,8 +215,8 @@ export function Participantes() {
                               <span className="etiqueta etiqueta--aviso">Pendiente</span>
                             )}
                           </td>
-                          <td data-label="País · IP">{p.ip ? `${p.pais ?? ''} ${p.ip}`.trim() : 'Sin registro'}</td>
-                          <td data-label="Acciones">
+                          <td data-label="País · IP" className="sin-corte">{p.ip ? `${p.pais ?? ''} ${p.ip}`.trim() : 'Sin registro'}</td>
+                          <td data-label="Acciones" className="td-ancho">
                             <span className="acciones acciones--fila">
                               <button
                                 type="button"
@@ -264,7 +264,7 @@ function Resumen({ d }: { d: SalaDetalle }) {
     <section className="panel" aria-labelledby="t-perfiles">
       <h2 id="t-perfiles">Perfiles por mesa</h2>
       <div className="tabla-envoltura">
-        <table className="tabla-tarjetas">
+        <table className="tabla-tarjetas tabla-tarjetas--ancha">
           <thead>
             <tr>
               <th scope="col">Mesa</th>

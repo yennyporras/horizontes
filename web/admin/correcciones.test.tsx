@@ -14,7 +14,7 @@ import { useSala } from './useSala'
 import { moverProgramacion } from './paginas/Configuracion'
 import { semaforo } from './paginas/Salud'
 import { conPunto, confirmacionCierreRonda, nombreEnsayo, numeroPregunta, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE } from './textos'
-import { CLAVE_RECORRIDO } from './componentes/Recorrido'
+import { CLAVE_GUIA } from './componentes/GuiaUso'
 
 function montar(ruta: string) {
   return render(
@@ -67,8 +67,8 @@ function espiar(interceptar?: (metodo: string, ruta: string) => ReturnType<Trans
 beforeEach(() => {
   reiniciarMock({ simularVotos: false })
   localStorage.removeItem('hz_admin_sala')
-  // El recorrido guiado tiene su propia prueba (recorrido.test.tsx); aquí ya se dio por visto.
-  localStorage.setItem(CLAVE_RECORRIDO, '1,2,3,4,5')
+  // La guía de uso tiene su propia prueba (guia-uso.test.tsx); aquí ya se dio por vista.
+  localStorage.setItem(CLAVE_GUIA, '1,2,3,4,5')
   usarTransporte(responderMock)
   document.title = ''
 })
@@ -179,8 +179,8 @@ describe('textos y utilidades de las correcciones', () => {
       expect(texto, f).not.toMatch(/Ver como participante|Tablero de toda la sala|Abrir tablero de la sala/)
     }
     const guia = readFileSync(join(__dirname, '../../docs/GUIA_FACILITADOR.md'), 'utf8')
-    for (const t of ['Tablero de la sala', 'En vivo, solo la gráfica', 'Con tabla', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
-    expect(guia).not.toMatch(/Abrir tablero de la sala|recuperar mi sesión|Hace falta al menos/)
+    for (const t of ['Tablero de la sala', 'Gráfica', 'Detallado', 'Guía de uso', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
+    expect(guia).not.toMatch(/Abrir tablero de la sala|recuperar mi sesión|Hace falta al menos|En vivo, solo la gráfica|Con tabla|Recorrido/)
   })
 })
 
@@ -234,7 +234,7 @@ describe('Sala en vivo', () => {
     await abrirDemo()
     const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
     const enlacesTablero = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="/tablero/"], a[href^="/m/"]')]
-    // Tablero de la sala en sus dos modos (en vivo y con tabla), tablero de la mesa y vista previa del celular.
+    // Tablero de la sala en sus dos modos (Gráfica y Detallado), tablero de la mesa y vista previa del celular.
     expect(enlacesTablero.length).toBe(4)
     for (const a of enlacesTablero) expect(enVivo.contains(a)).toBe(true)
     const previa = within(enVivo).getByRole('link', { name: 'Vista previa del celular' })
@@ -250,7 +250,7 @@ describe('Sala en vivo', () => {
   it('B-2: «Cambiar el enlace del tablero» pide confirmar, cambia el token de todos los enlaces y lo anota en la bitácora', async () => {
     await abrirDemo()
     const enVivo = screen.getByRole('region', { name: 'Ver en vivo' })
-    const token = () => new URL(within(enVivo).getByRole('link', { name: 'Con tabla' }).getAttribute('href')!, 'http://x').searchParams.get('t')
+    const token = () => new URL(within(enVivo).getByRole('link', { name: 'Detallado' }).getAttribute('href')!, 'http://x').searchParams.get('t')
     const antes = token()
     fireEvent.click(within(enVivo).getByRole('button', { name: 'Cambiar el enlace del tablero' }))
     const dialogo = await screen.findByRole('dialog', { name: 'Cambiar el enlace del tablero' })

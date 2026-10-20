@@ -68,9 +68,10 @@
 .hz-admin .cabecera .hz-producto__fila { flex-wrap: wrap; gap: var(--hz-sp-2) var(--hz-sp-6); }
 .hz-admin .cabecera .hz-producto__extra { display: contents; }
 .hz-admin .cabecera .hz-producto__marca { order: 1; }
+/* Arriba a la derecha: la guía y el cambio de clave, y después quién eres y Salir */
+.hz-admin .cuenta-extra { order: 2; margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--hz-sp-2); }
 .hz-admin .usuario {
-  order: 2;
-  margin-left: auto;
+  order: 3;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -80,13 +81,22 @@
   color: var(--hz-tinta-2);
 }
 .hz-admin .usuario__nombre { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
+/* Menú en el orden del taller: preparar, conducir, después y sistema. Una línea fina separa los grupos, sin rótulos. */
 .hz-admin .nav {
-  order: 3;
+  order: 4;
   flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--hz-sp-1);
+  align-items: center;
+  gap: var(--hz-sp-1) var(--hz-sp-6);
   min-width: 0;
+}
+.hz-admin .nav__grupo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-1); }
+/* Con el menú en una sola fila (desde 1200 px) la línea marca el grupo; si el menú se parte en dos filas, solo el aire,
+   para que ninguna fila empiece con una línea suelta. */
+@media (min-width: 1200px) {
+  .hz-admin .nav { column-gap: var(--hz-sp-2); }
+  .hz-admin .nav__grupo + .nav__grupo { padding-left: var(--hz-sp-2); border-left: 1px solid var(--hz-borde-control); }
 }
 .hz-admin .nav__item {
   display: inline-flex;
@@ -108,7 +118,8 @@
   background: var(--hz-superficie-3);
   box-shadow: inset 0 -3px 0 var(--hz-accion);
 }
-/* En celular la marca y la cuenta caben en una fila: el nombre se omite, quedan el rol y Salir. */
+/* En celular la marca y la cuenta caben en una fila: el nombre se omite, quedan el rol y Salir. La guía y el cambio de
+   clave van dentro del menú plegable (ver el bloque de 640 px). */
 @media (max-width: 480px) {
   .hz-admin .cabecera .hz-producto__fila { column-gap: var(--hz-sp-2); }
   .hz-admin .usuario__nombre { display: none; }
@@ -218,8 +229,19 @@
 .hz-admin textarea { width: 100%; resize: vertical; line-height: 1.4; field-sizing: content; min-height: 4.5em; }
 .hz-admin .campo-linea { display: flex; align-items: center; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
 .hz-admin select.chico { min-height: var(--hz-tactil); font-size: var(--hz-fs-14); padding: var(--hz-sp-1) var(--hz-sp-2); }
-.hz-admin .fila-form { display: flex; flex-wrap: wrap; gap: 0 var(--hz-sp-4); align-items: flex-end; }
-.hz-admin .fila-form .hz-boton { margin-bottom: var(--hz-sp-3); }
+/* Filas de campos (20-oct, pedido de Paola): las etiquetas y las cajas de una fila quedan a la misma altura aunque un
+   campo tenga ayuda o error debajo; esas notas crecen hacia abajo sin mover a los vecinos. El botón de la fila baja
+   lo que mide una etiqueta para quedar alineado con las cajas. */
+.hz-admin .fila-form { display: flex; flex-wrap: wrap; gap: 0 var(--hz-sp-4); align-items: flex-start; }
+.hz-admin .fila-form > .hz-boton { margin-top: calc(var(--hz-fs-14) * var(--hz-lh) + var(--hz-sp-1)); margin-bottom: var(--hz-sp-3); }
+/* En el celular cada campo ocupa su fila; si el botón comparte fila con un campo corto (Mesas, Cantidad), se alinea con
+   la caja por abajo y, si va solo, no carga el margen de una etiqueta que no tiene al lado. */
+@media (max-width: 640px) {
+  .hz-admin .fila-form { align-items: flex-end; }
+  .hz-admin .fila-form > .hz-boton { margin-top: 0; }
+}
+.hz-admin .campo > .pista,
+.hz-admin .campo > .error-campo { margin: 0; }
 .hz-admin fieldset { border: 1px solid var(--hz-borde); border-radius: var(--hz-r-campo); padding: var(--hz-sp-3) var(--hz-sp-4); margin: 0 0 var(--hz-sp-4); background: var(--hz-fondo); }
 .hz-admin legend { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); padding: 0 var(--hz-sp-1); }
 .hz-admin .opcion { display: flex; gap: var(--hz-sp-3); align-items: flex-start; padding: var(--hz-sp-2) 0; cursor: pointer; }
@@ -306,6 +328,10 @@
 .hz-admin .tarjeta-sala .pista { margin: 0; }
 .hz-admin .sin-corte { white-space: nowrap; }
 .hz-admin .acciones-sala { display: flex; flex-wrap: wrap; gap: var(--hz-sp-2); }
+/* En el celular los dos botones de la tarjeta, del mismo ancho, uno bajo el otro */
+@media (max-width: 640px) {
+  .hz-admin .acciones-sala { display: grid; width: 100%; }
+}
 .hz-admin .clave-temporal { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 
 /* Elegir sala: una fila por sala, el nombre como botón */
@@ -393,6 +419,10 @@
 .hz-admin .login__cuerpo { flex: 1; display: grid; place-items: center; padding-block: var(--hz-sp-8); }
 .hz-admin .login__caja { width: 100%; max-width: 400px; margin: 0; background: var(--hz-fondo); }
 .hz-admin .login__caja h1 { font-size: var(--hz-fs-24); }
+/* En el celular la caja arranca arriba (centrada en alto dejaba media pantalla vacía sobre ella) */
+@media (max-width: 640px) {
+  .hz-admin .login__cuerpo { place-items: start center; padding-block: var(--hz-sp-6); }
+}
 
 /* ── Rúbricas: el valor fijo en un círculo y el texto editable al lado ── */
 .hz-admin .rubrica-pregunta { font-style: italic; color: var(--hz-tinta-2); }
@@ -404,9 +434,12 @@
 }
 
 /* Apertura y cierre programados */
-.hz-admin .campo-hora { margin-bottom: var(--hz-sp-2); }
-.hz-admin .campo-hora .campo { min-width: min(220px, 100%); }
-.hz-admin .campo-hora__nota { flex-basis: 100%; margin: 0 0 var(--hz-sp-2); }
+.hz-admin .campo-hora { display: grid; gap: var(--hz-sp-1); margin-bottom: var(--hz-sp-4); }
+.hz-admin .campo-hora:last-child { margin-bottom: 0; }
+.hz-admin .campo-hora__etiqueta { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin .campo-hora__fila { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2); }
+.hz-admin .campo-hora__fila input { flex: 1 1 13rem; min-width: 0; }
+.hz-admin .campo-hora__nota { margin: 0; }
 
 /* Respuestas por persona: 13 columnas; en escritorio caben sin cortar los números */
 .hz-admin .tabla-respuestas thead th { vertical-align: bottom; }
@@ -443,14 +476,25 @@
   .hz-admin .tabla-tarjetas td.td-largo { display: block; text-align: left; }
   .hz-admin .tabla-tarjetas td.td-largo::before { display: block; max-width: none; }
   .hz-admin .tabla-tarjetas td .acciones--fila { justify-content: flex-end; }
-  /* QA-A-28: en Respuestas los 6 criterios van de a tres por fila (rótulo encima del número), no uno por fila */
-  .hz-admin .tabla-respuestas td.crit { display: inline-flex; flex-direction: column; align-items: flex-start; width: 33.33%; text-align: left; gap: 0; }
-  .hz-admin .tabla-respuestas td.crit::before { max-width: none; }
+  /* QA-A-28: en Respuestas los 6 criterios van de a dos por fila (rótulo encima del número, sin partir palabras), no uno por fila */
+  .hz-admin .tabla-respuestas tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--hz-sp-4); }
+  .hz-admin .tabla-respuestas tbody th,
+  .hz-admin .tabla-respuestas td:not(.crit) { grid-column: 1 / -1; }
+  /* El rótulo del criterio puede ir en dos líneas; el número queda abajo, alineado con los de su fila. */
+  .hz-admin .tabla-respuestas td.crit { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; gap: 0; white-space: normal; }
+  .hz-admin .tabla-respuestas td.crit::before { max-width: none; overflow-wrap: normal; }
+  .hz-admin .tabla-respuestas td.crit { overflow-wrap: normal; }
   /* QA-A-23: en el celular el menú se abre con «Menú · sección actual»; abierto, cada sección es una fila de 48 px. */
+  .hz-admin .usuario { order: 2; margin-left: auto; }
   .hz-admin .menu-boton { display: inline-flex; order: 3; flex-basis: 100%; justify-content: flex-start; }
-  .hz-admin .nav { display: none; order: 4; flex-direction: column; gap: 0; }
+  .hz-admin .nav { display: none; order: 4; flex-direction: column; align-items: stretch; gap: 0; }
   .hz-admin .nav--abierto { display: flex; }
+  .hz-admin .nav__grupo { flex-direction: column; align-items: stretch; gap: 0; }
+  .hz-admin .nav__grupo + .nav__grupo { padding: var(--hz-sp-1) 0 0; margin-top: var(--hz-sp-1); border-left: 0; border-top: 1px solid var(--hz-borde-control); }
   .hz-admin .nav__item { min-height: var(--hz-tactil); font-size: var(--hz-fs-16); }
+  .hz-admin .cuenta-extra { display: none; order: 5; flex-basis: 100%; margin-left: 0; flex-direction: column; align-items: stretch; padding-top: var(--hz-sp-1); border-top: 1px solid var(--hz-borde-control); }
+  .hz-admin .cuenta-extra--abierta { display: flex; }
+  .hz-admin .cuenta-extra .hz-boton { justify-content: flex-start; padding-inline: var(--hz-sp-3); }
   /* Rúbricas: el rótulo «Nivel 9» ya dice el valor; el círculo le quitaría ancho al texto */
   .hz-admin .rubrica-nivel { grid-template-columns: minmax(0, 1fr); }
   .hz-admin .rubrica-valor { display: none; }
@@ -502,7 +546,8 @@
 .hz-admin .titulo-3 { font-size: var(--hz-fs-18); }
 
 /* ── Ver en vivo (QA-A-03): un solo lugar, cada acceso con su explicación ── */
-.hz-admin .en-vivo { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--hz-sp-4); }
+/* Tablero de la sala y tablero de una mesa lado a lado cuando caben (sin media pantalla vacía en escritorio) */
+.hz-admin .en-vivo { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--hz-sp-6) var(--hz-sp-8); grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr)); align-items: start; }
 .hz-admin .en-vivo > li { display: grid; justify-items: start; gap: var(--hz-sp-2); }
 .hz-admin .en-vivo .pista { margin: 0; max-width: 70ch; }
 .hz-admin .en-vivo .acciones { margin: 0; }
@@ -543,27 +588,27 @@
 }
 .hz-admin .qr-tarjeta .url { font-size: var(--hz-fs-14); }
 
-/* ── Recorrido guiado (componentes/Recorrido.tsx) ──────
+/* ── Guía de uso (componentes/GuiaUso.tsx) ─────────────
    Mismo <dialog> que las confirmaciones, un poco más ancho. El ítem del menú del paso se marca con el acento. */
-.hz-admin dialog.recorrido { max-width: 560px; }
-.hz-admin .recorrido__paso {
+.hz-admin dialog.guia-uso { max-width: 560px; }
+.hz-admin .guia-uso__paso {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--hz-sp-2);
   margin: 0; font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2);
 }
-.hz-admin .recorrido__progreso { height: 4px; margin-block: var(--hz-sp-3) var(--hz-sp-4); border-radius: var(--hz-r-pill); background: var(--hz-superficie-2); overflow: hidden; }
-.hz-admin .recorrido__progreso span { display: block; height: 100%; background: var(--hz-grad-marca); transition: width .2s ease; }
-.hz-admin .recorrido h2 { margin-top: 0; outline-offset: 4px; }
-.hz-admin .recorrido__texto { display: grid; gap: var(--hz-sp-3); }
-.hz-admin .recorrido__texto p { margin: 0; max-width: 60ch; }
-.hz-admin .recorrido__espera {
+.hz-admin .guia-uso__progreso { height: 4px; margin-block: var(--hz-sp-3) var(--hz-sp-4); border-radius: var(--hz-r-pill); background: var(--hz-superficie-2); overflow: hidden; }
+.hz-admin .guia-uso__progreso span { display: block; height: 100%; background: var(--hz-grad-marca); transition: width .2s ease; }
+.hz-admin .guia-uso h2 { margin-top: 0; outline-offset: 4px; }
+.hz-admin .guia-uso__texto { display: grid; gap: var(--hz-sp-3); }
+.hz-admin .guia-uso__texto p { margin: 0; max-width: 60ch; }
+.hz-admin .guia-uso__espera {
   display: grid; gap: var(--hz-sp-1); padding: var(--hz-sp-3) var(--hz-sp-4);
   border-left: 4px solid var(--hz-acento-producto); border-radius: var(--hz-r-campo); background: var(--hz-superficie-1);
 }
-.hz-admin .recorrido__espera strong { font-size: var(--hz-fs-14); color: var(--hz-tinta); }
-.hz-admin .recorrido__acciones { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--hz-sp-2); margin-top: var(--hz-sp-6); }
-.hz-admin .recorrido__nav { display: flex; gap: var(--hz-sp-2); margin-left: auto; }
-.hz-admin .nav__item--recorrido { outline: 3px solid var(--hz-acento-producto); outline-offset: -3px; }
-@media (prefers-reduced-motion: reduce) { .hz-admin .recorrido__progreso span { transition: none; } }
+.hz-admin .guia-uso__espera strong { font-size: var(--hz-fs-14); color: var(--hz-tinta); }
+.hz-admin .guia-uso__acciones { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--hz-sp-2); margin-top: var(--hz-sp-6); }
+.hz-admin .guia-uso__nav { display: flex; gap: var(--hz-sp-2); margin-left: auto; }
+.hz-admin .nav__item--guia { outline: 3px solid var(--hz-acento-producto); outline-offset: -3px; }
+@media (prefers-reduced-motion: reduce) { .hz-admin .guia-uso__progreso span { transition: none; } }
 
 /* ── Leyenda de criterios bajo la tabla de Respuestas ── */
 .hz-admin .leyenda-criterios {
@@ -575,3 +620,57 @@
 .hz-admin .leyenda-criterios dd { margin: 2px 0 0; font-size: var(--hz-fs-12); line-height: 1.4; color: var(--hz-tinta-2); }
 /* Descripción corta del criterio bajo su nombre (web/shared/criterios.ts). */
 .hz-admin .tabla-criterio__desc { display: block; margin-top: 2px; font-size: var(--hz-fs-12); font-weight: var(--hz-fw-texto); line-height: 1.35; color: var(--hz-tinta-2); }
+
+/* ── Pulcritud del 20-oct (auditoría del panel) ──────────
+   Sin aire de más al final de una tarjeta: el último bloque no suma su margen al relleno. */
+.hz-admin .panel > :last-child { margin-bottom: 0; }
+/* Tarjetas con textos de largo muy distinto (Hojas): en columnas que se llenan de arriba abajo, cada tarjeta mide lo suyo
+   y no quedan cajas ni filas medio vacías. */
+.hz-admin .rejilla--columnas { display: block; columns: 20rem 3; column-gap: var(--hz-sp-4); }
+.hz-admin .rejilla--columnas > * { break-inside: avoid; margin-bottom: var(--hz-sp-4); }
+/* Rejilla de grupos de opciones dentro de una tarjeta (Qué ven los participantes) */
+.hz-admin .rejilla--campos { gap: var(--hz-sp-4); margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr)); }
+.hz-admin .rejilla--campos > fieldset { margin: 0; }
+/* Tarjetas con un botón al final (Exportar): el botón queda abajo y a la misma altura en todas. */
+.hz-admin .tarjeta-accion { display: flex; flex-direction: column; align-items: flex-start; }
+.hz-admin .tarjeta-accion > .hz-boton { margin-top: auto; }
+/* Tarjetas de QR: mismas medidas en todas, las URL se parten en las barras y los dos botones uno bajo el otro y al pie. */
+.hz-admin .qr-tarjeta { display: flex; flex-direction: column; }
+.hz-admin .qr-tarjeta .acciones { margin-top: auto; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: stretch; }
+.hz-admin .qr-tarjeta .url { overflow-wrap: normal; word-break: normal; }
+/* Correos largos en tablas de escritorio: se parten donde haga falta en vez de ensanchar la tabla. */
+.hz-admin .td-largo { overflow-wrap: anywhere; }
+.hz-admin .tabla-tarjetas .sin-corte,
+.hz-admin .acciones--fila { white-space: nowrap; }
+@media (min-width: 641px) {
+  .hz-admin .acciones--fila { flex-wrap: nowrap; }
+}
+
+/* Tablas anchas (Inscritos, Perfiles por mesa y Respuestas): con menos de 1280 px no caben sin esconder columnas, así que
+   se leen como tarjetas (una por fila, cada dato con su rótulo); desde 641 px los datos van en columnas dentro de la tarjeta. */
+@media (max-width: 1279px) {
+  .hz-admin .tabla-tarjetas--ancha thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .hz-admin .tabla-tarjetas--ancha,
+  .hz-admin .tabla-tarjetas--ancha tbody,
+  .hz-admin .tabla-tarjetas--ancha tr { display: block; width: 100%; }
+  .hz-admin .tabla-tarjetas--ancha tr { border-bottom: 1px solid var(--hz-borde); padding: var(--hz-sp-3) var(--hz-sp-4); }
+  .hz-admin .tabla-tarjetas--ancha tbody tr:last-child { border-bottom: 0; }
+  .hz-admin .tabla-tarjetas--ancha tbody th { display: block; border: 0; padding: var(--hz-sp-1) 0; font-size: var(--hz-fs-16); min-width: 0; }
+  .hz-admin .tabla-tarjetas--ancha td {
+    display: flex; justify-content: space-between; align-items: center; gap: var(--hz-sp-3);
+    border: 0; padding: var(--hz-sp-1) 0; text-align: right; overflow-wrap: anywhere; white-space: normal;
+  }
+  .hz-admin .tabla-tarjetas--ancha td::before { content: attr(data-label); color: var(--hz-tinta-2); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); text-align: left; flex: 0 0 auto; max-width: 55%; }
+  .hz-admin .tabla-tarjetas--ancha td .acciones--fila { justify-content: flex-end; flex-wrap: wrap; white-space: normal; }
+}
+@media (min-width: 641px) and (max-width: 1279px) {
+  .hz-admin .tabla-tarjetas--ancha tr { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0 var(--hz-sp-6); }
+  .hz-admin .tabla-tarjetas--ancha tbody th,
+  .hz-admin .tabla-tarjetas--ancha td.td-ancho { grid-column: 1 / -1; }
+  .hz-admin .tabla-tarjetas--ancha td.td-ancho { justify-content: flex-start; }
+  .hz-admin .tabla-tarjetas--ancha td.td-ancho::before { min-width: 13rem; }
+  .hz-admin .tabla-tarjetas--ancha td.td-ancho .acciones--fila { justify-content: flex-start; }
+  .hz-admin .tabla-respuestas.tabla-tarjetas--ancha td.crit { display: flex; width: auto; flex-direction: row; align-items: center; text-align: right; }
+}
+/* Filas de pocos campos con valores cortos (País y hora): las cajas no se estiran a todo el ancho de la página. */
+.hz-admin .fila-form--corta .campo { flex: 0 1 18rem; }

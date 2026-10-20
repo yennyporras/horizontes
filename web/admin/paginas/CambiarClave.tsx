@@ -5,6 +5,7 @@ import { useSesion } from '../sesion'
 import { EncabezadoProducto } from '../../shared/ui'
 import { PiePanel } from '../Marco'
 import { useTituloPagina } from './EncabezadoSala'
+import { LARGO_MINIMO_CLAVE } from '../textos'
 
 /**
  * Cambio de clave. En el primer ingreso es obligatorio (la clave actual es la temporal); QA-A-22: después, cualquier
@@ -45,18 +46,22 @@ export function CambiarClave() {
       <main className="login__cuerpo hz-pagina">
         <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-clave">
           <h1 id="titulo-clave">{obligatorio ? 'Cambia tu clave' : 'Cambiar mi clave'}</h1>
-          <p>{obligatorio ? 'Es tu primer ingreso. Elige una clave propia de al menos 10 caracteres.' : 'Escribe tu clave actual y elige una nueva de al menos 10 caracteres.'}</p>
+          <p>
+            {obligatorio
+              ? `Es tu primer ingreso. Elige una clave propia de al menos ${LARGO_MINIMO_CLAVE} caracteres.`
+              : `Escribe tu clave actual y elige una nueva de al menos ${LARGO_MINIMO_CLAVE} caracteres.`}
+          </p>
           <label className="campo">
             <span>{obligatorio ? 'Clave temporal' : 'Clave actual'}</span>
             <input type="password" autoComplete="current-password" required value={actual} onChange={(e) => setActual(e.target.value)} />
           </label>
           <label className="campo">
             <span>Clave nueva</span>
-            <input type="password" autoComplete="new-password" minLength={10} required value={nueva} onChange={(e) => setNueva(e.target.value)} />
+            <input type="password" autoComplete="new-password" minLength={LARGO_MINIMO_CLAVE} required value={nueva} onChange={(e) => setNueva(e.target.value)} />
           </label>
           <label className="campo">
             <span>Repite la clave nueva</span>
-            <input type="password" autoComplete="new-password" minLength={10} required value={repetir} onChange={(e) => setRepetir(e.target.value)} />
+            <input type="password" autoComplete="new-password" minLength={LARGO_MINIMO_CLAVE} required value={repetir} onChange={(e) => setRepetir(e.target.value)} />
           </label>
           {error && (
             <p className="alerta alerta--error" role="alert">
