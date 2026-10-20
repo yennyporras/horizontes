@@ -2,6 +2,7 @@
 // compartido (web/shared/api/contrato.ts); aquí solo viven el transporte del celular y sus alias de nombre.
 import type {
   Criterio,
+  CuerpoAcceso,
   CuerpoVoto,
   EstadoSala,
   HojaPerfil,
@@ -11,10 +12,11 @@ import type {
   ParticipantePublico,
   PreguntaGuiada,
   ProgresoMesa,
+  RespuestaAcceso,
   RespuestaInscripcion,
   RespuestaVoto,
+  ResultadosParticipante,
   RondaVivo,
-  Tablero,
   Valor,
   Voto,
   Yo,
@@ -27,10 +29,13 @@ export type Mesa = InfoMesa
 export type ParticipanteYo = ParticipantePublico
 export type HojaInfo = HojaPerfil
 export type ProyectoPortafolio = Yo['contenido']['portafolio'][number]
-/** Resultado del alcance en `/api/yo`: la misma forma que GET /api/tablero. Solo se muestra; el celular nunca recalcula. */
-export type Resultados = Tablero
-/** Inscripción y canje de un acceso nuevo: token y participante. */
-export type Sesion = Pick<RespuestaInscripcion, 'token' | 'participante'>
+/**
+ * Resultado del alcance en `/api/yo`: la forma de GET /api/tablero sin `progreso.por_mesa` (D2).
+ * Solo se muestra; el celular nunca recalcula.
+ */
+export type Resultados = ResultadosParticipante
+/** Inscripción y canje de un acceso nuevo: token y participante (la misma forma en los dos). */
+export type Sesion = RespuestaAcceso
 
 /** status 0 = sin red (fetch rechazado). */
 export class ErrorApi extends Error {
@@ -102,16 +107,17 @@ export async function obtenerMesa(codigo: string): Promise<Mesa> {
  */
 export async function inscribirse(datos: { codigoMesa: string; nombre: string; correo: string; version: string }): Promise<Sesion> {
   const cuerpo = { codigoMesa: datos.codigoMesa, nombre: datos.nombre, correo: datos.correo, consentimiento: { aceptado: true, version: datos.version } }
-  const r = (await pedir('/api/inscripcion', { metodo: 'POST', cuerpo })).datos as Sesion
+  const r = (await pedir('/api/inscripcion', { metodo: 'POST', cuerpo })).datos as RespuestaInscripcion
   return { token: r.token, participante: r.participante }
 }
 
 /**
  * POST /api/acceso (D1): canjea el enlace de un solo uso que genera «Dar acceso de nuevo» en el panel
- * por una sesión nueva. 410 `ACCESO_VENCIDO`, 404 `ACCESO_INVALIDO`.
+ * por una sesión nueva. 410 `ACCESO_VENCIDO` · 404 `ACCESO_INVALIDO` · 409 `SALA_CERRADA` · 403 `PARTICIPANTE_INACTIVO` · 429.
  */
 export async function canjearAcceso(acceso: string): Promise<Sesion> {
-  const r = (await pedir('/api/acceso', { metodo: 'POST', cuerpo: { acceso } })).datos as Sesion
+  const cuerpo: CuerpoAcceso = { acceso }
+  const r = (await pedir('/api/acceso', { metodo: 'POST', cuerpo })).datos as Sesion
   return { token: r.token, participante: r.participante }
 }
 

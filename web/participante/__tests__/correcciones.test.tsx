@@ -122,12 +122,15 @@ describe('D1: acceso nuevo que da el facilitador', () => {
   it.each([
     [410, 'ACCESO_VENCIDO', 'Este enlace ya venció', /duran 15 minutos/],
     [404, 'ACCESO_INVALIDO', 'Este enlace no sirve', /ya lo hayas usado/],
-  ])('%s %s: error claro que pide un enlace nuevo', async (status, codigo, titulo, detalle) => {
+    [409, 'SALA_CERRADA', 'El taller ya terminó', /ya no da acceso nuevo/],
+    [403, 'PARTICIPANTE_INACTIVO', 'El facilitador te retiró de esta mesa', /avísale en el salón/],
+    [429, 'DEMASIADAS_PETICIONES', 'Demasiados intentos', /Espera un minuto/],
+  ])('%s %s: error claro y sin sesión nueva', async (status, codigo, titulo, detalle) => {
     servidor((url) => (url === '/api/acceso' ? { status, body: { error: { codigo, mensaje: 'x' } } } : { status: 404 }))
     montar(`/m/${CODIGO}?acceso=malo-${status}`)
     expect(await screen.findByRole('heading', { name: titulo })).toBeTruthy()
     expect(screen.getByText(detalle)).toBeTruthy()
-    expect(screen.getByText(/«Dar acceso de nuevo»/)).toBeTruthy()
+    if (status === 410 || status === 404) expect(screen.getByText(/«Dar acceso de nuevo»/)).toBeTruthy()
     expect(localStorage.getItem(`hz_token:${CODIGO}`)).toBeNull()
   })
 
@@ -512,13 +515,14 @@ describe('D2: el consolidado se renueva de 3 en 3, no con cada voto', () => {
       y.config.vista_participante = 'en_vivo'
       y.completo_ronda = true
       y.mis_votos.push({ ...y.mis_votos[0], proyecto_id: 'nutriwhat' })
-      y.resultados = clonar(tablero) as unknown as Resultados
+      y.resultados = { ...(clonar(tablero) as unknown as Resultados), votos_por_actualizacion: 4 }
     })
     servidor(conYo(() => yo))
     conToken()
     const { container } = montar()
     expect(await screen.findByRole('heading', { name: 'Resultado parcial de tu mesa' })).toBeTruthy()
-    expect(screen.getByText(/se renueva cada vez que llegan 3 votos nuevos/)).toBeTruthy()
+    // Manda el número del servidor (votos_por_actualizacion).
+    expect(screen.getByText(/se renueva cada vez que llegan 4 votos nuevos/)).toBeTruthy()
     expect(container.textContent).not.toMatch(/en vivo/i)
   })
 })

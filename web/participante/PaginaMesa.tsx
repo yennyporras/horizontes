@@ -126,6 +126,21 @@ function CanjeAcceso({ acceso, haySesion, onListo, onSeguir }: { acceso: string;
       </Mensaje>
     )
   }
+  if (error.status === 429) {
+    return (
+      <Mensaje titulo="Demasiados intentos" accion={reintentar}>
+        Espera un minuto y vuelve a intentarlo con el mismo enlace.
+      </Mensaje>
+    )
+  }
+  if (error.codigo === 'SALA_CERRADA') {
+    return (
+      <Mensaje titulo="El taller ya terminó" accion={seguir}>
+        Esta sala cerró y ya no da acceso nuevo. Gracias por participar.
+      </Mensaje>
+    )
+  }
+  if (error.status === 403 || error.codigo === 'PARTICIPANTE_INACTIVO') return <Desactivado />
   if (error.status === 410 || error.codigo === 'ACCESO_VENCIDO') {
     return (
       <Mensaje titulo="Este enlace ya venció" accion={seguir}>
@@ -455,6 +470,8 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   const donde = textoAlcance(yo.resultados, alcance)
   const hayResultado = resultadoVisible(yo.resultados)
   const minimo = yo.resultados?.minimo_votos ?? MIN_VOTOS
+  // D2: la foto del consolidado se renueva cuando llegan estos votos nuevos (hoy 3).
+  const deAPocos = yo.resultados?.votos_por_actualizacion ?? 3
   // C19-5: en guiado cada quien ve la pregunta que elige el facilitador; sin dato, automático.
   const guiado = yo.config.modo_preguntas === 'guiado'
 
@@ -715,7 +732,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
       <Marco {...marco} claveFoco={`envivo-${ronda}`}>
         <h1 className="hz-titulo">Resultado parcial de {donde}</h1>
         <p className="hz-texto-2">
-          Calificaste los {vivos.length} proyectos en la ronda {ronda}. Este resultado se renueva cada vez que llegan {minimo} votos nuevos y el final sale
+          Calificaste los {vivos.length} proyectos en la ronda {ronda}. Este resultado se renueva cada vez que llegan {deAPocos} votos nuevos y el final sale
           cuando el facilitador cierra la ronda. Puedes editar mientras la ronda siga abierta.
         </p>
         {resultado(true)}
