@@ -19,7 +19,7 @@ export interface OpcionesMatriz {
   animarDesdeMs?: number
   colores?: Record<string, unknown>
   /**
-   * Modo en vivo: posiciones anteriores de los vivos (clave `${id}-${ronda}`, en unidades de los ejes). Las
+   * Modo Gráfica del tablero: posiciones anteriores de los vivos (clave `${id}-${ronda}`, en unidades de los ejes). Las
    * burbujas que cambiaron se deslizan desde ahí; desdeMs continúa una transición ya empezada.
    */
   transicion?: { valores: Record<string, { x: number; y: number }>; desdeMs?: number }
@@ -105,8 +105,3 @@ export const COLORES: { r1: string; r2: string; [k: string]: unknown }
 export function radioPorTam(tam: number | null | undefined, rmin: number, rmax: number): number
 export function calcularLayout(datos: DatosParciales, opciones?: OpcionesMatriz): Layout
 export function matrizSVG(datos: DatosParciales, opciones?: OpcionesMatriz): string
-export function montarMatriz(
-  contenedor: HTMLElement,
-  datos: DatosParciales,
-  opciones?: OpcionesMatriz,
-): { actualizar: (datos: DatosParciales) => void; destruir: () => void }
