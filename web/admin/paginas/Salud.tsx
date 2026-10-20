@@ -1,18 +1,36 @@
 import { useCallback, useEffect, useState } from 'react'
 import { consultar, salud, usaMocks, type Medicion } from '../api'
 import { fechaHora } from '../textos'
+import { useTituloPagina } from './EncabezadoSala'
 
-const p95 = (xs: number[]) => {
+/** Tiempo típico de respuesta: la mediana de las últimas consultas (menos sensible a una sola lenta). */
+const tipico = (xs: number[]) => {
   if (xs.length === 0) return null
   const o = [...xs].sort((a, b) => a - b)
-  return o[Math.min(o.length - 1, Math.ceil(o.length * 0.95) - 1)]
+  return o[Math.floor((o.length - 1) / 2)]
 }
 
-/** Monitor de salud: estado del servidor, versión desplegada, latencia del panel y último error. */
+/** Meta del taller: que el panel y los celulares respondan en menos de medio segundo. */
+const LENTO_MS = 500
+
+/**
+ * QA-A-27: semáforo en lenguaje llano para un facilitador no técnico: «Todo bien: el servidor responde en 39 ms». Sin
+ * p95, modos ni versiones vacías; la versión solo aparece si el servidor la dice.
+ */
+export function semaforo(estado: { ok?: unknown } | null, error: string | null, ms: number | null): { tono: 'exito' | 'aviso' | 'error'; titulo: string; texto: string } {
+  if (error) return { tono: 'error', titulo: 'No responde', texto: `El servidor no responde. ${error} Si sigue así más de 3 minutos, pasa al plan B.` }
+  if (!estado) return { tono: 'aviso', titulo: 'Revisando…', texto: 'Estamos preguntándole al servidor cómo está.' }
+  if (!estado.ok) return { tono: 'aviso', titulo: 'Con problemas', texto: 'El servidor responde, pero dice que algo no está bien. Avísale al equipo técnico.' }
+  if (ms !== null && ms > LENTO_MS) return { tono: 'aviso', titulo: 'Lento', texto: `El servidor responde, pero tarda ${ms} ms. Puede ser el wifi del salón.` }
+  return { tono: 'exito', titulo: 'Todo bien', texto: ms === null ? 'El servidor responde.' : `El servidor responde en ${ms} ms.` }
+}
+
+/** Monitor de salud: estado del servidor, tiempo de respuesta que ve este navegador y último error. */
 export function Salud() {
   const [estado, setEstado] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mediciones, setMediciones] = useState<Medicion[]>([])
+  useTituloPagina('Salud')
 
   const revisar = useCallback(async () => {
     try {
@@ -33,66 +51,45 @@ export function Salud() {
   }, [revisar])
 
   const tiempos = mediciones.filter((m) => m.status > 0).map((m) => m.ms)
+  const ms = tipico(tiempos)
   const ultimo = salud.ultimoError
   const version = estado && (estado.version ?? estado.commit ?? estado.source_commit)
-
-  const ms = (n: number | null | undefined) => (n == null ? 'Sin datos' : `${n} ms`)
+  const s = semaforo(estado, error, ms)
 
   return (
     <>
-      <h1>Salud del sistema</h1>
-      <p className="pista">Se revisa cada 5 segundos. La latencia es la que ve este navegador en sus últimas {mediciones.length} peticiones.</p>
+      <h1 tabIndex={-1}>Salud del sistema</h1>
+      <p className="pista">Se revisa sola cada 5 segundos, desde este navegador.</p>
       {usaMocks() && <p className="alerta alerta--aviso">Estás en modo simulado: estos datos no son del servidor real.</p>}
+      <section className={`alerta alerta--${s.tono} semaforo`} aria-labelledby="t-semaforo" role="status">
+        <strong id="t-semaforo">{s.titulo}</strong>
+        <p>{s.texto}</p>
+      </section>
       <ul className="kpis" aria-label="Resumen de salud">
         <li className="kpi">
-          <span className="kpi__rotulo">Servidor</span>
-          <span>
-            {error ? (
-              <span className="etiqueta etiqueta--aviso">No responde</span>
-            ) : !estado ? (
-              <span className="etiqueta">Revisando…</span>
-            ) : (
-              <span className={estado.ok ? 'etiqueta etiqueta--exito' : 'etiqueta etiqueta--aviso'}>{estado.ok ? 'En línea' : 'Con problemas'}</span>
-            )}
-          </span>
+          <span className="kpi__rotulo">Respuesta típica</span>
+          <span className="cifra">{ms === null ? 'Sin datos' : `${ms} ms`}</span>
         </li>
         <li className="kpi">
-          <span className="kpi__rotulo">p95</span>
-          <span className="cifra">{ms(p95(tiempos))}</span>
+          <span className="kpi__rotulo">Última respuesta</span>
+          <span className="cifra">{tiempos[0] === undefined ? 'Sin datos' : `${tiempos[0]} ms`}</span>
         </li>
         <li className="kpi">
-          <span className="kpi__rotulo">Última</span>
-          <span className="cifra">{ms(tiempos[0])}</span>
+          <span className="kpi__rotulo">Consultas medidas</span>
+          <span className="cifra">{tiempos.length}</span>
         </li>
       </ul>
-      <div className="rejilla">
-        <section className="panel" aria-labelledby="t-servidor">
-          <h2 id="t-servidor">Servidor</h2>
-          {error ? (
-            <p className="alerta alerta--error" role="alert">
-              No responde. {error}
-            </p>
-          ) : !estado ? (
-            <p role="status">Revisando…</p>
-          ) : (
-            <>
-              <p>Modo: {String(estado.modo ?? 'sin dato')}</p>
-              <p>Versión desplegada: {version ? String(version) : 'sin dato'}</p>
-              <p className="pista">Meta del taller: menos de 500 ms en p95.</p>
-            </>
-          )}
-        </section>
-        <section className="panel" aria-labelledby="t-error">
-          <h2 id="t-error">Último error</h2>
-          {ultimo ? (
-            <p>
-              {fechaHora(new Date(ultimo.at).toISOString())} · {ultimo.metodo} {ultimo.ruta} · {ultimo.status === 0 ? 'sin conexión' : `HTTP ${ultimo.status}`} · {ultimo.mensaje}
-            </p>
-          ) : (
-            <p className="vacio">Sin errores desde que abriste el panel.</p>
-          )}
-        </section>
-      </div>
+      <section className="panel" aria-labelledby="t-error">
+        <h2 id="t-error">Último error</h2>
+        {ultimo ? (
+          <p>
+            {fechaHora(new Date(ultimo.at).toISOString())} · {ultimo.status === 0 ? 'sin conexión' : `el servidor respondió con error ${ultimo.status}`} · {ultimo.mensaje}
+          </p>
+        ) : (
+          <p className="vacio">Sin errores desde que abriste el panel.</p>
+        )}
+        <p className="pista">Todo bien es responder en menos de medio segundo. {version ? `Versión instalada: ${String(version)}.` : ''}</p>
+      </section>
     </>
   )
 }

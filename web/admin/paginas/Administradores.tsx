@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, lista } from '../api'
 import { useConfirmar } from '../componentes/Confirmar'
 import type { AdminFila } from '../tipos'
+import { useTituloPagina } from './EncabezadoSala'
+
+/** QA-A-21: la regla del usuario, visible y en español (antes vivía en un `title` que no se ve en el celular). */
+export const REGLA_USUARIO = 'Entre 3 y 30 caracteres: minúsculas, números, punto o guion. Sin espacios ni tildes.'
+export const usuarioValido = (u: string) => /^[a-z0-9._-]{3,30}$/.test(u)
 
 /** Clave temporal legible: 12 caracteres sin letras que se confunden (0/O, 1/l/I). */
 export function claveTemporal(): string {
@@ -23,6 +28,8 @@ export function Administradores() {
   const [correo, setCorreo] = useState('')
   const [clave, setClave] = useState(claveTemporal)
   const [dialogo, confirmar] = useConfirmar()
+  const [errorUsuario, setErrorUsuario] = useState<string | null>(null)
+  useTituloPagina('Administradores')
 
   const cargar = useCallback(
     () =>
@@ -43,6 +50,12 @@ export function Administradores() {
   const crear = async (e: FormEvent) => {
     e.preventDefault()
     setAviso(null)
+    if (!usuarioValido(usuario.trim())) {
+      setErrorUsuario(`Ese usuario no sirve. ${REGLA_USUARIO}`)
+      document.getElementById('nuevo-usuario')?.focus()
+      return
+    }
+    setErrorUsuario(null)
     try {
       await api.post('/api/admin/admins', { usuario: usuario.trim(), nombre: nombre.trim(), correo: correo.trim() || null, clave_temporal: clave })
       setAviso({ tono: 'exito', texto: `Creamos la cuenta de ${nombre.trim()} (usuario ${usuario.trim()}). Entrégale esta clave temporal; la cambiará en su primer ingreso:`, clave })
@@ -84,14 +97,14 @@ export function Administradores() {
   return (
     <>
       {dialogo}
-      <h1>Administradores</h1>
+      <h1 tabIndex={-1}>Administradores</h1>
       <p className="pista">Solo tú, como superadmin, ves esta sección. Las cuentas nuevas son de rol admin: manejan salas pero no crean otros administradores.</p>
       {aviso && (
         <div className={`alerta alerta--${aviso.tono}`} role={aviso.tono === 'error' ? 'alert' : 'status'}>
           {aviso.texto}
           {aviso.clave && (
             <p>
-              <code className="clave-temporal">{aviso.clave}</code>
+              <span className="clave-temporal">{aviso.clave}</span>
             </p>
           )}
         </div>
@@ -100,10 +113,28 @@ export function Administradores() {
       <section className="panel" aria-labelledby="t-nuevo">
         <h2 id="t-nuevo">Nuevo administrador</h2>
         <form className="fila-form" onSubmit={crear}>
-          <label className="campo">
-            <span>Usuario</span>
-            <input required autoComplete="off" pattern="[a-z0-9._\-]{3,30}" title="Entre 3 y 30 caracteres: minúsculas, números, punto, guion" value={usuario} onChange={(e) => setUsuario(e.target.value.toLowerCase())} />
-          </label>
+          <div className="campo">
+            <label htmlFor="nuevo-usuario">Usuario</label>
+            <input
+              id="nuevo-usuario"
+              required
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={usuario}
+              aria-invalid={errorUsuario ? true : undefined}
+              aria-describedby={errorUsuario ? 'regla-usuario error-usuario' : 'regla-usuario'}
+              onChange={(e) => setUsuario(e.target.value.toLowerCase())}
+            />
+            <small id="regla-usuario" className="pista">
+              {REGLA_USUARIO}
+            </small>
+            {errorUsuario && (
+              <small id="error-usuario" className="error-campo" role="alert">
+                {errorUsuario}
+              </small>
+            )}
+          </div>
           <label className="campo">
             <span>Nombre</span>
             <input required value={nombre} onChange={(e) => setNombre(e.target.value)} />
