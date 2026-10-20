@@ -43,7 +43,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
       })).observe({ type: 'layout-shift', buffered: true })
     })
 
-    // Inscripción: sin consentimiento el botón no avanza.
+    // Inscripción: sin consentimiento el botón (siempre activo) lleva a la casilla y dice qué falta.
     await p.goto(`${e.web}/m/${mesa}`)
     await titulo(p, 'Te damos la bienvenida al taller Horizontes', 60_000)
     await sinDesborde(p)
@@ -54,9 +54,20 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await p.getByLabel('Tu nombre').fill('Ana Pérez')
     await p.getByLabel('Tu correo').fill('ana.e2e@empresa.com')
     const inscribirme = p.getByRole('button', { name: 'Inscribirme' })
-    expect(await inscribirme.getAttribute('aria-disabled')).toBe('true')
-    await inscribirme.click({ force: true })
+    expect(await inscribirme.getAttribute('aria-disabled')).toBeNull()
+    await inscribirme.click()
+    await ver(p, 'Marca la casilla de autorización para inscribirte')
     await titulo(p, 'Te damos la bienvenida al taller Horizontes')
+    // QA por roles del 20-oct: la casilla queda a la vista, sobre la barra, y con el foco.
+    await expect.poll(() => p.evaluate(() => document.activeElement?.getAttribute('type'))).toBe('checkbox')
+    const casillaVisible = await p.evaluate(() => {
+      const r = document.querySelector('.hz-casilla')!.getBoundingClientRect()
+      const barra = document.querySelector('.hzp-pie')!.getBoundingClientRect().top
+      return r.top >= 0 && r.top < barra
+    })
+    expect(casillaVisible).toBe(true)
+    // El logo del celular lleva a la entrada de la mesa, no a la landing.
+    expect(await p.locator('.hzp-cabecera a.hz-producto__marca').getAttribute('href')).toBe(`/m/${mesa}`)
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('target')).toBe('_blank')
     // Aviso de datos (Ley 1581) resumido de la política real de Estratek, con canal para ejercer derechos.
     await ver(p, 'Quién trata tus datos')
@@ -74,12 +85,12 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await inscribirme.click()
 
     // Perfil asignado, caso y su hoja.
-    await titulo(p, /^Tu perfil es /)
+    await titulo(p, /^Tu perfil: /)
     await p.getByRole('button', { name: 'Leer el caso' }).click()
     await titulo(p, 'El caso y tu hoja')
     await ver(p, 'La ronda 1 aún no está abierta. Mientras tanto, lee el caso y tu hoja.')
     await p.getByRole('tab', { name: 'Tu hoja' }).click()
-    await p.getByRole('heading', { name: /^Tu hoja como / }).waitFor()
+    await p.getByRole('heading', { name: /^Tu hoja \(perfil / }).waitFor()
     await sinDesborde(p)
 
     // Otra persona de la mesa (otro celular, por API).
@@ -94,9 +105,13 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await ver(p, 'Individual y en silencio')
     expect(await p.locator('.hzp-fase .hz-insignia--r1').textContent()).toBe('R1')
     await p.getByRole('button', { name: 'Calificar INSUMEX' }).click()
-    await titulo(p, 'INSUMEX')
+    // QA por roles del 20-oct: una línea «R1 · INSUMEX · Pregunta 1 de 6» en vez del título grande y la fase.
+    await titulo(p, 'R1 · INSUMEX · Pregunta 1 de 6')
+    expect(await p.locator('.hzp-fase').count()).toBe(0)
+    // La escala, fija bajo la pregunta; en la primera de la ronda 1, cómo se avanza.
+    await ver(p, '1 es lo más cercano y listo; 9, lo más lejano e incierto.')
+    await ver(p, 'Al elegir pasas a la siguiente. Al final revisas todo antes de guardar.')
     // C19-5 (P1): una pregunta por pantalla, con su encabezado, su grupo de radios y la barra de progreso.
-    await ver(p, 'Pregunta 1 de 6 · INSUMEX')
     expect(await p.locator('fieldset.hz-rubrica').count()).toBe(1)
     expect(await p.getByRole('heading', { level: 2, name: /^Pregunta 1 de 6: / }).count()).toBe(1)
     // Rúbrica para lector de pantalla: grupo con nombre del criterio, pregunta como descripción y opciones "9: texto".
@@ -113,9 +128,27 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await capturar(p, '02-calificar')
     // Siguiente sin responder y Anterior de vuelta.
     await p.getByRole('button', { name: 'Siguiente' }).click()
-    await ver(p, 'Pregunta 2 de 6 · INSUMEX')
+    await ver(p, 'R1 · INSUMEX · Pregunta 2 de 6')
+    // Meta del QA por roles del 20-oct: en 360 × 780, las 5 opciones de un criterio de texto corto (Regulación) se ven
+    // enteras sin desplazar, por encima de la barra de Anterior y Siguiente.
+    await p.getByRole('button', { name: 'Siguiente' }).click()
+    await ver(p, 'R1 · INSUMEX · Pregunta 3 de 6')
+    const tamano = p.viewportSize()!
+    await p.setViewportSize({ width: 360, height: 780 })
+    await p.evaluate(() => (document.documentElement.scrollTop = 0))
+    const medida = await p.evaluate(() => {
+      const barra = document.querySelector('.hzp-pie')!.getBoundingClientRect().top
+      const opciones = [...document.querySelectorAll('.hzp-pregunta .hz-opcion')].map((o) => o.getBoundingClientRect())
+      return { barra, n: opciones.length, ultima: Math.max(...opciones.map((r) => r.bottom)), primera: Math.min(...opciones.map((r) => r.top)) }
+    })
+    expect(medida.n).toBe(5)
+    expect(medida.primera).toBeGreaterThanOrEqual(0)
+    expect(medida.ultima, `última opción en ${Math.round(medida.ultima)} px y la barra empieza en ${Math.round(medida.barra)} px`).toBeLessThanOrEqual(medida.barra)
+    await capturar(p, '02c-pregunta-360x780')
+    await p.setViewportSize(tamano)
     await p.getByRole('button', { name: 'Anterior' }).click()
-    await ver(p, 'Pregunta 1 de 6 · INSUMEX')
+    await p.getByRole('button', { name: 'Anterior' }).click()
+    await ver(p, 'R1 · INSUMEX · Pregunta 1 de 6')
     // Al elegir pasa sola; tras la sexta, el resumen con Guardar.
     await calificar(p, 7)
     await p.getByRole('heading', { name: 'Revisa tus respuestas' }).waitFor()
@@ -129,26 +162,26 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     // Sin señal al guardar NUTRIWHAT: queda en la cola y se envía sola al volver.
     await p.getByRole('button', { name: 'Calificar NUTRIWHAT' }).click()
-    await titulo(p, 'NUTRIWHAT')
+    await titulo(p, /^R1 · NUTRIWHAT/)
     await calificar(p, 3)
     await ctx.setOffline(true)
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, '1 calificación por enviar')
-    await titulo(p, 'Voto guardado en este celular')
+    await titulo(p, 'Calificación guardada en este celular')
     await capturar(p, '03-sin-senal')
     await ctx.setOffline(false)
     await ver(p, 'Enviamos tu calificación de NUTRIWHAT.')
-    await titulo(p, 'Voto registrado')
+    await titulo(p, 'Calificación enviada')
     await ver(p, '1 de 3 completaron en Mesa 1')
 
     // Recarga: vuelve a donde iba.
     await p.reload()
-    await titulo(p, 'Voto registrado', 30_000)
+    await titulo(p, 'Calificación enviada', 30_000)
 
     // Edición mientras la ronda sigue abierta.
     await p.getByRole('button', { name: 'Editar mis calificaciones' }).click()
     await p.getByRole('button', { name: 'Editar INSUMEX' }).click()
-    await titulo(p, 'INSUMEX')
+    await titulo(p, /^R1 · INSUMEX/)
     // Con el voto guardado abre el resumen; corregir una pregunta vuelve al resumen.
     expect(await p.locator('.hzp-resumen__cifra').allTextContents()).toEqual(['7', '7', '7', '7', '7', '7'])
     await calificar(p, 9, [0])
@@ -156,7 +189,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     expect(await p.locator('.hzp-resumen__cifra').allTextContents()).toEqual(['9', '7', '7', '7', '7', '7'])
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
     await ver(p, 'Calificación de INSUMEX guardada.')
-    await titulo(p, 'Voto registrado')
+    await titulo(p, 'Calificación enviada')
 
     // Precierre: todos votaron en la mesa → aviso y resultado preliminar con la matriz.
     await votarApi(e, tokenB, 'insumex', 1)
@@ -165,7 +198,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await votarApi(e, tokenC, 'nutriwhat', 1)
     await ver(p, 'Todos votaron en Mesa 1')
     await p.getByRole('heading', { name: 'Resultado preliminar de tu mesa' }).waitFor()
-    await ver(p, 'Preliminar')
+    await ver(p, 'Parcial: cambia cuando lleguen más votos')
     await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
     await sinDesborde(p)
     await capturar(p, '04-precierre')
@@ -174,7 +207,19 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await accion(e, sala.id, 'cerrar_ronda_1')
     await titulo(p, 'Ronda 1 cerrada')
     await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
-    expect(await p.getByText('Preliminar', { exact: true }).count()).toBe(0)
+    expect(await p.getByText('Parcial: cambia cuando lleguen más votos', { exact: true }).count()).toBe(0)
+    // Bajo la matriz, la leyenda y la lectura de los ejes; letra de la matriz de 12 px o más. El subtítulo del eje X lo
+    // achica la matriz para que quepa entero en el ancho (web/tablero/matriz): ese no baja de 11 px.
+    await ver(p, 'Eje X: qué tan lejos está del mercado. Eje Y: qué tan lejos está del core. 1 es cerca; 9, lejos.')
+    await ver(p, 'Tamaño de la burbuja: mercado potencial (TAM, de 1 a 10)')
+    const letras = (sel: string) => p.evaluate((s) => Math.min(...[...document.querySelectorAll(s)].map((t) => parseFloat(getComputedStyle(t).fontSize))), sel)
+    const letraMatriz = await letras('.hzp-matriz svg text:not(.hz-mz-horizonte):not(.hz-mz-subtitulo-eje)')
+    expect(await letras('.hzp-matriz svg text.hz-mz-subtitulo-eje')).toBeGreaterThanOrEqual(11)
+    const lienzo = await p.evaluate(() => {
+      const svg = document.querySelector('.hzp-matriz svg')!.getBoundingClientRect()
+      return `svg ${Math.round(svg.width)}×${Math.round(svg.height)}, main ${document.querySelector('main')!.clientWidth}, html ${document.documentElement.clientWidth}`
+    })
+    expect(letraMatriz, lienzo).toBeGreaterThanOrEqual(12)
     // C19-3 (P3): junto a cada promedio de INSUMEX, tu calificación (9 en la primera tras corregir, 7 en las demás).
     const insumexR1 = p.locator('.hzp-resultado__proyecto', { hasText: 'INSUMEX' })
     expect(await insumexR1.locator('.hzp-tabla__mia').allTextContents()).toEqual(['Tu calificación: Tú 9', ...Array(5).fill('Tu calificación: Tú 7')])
@@ -205,7 +250,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await titulo(q, 'Ronda 1 cerrada')
     expect(q.url()).not.toContain('acceso=')
     await titulo(p, 'Tu sesión ya no está activa')
-    await ver(p, /«Dar acceso de nuevo»/)
+    await ver(p, /Levanta la mano y pídele al facilitador/)
     expect(await p.getByRole('button', { name: /Recuperar/ }).count()).toBe(0)
     await sinDesborde(p)
     // Acceso nuevo para este celular: retoma donde iba.
@@ -244,7 +289,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await p.getByRole('button', { name: 'Calificar NUTRIWHAT' }).click()
     await calificar(p, 1)
     await p.getByRole('button', { name: 'Guardar calificación' }).click()
-    await titulo(p, 'Voto registrado')
+    await titulo(p, 'Calificación enviada')
     await votarApi(e, tokenB, 'insumex', 2)
     await votarApi(e, tokenC, 'insumex', 2)
     await votarApi(e, tokenB, 'nutriwhat', 2)
@@ -262,6 +307,10 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     const borrador = await p.evaluate((c) => sessionStorage.getItem(`hz_borrador_insumex_r2:${c}`), mesa.toUpperCase())
     expect(JSON.parse(borrador ?? '{}')).toMatchObject({ alistamiento_tecnico: 5 })
 
+    // Cierre personal (QA por roles del 20-oct): INSUMEX pasó de 9, 7, 7, 7, 7, 7 a seis 9 (5 cambios) y NUTRIWHAT de
+    // seis 3 a seis 1 (6 cambios). Lo que marcó al cerrarse la ronda no alcanzó a guardarse y no cuenta.
+    await ver(p, 'Cambiaste 11 de tus 12 respuestas entre la ronda 1 y la 2.')
+    await ver(p, '¿Qué dato de otra hoja te hizo cambiar?')
     // Comparación R1→R2 en la matriz: los 2 vivos con su burbuja de cada ronda.
     await ver(p, 'Así se movieron INSUMEX y NUTRIWHAT de la ronda 1 a la ronda 2 en tu mesa.')
     const matriz = p.locator('.hzp-matriz svg.hz-matriz')
@@ -318,9 +367,12 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await p.getByLabel('Tu correo').fill('dani.e2e@empresa.com')
     await p.getByRole('checkbox').check()
     await p.getByRole('button', { name: 'Inscribirme' }).click()
-    await titulo(p, /^Tu perfil es /)
+    await titulo(p, /^Tu perfil: /)
     await sinDesborde(p)
     await p.getByRole('button', { name: 'Leer el caso' }).click()
+    // En la pestaña Caso, el paso que sigue es la hoja; desde la hoja, calificar (QA por roles del 20-oct).
+    await p.getByRole('button', { name: 'Leer mi hoja' }).click()
+    await p.getByRole('heading', { name: /^Tu hoja \(perfil / }).waitFor()
     await p.getByRole('button', { name: 'Calificar proyectos' }).click()
     // El botón atrás del celular vuelve al caso y no sale de la app (QA-P-02).
     await titulo(p, 'Ronda 1: califica los 2 proyectos')
@@ -333,10 +385,19 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
       await calificar(p, 5)
       await p.getByRole('button', { name: 'Guardar calificación' }).click()
     }
-    await titulo(p, 'Resultado parcial de la sala').catch(async (err) => {
+    // Con la ronda 1 oculta del servidor (decisión 1 de Paola del 20-oct) no hay resultado parcial en la ronda 1: se
+    // ve «Calificación enviada» y cuándo salen los resultados.
+    await titulo(p, /^(Resultado parcial de la sala|Calificación enviada)$/).catch(async (err) => {
       console.log(await p.locator('body').innerText())
       throw err
     })
+    if (await p.getByRole('heading', { name: 'Calificación enviada', level: 1 }).count()) {
+      await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.')
+      expect(await p.locator('.hzp-matriz').count()).toBe(0)
+      await sinDesborde(p)
+      await ctx.close()
+      return
+    }
     await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
     // INSUMEX suma 3 votos en la sala (2 de la mesa 2 y el propio): tabla con los promedios del servidor y tu calificación, sin Total.
     // NUTRIWHAT tiene 1: no se muestra.
@@ -363,6 +424,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     await p.getByRole('checkbox').check()
     await p.getByRole('button', { name: 'Inscribirme' }).click()
     await p.getByRole('button', { name: 'Leer el caso' }).click()
+    await p.getByRole('button', { name: 'Leer mi hoja' }).click()
     await p.getByRole('button', { name: 'Ir a la pregunta' }).click()
     await titulo(p, 'Espera la pregunta del facilitador')
     await sinDesborde(p)
@@ -378,11 +440,11 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     for (const [i, criterio_id] of criterios.entries()) {
       await fijarPregunta(e, sala.id, { proyecto_id: 'insumex', criterio_id })
-      await ver(p, `Pregunta ${i + 1} de 6 · INSUMEX`)
+      await ver(p, `R1 · INSUMEX · Pregunta ${i + 1} de 6`)
       expect(await p.locator('fieldset.hz-rubrica').count()).toBe(1)
       expect(await p.getByRole('button', { name: /^(Siguiente|Anterior)$/ }).count()).toBe(0)
       if (i === 0) {
-        await titulo(p, 'INSUMEX')
+        await titulo(p, 'R1 · INSUMEX · Pregunta 1 de 6')
         await sinDesborde(p)
         await tactiles(p)
         await capturar(p, '07-guiado')
@@ -397,7 +459,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
 
     // El facilitador vuelve a Regulación: aparece con la respuesta marcada y el cambio se reenvía completo.
     await fijarPregunta(e, sala.id, { proyecto_id: 'insumex', criterio_id: 'regulacion' })
-    await ver(p, 'Pregunta 3 de 6 · INSUMEX')
+    await ver(p, 'R1 · INSUMEX · Pregunta 3 de 6')
     expect(await p.locator('fieldset.hz-rubrica input[value="7"]').isChecked()).toBe(true)
     await elegir(3)
     await expect.poll(async () => (await misRespuestas())?.regulacion, { timeout: ESPERA }).toBe(3)
