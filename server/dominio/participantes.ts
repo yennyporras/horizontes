@@ -2,6 +2,7 @@
 import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { CRITERIOS, type Entradas } from '../../shared/motor/motor.js'
+import { MENSAJE_CORREO_YA_INSCRITO } from './accesos.js'
 import { VERSION_CONSENTIMIENTO, consentimientoVigente, hashTextoConsentimiento } from './consentimiento.js'
 import { construirTablero, contenido, preguntaGuiada, progreso, proyectos, rondaAbierta, rondaCerrada, vivos } from './resultados.js'
 import { type MesaFila, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
@@ -81,8 +82,8 @@ export function participantePublico(p: ParticipanteFila, mesa: MesaFila) {
 }
 
 /**
- * Inscribe o recupera (mismo correo en la sala → mismo participante con token nuevo).
- * `nuevo` indica si se creó (201) o se recuperó (409 CORREO_YA_INSCRITO).
+ * Inscribe a una persona nueva (201). Un correo ya inscrito en la sala responde 409 CORREO_YA_INSCRITO sin token ni datos
+ * (D1, 20-oct): la sesión la devuelve el facilitador con «Dar acceso de nuevo» (`accesos.ts`).
  */
 export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ahora: number) {
   const mesa = mesaPorCodigo(db, String(d.codigoMesa ?? ''))
@@ -101,45 +102,42 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
 
   return transaccion(db, () => {
     const sala = cargarSala(db, mesa.sala_id)
-    const token = tokenAleatorio()
-    const existente = uno<ParticipanteFila>(db, 'SELECT * FROM participantes WHERE sala_id = ? AND correo = ?', sala.id, correo)
-    if (!existente && !ESTADOS_INSCRIPCION.includes(sala.estado)) {
+    // La sala se revisa antes que el correo: con la inscripción cerrada no se informa si un correo estaba inscrito.
+    if (!ESTADOS_INSCRIPCION.includes(sala.estado)) {
       throw new ErrorApi(409, 'INSCRIPCION_CERRADA', sala.estado === 'cerrada' ? 'Esta sala ya se cerró.' : 'La inscripción aún no está abierta. Espera la indicación del facilitador.')
     }
-    let p: ParticipanteFila
-    if (existente) {
-      ejecutar(db, 'UPDATE participantes SET token_hash = ? WHERE id = ?', sha256(token), existente.id)
-      p = { ...existente, token_hash: sha256(token) }
-    } else {
-      const antes = progreso(db, sala)
-      p = {
-        id: idAleatorio('p', 8),
-        sala_id: sala.id,
-        mesa_id: mesa.id,
-        nombre,
-        correo,
-        perfil_id: perfilBalanceado(db, mesa.id),
-        token_hash: sha256(token),
-        activo: 1,
-        creado_at: isoUtc(ahora),
-        ip: ipGuardable(ctx),
-      }
-      ejecutar(
-        db,
-        'INSERT INTO participantes (id, sala_id, mesa_id, nombre, correo, perfil_id, token_hash, activo, creado_at, ip) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)',
-        p.id,
-        p.sala_id,
-        p.mesa_id,
-        p.nombre,
-        p.correo,
-        p.perfil_id,
-        p.token_hash,
-        p.creado_at,
-        p.ip,
-      )
-      registrarEvento(db, sala.id, ahora, 'inscripcion', 'sistema', { participante_id: p.id, mesa_id: mesa.id, perfil_id: p.perfil_id })
-      registrarCambiosPrecierre(db, sala, antes, ahora)
+    if (uno(db, 'SELECT 1 FROM participantes WHERE sala_id = ? AND correo = ?', sala.id, correo)) {
+      throw new ErrorApi(409, 'CORREO_YA_INSCRITO', MENSAJE_CORREO_YA_INSCRITO)
     }
+    const token = tokenAleatorio()
+    const antes = progreso(db, sala)
+    const p: ParticipanteFila = {
+      id: idAleatorio('p', 8),
+      sala_id: sala.id,
+      mesa_id: mesa.id,
+      nombre,
+      correo,
+      perfil_id: perfilBalanceado(db, mesa.id),
+      token_hash: sha256(token),
+      activo: 1,
+      creado_at: isoUtc(ahora),
+      ip: ipGuardable(ctx),
+    }
+    ejecutar(
+      db,
+      'INSERT INTO participantes (id, sala_id, mesa_id, nombre, correo, perfil_id, token_hash, activo, creado_at, ip) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)',
+      p.id,
+      p.sala_id,
+      p.mesa_id,
+      p.nombre,
+      p.correo,
+      p.perfil_id,
+      p.token_hash,
+      p.creado_at,
+      p.ip,
+    )
+    registrarEvento(db, sala.id, ahora, 'inscripcion', 'sistema', { participante_id: p.id, mesa_id: mesa.id, perfil_id: p.perfil_id })
+    registrarCambiosPrecierre(db, sala, antes, ahora)
     const c = consentimientoVigente(sala.pais)
     ejecutar(
       db,
@@ -155,7 +153,7 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
     )
     tocar(db, sala.id)
     const mesaP = uno<MesaFila>(db, 'SELECT * FROM mesas WHERE id = ?', p.mesa_id)!
-    return { nuevo: !existente, token, participante: participantePublico(p, mesaP) }
+    return { token, participante: participantePublico(p, mesaP) }
   })
 }
 
@@ -285,6 +283,8 @@ export function resultadosParticipante(db: Db, sala: SalaFila, p: ParticipanteFi
     alcance: sala.alcance_resultados === 'sala' ? { tipo: 'sala' } : { tipo: 'mesa', mesa },
     rondas,
     preliminar: v.preliminar,
+    // D2: cuántos hay inscritos en cada mesa no es del participante.
+    porMesa: false,
     sufijoVersion: `-r${ronda}-${p.id}`,
   })
 }

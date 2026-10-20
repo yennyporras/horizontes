@@ -42,11 +42,17 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 }
 
 /* ── Página ─────────────────────────────────────────── */
+/* Contenedor estándar de la familia Estratek (§5): el ancho del panel para todas las vistas menos la proyección.
+   Encabezado, contenido y pie lo usan, así sus bordes coinciden; el fondo de cada franja puede ir de borde a borde. */
 .hz-pagina {
-  min-height: 100dvh;
-  padding: 0 var(--hz-sp-4) calc(var(--hz-sp-12) * 2.5);
+  width: 100%;
+  max-width: var(--hz-ancho-pagina);
+  margin-inline: auto;
+  padding-inline: var(--hz-margen-pagina);
 }
-.hz-contenido { max-width: var(--hz-medida); margin: 0 auto; display: grid; gap: var(--hz-sp-6); }
+/* Vista con barra de acción fija abajo (celular): alto completo y espacio para la barra. */
+.hz-vista { min-height: 100dvh; padding-bottom: calc(var(--hz-sp-12) * 2.5); }
+.hz-contenido { display: grid; gap: var(--hz-sp-6); }
 /* Ningún hijo (matriz, tablas) ensancha la página en 360 px. */
 .hz-contenido > * { min-width: 0; }
 .hz-titulo { font-size: var(--hz-fs-h1); font-weight: var(--hz-fw-titulo); line-height: var(--hz-lh-titulo); letter-spacing: var(--hz-ls-titulo); color: var(--hz-tinta); text-wrap: balance; }
@@ -59,13 +65,10 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-encabezado {
   position: relative;
   overflow: hidden;
-  margin: 0 calc(var(--hz-sp-4) * -1) var(--hz-sp-2);
-  padding: var(--hz-sp-5) var(--hz-sp-4) var(--hz-sp-4);
+  margin: 0 0 var(--hz-sp-2);
+  /* De borde a borde, con el texto en los bordes del contenedor de página. */
+  padding: var(--hz-sp-5) max(var(--hz-margen-pagina), calc((100% - var(--hz-ancho-pagina)) / 2 + var(--hz-margen-pagina))) var(--hz-sp-4);
   border-bottom: 1px solid var(--hz-borde);
-}
-/* En pantallas anchas, el texto del encabezado se alinea con la columna de contenido. */
-@media (min-width: 40rem) {
-  .hz-encabezado { padding-inline: max(var(--hz-sp-4), calc(50vw - var(--hz-medida) / 2)); }
 }
 .hz-encabezado__arcos { position: absolute; top: 0; right: 0; width: 132px; height: 100%; pointer-events: none; }
 .hz-encabezado__sala { position: relative; font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); max-width: 75%; }
@@ -111,13 +114,15 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 /* Barra inferior fija con la acción principal */
 .hz-barra-accion {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
-  padding: var(--hz-sp-3) var(--hz-sp-4) calc(var(--hz-sp-3) + env(safe-area-inset-bottom));
+  padding: var(--hz-sp-3) 0 calc(var(--hz-sp-3) + env(safe-area-inset-bottom));
   background: var(--hz-superficie-1);
   border-top: 1px solid var(--hz-borde);
   box-shadow: var(--hz-sombra);
 }
-.hz-barra-accion__interior { max-width: var(--hz-medida); margin: 0 auto; display: grid; gap: var(--hz-sp-2); }
-.hz-barra-accion__nota { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); text-align: center; }
+/* El interior es el contenedor de página (mismos bordes que el encabezado); la acción conserva la medida de lectura. */
+.hz-barra-accion__interior { display: grid; gap: var(--hz-sp-2); }
+.hz-barra-accion__interior > * { width: 100%; max-width: var(--hz-medida); }
+.hz-barra-accion__nota { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 
 /* ── Campo ──────────────────────────────────────────── */
 .hz-campo { display: grid; gap: var(--hz-sp-1); }
@@ -157,8 +162,8 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 
 /* ── Casilla ────────────────────────────────────────── */
 .hz-casilla { display: flex; gap: var(--hz-sp-3); align-items: flex-start; padding: var(--hz-sp-3) 0; }
-/* Área táctil de 44 px alrededor de la casilla de 24 px, sin mover el diseño. */
-.hz-casilla__toque { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: -10px; cursor: pointer; }
+/* Área táctil de 48 px (familia Estratek §5) alrededor de la casilla de 24 px, sin mover el diseño. */
+.hz-casilla__toque { flex: none; display: grid; place-items: center; width: var(--hz-tactil); height: var(--hz-tactil); margin: -12px; cursor: pointer; }
 .hz-casilla__texto { cursor: pointer; }
 .hz-casilla__input {
   flex: none;
@@ -229,7 +234,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 }
 .hz-pestanas__tab {
   flex: 1;
-  min-height: 44px;
+  min-height: var(--hz-tactil);
   border: 0; border-radius: var(--hz-r-pill);
   background: transparent;
   font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2);
@@ -261,7 +266,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-aviso--ok { color: var(--hz-ok); background: var(--hz-ok-fondo); }
 .hz-aviso--alerta { color: var(--hz-alerta); background: var(--hz-alerta-fondo); }
 .hz-aviso--error { color: var(--hz-error); background: var(--hz-error-fondo); }
-.hz-aviso .hz-boton--fantasma { min-height: 40px; padding: 0; justify-self: start; color: var(--hz-tinta); text-decoration: underline; text-underline-offset: 3px; }
+.hz-aviso .hz-boton--fantasma { min-height: var(--hz-tactil); padding: 0; justify-self: start; color: var(--hz-tinta); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── Insignia ───────────────────────────────────────── */
 .hz-insignia {
@@ -299,9 +304,10 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
    Glifo en el acento de la herramienta, nombre, «por Estratek »» y la línea del degradado debajo. */
 .hz-producto { position: relative; background: var(--hz-fondo); }
 .hz-producto::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--hz-grad-marca); }
+/* La fila es el contenedor de página: el fondo y la línea van de borde a borde, el contenido se alinea con la página. */
 .hz-producto__fila {
   display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3);
-  padding: var(--hz-sp-3) var(--hz-sp-4) calc(var(--hz-sp-3) + 4px);
+  padding-block: var(--hz-sp-3) calc(var(--hz-sp-3) + 4px);
 }
 .hz-producto__marca { display: inline-flex; align-items: center; gap: var(--hz-sp-3); min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
 .hz-producto__glifo {
@@ -320,10 +326,8 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
    tablero.css define .hz-cifra, .hz-insignia y .hz-progreso sin alcance y se carga en toda la SPA.
    Dentro de .hz (páginas del participante) mandan los valores de este sistema de diseño. */
 .hz .hz-cifra { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
-.hz .hz-progreso { padding: 0; background: none; border-radius: 0; }
+.hz .hz-progreso { padding: 0; background: none; border: 0; border-radius: 0; }
 .hz .hz-insignia { padding: 2px var(--hz-sp-2); border-radius: var(--hz-r-pill); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); }
 
-/* El encabezado de producto llega a los bordes de la página del celular. */
-.hz-pagina > .hz-producto { margin-inline: calc(var(--hz-sp-4) * -1); }
 /* Muestra del tema carbón dentro de /m/_ui. */
 .hz-muestra-carbon { padding: var(--hz-sp-4); border-radius: var(--hz-r-tarjeta); background: var(--hz-fondo); color: var(--hz-tinta); }

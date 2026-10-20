@@ -69,9 +69,9 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
           await sinDesborde(p)
           await p.getByRole('button', { name: 'Guardar calificación' }).click()
         }
-        // Por defecto (acta A2, C5): tras votar, el consolidado de la sala en vivo. Con 1 voto, el aviso de mínimo.
-        await titulo(p, 'Resultados en vivo de la sala', espera)
-        await ver(p, 'Hace falta al menos 3 votos para mostrar estos resultados.', espera)
+        // Por defecto (acta A2, C5): tras votar, el consolidado parcial de la sala (D2: se renueva de 3 en 3). Con 1 voto, el aviso de mínimo.
+        await titulo(p, 'Resultado parcial de la sala', espera)
+        await ver(p, 'Hacen falta al menos 3 votos para mostrar estos resultados.', espera)
         await votarApi(e, tokenB, 'insumex', 1)
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)

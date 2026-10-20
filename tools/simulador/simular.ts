@@ -167,15 +167,21 @@ export async function simularTaller(op: OpcionesSimulacion): Promise<Informe> {
           p.votos[n][proyecto] = respuestasDe(p, n, proyecto)
           await votar(p, n, proyecto, p.votos[n][proyecto])
         }
-        // Una persona cambia de celular a mitad de la ronda 1 y recupera su sesión con el mismo correo.
+        // Una persona cambia de celular a mitad de la ronda 1: el mismo correo ya no recupera la sesión (D1, 20-oct);
+        // el facilitador le da acceso de nuevo y el celular nuevo canjea el enlace.
         if (n === 1 && i === 0) {
           const r = await c.pedir('POST', '/api/inscripcion', {
             cuerpo: { codigoMesa: sala.mesas[p.mesa].codigo, nombre: `Persona ${p.n}`, correo: p.correo, consentimiento: { aceptado: true, version: (await c.pedir('GET', `/api/mesas/${sala.mesas[p.mesa].codigo}`)).json.consentimiento.version } },
             esperados: [409],
           })
-          verificar('recuperar sesión con el mismo correo', r.status === 409 && r.json?.participante?.id !== undefined)
-          if (r.json?.token) {
-            p.token = r.json.token
+          verificar('el mismo correo no recupera la sesión', r.status === 409 && r.json?.error?.codigo === 'CORREO_YA_INSCRITO' && r.json?.token === undefined)
+          const lista = (await c.pedir('GET', `/api/admin/salas/${sala.id}`, { headers: adm })).json?.participantes as { id: string; correo: string }[] | undefined
+          const id = lista?.find((x) => x.correo === p.correo)?.id
+          const acceso = await c.pedir('POST', `/api/admin/participantes/${id}/acceso`, { cuerpo: {}, headers: adm })
+          const canje = await c.pedir('POST', '/api/acceso', { cuerpo: { acceso: new URL(acceso.json?.url ?? 'http://x/').searchParams.get('acceso') } })
+          verificar('el facilitador da acceso de nuevo y el celular nuevo lo canjea', canje.status === 200 && canje.json?.participante?.id === id)
+          if (canje.json?.token) {
+            p.token = canje.json.token
             p.etag = undefined
           }
         }

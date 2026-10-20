@@ -12,6 +12,8 @@ import { Aviso } from '../Aviso'
 import { MuestraUI } from '../MuestraUI'
 import { EncabezadoProducto } from '../EncabezadoProducto'
 import { useTemaDocumento } from '../tema'
+import { BarraAccion } from '../BarraAccion'
+import { readFileSync } from 'node:fs'
 
 afterEach(cleanup)
 
@@ -173,5 +175,31 @@ describe('useTemaDocumento', () => {
     expect(document.documentElement.getAttribute('data-tema')).toBe('carbon')
     unmount()
     expect(document.documentElement.hasAttribute('data-tema')).toBe(false)
+  })
+})
+
+describe('ancho de página estándar de la familia Estratek (§5)', () => {
+  const css = readFileSync('web/shared/ui/componentes.css', 'utf8')
+  const tokens = readFileSync('web/shared/ui/tokens.css', 'utf8')
+  it('token de 1280 px, el del panel, con margen de 16, 24 y 32 px', () => {
+    expect(tokens).toMatch(/--hz-ancho-pagina: 1280px;/)
+    expect(tokens).toMatch(/--hz-margen-pagina: 1rem;/)
+    expect(tokens).toMatch(/@media \(min-width: 48rem\) \{ :root \{ --hz-margen-pagina: 1\.5rem; \} \}/)
+    expect(tokens).toMatch(/@media \(min-width: 80rem\) \{ :root \{ --hz-margen-pagina: 2rem; \} \}/)
+    expect(css).toMatch(/\.hz-pagina \{\s*width: 100%;\s*max-width: var\(--hz-ancho-pagina\);\s*margin-inline: auto;\s*padding-inline: var\(--hz-margen-pagina\);\s*\}/)
+  })
+  it('el encabezado de producto y la barra de acción usan el contenedor de página', () => {
+    const { container } = render(
+      <>
+        <EncabezadoProducto />
+        <BarraAccion>
+          <Boton>Seguir</Boton>
+        </BarraAccion>
+      </>,
+    )
+    expect(container.querySelector('.hz-producto__fila')!.classList.contains('hz-pagina')).toBe(true)
+    expect(container.querySelector('.hz-barra-accion__interior')!.classList.contains('hz-pagina')).toBe(true)
+    // La fila no pisa el margen lateral del contenedor.
+    expect(css).not.toMatch(/\.hz-producto__fila \{[^}]*padding:/)
   })
 })

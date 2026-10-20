@@ -26,8 +26,13 @@ export function FaseRonda({ ronda }: { ronda: number }) {
 export interface MarcoProps {
   sala: string
   meta?: string
-  /** Avisos fijos arriba (sin conexión, precierre). */
+  /** Avisos arriba del contenido que explican la pantalla (ronda cerrada, acceso nuevo). */
   arriba?: ReactNode
+  /**
+   * Avisos que llegan solos (sin conexión, calificación guardada, por enviar): flotan encima de la barra inferior
+   * para no empujar el texto que se está leyendo.
+   */
+  flotantes?: ReactNode
   barra?: ReactNode
   notaBarra?: ReactNode
   /** Mueve el foco al título al cambiar de pantalla (lectores de pantalla y teclado). */
@@ -36,10 +41,13 @@ export interface MarcoProps {
 }
 
 /** Lo que la página pasa a cada pantalla: encabezado y avisos globales. */
-export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba'>
+export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba' | 'flotantes'>
 
-/** Página del celular: tema claro de Estratek, encabezado de producto y, debajo, la sala y la mesa. */
-export function Marco({ sala, meta, arriba, barra, notaBarra, claveFoco, children }: MarcoProps) {
+/**
+ * Página del celular: tema claro de Estratek, encabezado de producto y, debajo, la sala y la mesa. Encabezado,
+ * contexto, contenido y pie usan el contenedor de página (`.hz-pagina`): en escritorio comparten los bordes del panel.
+ */
+export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFoco, children }: MarcoProps) {
   useTemaDocumento('claro')
   const ref = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -52,17 +60,22 @@ export function Marco({ sala, meta, arriba, barra, notaBarra, claveFoco, childre
     document.documentElement.scrollTop = 0
   }, [claveFoco])
   return (
-    <div className="hz hz-pagina" data-tema="claro" lang="es-CO">
+    <div className="hz hz-vista hzp-vista" data-tema="claro" lang="es-CO">
       <EncabezadoProducto />
-      <div className="hzp-contexto">
+      <div className="hzp-contexto hz-pagina">
         <p className="hzp-contexto__sala">{sala}</p>
         {meta && <p className="hzp-contexto__meta">{meta}</p>}
       </div>
-      <main ref={ref} className="hz-contenido">
+      <main ref={ref} className="hz-contenido hz-pagina">
         {arriba}
         {children}
       </main>
-      {barra && <BarraAccion nota={notaBarra}>{barra}</BarraAccion>}
+      {(flotantes || barra) && (
+        <div className={barra ? 'hzp-pie' : 'hzp-pie hzp-pie--sin-barra'}>
+          {flotantes && <div className="hzp-flotantes hz-pagina">{flotantes}</div>}
+          {barra && <BarraAccion nota={notaBarra}>{barra}</BarraAccion>}
+        </div>
+      )}
     </div>
   )
 }

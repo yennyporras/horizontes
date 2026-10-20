@@ -5,29 +5,32 @@ import { type Db, ejecutar, transaccion } from '../db/index.js'
 import { CONFIG_POR_DEFECTO, cargarSala, registrarEvento, tocar } from './salas.js'
 import { type ZonaHoraria, isoEnZona } from './util.js'
 
-export const RESPALDOS_A_CONSERVAR = 30
+/** Respaldos que se conservan por sala (inicio, antes de cada reinicio y cierre). La rotación es por sala desde el 20-oct. */
+export const RESPALDOS_POR_SALA = 10
 
 /**
  * Copia consistente de la BD (VACUUM INTO) en `<dir de la BD>/respaldos/`. No hace nada con `:memory:`.
- * El nombre lleva la hora en la zona de la sala. Conserva los RESPALDOS_A_CONSERVAR más recientes. Devuelve la ruta o null.
+ * Nombre: `horizontes_<hora en la zona de la sala>_<salaId>_<momento>.sqlite`. Conserva los RESPALDOS_POR_SALA más
+ * recientes de esa sala: una sala con muchos reinicios ya no borra los respaldos de las otras. Devuelve la ruta o null.
  */
-export function respaldarBd(db: Db, dbPath: string, etiqueta: string, ahora: number, zona?: ZonaHoraria): string | null {
+export function respaldarBd(db: Db, dbPath: string, salaId: string, momento: string, ahora: number, zona?: ZonaHoraria): string | null {
   if (dbPath === ':memory:') return null
   const dir = join(dirname(dbPath), 'respaldos')
   mkdirSync(dir, { recursive: true })
+  const limpio = (t: string) => t.replace(/[^a-zA-Z0-9_-]/g, '')
   const sello = (isoEnZona(ahora, zona) ?? '').replace(/:/g, '-')
-  const base = join(dir, `horizontes_${sello}_${etiqueta.replace(/[^a-zA-Z0-9_-]/g, '')}`)
+  const base = join(dir, `horizontes_${sello}_${limpio(salaId)}_${limpio(momento)}`)
   // VACUUM INTO falla si el archivo existe (dos respaldos con la misma etiqueta en el mismo milisegundo).
   let destino = `${base}.sqlite`
   for (let i = 2; existsSync(destino); i++) destino = `${base}_${i}.sqlite`
   db.prepare('VACUUM INTO ?').run(destino)
   // Por fecha del archivo y no por nombre: salas de países distintos llevan horas con desfases distintos.
-  const archivos = readdirSync(dir)
-    .filter((f) => f.startsWith('horizontes_') && f.endsWith('.sqlite'))
+  const deLaSala = readdirSync(dir)
+    .filter((f) => f.startsWith('horizontes_') && f.endsWith('.sqlite') && f.includes(`_${limpio(salaId)}_`))
     .map((f) => ({ f, ms: statSync(join(dir, f)).mtimeMs }))
     .sort((a, b) => a.ms - b.ms)
     .map((x) => x.f)
-  for (const f of archivos.slice(0, Math.max(0, archivos.length - RESPALDOS_A_CONSERVAR))) rmSync(join(dir, f), { force: true })
+  for (const f of deLaSala.slice(0, Math.max(0, deLaSala.length - RESPALDOS_POR_SALA))) rmSync(join(dir, f), { force: true })
   return destino
 }
 
@@ -71,7 +74,9 @@ export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
     const ids = 'SELECT id FROM participantes WHERE sala_id = ?'
     const borrados = {
       votos: Number(ejecutar(db, 'DELETE FROM votos WHERE sala_id = ?', sala.id).changes),
+      fotos: Number(ejecutar(db, 'DELETE FROM fotos_agregado WHERE sala_id = ?', sala.id).changes),
       consentimientos: Number(ejecutar(db, `DELETE FROM consentimientos WHERE participante_id IN (${ids})`, sala.id).changes),
+      accesos: Number(ejecutar(db, 'DELETE FROM accesos_participante WHERE sala_id = ?', sala.id).changes),
       participantes: Number(ejecutar(db, 'DELETE FROM participantes WHERE sala_id = ?', sala.id).changes),
       eventos: Number(ejecutar(db, 'DELETE FROM eventos WHERE sala_id = ?', sala.id).changes),
     }

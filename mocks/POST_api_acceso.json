@@ -1,0 +1,15 @@
+{
+  "token": "mock-token-participante-acceso",
+  "participante": {
+    "id": "p_8f2a",
+    "nombre": "Ana Pérez",
+    "mesa": {
+      "id": "m1",
+      "nombre": "Mesa 1"
+    },
+    "perfil": {
+      "id": "cliente",
+      "nombre": "Conocimiento del cliente"
+    }
+  }
+}

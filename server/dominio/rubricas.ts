@@ -4,7 +4,7 @@ import { type Db, ejecutar, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { contenido, olvidarContenido } from './resultados.js'
 import { cargarSala, registrarEvento, tocar } from './salas.js'
-import { sinRayas } from './semilla.js'
+import { semilla, sinRayas } from './semilla.js'
 import { isoUtc } from './util.js'
 
 export const MAX_TEXTO_RUBRICA = 300
@@ -88,4 +88,18 @@ export function editarRubrica(db: Db, idOCodigo: string, criterioId: string, d: 
     tocar(db, sala.id)
   })
   return rubricasSala(db, sala.id)
+}
+
+/**
+ * Quita la rúbrica que se guardó con «Usar también en las salas nuevas»: las salas nuevas de la plantilla vuelven a la
+ * de la semilla en ese criterio. Las salas existentes no cambian (cada una tiene su copia). Idempotente.
+ */
+export function borrarRubricaPlantilla(db: Db, criterioId: string, plantilla: unknown) {
+  const sem = semilla()
+  const p = plantilla === undefined ? sem.plantilla.id : plantilla
+  if (p !== sem.plantilla.id) throw new ErrorApi(422, 'PLANTILLA_NO_EXISTE', `La plantilla "${String(p)}" no existe. Usa "${sem.plantilla.id}".`)
+  const criterio = sem.motor.criterios.find((c) => c.id === criterioId)
+  if (!criterio) throw new ErrorApi(422, 'CRITERIO_NO_EXISTE', `El criterio "${criterioId}" no existe.`)
+  const r = ejecutar(db, 'DELETE FROM rubricas_plantilla WHERE plantilla = ? AND criterio_id = ?', p, criterioId)
+  return { plantilla: p, criterio_id: criterio.id, borrada: Number(r.changes) > 0, rubrica: criterio.rubrica }
 }
