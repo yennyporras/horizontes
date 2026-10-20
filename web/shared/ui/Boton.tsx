@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
-export type VarianteBoton = 'primario' | 'secundario' | 'fantasma'
+export type VarianteBoton = 'primario' | 'secundario' | 'fantasma' | 'destructivo'
 
 export interface BotonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'disabled'> {
   variante?: VarianteBoton

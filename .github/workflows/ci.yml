@@ -32,4 +32,11 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -f deploy/Dockerfile -t horizontes:ci .
+      - name: Construir la imagen (base de Docker Hub; reintenta si el registro limita la descarga)
+        run: |
+          for intento in 1 2 3; do
+            docker build -f deploy/Dockerfile --build-arg NODE_IMAGE=docker.io/library/node:24-alpine -t horizontes:ci . && exit 0
+            echo "::warning::Intento $intento fallido; reintento en $((intento * 30)) s."
+            sleep $((intento * 30))
+          done
+          exit 1

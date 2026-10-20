@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useSesion } from '../sesion'
 import { usaMocks } from '../api'
+import { EncabezadoProducto } from '../../shared/ui'
 
 export function Login() {
   const { admin, entrar } = useSesion()
@@ -29,28 +30,32 @@ export function Login() {
   }
 
   return (
-    <main className="login">
-      <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-login">
-        <p className="marca">Horizontes</p>
-        <h1 id="titulo-login">Panel de administración</h1>
-        <label className="campo">
-          <span>Usuario</span>
-          <input autoComplete="username" required value={usuario} onChange={(e) => setUsuario(e.target.value)} />
-        </label>
-        <label className="campo">
-          <span>Clave</span>
-          <input type="password" autoComplete="current-password" required value={clave} onChange={(e) => setClave(e.target.value)} />
-        </label>
-        {error && (
-          <p className="alerta alerta--error" role="alert">
-            {error}
-          </p>
-        )}
-        <button className="btn btn--primario btn--bloque" type="submit" disabled={enviando}>
-          {enviando ? 'Entrando…' : 'Entrar'}
-        </button>
-        {usaMocks() && <p className="pista">Modo simulado: paola o jorge, clave demo1234.</p>}
-      </form>
-    </main>
+    <div className="login">
+      <div data-tema="carbon">
+        <EncabezadoProducto />
+      </div>
+      <main className="login__cuerpo">
+        <form className="panel login__caja" onSubmit={enviar} aria-labelledby="titulo-login">
+          <h1 id="titulo-login">Panel de administración</h1>
+          <label className="campo">
+            <span>Usuario</span>
+            <input autoComplete="username" required value={usuario} onChange={(e) => setUsuario(e.target.value)} />
+          </label>
+          <label className="campo">
+            <span>Clave</span>
+            <input type="password" autoComplete="current-password" required value={clave} onChange={(e) => setClave(e.target.value)} />
+          </label>
+          {error && (
+            <p className="alerta alerta--error" role="alert">
+              {error}
+            </p>
+          )}
+          <button className="hz-boton hz-boton--primario hz-boton--bloque" type="submit" disabled={enviando}>
+            {enviando ? 'Entrando…' : 'Entrar'}
+          </button>
+          {usaMocks() && <p className="pista">Modo simulado: paola o jorge, clave demo1234.</p>}
+        </form>
+      </main>
+    </div>
   )
 }

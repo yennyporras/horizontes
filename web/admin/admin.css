@@ -1,31 +1,15 @@
-/* Panel admin. Tokens con los mismos valores de docs/DISENO.md (T2); se definen aquí con
-   alcance .hz-admin para no depender del orden de carga de web/shared/ui/tokens.css. */
+/* Panel del facilitador. Tema claro de la familia Estratek con barra superior carbón y la línea del degradado
+   (docs/marca/FAMILIA_ESTRATEK.md §3 y §6). Solo consume tokens de web/shared/ui/tokens.css y los botones son los
+   comunes (.hz-boton de componentes.css). Sin colores en duro salvo la hoja impresa, que es papel. */
 .hz-admin {
-  --a-azul: var(--hz-azul, #1c4587);
-  --a-azul-medio: var(--hz-azul-medio, #3f7cc8);
-  --a-cielo: var(--hz-cielo, #00a3ff);
-  --a-tinta: var(--hz-tinta, #0f2340);
-  --a-tinta-2: var(--hz-tinta-2, #3a4d6b);
-  --a-tinta-3: var(--hz-tinta-3, #5b6b84);
-  --a-h1: var(--hz-h1, #eef4fb);
-  --a-h2: var(--hz-h2, #dce8f6);
-  --a-h3: var(--hz-h3, #c5d8ef);
-  --a-ok: #1d6b4f;
-  --a-ok-fondo: #e6f4ee;
-  --a-alerta: #7a4b00;
-  --a-alerta-fondo: #fff4dc;
-  --a-error: #a3261b;
-  --a-error-fondo: #fdecea;
-  --a-r-s: 6px;
-  --a-r-m: 10px;
-  --a-r-l: 16px;
-
-  font-family: 'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color: var(--a-tinta);
-  background: #fff;
+  font-family: var(--hz-fuente);
+  font-weight: var(--hz-fw-texto);
+  font-size: var(--hz-fs-16);
+  line-height: var(--hz-lh);
+  color: var(--hz-tinta);
+  background: var(--hz-fondo);
   min-height: 100vh;
-  font-size: 16px;
-  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 .hz-admin *,
@@ -37,20 +21,26 @@
 .hz-admin h1,
 .hz-admin h2,
 .hz-admin h3 {
-  line-height: 1.2;
-  margin: 0 0 12px;
-  color: var(--a-azul);
+  line-height: var(--hz-lh-titulo);
+  letter-spacing: var(--hz-ls-titulo);
+  margin: 0 0 var(--hz-sp-3);
+  color: var(--hz-tinta);
+  text-wrap: balance;
 }
-.hz-admin h1 { font-size: 25px; font-weight: 800; }
-.hz-admin h2 { font-size: 20px; font-weight: 700; }
-.hz-admin h3 { font-size: 18px; font-weight: 600; }
-.hz-admin p { margin: 0 0 12px; }
-.hz-admin a { color: var(--a-azul); }
+.hz-admin h1 { font-size: var(--hz-fs-h1); font-weight: var(--hz-fw-titulo); }
+.hz-admin h2 { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-titulo); }
+.hz-admin h3 { font-size: var(--hz-fs-16); font-weight: var(--hz-fw-etiqueta); }
+.hz-admin p { margin: 0 0 var(--hz-sp-3); }
+.hz-admin :where(a:not(.hz-boton)) { color: var(--hz-accion); text-underline-offset: 3px; }
+.hz-admin code { font-size: var(--hz-fs-14); }
 
+/* Foco (§5): contorno de 2 px en el color de foco del tema, separado 2 px */
 .hz-admin :focus-visible {
-  outline: 3px solid var(--a-azul);
+  outline: 2px solid var(--hz-foco-color);
   outline-offset: 2px;
-  box-shadow: 0 0 0 7px var(--a-cielo);
+}
+@media (forced-colors: active) {
+  .hz-admin :focus-visible { outline: 3px solid CanvasText; }
 }
 
 .hz-admin .saltar {
@@ -58,266 +48,387 @@
   left: -9999px;
 }
 .hz-admin .saltar:focus {
-  left: 16px;
-  top: 8px;
-  background: #fff;
-  padding: 8px 12px;
+  left: var(--hz-sp-4);
+  top: var(--hz-sp-2);
   z-index: 10;
+  padding: var(--hz-sp-2) var(--hz-sp-3);
+  border-radius: var(--hz-r-campo);
+  background: var(--hz-fondo);
+  color: var(--hz-accion);
 }
 
-/* Cabecera y navegación */
-.hz-admin .cabecera {
+/* ── Barra superior carbón: EncabezadoProducto con la navegación y la cuenta ──
+   El contenedor lleva data-tema="carbon"; la línea del degradado la pone .hz-producto. En celular van la marca y
+   la cuenta arriba y el menú debajo en una fila deslizable; desde 1440 px, todo en una fila. */
+.hz-admin .cabecera .hz-producto__fila { flex-wrap: wrap; gap: var(--hz-sp-2) var(--hz-sp-6); }
+.hz-admin .cabecera .hz-producto__extra { display: contents; }
+.hz-admin .cabecera .hz-producto__marca { order: 1; }
+.hz-admin .usuario {
+  order: 2;
+  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 24px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--a-h3);
-  background: var(--a-h1);
+  justify-content: flex-end;
+  gap: 0 var(--hz-sp-2);
+  font-size: var(--hz-fs-14);
+  color: var(--hz-tinta-2);
 }
-.hz-admin .marca { font-weight: 800; color: var(--a-azul); font-size: 18px; }
-.hz-admin .marca__sub { font-weight: 500; color: var(--a-tinta-2); font-size: 14px; }
-.hz-admin .nav { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.hz-admin .usuario__nombre { font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
+.hz-admin .nav {
+  order: 3;
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hz-sp-1);
+  min-width: 0;
+}
 .hz-admin .nav__item {
-  padding: 8px 12px;
-  border-radius: 999px;
-  text-decoration: none;
-  color: var(--a-tinta-2);
-  font-weight: 600;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
   min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-}
-.hz-admin .nav__item:hover { background: var(--a-h2); }
-.hz-admin .nav__item--activo { background: #fff; color: var(--a-azul); font-weight: 700; box-shadow: inset 0 0 0 1px var(--a-h3); }
-.hz-admin .usuario { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-
-.hz-admin .contenido { padding: 24px 16px 48px; max-width: 1200px; margin: 0 auto; }
-
-/* Superficies */
-.hz-admin .panel {
-  border: 1px solid var(--a-h3);
-  border-radius: var(--a-r-l);
-  padding: 20px;
-  margin-bottom: 20px;
-  background: #fff;
-}
-.hz-admin .hoja-perfil { padding: 16px; background: var(--a-h1); border-radius: var(--a-r-m); }
-.hz-admin .hoja-perfil h3 { margin-bottom: 8px; }
-.hz-admin .hoja-perfil p { margin: 0; max-width: 70ch; line-height: 1.55; overflow-wrap: anywhere; }
-.hz-admin .rejilla { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
-.hz-admin .encabezado-sala { margin-bottom: 16px; }
-.hz-admin .vacio { color: var(--a-tinta-3); font-style: italic; }
-.hz-admin .pista { color: var(--a-tinta-3); font-size: 14px; }
-.hz-admin .cargando { padding: 24px; }
-
-/* Botones */
-.hz-admin .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 8px 16px;
-  border-radius: var(--a-r-m);
-  border: 2px solid var(--a-azul);
-  font: inherit;
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
+  padding: 0 var(--hz-sp-3);
+  border-radius: var(--hz-r-pill);
+  font-size: var(--hz-fs-14);
+  font-weight: var(--hz-fw-etiqueta);
+  color: var(--hz-tinta-2);
   text-decoration: none;
-  background: #fff;
-  color: var(--a-azul);
+  white-space: nowrap;
+  transition: background-color var(--hz-t-rapido), color var(--hz-t-rapido);
 }
-.hz-admin .btn--primario { background: var(--a-azul); color: #fff; }
-.hz-admin .btn--primario:hover:not(:disabled) { background: #163869; }
-.hz-admin .btn--fantasma { border-color: transparent; background: transparent; text-decoration: underline; }
-.hz-admin .btn--peligro { border-color: var(--a-error); color: var(--a-error); }
-.hz-admin .btn--peligro:hover:not(:disabled) { background: var(--a-error-fondo); }
-.hz-admin .btn--chico { min-height: 36px; padding: 4px 10px; font-size: 14px; }
-.hz-admin .btn--bloque { width: 100%; }
-.hz-admin .btn:disabled,
-.hz-admin .btn[aria-disabled='true'] {
-  background: transparent;
-  border: 2px dashed var(--a-h3);
-  color: var(--a-tinta-3);
-  font-weight: 600;
-  cursor: not-allowed;
+.hz-admin .nav__item:hover { color: var(--hz-tinta); background: var(--hz-superficie-2); }
+/* Sección actual: superficie, tinta y subrayado en el color de acción (no depende solo del color) */
+.hz-admin .nav__item--activo {
+  color: var(--hz-tinta);
+  background: var(--hz-superficie-3);
+  box-shadow: inset 0 -3px 0 var(--hz-accion);
 }
-.hz-admin .acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+/* En celular la marca y la cuenta caben en una fila: el nombre se omite, quedan el rol y Salir. */
+@media (max-width: 480px) {
+  .hz-admin .cabecera .hz-producto__fila { column-gap: var(--hz-sp-2); }
+  .hz-admin .usuario__nombre { display: none; }
+  .hz-admin .usuario { column-gap: var(--hz-sp-1); }
+  .hz-admin .usuario .hz-boton { padding-inline: var(--hz-sp-2); }
+}
+@media (min-width: 1440px) {
+  .hz-admin .nav { order: 2; flex: 1; flex-basis: auto; }
+  .hz-admin .usuario { order: 3; margin-left: 0; }
+}
 
-/* Formularios */
-.hz-admin .campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; flex: 1; min-width: 180px; }
+.hz-admin .contenido { padding: var(--hz-sp-6) var(--hz-sp-4) var(--hz-sp-12); max-width: 1280px; margin: 0 auto; }
+.hz-admin .contenido > * { min-width: 0; }
+
+/* ── Encabezado de sección ───────────────────────────── */
+.hz-admin .encabezado-sala { margin-bottom: var(--hz-sp-6); }
+.hz-admin .encabezado-sala h1 { margin-bottom: var(--hz-sp-2); }
+.hz-admin .encabezado-sala__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--hz-sp-1) var(--hz-sp-3);
+  margin: 0;
+  color: var(--hz-tinta-2);
+  font-size: var(--hz-fs-14);
+}
+.hz-admin .encabezado-sala__meta strong { color: var(--hz-tinta); font-size: var(--hz-fs-16); }
+.hz-admin .intro { max-width: 70ch; color: var(--hz-tinta-2); }
+
+/* ── Superficies (§5: jerarquía por superficie y borde de 1 px) ── */
+.hz-admin .panel {
+  border: 1px solid var(--hz-borde);
+  border-radius: var(--hz-r-tarjeta);
+  padding: var(--hz-sp-6);
+  margin-bottom: var(--hz-sp-6);
+  background: var(--hz-superficie-1);
+}
+.hz-admin .rejilla { display: grid; gap: var(--hz-sp-6); margin-bottom: var(--hz-sp-6); grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+.hz-admin .rejilla > .panel { margin-bottom: 0; }
+.hz-admin .panel .rejilla { gap: var(--hz-sp-4); margin-bottom: var(--hz-sp-4); }
+.hz-admin .hoja-perfil {
+  padding: var(--hz-sp-4);
+  border: 1px solid var(--hz-borde);
+  border-radius: var(--hz-r-campo);
+  background: var(--hz-fondo);
+}
+.hz-admin .hoja-perfil h3 { margin-bottom: var(--hz-sp-2); }
+.hz-admin .hoja-perfil p { margin: 0; max-width: 70ch; font-size: var(--hz-fs-14); line-height: 1.6; overflow-wrap: anywhere; }
+.hz-admin .vacio { color: var(--hz-tinta-2); }
+.hz-admin .pista { color: var(--hz-tinta-3); font-size: var(--hz-fs-14); }
+.hz-admin .cargando { padding: var(--hz-sp-6); }
+.hz-admin .acciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2); margin-bottom: var(--hz-sp-3); }
+.hz-admin .acciones:last-child { margin-bottom: 0; }
+
+/* ── KPI: de 3 a 5 cifras arriba de la vista ─────────── */
+.hz-admin .kpis {
+  display: grid;
+  gap: var(--hz-sp-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+  margin: 0 0 var(--hz-sp-6);
+  padding: 0;
+  list-style: none;
+}
+.hz-admin .kpi {
+  display: grid;
+  align-content: start;
+  gap: var(--hz-sp-1);
+  padding: var(--hz-sp-4) var(--hz-sp-5);
+  border: 1px solid var(--hz-borde);
+  border-radius: var(--hz-r-tarjeta);
+  background: var(--hz-superficie-1);
+}
+.hz-admin .kpi__rotulo { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin .cifra { font-size: var(--hz-fs-32); font-weight: var(--hz-fw-cifra); line-height: 1.1; color: var(--hz-tinta); font-variant-numeric: tabular-nums; }
+.hz-admin .cuenta { font-variant-numeric: tabular-nums; font-weight: var(--hz-fw-etiqueta); }
+
+/* ── Botones: los comunes (.hz-boton). El panel usa el disabled nativo; se ve igual que aria-disabled.
+   Compacto solo en tablas y avisos densos. */
+.hz-admin .hz-boton:disabled {
+  background: var(--hz-deshabilitado-fondo); color: var(--hz-deshabilitado-texto); border-color: var(--hz-deshabilitado-borde);
+  cursor: not-allowed; transform: none; text-decoration: none;
+}
+.hz-admin .hz-boton--chico { min-height: 40px; padding: 0 var(--hz-sp-4); font-size: var(--hz-fs-14); }
+
+/* ── Formularios (§6: etiqueta encima en 14/700, campos de radio 12) ── */
+.hz-admin .campo { display: flex; flex-direction: column; gap: var(--hz-sp-1); margin-bottom: var(--hz-sp-3); flex: 1; min-width: min(200px, 100%); }
 .hz-admin .campo > span,
-.hz-admin .campo > label { font-size: 14px; font-weight: 600; color: var(--a-tinta-2); }
+.hz-admin .campo > label { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
 .hz-admin .campo--corto { flex: 0 0 120px; min-width: 100px; }
 .hz-admin input,
 .hz-admin select,
 .hz-admin textarea {
   font: inherit;
-  font-size: 16px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--a-tinta-3);
-  border-radius: var(--a-r-s);
-  color: var(--a-tinta);
-  background: #fff;
+  font-size: var(--hz-fs-16);
+  min-height: var(--hz-tactil);
+  padding: var(--hz-sp-2) var(--hz-sp-3);
+  border: 1px solid var(--hz-borde-control);
+  border-radius: var(--hz-r-campo);
+  color: var(--hz-tinta);
+  background: var(--hz-fondo);
 }
-.hz-admin .campo-linea { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--a-tinta-2); }
-.hz-admin select.chico { min-height: 36px; font-size: 14px; padding: 4px 8px; }
-.hz-admin .fila-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-.hz-admin .fila-form .btn { margin-bottom: 12px; }
-.hz-admin fieldset { border: 1px solid var(--a-h3); border-radius: var(--a-r-m); padding: 12px 16px; margin: 0 0 16px; }
-.hz-admin legend { font-weight: 700; color: var(--a-azul); padding: 0 4px; }
-.hz-admin .opcion { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
-.hz-admin .opcion input { min-height: auto; width: 20px; height: 20px; margin-top: 2px; }
-.hz-admin .opcion small { display: block; color: var(--a-tinta-3); font-size: 14px; }
+.hz-admin input:focus-visible,
+.hz-admin select:focus-visible,
+.hz-admin textarea:focus-visible { border-color: var(--hz-accion); }
+.hz-admin textarea { width: 100%; resize: vertical; line-height: 1.4; field-sizing: content; min-height: 4.5em; }
+.hz-admin .campo-linea { display: flex; align-items: center; gap: var(--hz-sp-2); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin select.chico { min-height: 40px; font-size: var(--hz-fs-14); padding: var(--hz-sp-1) var(--hz-sp-2); }
+.hz-admin .fila-form { display: flex; flex-wrap: wrap; gap: 0 var(--hz-sp-4); align-items: flex-end; }
+.hz-admin .fila-form .hz-boton { margin-bottom: var(--hz-sp-3); }
+.hz-admin fieldset { border: 1px solid var(--hz-borde); border-radius: var(--hz-r-campo); padding: var(--hz-sp-3) var(--hz-sp-4); margin: 0 0 var(--hz-sp-4); background: var(--hz-fondo); }
+.hz-admin legend { font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); padding: 0 var(--hz-sp-1); }
+.hz-admin .opcion { display: flex; gap: var(--hz-sp-3); align-items: flex-start; padding: var(--hz-sp-2) 0; cursor: pointer; }
+.hz-admin .opcion input { accent-color: var(--hz-accion); min-height: auto; width: 20px; height: 20px; margin-top: 2px; flex: none; }
+.hz-admin .opcion small { display: block; color: var(--hz-tinta-3); font-size: var(--hz-fs-14); }
+.hz-admin fieldset:disabled .opcion { cursor: not-allowed; }
+.hz-admin input:disabled,
+.hz-admin textarea:disabled,
+.hz-admin select:disabled { background: var(--hz-deshabilitado-fondo); color: var(--hz-deshabilitado-texto); border-color: var(--hz-deshabilitado-borde); cursor: not-allowed; }
 
-/* Avisos y etiquetas */
-.hz-admin .alerta { padding: 12px 16px; border-radius: var(--a-r-m); border-left: 4px solid; margin: 0 0 16px; }
-.hz-admin .alerta--error { background: var(--a-error-fondo); color: var(--a-error); }
-.hz-admin .alerta--aviso { background: var(--a-alerta-fondo); color: var(--a-alerta); }
-.hz-admin .alerta--exito { background: var(--a-ok-fondo); color: var(--a-ok); }
-.hz-admin .alerta--info { background: var(--a-h1); color: var(--a-azul); }
-.hz-admin .alerta strong { display: block; }
-.hz-admin .aviso-mock { margin: 0; padding: 6px 16px; background: var(--a-alerta-fondo); color: var(--a-alerta); font-size: 14px; }
-
-.hz-admin .etiqueta {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--a-h2);
-  color: var(--a-azul);
+/* ── Avisos e insignias: fondo del estado, texto del estado y símbolo (§6) ── */
+.hz-admin .alerta {
+  padding: var(--hz-sp-3) var(--hz-sp-4);
+  border: 1px solid var(--hz-borde);
+  border-left: 4px solid currentColor;
+  border-radius: var(--hz-r-campo);
+  margin: 0 0 var(--hz-sp-4);
+  font-size: var(--hz-fs-14);
 }
-.hz-admin .etiqueta--exito { background: var(--a-ok-fondo); color: var(--a-ok); }
-.hz-admin .etiqueta--aviso { background: var(--a-alerta-fondo); color: var(--a-alerta); }
-.hz-admin .etiqueta--apagado { background: #eceff3; color: var(--a-tinta-3); }
+.hz-admin .alerta--error { background: var(--hz-error-fondo); color: var(--hz-error); }
+.hz-admin .alerta--aviso { background: var(--hz-alerta-fondo); color: var(--hz-alerta); }
+.hz-admin .alerta--exito { background: var(--hz-ok-fondo); color: var(--hz-ok); }
+.hz-admin .alerta--info { background: var(--hz-info-fondo); color: var(--hz-accion); }
+.hz-admin .alerta strong { display: block; font-size: var(--hz-fs-16); }
+.hz-admin .alerta p:last-child { margin-bottom: 0; }
+.hz-admin .aviso-mock { margin: 0; padding: var(--hz-sp-2) var(--hz-sp-4); background: var(--hz-alerta-fondo); color: var(--hz-alerta); font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); }
+/* Aviso de dominio (C19-1): pegado a la barra, visible en todas las secciones */
+.hz-admin .aviso-dominio { margin: 0; border-radius: 0; border-width: 0 0 0 4px; overflow-wrap: anywhere; font-weight: var(--hz-fw-etiqueta); }
 
+.hz-admin .etiqueta,
 .hz-admin .estado {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  background: var(--a-h2);
-  color: var(--a-azul);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hz-sp-1);
+  padding: 2px var(--hz-sp-2);
+  border-radius: var(--hz-r-pill);
+  font-size: var(--hz-fs-12);
+  font-weight: var(--hz-fw-etiqueta);
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: middle;
+  background: var(--hz-superficie-3);
+  color: var(--hz-tinta);
 }
+.hz-admin .estado { padding: 2px var(--hz-sp-3); font-size: var(--hz-fs-14); }
+/* Símbolo junto al texto: círculo lleno en curso, rombo pendiente */
+.hz-admin .etiqueta--exito::before,
+.hz-admin .etiqueta--aviso::before,
+.hz-admin .estado--inscripcion::before,
+.hz-admin .estado--r1_abierta::before,
+.hz-admin .estado--r2_abierta::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.hz-admin .etiqueta--aviso::before { border-radius: 1px; transform: rotate(45deg); }
+.hz-admin .etiqueta--exito,
+.hz-admin .estado--inscripcion,
 .hz-admin .estado--r1_abierta,
-.hz-admin .estado--r2_abierta,
-.hz-admin .estado--inscripcion { background: var(--a-ok-fondo); color: var(--a-ok); }
-.hz-admin .estado--cerrada { background: #eceff3; color: var(--a-tinta-2); }
+.hz-admin .estado--r2_abierta { background: var(--hz-ok-fondo); color: var(--hz-ok); }
+.hz-admin .etiqueta--aviso { background: var(--hz-alerta-fondo); color: var(--hz-alerta); }
+.hz-admin .etiqueta--apagado,
+.hz-admin .estado--cerrada { color: var(--hz-tinta-2); }
 
-/* Tablas */
-.hz-admin .tabla-envoltura { overflow-x: auto; }
-.hz-admin table { border-collapse: collapse; width: 100%; font-size: 15px; font-variant-numeric: tabular-nums; }
+/* ── Tablas (§6): encabezado en superficie 1, cifras a la derecha y tabulares, filas de 40 a 48 px ── */
+.hz-admin .tabla-envoltura { overflow-x: auto; border: 1px solid var(--hz-borde); border-radius: var(--hz-r-campo); background: var(--hz-fondo); }
+.hz-admin table { border-collapse: collapse; width: 100%; font-size: var(--hz-fs-14); font-variant-numeric: tabular-nums; }
 .hz-admin th,
-.hz-admin td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--a-h3); vertical-align: middle; }
-.hz-admin thead th { font-size: 13px; color: var(--a-tinta-2); font-weight: 700; }
-.hz-admin tbody th { font-weight: 600; }
+.hz-admin td { text-align: left; padding: var(--hz-sp-3); border-bottom: 1px solid var(--hz-borde); vertical-align: middle; }
+.hz-admin tbody tr:last-child > * { border-bottom: 0; }
+.hz-admin thead th { background: var(--hz-superficie-1); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
+.hz-admin tbody th { font-weight: var(--hz-fw-etiqueta); }
 .hz-admin tr.inactivo td,
-.hz-admin tr.inactivo th { color: var(--a-tinta-3); text-decoration: line-through; }
-.hz-admin .enlaces { display: flex; flex-wrap: wrap; gap: 12px; }
+.hz-admin tr.inactivo th { color: var(--hz-tinta-3); text-decoration: line-through; }
+.hz-admin .enlaces { display: flex; flex-wrap: wrap; gap: var(--hz-sp-1) var(--hz-sp-3); }
 .hz-admin .num { text-align: right; }
+.hz-admin caption { text-align: left; caption-side: top; padding: var(--hz-sp-3); font-size: var(--hz-fs-14); }
 
-/* Salas */
-.hz-admin .lista-salas { list-style: none; padding: 0; margin: 0; }
-.hz-admin .tarjeta-sala { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
-.hz-admin .tarjeta-sala > div { flex: 1; min-width: 200px; }
-.hz-admin .tarjeta-sala h2 { margin-bottom: 4px; }
+/* ── Salas ───────────────────────────────────────────── */
+.hz-admin .lista-salas { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--hz-sp-3); }
+.hz-admin .lista-salas > .panel { margin: 0; padding: var(--hz-sp-4) var(--hz-sp-5); }
+.hz-admin .tarjeta-sala { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-3) var(--hz-sp-5); }
+.hz-admin .tarjeta-sala > div { flex: 1; min-width: min(220px, 100%); }
+.hz-admin .tarjeta-sala h2 { margin-bottom: var(--hz-sp-1); font-size: var(--hz-fs-18); }
+.hz-admin .tarjeta-sala .pista { margin: 0; }
 .hz-admin .sin-corte { white-space: nowrap; }
-.hz-admin .acciones-sala { display: flex; flex-wrap: wrap; gap: 8px; }
+.hz-admin .acciones-sala { display: flex; flex-wrap: wrap; gap: var(--hz-sp-2); }
+.hz-admin .clave-temporal { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 
-/* Sala en vivo */
-.hz-admin .estado-grande { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: baseline; margin-bottom: 12px; }
-.hz-admin .cifra { font-size: 32px; font-weight: 800; color: var(--a-azul); font-variant-numeric: tabular-nums; }
-.hz-admin .cuenta { font-variant-numeric: tabular-nums; font-weight: 700; }
-.hz-admin .eventos { padding-left: 20px; margin: 0; font-size: 14px; color: var(--a-tinta-2); }
-.hz-admin .barra { height: 8px; background: var(--a-h2); border-radius: 999px; overflow: hidden; min-width: 80px; }
-.hz-admin .barra > span { display: block; height: 100%; background: var(--a-azul-medio); }
+/* Elegir sala: una fila por sala, el nombre como botón */
+.hz-admin .lista-elegir { list-style: none; padding: 0; margin: 0 0 var(--hz-sp-4); display: grid; gap: var(--hz-sp-2); }
+.hz-admin .lista-elegir li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-1) var(--hz-sp-3); }
 
-/* QR */
-.hz-admin .qr-lista { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
-.hz-admin .qr-tarjeta { text-align: center; }
-.hz-admin .qr-tarjeta img { width: 200px; height: 200px; display: block; margin: 8px auto; }
-.hz-admin .qr-tarjeta code { word-break: break-all; font-size: 13px; }
+/* ── Sala en vivo ────────────────────────────────────── */
+.hz-admin .programado { margin: 0 0 var(--hz-sp-4); padding-left: var(--hz-sp-5); }
+.hz-admin .eventos { padding-left: var(--hz-sp-5); margin: 0; font-size: var(--hz-fs-14); color: var(--hz-tinta-2); font-variant-numeric: tabular-nums; }
+.hz-admin .eventos li + li { margin-top: var(--hz-sp-1); }
+.hz-admin .barra { height: 6px; margin-top: var(--hz-sp-1); background: var(--hz-superficie-3); border-radius: var(--hz-r-pill); overflow: hidden; min-width: 80px; }
+.hz-admin .barra > span { display: block; height: 100%; background: var(--hz-grad-marca); }
+
+/* Pregunta en pantalla (modo guiado) */
+.hz-admin .pregunta-actual { padding: var(--hz-sp-4); margin-bottom: var(--hz-sp-4); border: 1px solid var(--hz-borde); border-left: 4px solid var(--hz-accion); border-radius: var(--hz-r-campo); background: var(--hz-fondo); }
+.hz-admin .pregunta-actual p { margin: 0 0 var(--hz-sp-1); max-width: 70ch; }
+.hz-admin .pregunta-actual__titulo { font-size: var(--hz-fs-18); font-weight: var(--hz-fw-titulo); }
+
+/* Resultados por ronda (acta P3): R1 hueco en verde, R2 sólido en rojo, siempre con su texto */
+.hz-admin .ronda { display: inline-flex; align-items: center; gap: 6px; font-weight: var(--hz-fw-titulo); }
+.hz-admin .ronda::before { content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.hz-admin .ronda--1 { color: var(--hz-r1); }
+.hz-admin .ronda--1::before { border: 2px solid currentColor; }
+.hz-admin .ronda--2 { color: var(--hz-r2); }
+.hz-admin .ronda--2::before { background: currentColor; }
+.hz-admin .tabla-resultado caption { font-weight: var(--hz-fw-etiqueta); font-size: var(--hz-fs-16); color: var(--hz-tinta); }
+.hz-admin .tabla-resultado tbody th { font-weight: var(--hz-fw-texto); hyphens: auto; }
+.hz-admin .tabla-resultado th,
+.hz-admin .tabla-resultado td { padding: var(--hz-sp-2) var(--hz-sp-3); }
+.hz-admin .tabla-resultado .num { white-space: nowrap; }
+
+/* ── Mesas y QR: el QR siempre sobre papel blanco ────── */
+.hz-admin .qr-lista { display: grid; gap: var(--hz-sp-6); grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); list-style: none; padding: 0; margin: 0; }
+.hz-admin .qr-lista > .panel { margin: 0; }
+.hz-admin .qr-tarjeta { text-align: center; background: var(--et-blanco); }
+.hz-admin .qr-tarjeta h2 { margin-bottom: var(--hz-sp-1); }
+.hz-admin .qr-tarjeta img { width: 200px; max-width: 100%; height: auto; aspect-ratio: 1; display: block; margin: var(--hz-sp-3) auto; background: var(--et-blanco); }
+.hz-admin .qr-tarjeta code { word-break: break-all; }
+.hz-admin .qr-tarjeta .acciones { justify-content: center; }
 
 .hz-admin .proyectar {
   position: fixed;
   inset: 0;
-  background: #fff;
   z-index: 100;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  padding: 24px;
+  gap: var(--hz-sp-6);
+  padding: var(--hz-sp-6);
   text-align: center;
+  background: var(--et-blanco);
+  color: var(--et-carbon);
 }
 .hz-admin .proyectar img { width: min(70vh, 80vw); height: min(70vh, 80vw); }
-.hz-admin .proyectar h2 { font-size: clamp(32px, 5vw, 64px); }
-.hz-admin .proyectar p { font-size: clamp(20px, 2.5vw, 32px); }
-.hz-admin .proyectar .btn { position: absolute; top: 16px; right: 16px; }
+.hz-admin .proyectar h2 { font-size: clamp(2rem, 5vw, 4rem); color: inherit; }
+.hz-admin .proyectar p { font-size: clamp(1.25rem, 2.5vw, 2rem); }
+.hz-admin .proyectar .hz-boton { position: absolute; top: var(--hz-sp-4); right: var(--hz-sp-4); }
 
-/* Diálogo de confirmación */
+/* ── Diálogo de confirmación (flota: lleva sombra) ───── */
 .hz-admin dialog {
-  border: 1px solid var(--a-h3);
-  border-radius: var(--a-r-l);
-  padding: 24px;
+  border: 1px solid var(--hz-borde);
+  border-radius: var(--hz-r-tarjeta);
+  padding: var(--hz-sp-6);
   max-width: 440px;
   width: calc(100% - 32px);
-  color: var(--a-tinta);
+  color: var(--hz-tinta);
+  background: var(--hz-fondo);
+  box-shadow: var(--hz-sombra);
 }
-.hz-admin dialog::backdrop { background: rgba(15, 35, 64, 0.45); }
+.hz-admin dialog::backdrop { background: color-mix(in srgb, var(--et-carbon) 60%, transparent); }
 
-/* Login */
-.hz-admin .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--a-h1); }
-.hz-admin .login__caja { width: 100%; max-width: 400px; }
+/* ── Login y cambio de clave: barra de producto y una caja ── */
+.hz-admin .login { min-height: 100vh; display: flex; flex-direction: column; background: var(--hz-superficie-1); }
+.hz-admin .login__cuerpo { flex: 1; display: grid; place-items: center; padding: var(--hz-sp-8) var(--hz-sp-4); }
+.hz-admin .login__caja { width: 100%; max-width: 400px; margin: 0; background: var(--hz-fondo); }
+.hz-admin .login__caja h1 { font-size: var(--hz-fs-24); }
 
-.hz-admin textarea { width: 100%; resize: vertical; line-height: 1.4; field-sizing: content; min-height: 4.5em; }
-
-/* Rúbricas: el valor fijo en un círculo y el texto editable al lado */
-.hz-admin .rubrica-pregunta { font-style: italic; color: var(--a-tinta-2); }
-.hz-admin .rubrica-nivel { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: start; }
+/* ── Rúbricas: el valor fijo en un círculo y el texto editable al lado ── */
+.hz-admin .rubrica-pregunta { font-style: italic; color: var(--hz-tinta-2); }
+.hz-admin .rubrica-nivel { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: var(--hz-sp-3); align-items: start; }
 .hz-admin .rubrica-nivel .campo { min-width: 0; }
 .hz-admin .rubrica-valor {
   display: grid; place-items: center; width: 44px; height: 44px; margin-top: 26px; border-radius: 50%;
-  background: var(--a-h2); color: var(--a-azul); font-weight: 800; font-size: 18px;
+  background: var(--hz-superficie-3); color: var(--hz-tinta); font-weight: var(--hz-fw-cifra); font-size: var(--hz-fs-18);
 }
-.hz-admin fieldset:disabled .opcion { cursor: not-allowed; }
 
-.hz-admin input:disabled,
-.hz-admin textarea:disabled,
-.hz-admin select:disabled { background: #f4f6f9; color: var(--a-tinta-3); cursor: not-allowed; }
+/* Apertura y cierre programados */
+.hz-admin .campo-hora { margin-bottom: var(--hz-sp-2); }
+.hz-admin .campo-hora .campo { min-width: min(220px, 100%); }
+.hz-admin .campo-hora__nota { flex-basis: 100%; margin: 0 0 var(--hz-sp-2); }
+
+/* Respuestas por persona: 13 columnas; en escritorio caben sin cortar los números */
+.hz-admin .tabla-respuestas thead th { vertical-align: bottom; }
+.hz-admin .tabla-respuestas .num { white-space: nowrap; }
+.hz-admin .tabla-respuestas tbody th .etiqueta { margin-left: var(--hz-sp-2); }
+@media (min-width: 641px) {
+  .hz-admin .tabla-respuestas th,
+  .hz-admin .tabla-respuestas td { padding: var(--hz-sp-2); }
+  .hz-admin .tabla-respuestas thead th.num { max-width: 9ch; white-space: normal; hyphens: auto; }
+  .hz-admin .tabla-respuestas tbody th { min-width: 14ch; }
+  .hz-admin .tabla-respuestas .td-corto { white-space: nowrap; }
+}
 
 /* Celular: las tablas largas se leen como tarjetas (una por fila, cada dato con su rótulo) y el menú va en una sola fila deslizable */
 @media (max-width: 640px) {
+  .hz-admin .panel { padding: var(--hz-sp-4); }
+  .hz-admin .kpis { gap: var(--hz-sp-3); }
+  .hz-admin .kpi { padding: var(--hz-sp-3) var(--hz-sp-4); }
+  .hz-admin .cifra { font-size: var(--hz-fs-24); }
   .hz-admin .tabla-tarjetas thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .hz-admin .tabla-tarjetas,
   .hz-admin .tabla-tarjetas tbody,
   .hz-admin .tabla-tarjetas tr { display: block; width: 100%; }
-  .hz-admin .tabla-tarjetas tr { border-bottom: 1px solid var(--a-h3); padding: 8px 0; }
-  .hz-admin .tabla-tarjetas tbody th { display: block; border: 0; padding: 4px 0; font-size: 16px; }
+  .hz-admin .tabla-tarjetas tr { border-bottom: 1px solid var(--hz-borde); padding: var(--hz-sp-2) var(--hz-sp-3); }
+  .hz-admin .tabla-tarjetas tbody tr:last-child { border-bottom: 0; }
+  .hz-admin .tabla-tarjetas tbody th { display: block; border: 0; padding: var(--hz-sp-1) 0; font-size: var(--hz-fs-16); }
   .hz-admin .tabla-tarjetas td {
-    display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    border: 0; padding: 4px 0; text-align: right; overflow-wrap: anywhere;
+    display: flex; justify-content: space-between; align-items: center; gap: var(--hz-sp-3);
+    border: 0; padding: var(--hz-sp-1) 0; text-align: right; overflow-wrap: anywhere;
   }
-  .hz-admin .tabla-tarjetas td::before { content: attr(data-label); color: var(--a-tinta-2); font-size: 13px; font-weight: 600; text-align: left; flex: 0 0 auto; max-width: 55%; }
+  .hz-admin .tabla-tarjetas td::before { content: attr(data-label); color: var(--hz-tinta-2); font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); text-align: left; flex: 0 0 auto; max-width: 55%; }
   .hz-admin .tabla-tarjetas td .barra { display: none; }
-  .hz-admin .tabla-tarjetas td.td-largo { display: block; text-align: left; overflow-wrap: anywhere; }
+  .hz-admin .tabla-tarjetas td.td-largo { display: block; text-align: left; }
   .hz-admin .tabla-tarjetas td.td-largo::before { display: block; max-width: none; }
-  .hz-admin .tabla-tarjetas td .enlaces { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .hz-admin .tabla-tarjetas td .enlaces { flex-direction: column; align-items: flex-end; gap: var(--hz-sp-1); }
   .hz-admin .nav {
-    flex-wrap: nowrap; overflow-x: auto; flex-basis: 100%; scrollbar-width: none;
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
     /* El borde derecho se desvanece: avisa que el menú sigue hacia el lado */
     -webkit-mask-image: linear-gradient(to right, #000 82%, transparent);
     mask-image: linear-gradient(to right, #000 82%, transparent);
-    padding-right: 40px;
+    padding-right: var(--hz-sp-10);
   }
-  .hz-admin .nav__item { white-space: nowrap; }
   /* Rúbricas: el rótulo «Nivel 9» ya dice el valor; el círculo le quitaría ancho al texto */
   .hz-admin .rubrica-nivel { grid-template-columns: minmax(0, 1fr); }
   .hz-admin .rubrica-valor { display: none; }
@@ -329,7 +440,8 @@
 
 /* Hoja imprimible de QR: cuatro mesas por hoja A4 */
 @media print {
-  .hz-admin { min-height: 0; }
+  /* Papel: fondo blanco y tinta negra, sin importar el tema de la pantalla */
+  .hz-admin { min-height: 0; --hz-tinta: #000; --hz-tinta-2: #000; --hz-tinta-3: #333; --hz-accion: #000; --hz-fondo: #fff; --hz-superficie-1: #fff; }
   .hz-admin .encabezado-sala,
   .hz-admin .cabecera,
   .hz-admin .aviso-mock,
@@ -349,18 +461,3 @@
   .hz-admin .qr-tarjeta img { width: 85mm; height: 85mm; }
   @page { size: A4; margin: 6mm; }
 }
-
-/* Resultados por ronda (acta P3): R1 hueco en verde, R2 sólido en rojo, siempre con su texto */
-.hz-admin .ronda { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
-.hz-admin .ronda::before { content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
-.hz-admin .ronda--1 { color: var(--hz-r1, #1f7a3a); }
-.hz-admin .ronda--1::before { border: 2px solid currentColor; }
-.hz-admin .ronda--2 { color: var(--hz-r2, #c62828); }
-.hz-admin .ronda--2::before { background: currentColor; }
-.hz-admin .tabla-resultado caption { text-align: left; font-weight: 700; font-size: 16px; color: var(--a-azul); padding-bottom: 4px; }
-.hz-admin .tabla-resultado tbody th { font-weight: 500; hyphens: auto; }
-.hz-admin .tabla-resultado th,
-.hz-admin .tabla-resultado td { padding: 8px 6px; }
-.hz-admin .tabla-resultado .num { white-space: nowrap; }
-.hz-admin .tabla-resultado .fila-total th,
-.hz-admin .tabla-resultado .fila-total td { font-weight: 800; color: var(--a-azul); border-top: 2px solid var(--a-azul); border-bottom: 0; }

@@ -1,81 +1,80 @@
-/* Landing de la raíz (T5). Solo tokens --hz-* del sistema de diseño; clases in-* bajo .hz-inicio.
-   Un solo motivo: los cuartos de círculo de los horizontes, a varias escalas. */
+/* Landing de la raíz (T5) en el tema carbón de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md).
+   Solo tokens --hz-*; clases in-* bajo .hz-inicio. Titulares en 900 con la palabra clave en azul Estratek,
+   el degradado solo como línea y la » como firma. Un motivo propio: los cuartos de círculo de los horizontes. */
 .hz-inicio {
-  --in-r1: var(--hz-r1, #1F7A3A);
-  --in-r2: var(--hz-r2, #C62828);
   --in-margen: clamp(1rem, 4vw, 3rem);
-  --in-ancho: 88rem;
-  --in-display: clamp(2.25rem, 4.6vw, 4.75rem);
-  --in-h2: clamp(1.75rem, 3vw, 2.75rem);
+  --in-ancho: 80rem;
   font-size: 1.0625rem;
   overflow-x: clip;
 }
-.hz-inicio a:not(.hz-boton) { color: var(--hz-azul); font-weight: 600; text-underline-offset: 3px; }
+.hz-inicio a:not(.hz-boton) { color: var(--hz-accion); font-weight: var(--hz-fw-etiqueta); text-underline-offset: 3px; }
 :where(.hz-inicio) ul, :where(.hz-inicio) ol { margin: 0; padding: 0; list-style: none; }
 
 .in-ancho { max-width: var(--in-ancho); margin-inline: auto; padding-inline: var(--in-margen); }
 .in-texto { display: grid; gap: var(--hz-sp-4); align-content: start; max-width: 40rem; }
-.in-display { font-size: var(--in-display); font-weight: 800; line-height: 1.02; letter-spacing: -0.03em; color: var(--hz-azul); }
-.in-h2 { font-size: var(--in-h2); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; color: var(--hz-azul); }
-.in-h3 { font-size: var(--hz-fs-20); font-weight: 700; line-height: var(--hz-lh-titulo); }
-.in-r1, .in-r2 { font-weight: 800; white-space: nowrap; }
-.in-r1 { color: var(--in-r1); }
-.in-r2 { color: var(--in-r2); }
-.in-r1-forma { fill: var(--hz-fondo); stroke: var(--in-r1); stroke-width: 3; }
-.in-r2-forma { fill: var(--in-r2); }
+.in-display { font-size: var(--hz-fs-display); font-weight: var(--hz-fw-display); line-height: var(--hz-lh-display); letter-spacing: var(--hz-ls-display); color: var(--hz-tinta); text-wrap: balance; }
+.in-h2 { font-size: var(--hz-fs-display-2); font-weight: var(--hz-fw-display); line-height: 1.1; letter-spacing: var(--hz-ls-display); color: var(--hz-tinta); text-wrap: balance; }
+.in-h3 { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-titulo); line-height: var(--hz-lh-titulo); letter-spacing: var(--hz-ls-titulo); }
+/* La palabra clave del titular, en azul, como en estratek.com.co. */
+.in-clave { color: var(--hz-accion); }
+/* La » del logo como firma. */
+.in-firma { display: inline-block; margin-left: 0.3em; color: var(--hz-accion); font-weight: var(--hz-fw-display); }
+.in-r1, .in-r2 { font-weight: var(--hz-fw-titulo); white-space: nowrap; }
+.in-r1 { color: var(--hz-r1); }
+.in-r2 { color: var(--hz-r2); }
+.in-r1-forma { fill: var(--hz-fondo); stroke: var(--hz-r1); stroke-width: 3; }
+.in-r2-forma { fill: var(--hz-r2); }
 
 /* Saltar al contenido: visible solo con el foco. */
 .in-saltar {
   position: absolute; left: var(--hz-sp-4); top: -4rem; z-index: 20;
-  padding: var(--hz-sp-3) var(--hz-sp-4); background: var(--hz-azul); color: #FFFFFF !important;
-  border-radius: var(--hz-r-m);
+  padding: var(--hz-sp-3) var(--hz-sp-4); background: var(--hz-accion); color: var(--hz-sobre-accion) !important;
+  border-radius: var(--hz-r-boton);
 }
 .in-saltar:focus { top: var(--hz-sp-2); }
 
-/* ── Navegación ───────────────────────────────────── */
-.in-nav {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3);
-  max-width: var(--in-ancho); margin-inline: auto;
-  padding: var(--hz-sp-3) var(--in-margen);
-}
-.in-nav__marca {
-  display: inline-flex; align-items: center; gap: var(--hz-sp-2); min-height: 44px;
-  font-size: var(--hz-fs-20); font-weight: 800; letter-spacing: -0.01em; text-decoration: none;
-}
-.in-nav__arcos { width: 28px; height: 28px; }
+/* ── Encabezado de producto con la navegación ─────── */
+.hz-inicio a.hz-producto__marca { color: var(--hz-tinta); }
+.in-nav .hz-producto__fila { max-width: var(--in-ancho); margin-inline: auto; padding-inline: var(--in-margen); }
 .in-nav__secciones { display: none; }
 .in-nav__secciones ul { display: flex; gap: var(--hz-sp-1); }
 .in-nav__secciones a {
   display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--hz-sp-3);
-  font-size: var(--hz-fs-14); color: var(--hz-tinta) !important; text-decoration: none; border-radius: var(--hz-r-m);
+  font-size: var(--hz-fs-14); color: var(--hz-tinta) !important; text-decoration: none; border-radius: var(--hz-r-boton);
 }
-.in-nav__secciones a:hover { background: var(--hz-h1); }
-.in-nav__panel { padding-inline: var(--hz-sp-4); white-space: nowrap; }
+.in-nav__secciones a:hover { background: var(--hz-superficie-1); }
+/* En el celular el encabezado lleva solo la marca: el panel sigue en «Para facilitadores» y en el pie. */
+.in-nav__panel { display: none; padding-inline: var(--hz-sp-5); white-space: nowrap; }
+@media (min-width: 30rem) { .in-nav__panel { display: inline-flex; } }
 @media (min-width: 64rem) { .in-nav__secciones { display: block; } }
 
-/* ── Hero: el texto y la matriz con los horizontes a gran escala ── */
-.in-hero { display: grid; gap: var(--hz-sp-8); padding-top: clamp(1.5rem, 5vw, 3rem); }
-.in-hero__texto { display: grid; gap: var(--hz-sp-5); align-content: center; padding-inline: var(--in-margen); }
-.in-lead { font-size: clamp(1.0625rem, 1.4vw, 1.375rem); line-height: 1.5; max-width: 34rem; }
-.in-acciones { display: flex; flex-wrap: wrap; gap: var(--hz-sp-3); }
+/* ── Hero: el titular y la matriz con los horizontes a gran escala ── */
+.in-hero { display: grid; gap: var(--hz-sp-8); padding-top: clamp(2rem, 6vw, 4rem); }
+.in-hero__texto { display: grid; gap: var(--hz-sp-6); align-content: center; padding-inline: var(--in-margen); }
+.in-lead { font-size: clamp(1.0625rem, 1.4vw, 1.25rem); line-height: 1.55; max-width: 34rem; color: var(--hz-tinta-2); }
+.in-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-3) var(--hz-sp-6); }
+.hz-inicio a.in-avance { display: inline-flex; align-items: center; min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
+.hz-inicio a.in-avance:hover { text-decoration: underline; }
 .in-hero__dato { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 
 .in-matriz { margin: 0; display: grid; gap: var(--hz-sp-3); }
 .in-matriz svg { display: block; width: 100%; height: auto; }
 .in-matriz figcaption { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); padding-inline: var(--in-margen); max-width: 40rem; }
-.in-matriz__h { font-size: 4.2px; font-weight: 800; fill: var(--hz-azul); }
-.in-matriz__eje { font-size: 3.4px; font-weight: 700; fill: var(--hz-tinta-2); }
-.in-matriz__fijo { fill: #8A9BB5; }
-.in-matriz__r1 { fill: var(--hz-fondo); stroke: var(--in-r1); stroke-width: 0.9; }
-.in-matriz__r2 { fill: var(--in-r2); }
+/* H1, H2 y H3 son el gráfico propio de Horizontes: van en su acento. */
+.in-matriz__h { font-size: 4.2px; font-weight: var(--hz-fw-display); fill: var(--hz-acento-producto-texto); }
+.in-matriz__eje { font-size: 3.4px; font-weight: var(--hz-fw-etiqueta); fill: var(--hz-tinta-2); }
+.in-matriz__fijo { fill: var(--hz-tinta-3); }
+.in-matriz__horizonte { stroke: var(--hz-azul-medio); stroke-width: 0.4; }
+.in-matriz__r1 { fill: var(--hz-fondo); stroke: var(--hz-r1); stroke-width: 0.9; }
+.in-matriz__r2 { fill: var(--hz-r2); }
 .in-matriz__punta { fill: var(--hz-tinta); }
 .in-matriz__traza { stroke: var(--hz-tinta); stroke-width: 0.6; stroke-dasharray: 1; }
-.in-matriz__etiqueta { font-size: 3.4px; font-weight: 800; fill: var(--hz-tinta); }
+.in-matriz__etiqueta { font-size: 3.4px; font-weight: var(--hz-fw-titulo); fill: var(--hz-tinta); }
 
-/* El movimiento R1→R2 es la firma: el punto de la ronda 2 sale del de la ronda 1 y la flecha se traza. Sin opacidad. */
+/* El movimiento R1→R2 es la firma de la matriz: el punto de la ronda 2 sale del de la ronda 1 y la flecha se traza. */
 @media (prefers-reduced-motion: no-preference) {
-  .in-matriz__mueve { animation: in-mover 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.5s both; }
-  .in-matriz__traza { animation: in-trazar 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.5s both; }
+  .in-matriz__mueve { animation: in-mover 1.6s var(--hz-curva) 0.5s both; }
+  .in-matriz__traza { animation: in-trazar 1.6s var(--hz-curva) 0.5s both; }
 }
 @keyframes in-mover { from { transform: translate(var(--dx), var(--dy)); } }
 @keyframes in-trazar { from { stroke-dashoffset: 1; } }
@@ -84,72 +83,69 @@
   /* El texto se alinea con la columna de las secciones; la matriz llega al borde derecho. */
   .in-hero { grid-template-columns: minmax(0, 1fr) auto; align-items: end; padding-top: 0; }
   .in-hero__texto { align-self: center; padding-left: max(var(--in-margen), calc((100vw - var(--in-ancho)) / 2 + var(--in-margen))); padding-right: 0; }
-  .in-matriz { width: min(56vw, 100svh - 7rem); }
+  .in-matriz { width: min(52vw, 100svh - 8rem); }
 }
 
-/* ── Secciones ─────────────────────────────────────── */
-.in-sec { padding-block: clamp(4rem, 9vw, 8rem); }
-.in-sec--entrar, .in-sec--suave { background: var(--hz-h1); }
-.in-sec--azul { background: var(--hz-azul); color: #FFFFFF; }
-.in-sec--azul .in-h2 { color: #FFFFFF; }
-.in-sec--azul a:not(.hz-boton) { color: #FFFFFF; }
-.in-boton-claro { background: #FFFFFF; color: var(--hz-azul); justify-self: start; }
-.in-boton-claro:hover { background: var(--hz-h1); }
-.in-sec .in-bajada { margin-top: var(--hz-sp-4); max-width: 40rem; }
-.in-dos { display: grid; gap: var(--hz-sp-8); }
+/* ── Secciones: alternan fondo y superficie 1, separadas por un borde ── */
+.in-sec { padding-block: clamp(4rem, 8vw, 7rem); }
+.in-sec--entrar, .in-sec--suave { background: var(--hz-superficie-1); border-block: 1px solid var(--hz-borde); }
+.in-sec .in-bajada { margin-top: var(--hz-sp-4); max-width: 40rem; color: var(--hz-tinta-2); }
+.in-boton-claro { justify-self: start; }
+.in-dos { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--hz-sp-8); }
 @media (min-width: 56rem) {
   .in-dos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(3rem, 6vw, 6rem); align-items: start; }
 }
 
 /* Entrada a la mesa */
-.in-entrada { display: grid; gap: var(--hz-sp-4); align-content: start; padding: var(--hz-sp-6); background: var(--hz-fondo); border-radius: var(--hz-r-l); }
-.in-entrada .hz-campo__entrada { font-size: var(--hz-fs-20); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-.in-entrada .hz-campo__entrada::placeholder { text-transform: none; letter-spacing: 0.04em; color: var(--hz-tinta-3); font-weight: 500; }
+.in-entrada { display: grid; gap: var(--hz-sp-4); align-content: start; padding: var(--hz-sp-6); background: var(--hz-fondo); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-tarjeta); }
+.in-entrada .hz-campo__entrada { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-etiqueta); letter-spacing: 0.04em; text-transform: uppercase; }
+.in-entrada .hz-campo__entrada::placeholder { text-transform: none; letter-spacing: 0.04em; color: var(--hz-tinta-3); font-weight: var(--hz-fw-texto); }
 .in-entrada__aviso {
   padding: var(--hz-sp-3) var(--hz-sp-4); border-radius: var(--hz-r-m);
   background: var(--hz-alerta-fondo); color: var(--hz-tinta); font-size: var(--hz-fs-16);
+  border: 1px solid var(--hz-alerta); border-left-width: 4px;
 }
 
 /* Cómo funciona: el arco crece paso a paso */
 .in-pasos { display: grid; gap: var(--hz-sp-8); margin-top: var(--hz-sp-10); }
 .in-paso { display: grid; grid-template-columns: 5rem minmax(0, 1fr); column-gap: var(--hz-sp-4); row-gap: var(--hz-sp-2); align-content: start; }
-.in-paso__lamina { grid-row: span 2; width: 5rem; height: 5rem; background: var(--hz-h1); border-radius: var(--hz-r-m); }
+.in-paso__lamina { grid-row: span 2; width: 5rem; height: 5rem; background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-tarjeta); }
 .in-paso__flecha { fill: none; stroke: var(--hz-tinta); stroke-width: 3; }
-.in-paso p { color: var(--hz-tinta); }
+.in-paso p { color: var(--hz-tinta-2); }
 @media (min-width: 40rem) { .in-pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--hz-sp-8); } }
 @media (min-width: 64rem) {
   .in-pasos { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--hz-sp-12); }
   .in-paso { grid-template-columns: minmax(0, 1fr); }
-  .in-paso__lamina { grid-row: auto; width: 100%; height: auto; aspect-ratio: 1; max-width: 16rem; margin-bottom: var(--hz-sp-3); }
+  .in-paso__lamina { grid-row: auto; width: 100%; height: auto; aspect-ratio: 1; max-width: 14rem; margin-bottom: var(--hz-sp-3); }
 }
 
 /* Qué se evalúa */
 .in-eje { display: grid; gap: var(--hz-sp-2); margin-top: var(--hz-sp-4); }
 .in-lista { display: grid; gap: var(--hz-sp-3); }
 .in-lista li { position: relative; padding-left: 1.5rem; }
-/* Viñeta: el cuarto de círculo a tamaño de texto. */
+/* Viñeta: el cuarto de círculo de los horizontes, en el acento de Horizontes. */
 .in-lista li::before {
   content: ''; position: absolute; left: 0; top: 0.35em;
   width: 0.8em; height: 0.8em;
-  background: var(--hz-azul-medio);
+  background: var(--hz-acento-producto);
   border-top-right-radius: 100%;
 }
-.in-prueba { display: grid; gap: var(--hz-sp-3); margin-top: var(--hz-sp-4); padding: var(--hz-sp-5) var(--hz-sp-4); background: var(--hz-fondo); border-radius: var(--hz-r-l); }
+.in-prueba { display: grid; gap: var(--hz-sp-3); margin-top: var(--hz-sp-4); padding: var(--hz-sp-5) var(--hz-sp-4); background: var(--hz-fondo); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-tarjeta); }
 .in-prueba__nota { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 
-/* Facilitadores (campo azul) y datos */
-.in-sec--azul .in-texto { max-width: 36rem; }
+/* Facilitadores y datos */
 .in-lista--datos { gap: var(--hz-sp-4); }
 .in-enlace { display: inline-flex; align-items: center; min-height: 44px; }
 
-/* ── Pie: el nombre y los horizontes, en grande ────── */
-.in-pie { background: var(--hz-h1); padding-block: clamp(3rem, 7vw, 6rem) calc(var(--hz-sp-8) + env(safe-area-inset-bottom)); }
-.in-pie__interior { display: grid; gap: var(--hz-sp-6); }
+/* ── Pie: la línea del degradado, el nombre con la firma y el logo de Estratek ── */
+.in-pie { position: relative; padding-block: clamp(3rem, 7vw, 6rem) calc(var(--hz-sp-8) + env(safe-area-inset-bottom)); }
+.in-pie::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--hz-grad-marca); }
+.in-pie__interior { display: grid; gap: var(--hz-sp-8); }
 .in-pie__nombre {
-  display: flex; align-items: flex-end; gap: 0.12em;
-  font-size: clamp(3rem, 12vw, 11rem); font-weight: 800; line-height: 0.9; letter-spacing: -0.04em; color: var(--hz-azul);
+  font-size: clamp(2.5rem, 11vw, 9rem); font-weight: var(--hz-fw-display); line-height: 0.95; letter-spacing: -0.04em; color: var(--hz-tinta);
 }
-.in-pie__arcos { flex: none; width: 0.85em; height: 0.85em; }
-.in-pie__datos { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2) var(--hz-sp-8); font-size: var(--hz-fs-16); }
+.in-pie__nombre .in-firma { margin-left: 0.05em; }
+.in-pie__logo { display: block; width: auto; height: 2.25rem; }
+.in-pie__datos { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-4) var(--hz-sp-8); font-size: var(--hz-fs-16); color: var(--hz-tinta-2); }
 .in-pie__datos ul { display: flex; flex-wrap: wrap; gap: 0 var(--hz-sp-5); }
 .in-pie__datos a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }

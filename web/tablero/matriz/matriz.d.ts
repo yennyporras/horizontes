@@ -36,7 +36,8 @@ export interface Etiqueta {
   nombre?: string
   ronda?: 1 | 2
   fs: number
-  color: string
+  /** Clase de color: texto principal (vivos) o suave (fijos). */
+  color: 'texto' | 'suave'
   peso: number
   tipo: 'vivo' | 'r1' | 'fijo'
   caja: Caja

@@ -4,21 +4,48 @@
 
 const ETIQUETAS_HORIZONTE_DEFECTO = { H1: [1.3, 1.9], H2: [4.3, 4.0], H3: [8.0, 7.6] };
 
+// Paleta de la familia Estratek (docs/marca/FAMILIA_ESTRATEK.md): solo tokens semánticos de
+// web/shared/ui/tokens.css, sin valores en duro. El mismo SVG sirve en el tema carbón (tablero) y en el
+// claro (celular y panel): cada var() toma el valor del tema de quien lo aloja.
+// Horizontes de afuera hacia adentro en superficies escalonadas: H3 superficie 1, H2 superficie 2 y
+// H1 superficie 3; su borde, el borde de control neutro (el verde agua se confundía con R1 en proyector). R1, R2 y los fijos dan al
+// menos 3:1 sobre las tres; el texto, más de 4,5:1 sobre su halo.
 export const COLORES = {
-  fondoH3: '#EEF4FB',
-  fondoH2: '#DDE9F7',
-  fondoH1: '#C9DCF2',
-  curva: '#3F7CC8',
-  rejilla: '#1C4587',
-  texto: '#1C4587',
-  textoSuave: '#4A5D7A',
-  fijo: '#7D8FA9',
-  halo: '#FFFFFF',
-  // Colores por ronda (tokens de T2). Los proyectos vivos se distinguen por su nombre, no por color;
+  fondoH3: 'var(--hz-superficie-1)',
+  fondoH2: 'var(--hz-superficie-2)',
+  fondoH1: 'var(--hz-superficie-3)',
+  curva: 'var(--hz-borde-control)',
+  rejilla: 'var(--hz-tinta)',
+  texto: 'var(--hz-tinta)',
+  textoSuave: 'var(--hz-tinta-2)',
+  // Gris azulado neutro: ni verde ni rojo (rondas) ni azul de acción.
+  fijo: 'var(--hz-tinta-3)',
+  halo: 'var(--hz-fondo)',
+  // Colores por ronda. Los proyectos vivos se distinguen por su nombre, no por color;
   // la ronda, por color, forma (R1 hueco, R2 sólido) y la etiqueta «R1»/«R2».
-  r1: 'var(--hz-r1, #1F7A3A)',
-  r2: 'var(--hz-r2, #C62828)',
+  r1: 'var(--hz-r1)',
+  r2: 'var(--hz-r2)',
 };
+
+// Los colores van en reglas CSS (los atributos de presentación no aceptan var()), limitadas a cada SVG por su id.
+function estilosColor(id, C) {
+  const s = `#${id} `;
+  return (
+    `${s}.hz-mz-h3{fill:${C.fondoH3}}` +
+    `${s}.hz-mz-h2{fill:${C.fondoH2};stroke:${C.curva}}` +
+    `${s}.hz-mz-h1{fill:${C.fondoH1};stroke:${C.curva}}` +
+    `${s}.hz-mz-rejilla{stroke:${C.rejilla}}` +
+    `${s}.hz-mz-eje{stroke:${C.texto}}` +
+    `${s}.hz-mz-texto{fill:${C.texto}}` +
+    `${s}.hz-mz-suave{fill:${C.textoSuave}}` +
+    `${s}.hz-mz-punta{fill:${C.texto};stroke:${C.halo}}` +
+    `${s}.hz-mz-halo{stroke:${C.halo}}` +
+    `${s}.hz-flecha{stroke:${C.texto}}` +
+    `${s}.hz-fijo{fill:${C.fijo};stroke:${C.halo}}` +
+    `${s}.hz-r2{stroke:${C.halo}}` +
+    `${s}.hz-etq{stroke:${C.halo}}`
+  );
+}
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -232,7 +259,7 @@ export function calcularLayout(datos, opciones = {}) {
   // Prioridad: nombre y ronda de cada vivo en su burbuja principal (R2 si está), luego en su R1
   // (comparación), luego fijos (de mayor a menor burbuja).
   const etiquetaVivo = (v, ronda, fs, tipo) =>
-    colocar({ texto: `${v.nombre} R${ronda}`, nombre: v.nombre, ronda, fs, color: colores.texto, peso: 800, tipo }, ronda === 1 ? v.r1 : v.r2, true);
+    colocar({ texto: `${v.nombre} R${ronda}`, nombre: v.nombre, ronda, fs, color: 'texto', peso: 800, tipo }, ronda === 1 ? v.r1 : v.r2, true);
   for (const v of vivos) {
     if (v.r2 || v.r1) v.etiqueta = etiquetaVivo(v, v.r2 ? 2 : 1, fsVivo, 'vivo');
   }
@@ -240,7 +267,7 @@ export function calcularLayout(datos, opciones = {}) {
     if (v.r1 && v.r2) v.etiquetaR1 = etiquetaVivo(v, 1, fsTag, 'r1');
   }
   for (const f of [...fijos].sort((a, b) => b.r - a.r)) {
-    f.etiqueta = colocar({ texto: f.nombre, fs: fsFijo, color: colores.textoSuave, peso: 600, tipo: 'fijo' }, f, false);
+    f.etiqueta = colocar({ texto: f.nombre, fs: fsFijo, color: 'suave', peso: 600, tipo: 'fijo' }, f, false);
   }
 
   return {
@@ -265,24 +292,23 @@ export function matrizSVG(datos, opciones = {}) {
   const yBase = y0 + P;
 
   partes.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(W)} ${r2(H)}" width="${r2(W)}" height="${r2(H)}" role="img" style="display:block" aria-labelledby="${id}-t ${id}-d" font-family="'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" class="hz-matriz">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" id="${id}" viewBox="0 0 ${r2(W)} ${r2(H)}" width="${r2(W)}" height="${r2(H)}" role="img" style="display:block" aria-labelledby="${id}-t ${id}-d" font-family="'Montserrat Variable', Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" class="hz-matriz">`,
   );
   const animar = !!opciones.animar && L.vivos.some((v) => v.r1 && v.r2);
+  let estilo = estilosColor(id, C);
   if (animar) {
     // Animación R1 → R2: la burbuja R2 sale desde la posición R1; flecha y etiquetas aparecen después.
     // Si el SVG se redibuja a mitad de camino (cambio de tamaño, datos nuevos), animarDesdeMs la
     // continúa donde iba (retraso negativo) en vez de volver a empezar desde R1.
     const desde = Math.max(0, Math.round(esNumero(opciones.animarDesdeMs) ? opciones.animarDesdeMs : 0));
-    partes.push(
-      `<style>` +
-        `.hz-anim-mov{animation:hzMover 1.2s cubic-bezier(.22,.8,.3,1) ${-desde}ms both}` +
+    estilo +=
+      `.hz-anim-mov{animation:hzMover 1.2s cubic-bezier(.22,.8,.3,1) ${-desde}ms both}` +
         `.hz-anim-apar{animation:hzAparecer .5s ease-out ${900 - desde}ms both}` +
         `@keyframes hzMover{from{transform:translate(var(--dx),var(--dy))}to{transform:translate(0,0)}}` +
         `@keyframes hzAparecer{from{opacity:0}to{opacity:1}}` +
-        `@media (prefers-reduced-motion: reduce){.hz-anim-mov,.hz-anim-apar{animation:none}}` +
-        `</style>`,
-    );
+      `@media (prefers-reduced-motion: reduce){.hz-anim-mov,.hz-anim-apar{animation:none}}`;
   }
+  partes.push(`<style>${estilo}</style>`);
   partes.push(`<title id="${id}-t">${esc(datos?.grafico?.titulo || 'Matriz de priorización por horizontes')}</title>`);
   const desc = L.vivos
     .map((v) => {
@@ -293,68 +319,68 @@ export function matrizSVG(datos, opciones = {}) {
   partes.push(`<desc id="${id}-d">${esc(desc)}</desc>`);
   partes.push(
     `<defs><clipPath id="${id}-clip"><rect x="${r2(x0)}" y="${r2(y0)}" width="${r2(P)}" height="${r2(P)}"/></clipPath>` +
-      `<marker id="${id}-flecha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="${r2(fs * 0.45)}" markerHeight="${r2(fs * 0.45)}" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.texto}" stroke="${C.halo}" stroke-width="1"/></marker>` +
+      `<marker id="${id}-flecha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="${r2(fs * 0.45)}" markerHeight="${r2(fs * 0.45)}" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="hz-mz-punta" d="M0,0 L10,5 L0,10 z" stroke-width="1"/></marker>` +
       `</defs>`,
   );
 
   // Fondos de horizontes (H3 = todo el plano, H2 y H1 = cuartos de círculo desde el origen).
   partes.push(`<g clip-path="url(#${id}-clip)">`);
-  partes.push(`<rect x="${r2(x0)}" y="${r2(y0)}" width="${r2(P)}" height="${r2(P)}" fill="${C.fondoH3}"/>`);
+  partes.push(`<rect x="${r2(x0)}" y="${r2(y0)}" width="${r2(P)}" height="${r2(P)}" class="hz-mz-h3"/>`);
   const radios = L.horizontes.filter((h) => esNumero(h.radio)).sort((a, b) => b.radio - a.radio);
   radios.forEach((h, i) => {
     const rp = h.radio * escala;
-    const fill = i === radios.length - 1 ? C.fondoH1 : C.fondoH2;
+    const clase = i === radios.length - 1 ? 'hz-mz-h1' : 'hz-mz-h2';
     partes.push(
-      `<path d="M${r2(x0)},${r2(yBase)} L${r2(x0 + rp)},${r2(yBase)} A${r2(rp)},${r2(rp)} 0 0 0 ${r2(x0)},${r2(yBase - rp)} Z" fill="${fill}" stroke="${C.curva}" stroke-width="${r2(Math.max(1.5, fs * 0.12))}" stroke-dasharray="${r2(fs * 0.5)} ${r2(fs * 0.3)}"/>`,
+      `<path d="M${r2(x0)},${r2(yBase)} L${r2(x0 + rp)},${r2(yBase)} A${r2(rp)},${r2(rp)} 0 0 0 ${r2(x0)},${r2(yBase - rp)} Z" class="${clase}" stroke-width="${r2(Math.max(1.5, fs * 0.12))}" stroke-dasharray="${r2(fs * 0.5)} ${r2(fs * 0.3)}"/>`,
     );
   });
   // Rejilla
   for (let v = Math.ceil(L.xmin); v <= L.xmax && v - L.xmin <= 50; v++) {
-    partes.push(`<line x1="${r2(sx(v))}" y1="${r2(y0)}" x2="${r2(sx(v))}" y2="${r2(yBase)}" stroke="${C.rejilla}" stroke-opacity="0.08"/>`);
+    partes.push(`<line x1="${r2(sx(v))}" y1="${r2(y0)}" x2="${r2(sx(v))}" y2="${r2(yBase)}" class="hz-mz-rejilla" stroke-opacity="0.08"/>`);
   }
   for (let v = Math.ceil(L.ymin); v <= L.ymax && v - L.ymin <= 50; v++) {
-    partes.push(`<line x1="${r2(x0)}" y1="${r2(sy(v))}" x2="${r2(x0 + P)}" y2="${r2(sy(v))}" stroke="${C.rejilla}" stroke-opacity="0.08"/>`);
+    partes.push(`<line x1="${r2(x0)}" y1="${r2(sy(v))}" x2="${r2(x0 + P)}" y2="${r2(sy(v))}" class="hz-mz-rejilla" stroke-opacity="0.08"/>`);
   }
   // Etiquetas H1, H2, H3
   for (const h of L.horizontes) {
     const pos = L.posEtiquetas[h.id];
     if (!pos) continue;
     partes.push(
-      `<text x="${r2(sx(pos[0]))}" y="${r2(sy(pos[1]))}" font-size="${r2(fs * 2.4)}" font-weight="800" fill="${C.texto}" fill-opacity="0.16" text-anchor="middle" dominant-baseline="middle">${esc(h.id)}</text>`,
+      `<text x="${r2(sx(pos[0]))}" y="${r2(sy(pos[1]))}" font-size="${r2(fs * 2.4)}" font-weight="800" class="hz-mz-texto" fill-opacity="0.16" text-anchor="middle" dominant-baseline="middle">${esc(h.id)}</text>`,
     );
   }
   partes.push(`</g>`);
 
   // Ejes y marcas
   partes.push(
-    `<path d="M${r2(x0)},${r2(y0)} V${r2(yBase)} H${r2(x0 + P)}" fill="none" stroke="${C.texto}" stroke-width="${r2(Math.max(1.5, fs * 0.1))}"/>`,
+    `<path d="M${r2(x0)},${r2(y0)} V${r2(yBase)} H${r2(x0 + P)}" fill="none" class="hz-mz-eje" stroke-width="${r2(Math.max(1.5, fs * 0.1))}"/>`,
   );
   const fsTick = Math.max(10, fs * 0.78);
   for (let v = Math.ceil(L.xmin); v <= L.xmax && v - L.xmin <= 50; v++) {
-    partes.push(`<text x="${r2(sx(v))}" y="${r2(yBase + fsTick * 1.3)}" font-size="${r2(fsTick)}" fill="${C.textoSuave}" text-anchor="middle">${v}</text>`);
+    partes.push(`<text x="${r2(sx(v))}" y="${r2(yBase + fsTick * 1.3)}" font-size="${r2(fsTick)}" class="hz-mz-suave" text-anchor="middle">${v}</text>`);
   }
   for (let v = Math.ceil(L.ymin); v <= L.ymax && v - L.ymin <= 50; v++) {
-    partes.push(`<text x="${r2(x0 - fsTick * 0.6)}" y="${r2(sy(v))}" font-size="${r2(fsTick)}" fill="${C.textoSuave}" text-anchor="end" dominant-baseline="middle">${v}</text>`);
+    partes.push(`<text x="${r2(x0 - fsTick * 0.6)}" y="${r2(sy(v))}" font-size="${r2(fsTick)}" class="hz-mz-suave" text-anchor="end" dominant-baseline="middle">${v}</text>`);
   }
   // Títulos de ejes
   const tx = x0 + P / 2;
   partes.push(
-    `<text x="${r2(tx)}" y="${r2(yBase + fs * 2.9)}" font-size="${r2(fs)}" font-weight="800" fill="${C.texto}" text-anchor="middle" letter-spacing="0.04em">${esc(L.ejes.x.titulo || '')}</text>`,
-    `<text x="${r2(tx)}" y="${r2(yBase + fs * 4.2)}" font-size="${r2(fs * 0.8)}" fill="${C.textoSuave}" text-anchor="middle">${esc(L.ejes.x.subtitulo || '')}</text>`,
+    `<text x="${r2(tx)}" y="${r2(yBase + fs * 2.9)}" font-size="${r2(fs)}" font-weight="800" class="hz-mz-texto" text-anchor="middle" letter-spacing="0.04em">${esc(L.ejes.x.titulo || '')}</text>`,
+    `<text x="${r2(tx)}" y="${r2(yBase + fs * 4.2)}" font-size="${r2(fs * 0.8)}" class="hz-mz-suave" text-anchor="middle">${esc(L.ejes.x.subtitulo || '')}</text>`,
   );
   const ty = y0 + P / 2;
   const xt1 = x0 - fs * 3.5;
   const xt2 = x0 - fs * 2.3;
   partes.push(
-    `<text transform="translate(${r2(xt1)} ${r2(ty)}) rotate(-90)" font-size="${r2(fs)}" font-weight="800" fill="${C.texto}" text-anchor="middle" letter-spacing="0.04em">${esc(L.ejes.y.titulo || '')}</text>`,
-    `<text transform="translate(${r2(xt2)} ${r2(ty)}) rotate(-90)" font-size="${r2(fs * 0.8)}" fill="${C.textoSuave}" text-anchor="middle">${esc(L.ejes.y.subtitulo || '')}</text>`,
+    `<text transform="translate(${r2(xt1)} ${r2(ty)}) rotate(-90)" font-size="${r2(fs)}" font-weight="800" class="hz-mz-texto" text-anchor="middle" letter-spacing="0.04em">${esc(L.ejes.y.titulo || '')}</text>`,
+    `<text transform="translate(${r2(xt2)} ${r2(ty)}) rotate(-90)" font-size="${r2(fs * 0.8)}" class="hz-mz-suave" text-anchor="middle">${esc(L.ejes.y.subtitulo || '')}</text>`,
   );
 
   // Fijos
   partes.push(`<g class="hz-fijos">`);
   for (const f of L.fijos) {
     partes.push(
-      `<circle class="hz-fijo" data-proyecto="${esc(f.id)}" cx="${r2(f.cx)}" cy="${r2(f.cy)}" r="${r2(f.r)}" fill="${C.fijo}" fill-opacity="0.85" stroke="${C.halo}" stroke-width="1.5"><title>${esc(f.nombre)} · X ${f.valor.x} · Y ${f.valor.y} · TAM ${esc(f.tam)}</title></circle>`,
+      `<circle class="hz-fijo" data-proyecto="${esc(f.id)}" cx="${r2(f.cx)}" cy="${r2(f.cy)}" r="${r2(f.r)}" stroke-width="1.5"><title>${esc(f.nombre)} · X ${f.valor.x} · Y ${f.valor.y} · TAM ${esc(f.tam)}</title></circle>`,
     );
   }
   partes.push(`</g>`);
@@ -362,15 +388,15 @@ export function matrizSVG(datos, opciones = {}) {
   // Vivos: R2 sólido y rojo; flecha R1 → R2; R1 hueco y verde encima (se ve aunque caiga sobre una R2).
   const sw = r2(Math.max(2.5, fs * 0.2));
   const flecha = (a) =>
-    `<line x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${C.halo}" stroke-width="${r2(sw * 2.4)}" stroke-linecap="round"/>` +
-    `<line class="hz-flecha" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke="${C.texto}" stroke-width="${sw}" stroke-linecap="round" marker-end="url(#${id}-flecha)"/>`;
+    `<line class="hz-mz-halo" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke-width="${r2(sw * 2.4)}" stroke-linecap="round"/>` +
+    `<line class="hz-flecha" x1="${r2(a.x1)}" y1="${r2(a.y1)}" x2="${r2(a.x2)}" y2="${r2(a.y2)}" stroke-width="${sw}" stroke-linecap="round" marker-end="url(#${id}-flecha)"/>`;
   const conFlecha = (encima) => L.vivos.filter((v) => v.flecha && v.flecha.encima === encima);
   partes.push(`<g class="hz-vivos">`);
   for (const v of L.vivos) {
     if (!v.r2) continue;
     const mover = animar && v.r1;
     partes.push(
-      `<circle class="hz-r2${mover ? ' hz-anim-mov' : ''}" style="fill:${C.r2}${mover ? `;--dx:${r2(v.r1.cx - v.r2.cx)}px;--dy:${r2(v.r1.cy - v.r2.cy)}px` : ''}" data-proyecto="${esc(v.id)}" cx="${r2(v.r2.cx)}" cy="${r2(v.r2.cy)}" r="${r2(v.r2.r)}" stroke="${C.halo}" stroke-width="2"><title>${esc(v.nombre)} ronda 2 · X ${v.r2.valor.x} · Y ${v.r2.valor.y}</title></circle>`,
+      `<circle class="hz-r2${mover ? ' hz-anim-mov' : ''}" style="fill:${C.r2}${mover ? `;--dx:${r2(v.r1.cx - v.r2.cx)}px;--dy:${r2(v.r1.cy - v.r2.cy)}px` : ''}" data-proyecto="${esc(v.id)}" cx="${r2(v.r2.cx)}" cy="${r2(v.r2.cy)}" r="${r2(v.r2.r)}" stroke-width="2"><title>${esc(v.nombre)} ronda 2 · X ${v.r2.valor.x} · Y ${v.r2.valor.y}</title></circle>`,
     );
   }
   for (const v of conFlecha(false)) partes.push(`<g${animar ? ' class="hz-anim-apar"' : ''}>${flecha(v.flecha)}</g>`);
@@ -389,7 +415,7 @@ export function matrizSVG(datos, opciones = {}) {
   for (const e of orden) {
     const { caja } = e;
     partes.push(
-      `<text class="hz-etq hz-etq-${e.tipo}${animar && e.tipo !== 'fijo' ? ' hz-anim-apar' : ''}" x="${r2(caja.x + caja.w / 2)}" y="${r2(caja.y + caja.h / 2)}" font-size="${r2(e.fs)}" font-weight="${e.peso}" fill="${e.color}" text-anchor="middle" dominant-baseline="central" stroke="${C.halo}" stroke-width="${r2(e.fs * 0.28)}" stroke-linejoin="round" paint-order="stroke">${
+      `<text class="hz-etq hz-etq-${e.tipo} hz-mz-${e.color}${animar && e.tipo !== 'fijo' ? ' hz-anim-apar' : ''}" x="${r2(caja.x + caja.w / 2)}" y="${r2(caja.y + caja.h / 2)}" font-size="${r2(e.fs)}" font-weight="${e.peso}" text-anchor="middle" dominant-baseline="central" stroke-width="${r2(e.fs * 0.28)}" stroke-linejoin="round" paint-order="stroke">${
         e.ronda ? `${esc(e.nombre)} <tspan class="hz-etq-ronda" style="fill:${C[`r${e.ronda}`]}">R${e.ronda}</tspan>` : esc(e.texto)
       }</text>`,
     );

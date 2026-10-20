@@ -1,6 +1,6 @@
 # Capturas de referencia del tablero
 
-Para la guía del facilitador. Con los cambios del acta del 16-oct: ronda 1 en verde (aro hueco, «R1»), ronda 2 en rojo (burbuja sólida, «R2»), franja de la fase mientras una ronda está abierta y tabla con los 6 criterios y la fila «Total» (eje X + eje Y, del servidor). Datos: la prueba sintética del golden (20 personas, 2 mesas) en una sala llamada "Taller Foodsume". Se regeneran con:
+Para la guía del facilitador. Con los cambios del acta del 16-oct: ronda 1 en verde (aro hueco, «R1»), ronda 2 en rojo (burbuja sólida, «R2»), franja de la fase mientras una ronda está abierta y tabla con los 6 criterios y la fila «Total» (eje X + eje Y, del servidor). Datos: la prueba sintética del golden (20 personas, 2 mesas) en una sala llamada "Taller Foodsume". Desde el 19-oct, en el tema carbón de la familia Estratek: firma «Horizontes por Estratek »» y línea del degradado bajo el encabezado, horizontes en superficies carbón escalonadas y fijos en gris azulado. Se regeneran con:
 
 ```bash
 HZ_E2E_ESPERA_MS=0 HZ_CAPTURAS_GUIA=docs/capturas npx vitest run web/tablero/e2e -t "capturas de referencia"
