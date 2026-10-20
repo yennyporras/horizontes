@@ -72,6 +72,15 @@ describe('PaginaTablero', () => {
     expect(document.documentElement.dataset.tema).toBe('carbon')
     // La » es la marca gráfica: decorativa para el lector de pantalla.
     expect(firma.querySelector('.hz-firma-flecha')!.getAttribute('aria-hidden')).toBe('true')
+    // Logo decorativo y enlace: con el token del facilitador lleva a su panel.
+    expect(firma.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true')
+    expect(firma.querySelector('a')!.getAttribute('href')).toBe('/admin/salas')
+  })
+
+  test('sin token del facilitador, el logo del tablero lleva al inicio', async () => {
+    montar('/tablero/s_demo')
+    const titulo = await screen.findByRole('heading', { level: 1, name: mock.sala.nombre })
+    expect(titulo.closest('.hz-cab')!.querySelector('.hz-firma a')!.getAttribute('href')).toBe('/')
   })
 
   test('dos modos de proyección: «En vivo» (por defecto, solo la matriz) y «Con tabla», en ?modo=, con selector y teclas V, T, M y Esc', async () => {

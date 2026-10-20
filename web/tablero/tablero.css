@@ -90,6 +90,16 @@ body:has(> #root > .hz-tablero) {
   color: var(--hz-tinta-2);
   white-space: nowrap;
 }
+.hz-firma-enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+}
+.hz-firma-enlace:hover { text-decoration: underline; text-underline-offset: 3px; }
+.hz-firma-logo { flex: none; width: 1.4em; height: 1.4em; }
 .hz-firma-flecha {
   font-weight: var(--hz-fw-display);
   color: var(--hz-accion);

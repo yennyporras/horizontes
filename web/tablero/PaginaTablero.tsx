@@ -26,6 +26,7 @@ import {
   type ModoTablero,
 } from './logica'
 import { useTemaDocumento } from '../shared/ui'
+import { LogoHorizontes } from '../shared/ui/marca/LogoHorizontes'
 import type { DatosTablero, EstadoSala, Vista } from './tipos'
 import './tablero.css'
 
@@ -309,8 +310,12 @@ function Encabezado({
       <div className="hz-cab-titulo">
         <div className="hz-cab-nombre">
           <h1>{datos.sala?.nombre ?? 'Tablero'}</h1>
+          {/* El logo lleva al inicio; con el enlace del facilitador (trae token), a su panel. */}
           <p className="hz-firma">
-            Horizontes por Estratek <span className="hz-firma-flecha" aria-hidden="true">»</span>
+            <a className="hz-firma-enlace" href={token ? '/admin/salas' : '/'}>
+              <LogoHorizontes className="hz-firma-logo" tamano={20} />
+              Horizontes por Estratek <span className="hz-firma-flecha" aria-hidden="true">»</span>
+            </a>
           </p>
         </div>
         <p className="hz-cab-meta">
