@@ -127,7 +127,7 @@ describe('modos de proyección y votos recibidos', () => {
     expect(modoDeUrl(null)).toBe('grafica')
     expect(modoDeUrl('otro')).toBe('grafica')
   })
-  test('teclas del proyector: G Gráfica, D Detallado, M alterna, V «Cómo votó», F pantalla completa, 1, 2 y C la vista', () => {
+  test('teclas del proyector: G Gráfica, D Detallado, M alterna, V «Cómo votó», F pantalla completa, 0 matriz entera, 1, 2 y C la vista', () => {
     expect(accionDeTecla('g')).toEqual({ tipo: 'matriz', sola: true })
     expect(accionDeTecla('G')).toEqual({ tipo: 'matriz', sola: true })
     expect(accionDeTecla('d')).toEqual({ tipo: 'matriz', sola: false })
@@ -142,6 +142,8 @@ describe('modos de proyección y votos recibidos', () => {
     expect(accionDeTecla('m')).toEqual({ tipo: 'matriz', sola: null })
     expect(accionDeTecla('v')).toEqual({ tipo: 'detalle' })
     expect(accionDeTecla('f')).toEqual({ tipo: 'pantalla' })
+    // Zoom de la matriz: 0 la muestra entera.
+    expect(accionDeTecla('0')).toEqual({ tipo: 'entera' })
     expect(accionDeTecla('1')).toEqual({ tipo: 'vista', vista: 1 })
     expect(accionDeTecla('2')).toEqual({ tipo: 'vista', vista: 2 })
     expect(accionDeTecla('c')).toEqual({ tipo: 'vista', vista: 'comparacion' })

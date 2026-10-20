@@ -90,10 +90,6 @@ body:has(> #root > .hz-tablero) {
   color: var(--hz-tinta-2);
   font-weight: 600;
 }
-.hz-cab-vista {
-  font-weight: 800;
-  color: var(--hz-tinta);
-}
 /* Insignias de estado: «Preliminar» y la de la ronda abierta («En vivo: se actualiza cada 3 votos»). Sin borde ni color de
    acción, para que no se confundan con los botones del selector de modo. */
 .hz-tb-insignia {
@@ -202,10 +198,10 @@ body:has(> #root > .hz-tablero) {
   min-width: 0;
 }
 .hz-lienzo {
+  position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
   max-height: 85vh;
-  cursor: pointer;
 }
 .hz-lienzo svg {
   display: block;
@@ -999,11 +995,93 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Pantalla completa (tecla F): el tablero en el modo elegido llena la pantalla del navegador, sin los controles
-   de la barra; quedan la marca, la sala, la ronda, la vista y los votos recibidos. Sin la API, igual se
-   ocultan los controles. */
-.hz-pantalla-completa .hz-cab-controles {
-  display: none;
+/* Pantalla completa de la matriz (tecla F, pedido de Paola del 21-oct): solo el lienzo, sobre el fondo claro del
+   tema, con la matriz centrada y lo más grande que quepa (el plano es cuadrado y se centra solo). Sin la API del
+   navegador, el lienzo se superpone a la ventana (.hz-lienzo-completo). En Cada mesa por separado, la cuadrícula. */
+.hz-mesas-lienzo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.hz-lienzo:fullscreen,
+.hz-mesas-lienzo:fullscreen,
+.hz-lienzo-completo {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+  box-sizing: border-box;
+  padding: clamp(8px, 2vh, 28px);
+  background: var(--hz-fondo);
+  color: var(--hz-tinta);
+}
+.hz-lienzo-completo {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
+/* Zoom: con el foco (o en pantalla completa) el pellizco va a la matriz; con zoom, arrastrar la mueve. */
+.hz-lienzo:focus {
+  touch-action: pan-x pan-y;
+}
+.hz-lienzo[data-pantalla],
+.hz-lienzo[data-zoom] {
+  touch-action: none;
+}
+.hz-lienzo[data-zoom] {
+  cursor: grab;
+}
+.hz-lienzo[data-arrastrando] {
+  cursor: grabbing;
+}
+.hz-lienzo[data-pantalla]:focus-visible {
+  box-shadow: none;
+}
+/* «Ver entera» y «Salir»: discretos, en la esquina superior derecha, sin tapar el plano más de lo justo. */
+.hz-lienzo-controles {
+  position: absolute;
+  top: clamp(6px, 1.5vh, 20px);
+  right: clamp(6px, 1.5vh, 20px);
+  z-index: 2;
+  display: flex;
+  gap: 0.5em;
+}
+.hz-boton-lienzo {
+  min-height: 2.4em;
+  padding: 0.25em 0.85em;
+  font: inherit;
+  font-size: max(14px, 0.85em);
+  font-weight: 700;
+  color: var(--hz-tinta);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--hz-fondo) 88%, transparent);
+  border: 1px solid var(--hz-borde-control);
+  border-radius: var(--hz-r-pill);
+  cursor: pointer;
+  opacity: 0.8;
+}
+.hz-boton-lienzo:hover,
+.hz-boton-lienzo:focus-visible {
+  opacity: 1;
+  background: var(--hz-superficie-1);
+}
+.hz-boton-lienzo kbd {
+  margin-left: 0.3em;
+  padding: 0 0.35em;
+  font: inherit;
+  font-size: 0.8em;
+  border: 1px solid var(--hz-borde-control);
+  border-radius: 4px;
+}
+@media (hover: none) {
+  .hz-boton-lienzo kbd {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

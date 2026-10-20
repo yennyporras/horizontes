@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { MatrizHorizontes } from './MatrizHorizontes'
+import { BotonSalir, LienzoMatriz } from './LienzoMatriz'
 import { PanelProyecto } from './PanelProyecto'
 import { Progreso } from './Progreso'
 import { TablaComparada } from './TablaComparada'
@@ -146,21 +147,30 @@ export default function PaginaTablero() {
   const escalaTexto = useEscalaProyector()
   const letraMin = useLetraProyector()
   const pregunta = preguntaGuiadaActual(datos)
-  // Pantalla completa (F): la página en el modo elegido, sin los controles del encabezado (pedido de Paola,
-  // 20-oct; reemplaza el zoom por porcentaje). El elemento se guarda en estado: se monta con los datos.
-  const [raiz, setRaiz] = useState<HTMLElement | null>(null)
-  const pantalla = usePantallaCompleta({ elemento: raiz, onVista: setElegida, onDetalle: alternarDetalle, onMatriz: alternarMatriz, onAvanzar: avanzar })
+  // Pantalla completa (F): solo la matriz, en Gráfica y en Detallado (pedido de Paola, 21-oct: sin barra, selectores,
+  // columna, leyenda ni tabla), con zoom. En Cada mesa por separado, la cuadrícula de matrices. El elemento se guarda
+  // en estado: se monta con los datos y no existe con la pregunta guiada.
+  const [objetivo, setObjetivo] = useState<HTMLDivElement | null>(null)
+  // Tecla 0: la matriz vuelve a verse entera.
+  const [entera, setEntera] = useState(0)
+  const verEntera = useCallback(() => setEntera((n) => n + 1), [])
+  const pantalla = usePantallaCompleta({
+    elemento: objetivo,
+    onVista: setElegida,
+    onDetalle: alternarDetalle,
+    onMatriz: alternarMatriz,
+    onAvanzar: avanzar,
+    onVerEntera: verEntera,
+  })
   const conexion = useAvisoConexion(error, !!datos)
   const botonPantalla = (
     <>
       <button type="button" className="hz-boton-pantalla hz-boton-teclas" aria-keyshortcuts="?" onClick={() => pantalla.setAyuda((x) => !x)}>
         Teclas <kbd>?</kbd>
       </button>
-      {/* Con F11 el navegador ya está en pantalla completa: se sale con F11, el botón no haría nada. */}
-      {!pantalla.f11 && (
+      {objetivo && (
         <button type="button" className="hz-boton-pantalla" aria-keyshortcuts="F" onClick={pantalla.alternar}>
-          {/* En Gráfica, la pantalla completa es solo el diagrama; en Detallado, lo dice el botón (pedido de Paola, 20-oct). */}
-          {pantalla.activa ? 'Salir de pantalla completa' : soloMatriz || verMesas ? 'Pantalla completa' : 'Pantalla completa con detalle'} <kbd>F</kbd>
+          Pantalla completa <kbd>F</kbd>
         </button>
       )}
     </>
@@ -221,8 +231,7 @@ export default function PaginaTablero() {
 
   return (
     <main
-      ref={setRaiz}
-      className={['hz-tablero', pantalla.activa && 'hz-pantalla-completa', soloMatriz && !verMesas && 'hz-matriz-sola', verMesas && 'hz-tablero-mesas'].filter(Boolean).join(' ')}
+      className={['hz-tablero', soloMatriz && !verMesas && 'hz-matriz-sola', verMesas && 'hz-tablero-mesas'].filter(Boolean).join(' ')}
       data-ruta="tablero"
       data-tema="claro"
       data-modo={modo}
@@ -238,7 +247,6 @@ export default function PaginaTablero() {
         token={token}
         mesa={verMesas ? 'mesas' : mesa}
         onAlcance={cambiarAlcance}
-        pantallaCompleta={pantalla.activa}
         reconectando={conexion === 'punto'}
       />
       <div className="hz-area">
@@ -250,7 +258,14 @@ export default function PaginaTablero() {
         )}
         {verMesas ? (
           <>
-            <CuadriculaMesas sala={sala} token={token} datos={datos} vista={vista} escalaTexto={escalaTexto > 1 ? 1.5 : 1} letraMin={letraMin} pagina={pagina} />
+            <div ref={setObjetivo} className={['hz-mesas-lienzo', pantalla.respaldo && 'hz-lienzo-completo'].filter(Boolean).join(' ')} data-pantalla={pantalla.activa ? '' : undefined}>
+              <CuadriculaMesas sala={sala} token={token} datos={datos} vista={vista} escalaTexto={escalaTexto > 1 ? 1.5 : 1} letraMin={letraMin} pagina={pagina} />
+              {pantalla.activa && (
+                <div className="hz-lienzo-controles">
+                  <BotonSalir onSalir={pantalla.salir} />
+                </div>
+              )}
+            </div>
             {/* Cada mesa por separado también lleva la leyenda de las rondas y la pantalla completa. */}
             <div className="hz-pie-matriz hz-pie-mesas">
               <Leyenda vista={vista} />
@@ -277,9 +292,18 @@ export default function PaginaTablero() {
             ) : (
               <section className="hz-zona-matriz" aria-label="Matriz de priorización por horizontes">
                 <Vacio datos={datos} vista={vista} />
-                <div className="hz-lienzo" data-version={datos.version}>
-                  <MatrizHorizontes datos={datos} vista={vista} llenar escalaTexto={escalaTexto} letraMin={letraMin} animarCambios repetirAnimacion={repeticion} />
-                </div>
+                <LienzoMatriz
+                  datos={datos}
+                  vista={vista}
+                  escalaTexto={escalaTexto}
+                  letraMin={letraMin}
+                  repetirAnimacion={repeticion}
+                  pantalla={pantalla.activa}
+                  respaldo={pantalla.respaldo}
+                  onSalir={pantalla.salir}
+                  verEntera={entera}
+                  lienzoRef={setObjetivo}
+                />
                 {/* Pie de la matriz: leyenda en una línea; en Gráfica, además las teclas y la pantalla completa. */}
                 <div className="hz-pie-matriz">
                   <Leyenda vista={vista} />
@@ -340,7 +364,11 @@ export default function PaginaTablero() {
           </div>
         )}
       </div>
-      {pantalla.ayuda && <AyudaTeclas onCerrar={() => pantalla.setAyuda(false)} />}
+      {/* En pantalla completa la ayuda va dentro de la matriz (lo único que se ve). */}
+      {pantalla.ayuda &&
+        (pantalla.activa && objetivo
+          ? createPortal(<AyudaTeclas onCerrar={() => pantalla.setAyuda(false)} />, objetivo)
+          : <AyudaTeclas onCerrar={() => pantalla.setAyuda(false)} />)}
     </main>
   )
 }
@@ -416,7 +444,6 @@ function Encabezado({
   token,
   mesa,
   onAlcance,
-  pantallaCompleta,
   reconectando,
 }: {
   href: string
@@ -429,7 +456,6 @@ function Encabezado({
   token: string | null
   mesa: string | null
   onAlcance: (v: string) => void
-  pantallaCompleta: boolean
   reconectando: boolean
 }) {
   const insignia = insigniaResultado(datos)
@@ -448,13 +474,8 @@ function Encabezado({
                 {nombreEstado(datos.sala?.estado)}
               </span>
             ),
-            // Con el selector de alcance a la vista no se repite; en pantalla completa (sin selector), sí.
-            (!token || pantallaCompleta) && <span key="alcance">{alcanceTexto}</span>,
-            pantallaCompleta && (
-              <span key="vista" className="hz-cab-vista">
-                {VISTAS.find((v) => v.id === vista)?.texto}
-              </span>
-            ),
+            // Con el selector de alcance a la vista no se repite.
+            !token && <span key="alcance">{alcanceTexto}</span>,
             // Indicador discreto de votos recibidos (progreso en vivo de la ronda).
             votos && (
               <span key="votos" className="hz-cab-votos">

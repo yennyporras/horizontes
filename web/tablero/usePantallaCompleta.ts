@@ -20,6 +20,7 @@ export type AccionTecla =
   | { tipo: 'matriz'; sola: boolean | null }
   | { tipo: 'avanzar'; paso: 1 | -1 }
   | { tipo: 'ayuda' }
+  | { tipo: 'entera' }
   | { tipo: 'escape' }
 
 export function accionDeTecla(tecla: string): AccionTecla | null {
@@ -47,6 +48,9 @@ export function accionDeTecla(tecla: string): AccionTecla | null {
     case 'arrowleft':
     case 'pageup':
       return { tipo: 'avanzar', paso: -1 }
+    // Zoom de la matriz: 0 la vuelve a mostrar entera.
+    case '0':
+      return { tipo: 'entera' }
     case '?':
       return { tipo: 'ayuda' }
     case 'escape':
@@ -57,7 +61,7 @@ export function accionDeTecla(tecla: string): AccionTecla | null {
 }
 
 export interface AtajosTablero {
-  /** Lo que se pone en pantalla completa: la página del tablero en el modo elegido (null mientras carga). */
+  /** Lo que va a la pantalla completa: el lienzo de la matriz (o la cuadrícula de mesas); null si no hay matriz. */
   elemento: HTMLElement | null
   onVista: (v: Vista) => void
   onDetalle: () => void
@@ -65,43 +69,31 @@ export interface AtajosTablero {
   onMatriz: (sola: boolean | null) => void
   /** → / Página siguiente (1) y ← / Página anterior (−1). */
   onAvanzar: (paso: 1 | -1) => void
+  /** 0: la matriz vuelve a verse entera (sin zoom). */
+  onVerEntera?: () => void
 }
 
 /**
- * Pantalla completa del navegador con F11: el navegador lo dice con `display-mode: fullscreen`; si no, la ventana tapa
- * también la barra de tareas (su alto pasa del alto disponible de la pantalla). Un navegador sin ventana (pruebas) no
- * cuenta: su pantalla mide lo mismo que la ventana y no tiene barra de tareas.
+ * Pantalla completa de la matriz (pedido de Paola, 21-oct): F o el botón «Pantalla completa» ponen SOLO el lienzo de
+ * la matriz en la pantalla completa del navegador (Fullscreen API sobre ese elemento), en Gráfica y en Detallado; F,
+ * Esc o el botón «Salir» salen. Las teclas siguen dentro: 1, 2 y C cambian de vista (C en Comparación repite la
+ * animación); → y ← avanzan y retroceden; G, D y M cambian de modo; V alterna promedios y «Cómo votó»; 0 quita el zoom;
+ * ? abre la ayuda de teclas y Esc la cierra. Esc fuera de la pantalla completa no hace nada (Nicolai: abría Detallado).
+ * Si el navegador no deja usar la API, el lienzo se superpone a toda la ventana (`respaldo`) y Esc lo cierra.
  */
-function pantallaF11(): boolean {
-  if (typeof window === 'undefined' || document.fullscreenElement) return false
-  if (window.matchMedia?.('(display-mode: fullscreen)').matches) return true
-  const s = window.screen
-  if (!s?.height || !s?.width || !s.availHeight || s.availHeight >= s.height) return false
-  return window.innerHeight >= s.height - 1 && window.innerWidth >= s.width - 1
-}
-
-/**
- * Modo proyector: F o el botón «Pantalla completa» ponen el tablero, en el modo elegido («Gráfica»: solo la
- * matriz; «Detallado»: matriz, progreso y promedios), en la pantalla completa del navegador sin los controles
- * del encabezado; F, Esc o el mismo botón salen. Con F11 (pantalla completa del navegador) los controles también se
- * ocultan. 1, 2 y C cambian de vista; → y ← (o Página siguiente y anterior) avanzan y retroceden; G, D y M cambian de
- * modo; V alterna promedios y «Cómo votó»; ? abre la ayuda de teclas y Esc la cierra. Esc fuera de la pantalla
- * completa no hace nada (Nicolai: abría Detallado). Si el navegador no deja usar la API, igual se ocultan los
- * controles (`activa` sigue siendo true) y Esc lo cierra.
- */
-export function usePantallaCompleta({ elemento, onVista, onDetalle, onMatriz, onAvanzar }: AtajosTablero) {
+export function usePantallaCompleta({ elemento, onVista, onDetalle, onMatriz, onAvanzar, onVerEntera }: AtajosTablero) {
   const [real, setReal] = useState(false)
   const [respaldo, setRespaldo] = useState(false)
-  const [f11, setF11] = useState(pantallaF11)
   const [ayuda, setAyuda] = useState(false)
-  const propia = real || respaldo
-  const activa = propia || f11
-  const propiaRef = useRef(propia)
-  propiaRef.current = propia
+  const activa = !!elemento && (real || respaldo)
+  const activaRef = useRef(activa)
+  activaRef.current = activa
   const ayudaRef = useRef(ayuda)
   ayudaRef.current = ayuda
   const elementoRef = useRef(elemento)
   elementoRef.current = elemento
+  const enteraRef = useRef(onVerEntera)
+  enteraRef.current = onVerEntera
 
   const salir = useCallback(() => {
     setRespaldo(false)
@@ -109,21 +101,22 @@ export function usePantallaCompleta({ elemento, onVista, onDetalle, onMatriz, on
   }, [])
 
   const alternar = useCallback(() => {
-    if (propiaRef.current) return salir()
-    const el = elementoRef.current ?? document.documentElement
+    if (activaRef.current) return salir()
+    const el = elementoRef.current
+    if (!el) return
     if (typeof el.requestFullscreen === 'function') el.requestFullscreen().catch(() => setRespaldo(true))
     else setRespaldo(true)
   }, [salir])
 
+  // Sin matriz (pregunta guiada, cambio de alcance), el respaldo se cierra solo; el navegador sale solo de la suya.
   useEffect(() => {
-    const cambio = () => setReal(!!document.fullscreenElement)
-    const tamano = () => setF11(!document.fullscreenElement && pantallaF11())
+    if (!elemento) setRespaldo(false)
+  }, [elemento])
+
+  useEffect(() => {
+    const cambio = () => setReal(!!document.fullscreenElement && document.fullscreenElement === elementoRef.current)
     document.addEventListener('fullscreenchange', cambio)
-    window.addEventListener('resize', tamano)
-    return () => {
-      document.removeEventListener('fullscreenchange', cambio)
-      window.removeEventListener('resize', tamano)
-    }
+    return () => document.removeEventListener('fullscreenchange', cambio)
   }, [])
 
   useEffect(() => {
@@ -136,11 +129,12 @@ export function usePantallaCompleta({ elemento, onVista, onDetalle, onMatriz, on
       if (a.tipo === 'escape') {
         // Esc cierra la ayuda; si no está abierta, sale de la pantalla completa; fuera de ella no hace nada.
         if (ayudaRef.current) setAyuda(false)
-        else if (propiaRef.current) salir()
+        else if (activaRef.current) salir()
         return
       }
       if (a.tipo === 'ayuda') return setAyuda((x) => !x)
       if (a.tipo === 'pantalla') alternar()
+      else if (a.tipo === 'entera') enteraRef.current?.()
       else if (a.tipo === 'vista') onVista(a.vista)
       else if (a.tipo === 'avanzar') onAvanzar(a.paso)
       else if (a.tipo === 'detalle') onDetalle()
@@ -150,5 +144,5 @@ export function usePantallaCompleta({ elemento, onVista, onDetalle, onMatriz, on
     return () => window.removeEventListener('keydown', tecla)
   }, [alternar, salir, onVista, onDetalle, onMatriz, onAvanzar])
 
-  return { activa, f11: f11 && !propia, alternar, salir, ayuda, setAyuda }
+  return { activa, respaldo: activa && !real, alternar, salir, ayuda, setAyuda }
 }

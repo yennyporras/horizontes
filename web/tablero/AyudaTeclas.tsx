@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react'
 
 /** Teclas del tablero, en el orden en que se usan durante el taller. */
 export const TECLAS: { teclas: string[]; texto: string }[] = [
-  { teclas: ['F'], texto: 'Pantalla completa (entra y sale)' },
+  { teclas: ['F'], texto: 'Pantalla completa de la matriz (entra y sale; Esc también sale)' },
+  { teclas: ['Rueda', 'pellizco'], texto: 'Acerca la matriz en pantalla completa o con el foco en ella; arrastrar la mueve' },
+  { teclas: ['0'], texto: 'Matriz entera (quita el zoom)' },
   { teclas: ['G'], texto: 'Gráfica: solo la matriz' },
   { teclas: ['D'], texto: 'Detallado: la matriz con los promedios' },
   { teclas: ['M'], texto: 'Cambia entre Gráfica y Detallado' },
