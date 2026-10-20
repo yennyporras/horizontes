@@ -745,7 +745,7 @@ async function pantallaCompletaMatriz(page: Page, w: number, h: number, capturas
   const pc = await page.evaluate(() => {
     const lienzo = document.querySelector<HTMLElement>('.hz-lienzo')!
     const caja = lienzo.getBoundingClientRect()
-    const plano = document.querySelector('svg.hz-matriz .hz-mz-fondo')!.getBoundingClientRect()
+    const plano = document.querySelector('svg.hz-matriz rect.hz-mz-h3')!.getBoundingClientRect()
     // Lo que se ve en cada esquina y en el borde derecho es el lienzo (ni la barra, ni la columna, ni la leyenda).
     const puntos = [
       [5, 5],
@@ -828,7 +828,7 @@ async function pantallaCompletaMatriz(page: Page, w: number, h: number, capturas
   await page.keyboard.press('f')
   await page.waitForSelector('.hz-lienzo[data-pantalla]', { timeout: 5000 })
   await expect.poll(() => page.evaluate(() => !!document.elementFromPoint(innerWidth - 5, innerHeight / 2)?.closest('.hz-lienzo')), { timeout: 5000 }).toBe(true)
-  await expect.poll(() => page.evaluate(() => Math.round(document.querySelector('svg.hz-matriz .hz-mz-fondo')!.getBoundingClientRect().height)), { timeout: 5000 }).toBeGreaterThan(h * 0.7)
+  await expect.poll(() => page.evaluate(() => Math.round(document.querySelector('svg.hz-matriz rect.hz-mz-h3')!.getBoundingClientRect().height)), { timeout: 5000 }).toBeGreaterThan(h * 0.7)
   if (capturas) await page.screenshot({ path: join(capturas, `tablero-${w}x${h}-pantalla-completa-detallado.png`) })
   await page.getByRole('button', { name: 'Salir Esc' }).click()
   await page.waitForSelector('.hz-lienzo[data-pantalla]', { state: 'detached' })
