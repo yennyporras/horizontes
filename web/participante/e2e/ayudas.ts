@@ -19,12 +19,25 @@ export async function titulo(p: Page, nombre: string | RegExp, timeout = ESPERA)
  */
 export async function avisarSiCongelada(p: Page) {
   if (p.isClosed()) return
-  const responde = await Promise.race([p.evaluate(() => true).catch(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), 5000))])
-  if (!responde)
+  const estado = await Promise.race([
+    p
+      .evaluate(() => ({
+        url: location.pathname + location.search,
+        historial: { largo: history.length, estado: history.state as unknown },
+        titulo: document.querySelector('h1')?.textContent ?? null,
+        vista: sessionStorage.getItem(Object.keys(sessionStorage).find((k) => k.startsWith('hz_vista:')) ?? ''),
+        texto: (document.querySelector('main')?.textContent ?? '').replace(/\s+/g, ' ').slice(0, 300),
+      }))
+      .catch(() => null),
+    new Promise<false>((r) => setTimeout(() => r(false), 5000)),
+  ])
+  if (estado === false)
     console.warn(
       '[e2e celular] La página no responde: Chromium la dejó quieta por falta de memoria en la máquina (ni temporizadores ni polling). ' +
         'Este fallo no es de la app: vuelve a correr la prueba con la máquina más libre.',
     )
+  // La página responde: qué pantalla quedó, para distinguir un error real de una espera de la prueba.
+  else if (estado) console.warn(`[e2e celular] Pantalla al fallar: ${JSON.stringify(estado)}`)
 }
 
 /**
