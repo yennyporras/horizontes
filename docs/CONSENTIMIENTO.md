@@ -105,12 +105,14 @@ Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre, m
 | Dato | CO | PE | GT |
 |---|---|---|---|
 | Quién trata tus datos | Estratek S.A.S., Medellín, Colombia. | igual | igual |
-| Qué datos | Tu nombre, tu correo y tus calificaciones. Por seguridad, también la IP, el país y el navegador de tu conexión. | igual | igual |
-| Para qué | Identificarte en tu mesa, evitar inscripciones dobles y devolverte el acceso si cambias de celular. No los usamos para publicidad ni los entregamos a terceros. | igual | igual |
+| Qué datos | Tu nombre, tu correo y tus calificaciones. Por seguridad también guardamos la dirección IP, el país y el navegador desde los que te conectas. | igual | igual |
+| Para qué | Identificarte en tu mesa, evitar inscripciones dobles y devolverte el acceso si cambias de celular. No los usamos para publicidad ni los compartimos con terceros. | igual | igual |
 | Quién ve qué | En el tablero y en los celulares solo se ven promedios de 3 o más personas, sin nombres. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo. | igual | igual |
-| Dónde se guardan | (no se muestra) | Tus datos se guardan en servidores fuera del Perú. | (no se muestra) |
+| Dónde se guardan | (no se muestra) | En servidores ubicados fuera del Perú. | (no se muestra) |
 | Qué norma aplica | La Ley 1581 de 2012 de Colombia y la política de Estratek. | La Ley 29733 de Perú y la política de Estratek. | La Política de Tratamiento de Datos Personales de Estratek. |
-| Tus derechos | Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización. Escribe a info@estratek.com.co: respondemos en máximo 10 días hábiles. También puedes acudir a la Superintendencia de Industria y Comercio. | igual, pero «… a la Autoridad Nacional de Protección de Datos Personales.» | igual, sin autoridad (Guatemala no tiene ley general de datos personales). |
+| Tus derechos | Conocer, actualizar, rectificar o suprimir tus datos y revocar esta autorización. Escribe a info@estratek.com.co: respondemos en un plazo máximo de 10 días hábiles. También puedes acudir a la Superintendencia de Industria y Comercio. | «Acceso, rectificación, cancelación y oposición sobre tus datos, y revocar esta autorización.», el mismo correo y plazo, y «… a la Autoridad Nacional de Protección de Datos Personales.» | igual que Colombia, sin autoridad (Guatemala no tiene ley general de datos personales). |
+
+Los textos de esta tabla son los de `AVISO_DATOS` y `LEY_DATOS` en `web/participante/pantallas/Inscripcion.tsx`; una prueba (`web/participante/__tests__/aviso_datos.test.ts`) verifica que coincidan.
 
 ### 5.3 Preguntas de la versión `hz-1.1`, ya resueltas
 1. **Perú, flujo transfronterizo:** sí. La casilla de `PE` dice «Mis datos se guardan en servidores fuera del Perú.» y el aviso corto lo repite.
