@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Contrato de MatrizHorizontes para otras áreas (T2): solo props, sin fetch, sin parpadeo.
+// Contrato de MatrizHorizontes para otras áreas (celular): solo props, sin fetch, sin parpadeo.
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 import mockJson from '../../mocks/GET_api_tablero.json'

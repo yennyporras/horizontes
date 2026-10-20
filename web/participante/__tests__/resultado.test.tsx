@@ -20,7 +20,7 @@ describe('resultado del alcance', () => {
     expect(cifra(null)).toBe('sin dato')
   })
 
-  /** Mock con el campo `total` que calcula el servidor (R4_CONTRATO C1). Valores a propósito distintos de eje X + eje Y. */
+  /** Mock con el campo `total` que calcula el servidor (acta del 16-oct, C1). Valores a propósito distintos de eje X + eje Y. */
   const conTotal = () => {
     const r = clonar(tablero) as unknown as Resultados
     for (const p of r.proyectos_vivos) for (const x of p.rondas) x.total = 10 + x.ronda / 8

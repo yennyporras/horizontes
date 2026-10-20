@@ -27,7 +27,7 @@ export interface MatrizHorizontesProps {
 }
 
 /**
- * Matriz de burbujas embebible (la usa T2 en la vista en vivo del participante).
+ * Matriz de burbujas embebible (la usa el celular en la vista en vivo del participante).
  * Se redibuja al cambiar de tamaño; si los datos no cambian, el DOM no se toca.
  */
 export function MatrizHorizontes({ datos, vista = 'comparacion', alto, llenar = false, escalaTexto = 1, animarComparacion = true, encuadre, className }: MatrizHorizontesProps) {

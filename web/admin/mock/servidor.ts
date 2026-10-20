@@ -192,7 +192,7 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
     estado: 'preparada',
     ronda_actual: 0,
     creada_at: new Date().toISOString(),
-    // R4_CONTRATO C5: toda sala nueva o duplicada muestra los resultados de la sala tras votar.
+    // Acta del 16-oct, C5: toda sala nueva o duplicada muestra los resultados de la sala tras votar.
     config: {
       alcance_resultados: 'sala',
       vista_participante: 'en_vivo',

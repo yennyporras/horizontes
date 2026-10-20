@@ -23,7 +23,7 @@ export function hayVotosEnRonda(datos: DatosTablero | null | undefined, n: numbe
   return (datos?.proyectos_vivos ?? []).some((v) => tieneVotos(rondaDe(v, n)))
 }
 
-/** Votos mínimos por proyecto, ronda y alcance si el servidor no manda `minimo_votos` (R4_CONTRATO C3). */
+/** Votos mínimos por proyecto, ronda y alcance si el servidor no manda `minimo_votos` (acta del 16-oct, C3). */
 export const MINIMO_VOTOS = 3
 
 /** La ronda tiene votos, pero menos que el mínimo: el servidor no entrega sus promedios (anonimato). */
@@ -216,7 +216,7 @@ export async function pedirTablero(
   return { tipo: 'nuevo', datos, etag: res.headers.get('ETag') ?? (datos.version != null ? `"${datos.version}"` : null) }
 }
 
-/** Pregunta que el facilitador proyecta en modo guiado (C19-5, T3), o null si no aplica. */
+/** Pregunta que el facilitador proyecta en modo guiado (C19-5), o null si no aplica. */
 export interface VistaPregunta {
   proyecto: string
   numero: number

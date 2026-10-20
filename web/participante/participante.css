@@ -97,7 +97,7 @@
 .hzp-tabla__promedio, .hzp-tabla__mia { display: block; }
 .hz .hzp-tabla__mia { font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); white-space: nowrap; }
 
-/* Matriz de T3 dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
+/* Matriz del tablero dentro del resultado. Los ítems de grid no encogen por debajo de su contenido
    (min-width: auto): sin min-width 0, el SVG inicial de 360 px ensancha la página. */
 .hzp-resultado > *, .hzp-matriz { min-width: 0; }
 .hzp-matriz { min-height: 320px; overflow: hidden; }

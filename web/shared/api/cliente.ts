@@ -1,4 +1,4 @@
-// Cliente mínimo del contrato. Dueño: T1. Uso opcional: cada área puede seguir con su propio
+// Cliente mínimo del contrato. Responsable: equipo del servidor. Uso opcional: cada área puede seguir con su propio
 // transporte, pero este maneja errores con forma de contrato, el token del participante y ETag/304.
 import type {
   AccionSala,

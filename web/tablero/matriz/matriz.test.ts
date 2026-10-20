@@ -195,7 +195,7 @@ test('nombres de los fijos sin solaparse entre sí ni con otras etiquetas, con l
   }
   assert.deepEqual(fallas.slice(0, 15), [], `${fallas.length} solapes`);
   console.info(`[matriz] nombres de fijos omitidos en 360 px: ${omitidos} de ${pasos.length ** 2 * 8}`);
-  // Desde R4 la etiqueta de R1 lleva el nombre del vivo (se lee sin color): ocupa más y en 360 px
+  // Desde el 19-oct la etiqueta de R1 lleva el nombre del vivo (se lee sin color): ocupa más y en 360 px
   // se omiten unos pocos nombres más de fijos (10 de 392, antes 4).
   assert.ok(omitidos <= 12, `${omitidos} nombres omitidos`);
 });

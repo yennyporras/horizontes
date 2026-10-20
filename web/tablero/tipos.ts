@@ -1,4 +1,4 @@
-// Tipos del tablero: alias sobre el contrato compartido de T1 (web/shared/api/contrato.ts).
+// Tipos del tablero: alias sobre el contrato compartido (web/shared/api/contrato.ts).
 // GET /api/tablero/{salaId} y GET /api/resultados tienen la misma forma (`Tablero`).
 import type { CriterioId, EstadoSala, RondaVivo, Rubrica, Tablero } from '../shared/api/contrato'
 

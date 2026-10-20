@@ -1,4 +1,4 @@
-// T5: landing pública de la raíz `/`. Qué es Horizontes, cómo se entra a una mesa, cómo funciona y dónde está el panel.
+// Landing pública de la raíz `/`. Qué es Horizontes, cómo se entra a una mesa, cómo funciona y dónde está el panel.
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EncabezadoProducto, Rubrica, useTemaDocumento } from '../shared/ui'

@@ -1,4 +1,4 @@
-// Zoom de la matriz (C19-6, T1). Vectorial: cambia el viewBox del SVG, así el texto no se pixela y la
+// Zoom de la matriz (C19-6). Vectorial: cambia el viewBox del SVG, así el texto no se pixela y la
 // geometría (cx, cy, animación R1 → R2) sigue igual. Todo en fracciones del lienzo para que un cambio
 // de tamaño o un redibujo del polling conserven el encuadre.
 import { useCallback, useEffect, useRef, useState } from 'react'
