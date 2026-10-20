@@ -973,13 +973,13 @@ function marcaClara(): string[] {
   if (!linea.backgroundImage.startsWith('linear-gradient')) fallas.push(`línea de la barra sin degradado: ${linea.backgroundImage}`)
   if (Math.abs(parseFloat(linea.width) - document.documentElement.clientWidth) > 1) fallas.push(`línea del degradado de ${linea.width} en ${document.documentElement.clientWidth} px`)
   // Composición común (21-oct): la misma barra de todas las vistas (64 px; 72 px desde 1024 px) y, debajo, la franja
-  // clara de la sala y los controles, con botones de 48 px.
+  // clara de la sala y los controles, con botones de 48 px, en una sola fila de 56 px en el proyector (desde 1100 px).
   const alto = Math.round(producto.getBoundingClientRect().height)
   const esperado = innerWidth >= 1024 ? 72 : 64
   if (alto !== esperado) fallas.push(`barra de ${alto} px, se esperaba ${esperado}`)
   const franja = barra.querySelector<HTMLElement>('.hz-franja-pagina')
   if (!franja || franja.dataset.tema !== 'claro') fallas.push('sin la franja clara de la sala y los controles')
-  else if (innerWidth >= 1024 && Math.round(franja.getBoundingClientRect().height) > 57) fallas.push(`franja de ${franja.getBoundingClientRect().height} px en una fila`)
+  else if (innerWidth >= 1100 && Math.round(franja.getBoundingClientRect().height) > 57) fallas.push(`franja de ${franja.getBoundingClientRect().height} px en una fila`)
   for (const b of barra.querySelectorAll<HTMLElement>('.hz-cab-controles button, .hz-cab-controles select'))
     if (b.getBoundingClientRect().height < 47.5) fallas.push(`control «${b.textContent}» de ${b.getBoundingClientRect().height} px`)
   return fallas

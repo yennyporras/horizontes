@@ -46,7 +46,7 @@ body:has(> #root > .hz-tablero) {
 
 /* ── Barra común (EncabezadoProducto) y segunda franja con la sala y los controles (21-oct) ──
    La barra es la de todas las vistas (64 px; 72 px desde 1024 px) en el contenedor de página. La sala (h1 con la
-   escala común), su estado y los controles van en la franja clara de 56 px, en una fila. Bajo 1024 px la sala va en
+   escala común), su estado y los controles van en la franja clara de 56 px, en una fila. Bajo 1100 px la sala va en
    su línea y los controles en una fila que se desliza de lado: nunca 300 px de controles apilados. */
 .hz-cab {
   flex: none;
@@ -56,6 +56,9 @@ body:has(> #root > .hz-tablero) {
 }
 .hz-cab .hz-franja-pagina__fila {
   gap: var(--hz-sp-3) var(--hz-sp-6);
+  /* Los controles son del facilitador: la letra de la franja es la de todas las vistas, no la escala del proyector. */
+  font-size: var(--hz-fs-16);
+  line-height: var(--hz-lh);
 }
 .hz-cab-titulo {
   display: grid;
@@ -135,8 +138,9 @@ body:has(> #root > .hz-tablero) {
   border: 1.5px solid var(--hz-borde-control);
   border-radius: var(--hz-r-campo);
 }
-/* Bajo 1024 px: la sala en su línea, los controles en una fila deslizable debajo (la franja no se parte en más). */
-@media (max-width: 1023px) {
+/* Fuera del proyector (bajo 1100 px, el corte del tablero): la sala en su línea y los controles en una fila deslizable
+   debajo; la franja no se parte en más. Desde 1100 px, sala y controles en una sola fila de 56 px. */
+@media (max-width: 1099px) {
   .hz-cab .hz-franja-pagina__fila {
     flex-wrap: wrap;
     padding-block: var(--hz-sp-2);
@@ -144,6 +148,9 @@ body:has(> #root > .hz-tablero) {
   }
   .hz-cab-titulo {
     flex-basis: 100%;
+  }
+  .hz-alcance select {
+    max-width: 11.5em;
   }
   .hz-cab-controles {
     flex: 1 1 100%;
@@ -690,9 +697,10 @@ body:has(> #root > .hz-tablero) {
   }
   /* Detallado: la matriz es casi cuadrada (su alto menos el pie de una línea, --hz-pie); el resto va al panel. */
   .hz-zona-matriz {
-    --hz-pie: 2.6em;
+    --hz-pie: 2.2em;
     flex: 0 1 auto;
-    width: min(calc(100cqh - var(--hz-pie)), 52vw);
+    /* Un poco más ancha que alta (2 em): el subtítulo del eje X cabe entero en la letra de proyector. */
+    width: min(calc(100cqh - var(--hz-pie) + 2em), 52vw);
   }
   /* Gráfica (por defecto): la matriz ocupa todo el ancho y el alto bajo la barra; el pie va en una línea. */
   .hz-matriz-sola .hz-zona-matriz {
@@ -702,6 +710,11 @@ body:has(> #root > .hz-tablero) {
   .hz-pie-matriz {
     flex-wrap: nowrap;
     white-space: nowrap;
+  }
+  /* Teclas y Pantalla completa (48 px) en una sola línea junto a la leyenda. */
+  .hz-pie-matriz .hz-pie-controles {
+    flex: none;
+    flex-wrap: nowrap;
   }
   /* Gráfica: la columna «Qué se movió» y la lectura de la matriz llenan el espacio libre a la derecha (la matriz es
      cuadrada y el proyector, apaisado). Ancho: lo que sobra al lado de un cuadrado del alto disponible. */
@@ -845,7 +858,21 @@ body:has(> #root > .hz-tablero) {
   }
   .hz-cuerpo {
     gap: 0.8em;
-    margin-top: 0.5em;
+    margin-top: 0.3em;
+  }
+  /* Con la barra y la franja comunes arriba, el aire de abajo se ajusta a lo justo para no quitarle alto a la matriz. */
+  .hz-area {
+    padding-bottom: 0.3em;
+  }
+  /* «Cómo votó» con poco alto: el rótulo del progreso queda para el lector de pantalla (el avance por mesa y la barra
+     siguen a la vista), así el conteo entra entero bajo la barra y la franja comunes. */
+  [data-detalle='votos'] .hz-lateral .hz-tb-progreso .hz-sub {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
   .hz-lateral {
     gap: 0.6em;
@@ -865,8 +892,9 @@ body:has(> #root > .hz-tablero) {
     margin-top: 0.4em;
     font-size: 1.15em;
   }
+  /* Barras más bajas (10 px en 1280 × 720): el conteo de los seis criterios entra entero bajo la barra y la franja. */
   .hz-lateral .hz-cv-pista {
-    height: 0.8em;
+    height: 0.6em;
   }
   .hz-lateral .hz-cv .hz-cv-crit {
     margin-top: 0.15em;
