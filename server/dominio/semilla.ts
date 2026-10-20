@@ -57,8 +57,6 @@ export function sinRayas(texto: string): string {
     .replace(/[ \t]*—[ \t]*/g, ', ') // inciso entre rayas → entre comas
 }
 
-export const PLANTILLAS = ['foodsume_2026'] as const
-
 export function perfiles() {
   return semilla().perfiles
 }

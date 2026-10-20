@@ -93,12 +93,13 @@ export function opcionesLogger(stream?: Writable): FastifyServerOptions['logger'
         '*.actual',
         '*.nueva',
         '*.clave_temporal',
+        '*.acceso',
       ],
       censor: '[oculto]',
     },
     serializers: {
       err: (e: Error) => ({ type: e.name, message: limpiarTexto(e.message ?? ''), stack: limpiarTexto(e.stack ?? '') }),
-      // req.url puede traer ?t=<token del tablero>.
+      // req.url puede traer ?t=<token del tablero> o ?acceso=<enlace de un solo uso>.
       req: (r: { method?: string; url?: string }) => ({ metodo: r.method, ruta: (r.url ?? '').split('?')[0] }),
     },
   }

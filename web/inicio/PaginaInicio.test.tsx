@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import PaginaInicio from './PaginaInicio'
 import { codigoDeMesa } from './EntradaMesa'
@@ -110,7 +111,7 @@ describe('landing de la raíz', () => {
     montar()
     escribirCodigo('HZ7K2-2')
     expect((await screen.findByRole('alert')).textContent).toContain('Taller Bogotá ya terminó y no recibe más inscripciones')
-    expect(screen.getByRole('link', { name: 'Ir a Mesa 2' }).getAttribute('href')).toBe('/m/HZ7K2-2')
+    expect(screen.getByRole('link', { name: 'entra a Mesa 2' }).getAttribute('href')).toBe('/m/HZ7K2-2')
   })
 
   it('la inscripción que aún no abre también se explica', async () => {
@@ -128,5 +129,103 @@ describe('codigoDeMesa', () => {
     expect(codigoDeMesa('HZ7K2')).toBeNull()
     expect(codigoDeMesa('')).toBeNull()
     expect(codigoDeMesa('../admin-1')).toBeNull()
+  })
+})
+
+describe('correcciones de la QA de la landing', () => {
+  it('normaliza lo que se teclea en el celular: espacios, sin guion o con guion tipográfico (QA-P-15)', () => {
+    expect(codigoDeMesa('HZ5MG - 1')).toBe('HZ5MG-1')
+    expect(codigoDeMesa('HZ5MG 1')).toBe('HZ5MG-1')
+    expect(codigoDeMesa('hz5mg1')).toBe('HZ5MG-1')
+    expect(codigoDeMesa('HZ5MG–1')).toBe('HZ5MG-1')
+    expect(codigoDeMesa(' HZ5MG-12 ')).toBe('HZ5MG-12')
+    // Formato de mesa con 3 caracteres al azar (S-5): HZ7K2QX4-1.
+    expect(codigoDeMesa('hz7k2qx4 - 1')).toBe('HZ7K2QX4-1')
+    expect(codigoDeMesa('HZ7K2QX41')).toBe('HZ7K2QX4-1')
+    expect(codigoDeMesa('HZ7K2Q12123')).toBe('HZ7K2Q12-123')
+    expect(codigoDeMesa('HZ7K2123')).toBe('HZ7K2-123')
+    expect(codigoDeMesa('HZ5MG')).toBeNull()
+    expect(codigoDeMesa('hola mundo')).toBeNull()
+  })
+
+  it('el código con espacio lleva a la mesa normalizada', async () => {
+    const f = vi.fn(async () => json(200, mesa('inscripcion', true)))
+    vi.stubGlobal('fetch', f)
+    montar()
+    escribirCodigo('hz5mg 1')
+    expect(await screen.findByText('Mesa destino HZ5MG-1')).toBeTruthy()
+  })
+
+  it('en el celular hay un menú con las secciones y el panel (QA-P-18)', () => {
+    montar()
+    const boton = screen.getByRole('button', { name: 'Menú' })
+    expect(boton.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
+    fireEvent.click(boton)
+    const menu = screen.getByRole('navigation', { name: 'Menú' })
+    expect(boton.getAttribute('aria-expanded')).toBe('true')
+    expect([...menu.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['#entrar', '#como-funciona', '#que-se-evalua', '#facilitadores', '#privacidad', '/admin'])
+    // Elegir una sección cierra el menú; Escape también, y el foco vuelve al botón.
+    fireEvent.click(within(menu).getByRole('link', { name: 'Tus datos' }))
+    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Menú' }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Menú' }))
+    const css = readFileSync('web/inicio/inicio.css', 'utf8')
+    expect(css).toMatch(/@media \(min-width: 64rem\) \{ \.in-menu__boton, \.in-menu \{ display: none; \} \}/)
+  })
+
+  it('la ilustración no usa verde agua ni azul en los horizontes, junto a R1 y R2 (QA-P-20)', () => {
+    const css = readFileSync('web/inicio/inicio.css', 'utf8')
+    expect(css).toMatch(/\.in-matriz__h \{[^}]*fill: var\(--hz-borde-control\)/)
+    expect(css).toMatch(/\.in-matriz__horizonte \{ stroke: var\(--hz-borde-control\)/)
+  })
+
+  it('el enlace a la mesa en mitad de la frase va en minúscula y al inicio en mayúscula (QA-P-22)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json(200, mesa('cerrada', false))))
+    montar()
+    escribirCodigo('HZ7K2-2')
+    expect((await screen.findByRole('alert')).textContent).toContain('Si te inscribiste desde este celular, entra a Mesa 2 para ver el resultado.')
+    cleanup()
+    vi.stubGlobal('fetch', vi.fn(async () => json(200, mesa('preparada', false))))
+    montar()
+    escribirCodigo('HZ7K2-2')
+    expect((await screen.findByRole('alert')).textContent).toContain('Entra a Mesa 2 y espera ahí')
+  })
+
+  it('la acción del héroe y la del formulario se llaman distinto (QA-P-23)', () => {
+    montar()
+    const heroe = screen.getByRole('link', { name: 'Escribir el código de mi mesa' })
+    expect(heroe.getAttribute('href')).toBe('#entrar')
+    expect(screen.getAllByRole('button', { name: 'Entrar a mi mesa' })).toHaveLength(1)
+    expect(screen.queryByRole('link', { name: 'Entrar a mi mesa' })).toBeNull()
+  })
+
+  it('enlaces y botones de 48 px (familia Estratek §5) y el correo en línea también', () => {
+    const css = readFileSync('web/inicio/inicio.css', 'utf8')
+    expect(css).not.toMatch(/44px/)
+    expect(css).toMatch(/\.in-enlace \{[^}]*min-height: var\(--hz-tactil\)/)
+    montar()
+    const privacidad = document.getElementById('privacidad')!
+    expect(within(privacidad).getByRole('link', { name: 'info@estratek.com.co' }).className).toBe('in-enlace')
+  })
+
+  it('la sesión perdida la devuelve el facilitador, no el correo (D1)', () => {
+    const { container } = montar()
+    expect(container.textContent).toContain('si la pierdes, el facilitador te da acceso de nuevo')
+    expect(container.textContent).not.toMatch(/recuperas con el mismo correo/)
+  })
+})
+
+describe('ancho de página estándar', () => {
+  it('encabezado, héroe, secciones y pie usan el contenedor .hz-pagina', () => {
+    const { container } = montar()
+    expect(container.querySelector('.hz-producto__fila')!.classList.contains('hz-pagina')).toBe(true)
+    expect(container.querySelector('#inicio')!.classList.contains('hz-pagina')).toBe(true)
+    for (const id of ['entrar', 'como-funciona', 'que-se-evalua', 'facilitadores', 'privacidad'])
+      expect(container.querySelector(`#${id} > .hz-pagina`), id).toBeTruthy()
+    expect(container.querySelector('footer > .hz-pagina')).toBeTruthy()
+    expect(readFileSync('web/inicio/inicio.css', 'utf8')).not.toMatch(/--in-ancho|--in-margen/)
   })
 })

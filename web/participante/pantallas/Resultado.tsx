@@ -27,6 +27,13 @@ function sinIndividuales(r: Resultados, min: number): Resultados {
   }
 }
 
+/** Hay algo que mostrar: al menos un proyecto con una ronda sobre el mínimo de votos. */
+export function resultadoVisible(r: Resultados | null | undefined): boolean {
+  if (!r) return false
+  const min = minimoDe(r)
+  return (r.proyectos_vivos ?? []).some((p) => p.rondas.some((x) => conVotos(x, min)))
+}
+
 /** Ronda 1: solo R1. Con votos en las 2 rondas: comparación (R1 hueco, R2 sólido y flecha). */
 export function vistaMatriz(r: Resultados): Vista {
   const vivos = r.proyectos_vivos ?? []
@@ -73,7 +80,7 @@ export function ResultadoAlcance({
   const donde = textoAlcance(resultados, alcance)
   const min = minimoDe(resultados)
   const vivos = resultados.proyectos_vivos ?? []
-  const hayVotos = vivos.some((p) => p.rondas.some((x) => conVotos(x, min)))
+  const hayVotos = resultadoVisible(resultados)
   const hayPocos = vivos.some((p) => p.rondas.some((x) => pocosVotos(x, min)))
   const marcarPreliminar = preliminar ?? resultados.preliminar
 
@@ -81,7 +88,7 @@ export function ResultadoAlcance({
     return (
       <p className="hz-texto-2">
         {hayPocos
-          ? `Hace falta al menos ${min} votos para mostrar estos resultados. Así nadie ve las respuestas de otra persona.`
+          ? `Hacen falta al menos ${min} votos para mostrar estos resultados. Así nadie ve las respuestas de otra persona.`
           : `Todavía no hay votos en ${donde}. Los resultados aparecen con los primeros ${min}.`}
       </p>
     )
@@ -106,11 +113,11 @@ export function ResultadoAlcance({
           return (
             <article key={p.id} className="hzp-resultado__proyecto">
               <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
-              <p className="hz-texto-3">{ocultas.length ? `Hace falta al menos ${min} votos para mostrar este proyecto.` : 'Sin votos todavía.'}</p>
+              <p className="hz-texto-3">{ocultas.length ? `Hacen falta al menos ${min} votos para mostrar este proyecto.` : 'Sin votos todavía.'}</p>
             </article>
           )
         }
-        const mia = (ronda: number, criterio: string) => misVotos.find((v) => v.proyecto_id === p.id && v.ronda === ronda)?.respuestas[criterio]
+        const mia = (ronda: number, criterio: string) => misVotos.find((v) => v.proyecto_id === p.id && v.ronda === ronda)?.respuestas[criterio as keyof Voto['respuestas']]
         const conMias = visibles.some((r) => criterios.some((c) => mia(r.ronda, c.id) !== undefined))
         return (
           <article key={p.id} className="hzp-resultado__proyecto">
@@ -154,7 +161,7 @@ export function ResultadoAlcance({
             </table>
             {ocultas.length > 0 && (
               <p className="hzp-resultado__pie">
-                {ocultas.map((r) => `Ronda ${r.ronda}: hace falta al menos ${min} votos para mostrarla.`).join(' ')}
+                {ocultas.map((r) => `Ronda ${r.ronda}: hacen falta al menos ${min} votos para mostrarla.`).join(' ')}
               </p>
             )}
           </article>
