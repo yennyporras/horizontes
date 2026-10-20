@@ -16,6 +16,7 @@ import {
   logout,
   DURACION_SESION_MS,
 } from '../dominio/admins.js'
+import { canjearAcceso, darAcceso } from '../dominio/accesos.js'
 import { LimitadorPeticiones } from '../dominio/mantenimiento.js'
 import { aplicarAccion, cambiarConfig, fijarPreguntaGuiada } from '../dominio/estados.js'
 import {
@@ -71,6 +72,8 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   // Ojo en pruebas: la ventana usa el reloj inyectado; con el reloj fijo no se reinicia.
   const limites: Record<string, LimitadorPeticiones> = {
     'POST /api/inscripcion': new LimitadorPeticiones(600, 60_000),
+    // El enlace de acceso trae 24 bytes al azar: el tope es una defensa más, no la única.
+    'POST /api/acceso': new LimitadorPeticiones(60, 60_000),
     'PUT /api/votos': new LimitadorPeticiones(2000, 60_000),
     'POST /api/admin/login': new LimitadorPeticiones(20, 60_000),
   }
@@ -86,15 +89,13 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
 
   app.get<{ Params: { codigo: string } }>('/api/mesas/:codigo', async (req) => infoMesa(db, req.params.codigo))
 
-  app.post<{ Body: Record<string, never> }>('/api/inscripcion', async (req, reply) => {
-    const r = inscribir(db, (req.body ?? {}) as never, { ip: req.ip, userAgent: req.headers['user-agent'] }, ahora())
-    if (r.nuevo) return reply.code(201).send({ token: r.token, participante: r.participante })
-    return reply.code(409).send({
-      error: { codigo: 'CORREO_YA_INSCRITO', mensaje: 'Ese correo ya estaba inscrito en esta sala. Recuperamos tu sesión.' },
-      token: r.token,
-      participante: r.participante,
-    })
-  })
+  // Un correo ya inscrito responde 409 CORREO_YA_INSCRITO sin token ni datos (D1): la sesión la devuelve el facilitador.
+  app.post<{ Body: Record<string, never> }>('/api/inscripcion', async (req, reply) =>
+    reply.code(201).send(inscribir(db, (req.body ?? {}) as never, { ip: req.ip, userAgent: req.headers['user-agent'] }, ahora())),
+  )
+
+  // Canje del enlace de «Dar acceso de nuevo»: misma forma que la inscripción exitosa.
+  app.post<{ Body: { acceso?: unknown } }>('/api/acceso', async (req) => canjearAcceso(db, req.body?.acceso, ahora()))
 
   const participante = (req: FastifyRequest) => autenticarParticipante(db, req.headers['x-participante-token'] as string | undefined)
 
@@ -276,6 +277,9 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
   app.patch<{ Params: { id: string } }>('/api/admin/participantes/:id', async (req) =>
     editarParticipante(db, req.params.id, (req.body ?? {}) as never, ahora(), por(req)),
   )
+
+  // «Dar acceso de nuevo» (D1): enlace personal de un solo uso que vence a los 15 min. La URL no se vuelve a mostrar.
+  app.post<{ Params: { id: string } }>('/api/admin/participantes/:id/acceso', async (req) => darAcceso(db, req.params.id, op.baseUrl, ahora(), por(req)))
 
   app.get('/api/admin/admins', async (req) => {
     exigirSuperadmin(req.admin!)

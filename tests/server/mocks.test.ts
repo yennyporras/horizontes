@@ -87,3 +87,41 @@ describe('servidor sin mocks', () => {
     await real.close()
   })
 })
+
+describe('servidor de mocks: contrato del 20-oct (D1 y D2)', () => {
+  let m: FastifyInstance
+  beforeAll(async () => {
+    m = await construirApp({ mocks: true })
+  })
+  afterAll(() => m.close())
+
+  it('inscripción con correo ya inscrito: 409 sin token ni participante', async () => {
+    const r = await m.inject({ method: 'POST', url: '/api/inscripcion', payload: { codigoMesa: 'HZ7K2-1', nombre: 'Ana', correo: 'ya@inscrito.co', consentimiento: { aceptado: true, version: 'hz-1.1' } } })
+    expect(r.statusCode).toBe(409)
+    expect(r.json()).toEqual({ error: { codigo: 'CORREO_YA_INSCRITO', mensaje: 'Ese correo ya está inscrito en esta sala. Pide al facilitador que te dé acceso de nuevo.' } })
+  })
+
+  it('acceso: canje, vencido e inválido', async () => {
+    const ok = await m.inject({ method: 'POST', url: '/api/acceso', payload: { acceso: 'cualquiera' } })
+    expect(ok.statusCode).toBe(200)
+    expect(ok.json()).toMatchObject({ token: expect.any(String), participante: { id: expect.any(String), mesa: { id: expect.any(String) } } })
+    expect((await m.inject({ method: 'POST', url: '/api/acceso', payload: { acceso: 'vencido' } })).json().error.codigo).toBe('ACCESO_VENCIDO')
+    expect((await m.inject({ method: 'POST', url: '/api/acceso', payload: { acceso: 'invalido' } })).statusCode).toBe(404)
+  })
+
+  it('dar acceso de nuevo devuelve url y vence_at; borrar la rúbrica de plantilla devuelve la de la semilla', async () => {
+    const a = (await m.inject({ method: 'POST', url: '/api/admin/participantes/p_8f2a/acceso', payload: {} })).json()
+    expect(a.url).toMatch(/\/m\/[A-Z0-9-]+\?acceso=/)
+    expect(Number.isNaN(Date.parse(a.vence_at))).toBe(false)
+    const d = (await m.inject({ method: 'DELETE', url: '/api/admin/rubricas-plantilla/regulacion' })).json()
+    expect(d).toMatchObject({ criterio_id: 'regulacion', borrada: true })
+    expect(d.rubrica).toHaveLength(5)
+  })
+
+  it('resultados del participante sin progreso.por_mesa; el tablero sí lo trae', async () => {
+    const r = (await m.inject('/api/resultados')).json()
+    expect(r.progreso).not.toHaveProperty('por_mesa')
+    expect(r.votos_por_actualizacion).toBe(3)
+    expect((await m.inject('/api/tablero/s_demo?t=x')).json().progreso.por_mesa.length).toBeGreaterThan(0)
+  })
+})
