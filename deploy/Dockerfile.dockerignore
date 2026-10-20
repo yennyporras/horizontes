@@ -2,8 +2,8 @@
 **/node_modules
 dist
 logs
-.git
-.claude
+# Archivos y carpetas ocultos (git, editores y configuración local).
+.*
 .env
 .env.*
 **/*.sqlite*
