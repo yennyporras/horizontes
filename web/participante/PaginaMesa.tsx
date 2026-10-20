@@ -707,7 +707,9 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
           <Aviso tono="info">
             {completo
               ? `Ya calificaste los ${vivos.length} proyectos en la ronda ${ronda}. Puedes editar mientras la ronda siga abierta.`
-              : `La ronda ${ronda} ya está abierta. Cuando termines de leer, califica los ${vivos.length} proyectos. ${textoRonda(ronda)}`}
+              : guiado
+                ? `La ronda ${ronda} ya está abierta. Cuando termines de leer, ve a la pregunta que marca el facilitador. ${textoRonda(ronda)}`
+                : `La ronda ${ronda} ya está abierta. Cuando termines de leer, califica los ${vivos.length} proyectos. ${textoRonda(ronda)}`}
           </Aviso>
         )}
         {sinResultadoCerrada && estado === 'r2_cerrada' && <Aviso tono="info">La ronda 2 se cerró. El resultado aparece aquí en unos segundos.</Aviso>}

@@ -279,6 +279,24 @@ describe('resultado', () => {
 })
 
 describe('modo guiado', () => {
+  it('en el caso con la ronda abierta, el aviso manda a la pregunta del facilitador y no a «califica los 2 proyectos»', async () => {
+    servidor(
+      conYo(() =>
+        yoCon((y) => {
+          y.config.modo_preguntas = 'guiado'
+          y.sala.pregunta_guiada = { proyecto_id: 'insumex', criterio_id: 'regulacion' }
+        }),
+      ),
+    )
+    conToken()
+    sessionStorage.setItem(`hz_vista:${CODIGO}`, 'lectura')
+    montar()
+    await screen.findByRole('heading', { name: 'El caso y tu hoja' })
+    expect(screen.getByText(/Cuando termines de leer, ve a la pregunta que marca el facilitador\./)).toBeTruthy()
+    expect(screen.queryByText(/califica los 2 proyectos/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Ir a la pregunta' })).toBeTruthy()
+  })
+
   it('esperando la pregunta, lo que está en la cola cuenta como hecho', async () => {
     servidor((url) =>
       url === '/api/yo'
