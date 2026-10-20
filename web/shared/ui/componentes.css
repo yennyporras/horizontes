@@ -52,12 +52,14 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
   margin-inline: auto;
   padding-inline: var(--hz-margen-pagina);
 }
+/* Columna de lectura (celular, 21-oct): dentro del contenedor de página, centrada y de 640 px como máximo. */
+.hz-pagina.hz-pagina--lectura { max-width: calc(var(--hz-ancho-lectura) + 2 * var(--hz-margen-pagina)); }
 /* Vista con barra de acción fija abajo (celular): alto completo y espacio para la barra. */
 .hz-vista { min-height: 100dvh; padding-bottom: calc(var(--hz-sp-12) * 2.5); }
 .hz-contenido { display: grid; gap: var(--hz-sp-6); }
 /* Ningún hijo (matriz, tablas) ensancha la página en 360 px. */
 .hz-contenido > * { min-width: 0; }
-.hz-titulo { font-size: var(--hz-fs-h1); font-weight: var(--hz-fw-titulo); line-height: var(--hz-lh-titulo); letter-spacing: var(--hz-ls-titulo); color: var(--hz-tinta); text-wrap: balance; }
+/* .hz-titulo: el título de página común (ver .hz-h1 en «Composición común»). */
 .hz-subtitulo { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-etiqueta); line-height: var(--hz-lh-titulo); letter-spacing: var(--hz-ls-titulo); }
 .hz-texto-2 { color: var(--hz-tinta-2); }
 .hz-texto-3 { color: var(--hz-tinta-3); font-size: var(--hz-fs-14); }
@@ -110,7 +112,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 }
 /* El interior es el contenedor de página (mismos bordes que el encabezado); la acción conserva la medida de lectura. */
 .hz-barra-accion__interior { display: grid; gap: var(--hz-sp-2); }
-.hz-barra-accion__interior > * { width: 100%; max-width: var(--hz-medida); }
+.hz-barra-accion__interior > * { width: 100%; }
 .hz-barra-accion__nota { font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
 
 /* ── Campo ──────────────────────────────────────────── */
@@ -280,7 +282,7 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 /* ── Hoja (tarjeta: superficie 1 con borde; la activa lleva el filo de la acción) ─ */
 .hz-hoja {
   display: grid; gap: var(--hz-sp-3);
-  padding: var(--hz-sp-5) var(--hz-sp-4);
+  padding: var(--hz-sp-tarjeta);
   border: 1px solid var(--hz-borde);
   border-radius: var(--hz-r-tarjeta);
   background: var(--hz-superficie-1);
@@ -289,18 +291,26 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-hoja__titulo { display: flex; justify-content: space-between; align-items: center; gap: var(--hz-sp-2); font-size: var(--hz-fs-18); font-weight: var(--hz-fw-titulo); color: var(--hz-tinta); }
 .hz-hoja__texto { color: var(--hz-tinta); }
 
+/* ══ Composición común de las cuatro áreas (docs/DISENO.md §Composición, 21-oct) ══════════════════════════════
+   Un solo producto: la misma barra, la misma segunda franja, la misma cabecera de página, el mismo pie y el mismo
+   contenedor (.hz-pagina) en la landing, el celular, el tablero y el panel. Lo de cada área entra en estas piezas. */
+.hz-encabezado, .hz-encabezado *, .hz-encabezado *::before, .hz-encabezado *::after,
+.hz-pie, .hz-pie *, .hz-cabecera-pagina, .hz-cabecera-pagina * { box-sizing: border-box; }
+.hz-encabezado { position: relative; z-index: 12; font-family: var(--hz-fuente); line-height: var(--hz-lh); font-weight: var(--hz-fw-texto); -webkit-font-smoothing: antialiased; }
+
 /* ── Encabezado de producto: la barra superior carbón (familia Estratek, 20-oct) ──
    Logo de Horizontes, nombre, «por Estratek »» y la línea del degradado debajo. El <header> lleva data-tema="carbon":
    la barra y lo que va dentro (navegación, botones, menú) toman los tokens del carbón; la página sigue en claro.
-   La marca enlaza al inicio o, en el panel, a Salas. */
+   Mide lo mismo en todas las vistas (--hz-alto-barra: 64 px, 72 px desde 1024 px, con la línea incluida). */
 .hz-producto { position: relative; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-producto::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--hz-grad-marca); }
 /* La fila es el contenedor de página: el fondo y la línea van de borde a borde, el contenido se alinea con la página. */
 .hz-producto__fila {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--hz-sp-3);
-  padding-block: var(--hz-sp-3) calc(var(--hz-sp-3) + 4px);
+  display: flex; align-items: center; gap: var(--hz-sp-3);
+  height: var(--hz-alto-barra);
+  padding-block: 0 4px;
 }
-.hz-producto__marca { display: inline-flex; align-items: center; gap: var(--hz-sp-3); min-height: var(--hz-tactil); color: var(--hz-tinta); text-decoration: none; }
+.hz-producto__marca { display: inline-flex; align-items: center; gap: var(--hz-sp-3); min-height: var(--hz-tactil); margin-right: auto; color: var(--hz-tinta); text-decoration: none; white-space: nowrap; }
 .hz-producto__glifo { flex: none; width: 2.5rem; height: 2.5rem; }
 /* Como enlace conserva la tinta del encabezado: las reglas de enlaces de cada área (por ejemplo .hz-admin a) no la pintan de azul. */
 .hz-producto .hz-producto__marca[href] { color: var(--hz-tinta); border-radius: var(--hz-r-campo); }
@@ -309,7 +319,107 @@ body { margin: 0; background: var(--hz-fondo); color: var(--hz-tinta); }
 .hz-producto__nombre { font-size: var(--hz-fs-20); font-weight: var(--hz-fw-display); letter-spacing: var(--hz-ls-titulo); }
 .hz-producto__firma { font-size: var(--hz-fs-12); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); }
 .hz-producto__flecha { color: var(--hz-accion); font-weight: var(--hz-fw-display); }
-.hz-producto__extra { display: flex; align-items: center; gap: var(--hz-sp-2); min-width: 0; }
+.hz-producto__extra { display: flex; flex: none; align-items: center; gap: var(--hz-sp-2); min-width: 0; }
+/* Lo del área a la derecha (desde 1024 px): enlaces y botones de la barra en una sola fila, a 48 px. */
+.hz-producto__menu { display: none; align-items: center; gap: var(--hz-sp-1); min-width: 0; font-size: var(--hz-fs-14); }
+.hz-producto__menu :is(ul, ol) { display: flex; align-items: center; gap: var(--hz-sp-1); margin: 0; padding: 0; list-style: none; }
+.hz-producto__menu :is(a, button):not(.hz-boton) {
+  display: inline-flex; align-items: center; min-height: var(--hz-tactil); padding: 0 var(--hz-sp-3);
+  font: inherit; font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); text-decoration: none; white-space: nowrap;
+  background: transparent; border: 0; border-radius: var(--hz-r-pill); cursor: pointer;
+}
+.hz-producto__menu :is(a, button):not(.hz-boton):hover { background: var(--hz-superficie-2); }
+.hz-producto__menu .hz-boton { padding-inline: var(--hz-sp-5); font-size: var(--hz-fs-14); white-space: nowrap; }
+/* «Menú»: abre lo del área (y, en el panel, las secciones) debajo de la barra. Solo bajo 1024 px. */
+.hz-producto__menu-boton { flex: none; padding-inline: var(--hz-sp-5); white-space: nowrap; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
+.hz-producto__desplegable {
+  position: absolute; top: var(--hz-alto-barra); left: 0; right: 0;
+  max-height: calc(100dvh - var(--hz-alto-barra)); overflow-y: auto;
+  padding-block: var(--hz-sp-2) var(--hz-sp-4);
+  background: var(--hz-fondo); color: var(--hz-tinta);
+  border-bottom: 1px solid var(--hz-borde); box-shadow: var(--hz-sombra);
+}
+.hz-producto__desplegable-interior { display: grid; gap: var(--hz-sp-2); }
+/* Dentro del desplegable todo va en columna: una fila de 48 px por enlace o botón, grupos separados por una línea. */
+.hz-producto__desplegable-interior :is(nav, ul, ol, div) { display: grid; gap: var(--hz-sp-1); margin: 0; padding: 0; list-style: none; }
+.hz-producto__desplegable-interior > * + * { padding-top: var(--hz-sp-2); border-top: 1px solid var(--hz-borde); }
+.hz-producto__desplegable :is(a, button) {
+  display: flex; align-items: center; justify-content: flex-start; width: 100%; min-height: var(--hz-tactil);
+  padding: 0 var(--hz-sp-3); font: inherit; font-size: var(--hz-fs-16); font-weight: var(--hz-fw-etiqueta);
+  color: var(--hz-tinta); text-align: left; text-decoration: none; white-space: normal;
+  background: transparent; border: 0; border-radius: var(--hz-r-campo); box-shadow: none; cursor: pointer;
+}
+.hz-producto__desplegable :is(a, button):hover { background: var(--hz-superficie-2); }
+.hz-producto__desplegable :is(a, button)[aria-current='page'] { background: var(--hz-superficie-3); box-shadow: inset 4px 0 0 var(--hz-accion); }
+@media (min-width: 64rem) {
+  .hz-producto__menu { display: flex; }
+  .hz-producto__menu-boton, .hz-producto__desplegable { display: none; }
+}
+
+/* ── Segunda franja: las pestañas del panel y los controles del tablero ──
+   Clara (data-tema="claro"), de 56 px, en el contenedor de página y en una sola fila: si no cabe, se desliza de lado. */
+.hz-franja-pagina { background: var(--hz-fondo); color: var(--hz-tinta); border-bottom: 1px solid var(--hz-borde); }
+.hz-franja-pagina__fila {
+  display: flex; align-items: center; gap: var(--hz-sp-4);
+  min-height: var(--hz-alto-franja);
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin;
+}
+.hz-franja-pagina__fila > * { flex: none; }
+/* En el panel, bajo 1024 px, las pestañas van dentro del menú plegable. */
+.hz-franja-pagina--plegable { display: none; }
+@media (min-width: 64rem) { .hz-franja-pagina--plegable { display: block; } }
+/* Pestañas de la franja: 56 px de alto, la actual con el subrayado de acción (no depende solo del color). */
+.hz-pestanas-franja { display: flex; align-items: stretch; align-self: stretch; gap: var(--hz-sp-1); }
+.hz-franja-pagina .hz-pestanas-franja__item {
+  display: inline-flex; align-items: center; padding: 0 var(--hz-sp-3);
+  font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); text-decoration: none; white-space: nowrap;
+  box-shadow: inset 0 -3px 0 transparent;
+  transition: color var(--hz-t-rapido), box-shadow var(--hz-t-rapido), background-color var(--hz-t-rapido);
+}
+.hz-franja-pagina .hz-pestanas-franja__item:hover { color: var(--hz-tinta); background: var(--hz-superficie-1); }
+.hz-franja-pagina .hz-pestanas-franja__item[aria-current='page'] { color: var(--hz-tinta); font-weight: var(--hz-fw-titulo); box-shadow: inset 0 -3px 0 var(--hz-accion); }
+
+/* ── Control segmentado (tablero: alcance, modo y vista; detalle del panel) ── 48 px por opción, la elegida en acción. */
+.hz-segmento { display: inline-flex; flex: none; padding: 0; background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-pill); }
+.hz-segmento > button {
+  min-height: var(--hz-tactil); padding: 0 var(--hz-sp-4);
+  font: inherit; font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); white-space: nowrap;
+  background: transparent; border: 0; border-radius: var(--hz-r-pill); cursor: pointer;
+}
+.hz-segmento > button:hover { color: var(--hz-tinta); }
+.hz-segmento > button[aria-pressed='true'] { color: var(--hz-sobre-accion); font-weight: var(--hz-fw-titulo); background: var(--hz-accion); }
+
+/* ── Título de página: una sola escala en las cuatro áreas (900, de 24 a 32 px) ── */
+.hz-h1, .hz-titulo {
+  margin: 0;
+  font-size: var(--hz-fs-h1); font-weight: var(--hz-fw-h1); line-height: 1.15; letter-spacing: var(--hz-ls-display);
+  color: var(--hz-tinta); text-wrap: balance;
+}
+/* Cabecera de página: título, línea de contexto y acciones opcionales al lado (debajo en el celular). */
+.hz-cabecera-pagina { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--hz-sp-4) var(--hz-sp-6); }
+.hz-cabecera-pagina__textos { display: grid; gap: var(--hz-sp-2); flex: 1 1 20rem; min-width: 0; }
+.hz-cabecera-pagina__ante { margin: 0; font-size: var(--hz-fs-14); font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta-2); overflow-wrap: anywhere; }
+.hz-cabecera-pagina__contexto { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-1) var(--hz-sp-3); margin: 0; font-size: var(--hz-fs-14); color: var(--hz-tinta-2); }
+.hz-cabecera-pagina__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2); }
+
+/* ── Tarjeta: superficie 1, borde de 1 px, radio 16 y el relleno común (16 px; 24 desde 768 px) ── */
+.hz-tarjeta { padding: var(--hz-sp-tarjeta); background: var(--hz-superficie-1); border: 1px solid var(--hz-borde); border-radius: var(--hz-r-tarjeta); }
+
+/* ── Pie común: la línea del degradado encima, el logo de Estratek, la firma y los enlaces mínimos ── */
+.hz-pie {
+  position: relative; flex: none;
+  padding-block: var(--hz-sp-6) calc(var(--hz-sp-6) + env(safe-area-inset-bottom));
+  font-family: var(--hz-fuente); font-size: var(--hz-fs-14); line-height: var(--hz-lh); color: var(--hz-tinta-2);
+  background: var(--hz-fondo);
+}
+.hz-pie::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--hz-grad-marca); }
+.hz-pie__fila { display: flex; flex-wrap: wrap; align-items: center; gap: var(--hz-sp-2) var(--hz-sp-6); }
+.hz-pie .hz-pie__logo { height: 1.5rem; }
+.hz-pie__texto { flex: 1 1 16rem; margin: 0; font-weight: var(--hz-fw-etiqueta); color: var(--hz-tinta); }
+.hz-pie__flecha { color: var(--hz-accion); font-weight: var(--hz-fw-display); }
+.hz-pie__enlaces ul { display: flex; flex-wrap: wrap; gap: 0 var(--hz-sp-5); margin: 0; padding: 0; list-style: none; }
+.hz-pie__enlaces a { display: inline-flex; align-items: center; min-height: var(--hz-tactil); color: var(--hz-accion); font-weight: var(--hz-fw-etiqueta); text-underline-offset: 3px; }
+
 
 /* ── Blindaje ante estilos globales de otras áreas ─────
    tablero.css define .hz-cifra, .hz-insignia y .hz-progreso sin alcance y se carga en toda la SPA.
