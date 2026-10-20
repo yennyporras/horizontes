@@ -190,6 +190,20 @@ describe('QA-P-02: el botón atrás vuelve a la pantalla anterior', () => {
     act(() => navegar(1))
     expect(await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })).toBeTruthy()
   })
+
+  it('atrás justo después de cambiar de pantalla: vuelve aunque el router no alcance a ver la entrada nueva', async () => {
+    // En la CI (y en un celular lento) el router junta la entrada nueva y la vuelta en una sola transición: queda en
+    // la misma ubicación de antes y no la ve cambiar. El celular escucha el popstate del navegador y lee la pantalla.
+    servidor(conYo(() => yoBase as unknown as Yo))
+    conToken()
+    montar()
+    await screen.findByRole('heading', { name: 'Ronda 1: califica los 2 proyectos' })
+    fireEvent.click(screen.getByRole('button', { name: 'Calificar NUTRIWHAT' }))
+    await screen.findByRole('heading', { name: 'NUTRIWHAT', level: 1 })
+    act(() => void window.dispatchEvent(new PopStateEvent('popstate', { state: { usr: { hzVista: 'inicio' }, key: 'x', idx: 0 } })))
+    expect(await screen.findByRole('heading', { name: 'Ronda 1: califica los 2 proyectos' })).toBeTruthy()
+    expect(sessionStorage.getItem(`hz_vista:${CODIGO}`)).toBe('inicio')
+  })
 })
 
 describe('QA-P-03: aviso del cierre según lo que pasó, y se va con la ronda nueva', () => {
