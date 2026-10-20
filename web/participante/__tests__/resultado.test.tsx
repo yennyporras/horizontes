@@ -4,6 +4,7 @@ import { cleanup, render, screen, within } from '@testing-library/react'
 import tablero from '../../../mocks/GET_api_tablero.json'
 import yoBase from '../../../mocks/GET_api_yo.json'
 import { cifra } from '../Comun'
+import { DESCRIPCION_CRITERIO } from '../../shared/criterios'
 import { MIN_VOTOS, ResultadoAlcance, resultadoVisible } from '../pantallas/Resultado'
 import type { Resultados, Yo } from '../api'
 
@@ -32,7 +33,8 @@ describe('resultado del alcance', () => {
     const { container } = render(<ResultadoAlcance resultados={conTotal()} criterios={yo.criterios} alcance="mesa" />)
     const tabla = screen.getAllByRole('table')[0]
     const filas = within(tabla).getAllByRole('rowheader').map((th) => th.textContent)
-    expect(filas).toEqual(yo.criterios.map((c) => c.nombre))
+    // Cada criterio con su descripción corta debajo (pedido del 20-oct, 100 caracteres como máximo).
+    expect(filas).toEqual(yo.criterios.map((c) => c.nombre + DESCRIPCION_CRITERIO[c.id as keyof typeof DESCRIPCION_CRITERIO]))
     expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
     expect(container.textContent).not.toMatch(/Total|10,13|10,25/)
     expect(screen.getAllByRole('cell')).toHaveLength(screen.getAllByRole('table').length * yo.criterios.length * 2)
@@ -80,7 +82,7 @@ describe('resultado del alcance', () => {
     ]
     render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" misVotos={misVotos as unknown as Yo['mis_votos']} />)
     const [insumex, nutriwhat] = screen.getAllByRole('table')
-    const fila = within(insumex).getByRole('rowheader', { name: yo.criterios[2].nombre }).closest('tr')!
+    const fila = within(insumex).getByRole('rowheader', { name: new RegExp(`^${yo.criterios[2].nombre}`) }).closest('tr')!
     const celdas = [...fila.querySelectorAll('td')]
     // R1: el promedio del servidor con 2 decimales y debajo tu 5; R2: tu 5 también.
     expect(celdas.map((td) => td.querySelector('.hzp-tabla__promedio')!.textContent)).toEqual(

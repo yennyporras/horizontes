@@ -3,6 +3,7 @@ import { Insignia } from '../../shared/ui'
 import { MatrizHorizontes, type DatosTablero, type Vista } from '../../tablero'
 import type { Criterio, Resultados, RondaVivo, Voto } from '../api'
 import { cifra } from '../Comun'
+import { descripcionCriterio } from '../../shared/criterios'
 
 export const textoAlcance = (r: Resultados | null, alcance: 'mesa' | 'sala') => ((r?.alcance?.tipo ?? alcance) === 'sala' ? 'la sala' : 'tu mesa')
 
@@ -139,7 +140,11 @@ export function ResultadoAlcance({
               <tbody>
                 {criterios.map((c) => (
                   <tr key={c.id}>
-                    <th scope="row">{c.nombre}</th>
+                    {/* abbr: el lector de pantalla anuncia cada celda con el nombre corto, sin repetir la descripción. */}
+                    <th scope="row" abbr={c.nombre}>
+                      {c.nombre}
+                      {descripcionCriterio(c.id) && <span className="hzp-tabla__desc">{descripcionCriterio(c.id)}</span>}
+                    </th>
                     {visibles.map((r) => {
                       const tuya = mia(r.ronda, c.id)
                       return (
