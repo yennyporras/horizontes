@@ -1,6 +1,6 @@
 # Modelo de datos v1
 
-SQL portable (SQLite y MySQL 8). T1 lo adapta al motor que fije R0 sin cambiar nombres ni semántica.
+SQL portable (SQLite y MySQL 8). El servidor lo implementa en SQLite (`node:sqlite`) sin cambiar nombres ni semántica.
 
 ```sql
 CREATE TABLE admins (
@@ -23,8 +23,8 @@ CREATE TABLE salas (
   plantilla                   VARCHAR(40)  NOT NULL,        -- foodsume_2026
   estado                      VARCHAR(20)  NOT NULL,        -- preparada|inscripcion|r1_abierta|r1_cerrada|r2_abierta|r2_cerrada|cerrada
   ronda_actual                TINYINT      NOT NULL DEFAULT 0,
-  alcance_resultados          VARCHAR(5)   NOT NULL DEFAULT 'mesa',       -- mesa|sala (salas nuevas desde R4: 'sala', lo fija el código)
-  vista_participante          VARCHAR(10)  NOT NULL DEFAULT 'registrado', -- registrado|en_vivo (salas nuevas desde R4: 'en_vivo')
+  alcance_resultados          VARCHAR(5)   NOT NULL DEFAULT 'mesa',       -- mesa|sala (salas nuevas desde el 19-oct: 'sala', lo fija el código)
+  vista_participante          VARCHAR(10)  NOT NULL DEFAULT 'registrado', -- registrado|en_vivo (salas nuevas desde el 19-oct: 'en_vivo')
   revelar_hojas               BOOLEAN      NOT NULL DEFAULT FALSE,
   cierre_programado_ronda_at  DATETIME     NULL,             -- sin uso desde la migración 4: la API lo deriva de r1/r2
   cierre_programado_sala_at   DATETIME     NULL,
@@ -36,8 +36,8 @@ CREATE TABLE salas (
   modo_preguntas              VARCHAR(10)  NOT NULL DEFAULT 'automatico', -- automatico|guiado (migración 4)
   pregunta_guiada_proyecto_id VARCHAR(40)  NULL,             -- pregunta que fija el admin en modo guiado (migración 4)
   pregunta_guiada_criterio_id VARCHAR(40)  NULL,
-  pais                        VARCHAR(2)   NOT NULL DEFAULT 'CO',             -- CO|PE|GT (R4)
-  zona_horaria                VARCHAR(20)  NOT NULL DEFAULT 'America/Bogota', -- America/Bogota|America/Lima|America/Guatemala (R4)
+  pais                        VARCHAR(2)   NOT NULL DEFAULT 'CO',             -- CO|PE|GT (acta del 16-oct)
+  zona_horaria                VARCHAR(20)  NOT NULL DEFAULT 'America/Bogota', -- America/Bogota|America/Lima|America/Guatemala (acta del 16-oct)
   token_tablero_hash          VARCHAR(255) NOT NULL,
   version                     INTEGER      NOT NULL DEFAULT 1, -- sube con cada cambio
   creada_at                   DATETIME     NOT NULL
@@ -90,7 +90,7 @@ CREATE TABLE participantes (
   token_hash  VARCHAR(255) NOT NULL,
   activo      BOOLEAN      NOT NULL DEFAULT TRUE,
   creado_at   DATETIME     NOT NULL,
-  ip          VARCHAR(45)  NULL,              -- IP de la inscripción (R4, solo admin)
+  ip          VARCHAR(45)  NULL,              -- IP de la inscripción (acta del 16-oct, solo admin)
   UNIQUE (sala_id, correo)
 );
 
@@ -102,7 +102,7 @@ CREATE TABLE consentimientos (
   texto_hash      VARCHAR(64) NOT NULL,    -- sha256 del aviso mostrado
   aceptado_at     DATETIME    NOT NULL,
   ip              VARCHAR(45), user_agent VARCHAR(255),
-  pais            VARCHAR(2)  NOT NULL DEFAULT 'CO'  -- país del aviso aceptado (R4)
+  pais            VARCHAR(2)  NOT NULL DEFAULT 'CO'  -- país del aviso aceptado (acta del 16-oct)
 );
 
 CREATE TABLE votos (
@@ -117,7 +117,7 @@ CREATE TABLE votos (
   alineacion_core               TINYINT NOT NULL CHECK (alineacion_core IN (1,3,5,7,9)),
   inversion_requerida           TINYINT NOT NULL CHECK (inversion_requerida IN (1,3,5,7,9)),
   actualizado_at  DATETIME NOT NULL,
-  ip              VARCHAR(45) NULL,           -- IP del último guardado (R4, solo admin)
+  ip              VARCHAR(45) NULL,           -- IP del último guardado (acta del 16-oct, solo admin)
   PRIMARY KEY (participante_id, proyecto_id, ronda)
 );
 CREATE INDEX ix_votos_sala_ronda ON votos (sala_id, ronda, proyecto_id);
