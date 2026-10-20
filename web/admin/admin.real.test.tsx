@@ -435,3 +435,106 @@ describe('cambios del 19-oct contra la API real', () => {
     expect(aviso.textContent).toBe(`Los QR apuntan a https://horizontes.test, pero estás en ${window.location.origin}. Corrige BASE_URL en Coolify.`)
   }, 20_000)
 })
+
+describe('correcciones de la QA del panel contra la API real', () => {
+  /** Sala de 2 mesas con Ana (votó) y Beto (no votó) en la Mesa 1, en ronda 1 abierta. */
+  async function salaConVotos() {
+    const sala = await crearSala(e, 2, 'Sala QA real')
+    expect((await accion(e, sala.id, 'abrir_inscripcion')).statusCode).toBe(200)
+    const ana = (await inscribir(e, sala.mesas[0].codigo, 'ana@x.co', 'Ana Real')).json().token as string
+    expect((await inscribir(e, sala.mesas[0].codigo, 'beto@x.co', 'Beto Real')).statusCode).toBe(201)
+    expect((await accion(e, sala.id, 'abrir_ronda_1')).statusCode).toBe(200)
+    for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, ana, p, 1)).statusCode).toBe(200)
+    return sala
+  }
+
+  async function entrarA(ruta: string) {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    cleanup()
+    montar(ruta)
+  }
+
+  it('D1: «Dar acceso de nuevo» genera el enlace real, el celular lo canjea y queda en la bitácora', async () => {
+    const sala = await salaConVotos()
+    await entrarA(`/admin/salas/${sala.id}/participantes`)
+    fireEvent.click(await screen.findByRole('button', { name: 'Dar acceso de nuevo a Ana Real' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Acceso de nuevo para Ana Real' })
+    const enlace = within(dialogo).getByText(/^https:\/\/horizontes\.test\/m\/.+\?acceso=/).textContent!
+    expect(await within(dialogo).findByRole('img', { name: 'Código QR del acceso de Ana Real' })).toBeTruthy()
+    // El reloj del servidor de prueba está a las 2:00 p. m. de Bogotá: vence a las 2:15 p. m.
+    expect(within(dialogo).getByText(/^Sirve una sola vez y vence a las 2:15/)).toBeTruthy()
+    const canje = await e.app.inject({ method: 'POST', url: '/api/acceso', payload: { acceso: new URL(enlace).searchParams.get('acceso') } })
+    expect(canje.statusCode).toBe(200)
+    expect(canje.json().participante.nombre).toBe('Ana Real')
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Listo' }))
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    expect(await screen.findByText(/Acceso de nuevo para Ana Real · paola/, {}, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText(/Ana Real volvió a entrar con el acceso de nuevo/)).toBeTruthy()
+  }, 20_000)
+
+  it('QA-A-09 y QA-A-06: mover a quien votó pide confirmar; cerrar con pendientes también', async () => {
+    const sala = await salaConVotos()
+    await entrarA(`/admin/salas/${sala.id}/participantes`)
+    const mesaAna = (await screen.findByLabelText('Mesa de Ana Real')) as HTMLSelectElement
+    // Espera a que el panel sepa quién votó (Respuestas) antes de mover.
+    await new Promise((r) => setTimeout(r, 300))
+    fireEvent.change(mesaAna, { target: { value: sala.mesas[1].id } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, mover' }))
+    expect(await screen.findByText('Ana Real pasó a Mesa 2.')).toBeTruthy()
+    expect((e.db.prepare('SELECT mesa_id FROM participantes WHERE correo = ?').get('ana@x.co') as { mesa_id: string }).mesa_id).toBe(sala.mesas[1].id)
+    // Beto no votó: se mueve sin preguntar.
+    fireEvent.change(screen.getByLabelText('Mesa de Beto Real'), { target: { value: sala.mesas[1].id } })
+    expect(await screen.findByText('Beto Real pasó a Mesa 2.')).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    fireEvent.click(nav().getByText('Sala en vivo'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cerrar ronda 1' }))
+    const dialogo = await screen.findByRole('dialog', { name: '¿Cerrar la ronda 1 con 1 persona sin terminar?' })
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect((e.db.prepare('SELECT estado FROM salas WHERE id = ?').get(sala.id) as { estado: string }).estado).toBe('r1_abierta')
+  }, 20_000)
+
+  it('QA-A-07: Quitar la pregunta deja al celular sin pregunta guiada', async () => {
+    const sala = await crearSala(e, 1, 'Guiada QA real', { modo_preguntas: 'guiado' })
+    expect((await accion(e, sala.id, 'abrir_inscripcion')).statusCode).toBe(200)
+    const token = (await inscribir(e, sala.mesas[0].codigo, 'ana@x.co')).json().token as string
+    expect((await accion(e, sala.id, 'abrir_ronda_1')).statusCode).toBe(200)
+    await entrarA(`/admin/salas/${sala.id}/vivo`)
+    const seccion = within(await screen.findByRole('region', { name: 'Pregunta en pantalla' }))
+    fireEvent.click(await seccion.findByRole('button', { name: 'Siguiente' }))
+    expect(await seccion.findByText('Pregunta 1 de 6 · INSUMEX · ronda 1')).toBeTruthy()
+    await waitFor(() => expect((seccion.getByRole('button', { name: 'Quitar la pregunta' }) as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(seccion.getByRole('button', { name: 'Quitar la pregunta' }))
+    expect(await seccion.findByText(/^Sin pregunta en pantalla/)).toBeTruthy()
+    const yo = await e.app.inject({ method: 'GET', url: '/api/yo', headers: { 'x-participante-token': token } })
+    expect(yo.json().sala.pregunta_guiada).toBeNull()
+  }, 20_000)
+
+  it('F-7: cambiar el país conserva la hora programada en el mismo reloj', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId } = await crearSalaDesdePanel('País real', 1)
+    fireEvent.click(nav().getByText('Configuración'))
+    await screen.findByRole('heading', { name: 'Apertura y cierre programados' })
+    programar('Ronda 1', 'Cerrar el', '2026-10-20T16:00')
+    await screen.findByText(/La ronda 1 se cerrará el/)
+    fireEvent.change(screen.getByLabelText('País de la sala'), { target: { value: 'GT' } })
+    expect(await screen.findByText(/Las horas programadas siguen en el mismo reloj, ahora en hora de Guatemala: 16:00/)).toBeTruthy()
+    const config = (await e.app.inject({ method: 'GET', url: `/api/admin/salas/${salaId}`, headers: { cookie } })).json().sala.config
+    expect(config.pais).toBe('GT')
+    expect(Date.parse(config.cierre_programado_r1_at)).toBe(Date.parse('2026-10-20T16:00:00-06:00'))
+  }, 20_000)
+
+  it('F-5: si la sesión se cierra en el servidor, el panel vuelve al login', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    await crearSalaDesdePanel('Sesión real', 1)
+    // Otra pestaña cierra la sesión: el siguiente sondeo responde 401.
+    await e.app.inject({ method: 'POST', url: '/api/admin/logout', headers: { cookie } })
+    expect(await screen.findByRole('heading', { name: 'Panel de administración' }, { timeout: 6000 })).toBeTruthy()
+    expect(screen.getByText('Tu sesión terminó. Vuelve a entrar para seguir donde ibas.')).toBeTruthy()
+  }, 20_000)
+})
