@@ -314,6 +314,40 @@ describe('panel admin contra la API real', () => {
   })
 })
 
+describe('reiniciar a elección contra la API real (decisión 3 de Paola, 21-oct)', () => {
+  it('«Reiniciar…» vuelve a la ronda 1 con los votos y después reinicia la sala completa con su nombre', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId, mesas } = await crearSalaDesdePanel('Taller para reiniciar', 1)
+    await pasar('Abrir inscripción', 'Inscripción abierta')
+    const t = (await inscribir(e, mesas[0].codigo, 'ana@x.co')).json().token
+    await pasar('Abrir ronda 1', 'Ronda 1 abierta')
+    for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, t, p, 1)).statusCode).toBe(200)
+    expect((await accion(e, salaId, 'cerrar_ronda_1')).statusCode).toBe(200)
+    expect((await accion(e, salaId, 'abrir_ronda_2')).statusCode).toBe(200)
+    await screen.findByText('Ronda 2 abierta', { selector: '.estado' }, { timeout: 5000 })
+    const votos = () => (e.db.prepare('SELECT COUNT(*) AS n FROM votos WHERE sala_id = ?').get(salaId) as { n: number }).n
+
+    const corregir = () => within(screen.getByRole('group', { name: 'Corregir' }))
+    fireEvent.click(corregir().getByRole('button', { name: 'Reiniciar…' }))
+    let dialogo = within(await screen.findByRole('dialog', { name: '¿Qué quieres reiniciar?' }))
+    fireEvent.click(dialogo.getByLabelText(/^Volver a la ronda anterior/))
+    fireEvent.click(dialogo.getByRole('button', { name: 'Volver a la ronda anterior' }))
+    await screen.findByText('Ronda 1 abierta', { selector: '.estado' }, { timeout: 3000 })
+    expect(votos()).toBe(2)
+
+    fireEvent.click(corregir().getByRole('button', { name: 'Reiniciar…' }))
+    dialogo = within(await screen.findByRole('dialog', { name: '¿Qué quieres reiniciar?' }))
+    fireEvent.click(dialogo.getByLabelText(/^Reiniciar la sala completa/))
+    fireEvent.change(dialogo.getByLabelText('Escribe el nombre de la sala para confirmar: Taller para reiniciar'), { target: { value: 'Taller para reiniciar' } })
+    fireEvent.click(dialogo.getByRole('button', { name: 'Reiniciar la sala' }))
+    await screen.findByText('Inscripción abierta', { selector: '.estado' }, { timeout: 3000 })
+    expect(votos()).toBe(0)
+    expect((e.db.prepare('SELECT COUNT(*) AS n FROM participantes WHERE sala_id = ?').get(salaId) as { n: number }).n).toBe(1)
+    expect(await screen.findByText(/Sala reiniciada: votos de las dos rondas borrados, inscripción abierta \(2 votos\) · paola/, {}, { timeout: 5000 })).toBeTruthy()
+  }, 20_000)
+})
+
 describe('cambios del 19-oct contra la API real', () => {
   // A6 (C19-2): un admin de rol admin ve y usa todo lo de la sala de otra persona; solo le falta Administradores.
   it('un admin recorre cada sección de una sala creada por el superadmin', async () => {

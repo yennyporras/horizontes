@@ -185,7 +185,7 @@ CREATE TABLE accesos_participante (
 CREATE INDEX ix_accesos_participante ON accesos_participante (participante_id);
 `,
   // D2 (20-oct): consolidado en vivo de 3 en 3. Con la ronda abierta se publica la última foto del agregado de cada
-  // alcance ('sala' o id de la mesa), ronda y proyecto; se renueva cuando 3 o más personas votaron o cambiaron su voto
+  // alcance ('sala' o id de la mesa), ronda y proyecto; se renueva cuando el umbral de personas (3; desde el 21-oct, 1) votaron o cambiaron su voto
   // desde la foto anterior. `huellas_json` = {participante_id: "135799"} de los votos incluidos, para contar los cambios.
   `
 CREATE TABLE fotos_agregado (

@@ -227,7 +227,7 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
     .filter((p) => p.modo === 'vivo')
     .map((p) => {
       const rondas: RondaPublicada[] = op.rondas.map((r) => {
-        // D2: con la ronda abierta, la última foto del alcance (se renueva de 3 en 3); con la ronda cerrada, el exacto.
+        // D2: con la ronda abierta, la última foto del alcance (desde el 21-oct se renueva con cada voto); con la ronda cerrada, el exacto.
         const { agregado: a, n_votos } = agregadoPublicado(
           db,
           { salaId: sala.id, alcance: mesaId ?? 'sala', ronda: r, proyectoId: p.id, versionSala: sala.version, umbral: votosPorActualizacion(sala) },

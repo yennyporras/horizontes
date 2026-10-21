@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, consultar } from '../api'
 import { useSala } from '../useSala'
 import { useConfirmar } from '../componentes/Confirmar'
+import { Reiniciar } from '../componentes/Reiniciar'
 import { ConSala } from './EncabezadoSala'
 import { ComoVoto } from '../../tablero'
 import type { CriterioId } from '../../shared/api/contrato'
@@ -20,6 +21,7 @@ import {
   TECLAS_TABLERO,
   ZONAS,
   accionesParaCorregir,
+  opcionesReinicio,
   bitacora,
   confirmacionCierreRonda,
   decimal,
@@ -103,11 +105,13 @@ interface PropsControl {
  */
 function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsControl) {
   const [errorAccion, setErrorAccion] = useState<string | null>(null)
+  const [hecho, setHecho] = useState<string | null>(null)
   const [enCurso, setEnCurso] = useState<Accion | null>(null)
   const [dialogo, confirmar] = useConfirmar()
   const estado = d.sala.estado
   const siguiente = PASO_SIGUIENTE[estado]
   const corregir = accionesParaCorregir(estado)
+  const hayReinicio = opcionesReinicio(estado).length > 0
   const ronda = rondaAbierta(estado)
 
   const ejecutar = async (accion: Accion) => {
@@ -117,6 +121,7 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
     const tono = ES_DESTRUCTIVA[accion] && accion !== siguiente ? 'destructivo' : 'primario'
     if (c && !(await confirmar(c.titulo, c.texto, c.boton, { tono }))) return
     setErrorAccion(null)
+    setHecho(null)
     setEnCurso(accion)
     try {
       await api.post(`/api/admin/salas/${salaId}/acciones`, { accion })
@@ -177,10 +182,15 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
           {errorAccion}
         </p>
       )}
-      {corregir.length > 0 && (
+      {hecho && (
+        <p className="alerta alerta--exito" role="status">
+          {hecho}
+        </p>
+      )}
+      {(corregir.length > 0 || hayReinicio) && (
         <div className="corregir" role="group" aria-labelledby="t-corregir">
           <h3 id="t-corregir">Corregir</h3>
-          <p className="pista">Para deshacer un paso o terminar antes de tiempo. Lo que borra o cierra pide confirmación.</p>
+          <p className="pista">Para deshacer un paso, reiniciar o terminar antes de tiempo. Lo que borra o cierra pide confirmación.</p>
           <ul className="corregir__lista">
             {corregir.map((a) => (
               <li key={a}>
@@ -190,6 +200,19 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
                 </span>
               </li>
             ))}
+            {hayReinicio && (
+              <li>
+                <Reiniciar
+                  d={d}
+                  ocupado={enCurso !== null}
+                  refrescar={refrescar}
+                  alTerminar={(t) => {
+                    setErrorAccion(null)
+                    setHecho(t)
+                  }}
+                />
+              </li>
+            )}
           </ul>
         </div>
       )}
