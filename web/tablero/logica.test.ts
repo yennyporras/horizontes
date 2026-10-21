@@ -114,7 +114,7 @@ describe('estados vacíos', () => {
     expect(mensajeFaltanVotos(2, 3)).toMatch(/^Hay 2 votos de los 3 que hacen falta/)
     expect(mensajeFaltanVotos(0, 3)).toMatch(/^Todavía no hay votos: hacen falta 3 para mostrar el resultado\./)
     expect(mensajeFaltanVotos(0, 1)).toMatch(/^Todavía no hay votos: hace falta 1 para mostrar el resultado\./)
-    expect(AVISO_ENSAYO).toBe('Ensayo: los resultados se muestran desde 1 voto. En un taller con cliente hacen falta 3.')
+    expect(AVISO_ENSAYO).toBe('Sala de ensayo: no cuenta en las cifras de talleres.')
     for (const t of [mensajeFaltanVotos(1, 3), AVISO_ENSAYO, textoEnVivo(1), textoEnVivo(3)]) expect(t).not.toMatch(/[—–]/)
   })
   test('columna R2 solo desde la ronda 2', () => {

@@ -294,14 +294,14 @@ describe('Sala en vivo', () => {
     expect(await screen.findByText(/Enlace del tablero cambiado: los anteriores dejaron de funcionar/)).toBeTruthy()
   })
 
-  it('F-8 y D2: el resultado preliminar no parpadea al renovarse y explica que se renueva de 3 en 3', async () => {
+  it('F-8 y D2: el resultado preliminar no parpadea al renovarse y explica que se renueva con cada voto (21-oct)', async () => {
     let lento = false
     espiar((metodo, ruta) => (lento && ruta.startsWith('/api/tablero/') ? new Promise((r) => setTimeout(() => r(responderMock(metodo, ruta)), 300)) : undefined))
     await abrirDemo()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     const region = await screen.findByRole('region', { name: /Resultado preliminar · Mesa 1/ })
-    expect(within(region).getByText(/Se renueva cada 3 votos nuevos/)).toBeTruthy()
-    expect(screen.getByText(/El resultado preliminar se renueva cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final./)).toBeTruthy()
+    expect(within(region).getByText(/Se renueva con cada voto nuevo/)).toBeTruthy()
+    expect(screen.getByText(/El resultado preliminar se renueva con cada voto nuevo. Al cerrar la ronda se muestra el resultado final./)).toBeTruthy()
     lento = true
     // Siguiente (modo guiado) cambia la versión de la sala: el resultado se vuelve a pedir y tarda.
     fireEvent.click(within(screen.getByRole('region', { name: 'Pregunta en pantalla' })).getByRole('button', { name: 'Siguiente' }))
@@ -449,7 +449,7 @@ describe('Configuración', () => {
     await salaNueva('Avisos')
     fireEvent.click(nav().getByText('Configuración'))
     const despues = within(await screen.findByRole('group', { name: 'Después de votar' }))
-    expect(despues.getByText(/Se renueva cada 3 votos nuevos/)).toBeTruthy()
+    expect(despues.getByText(/Se renueva con cada voto nuevo/)).toBeTruthy()
     const registrado = despues.getByLabelText(/Voto registrado/) as HTMLInputElement
     fireEvent.click(registrado)
     expect(registrado.checked).toBe(true)

@@ -182,9 +182,9 @@ describe('mismas piezas en todas las áreas', () => {
     expect(sinComentarios(tablero)).not.toMatch(/border-radius: (6|8|10)px/)
   })
 
-  it('el tablero usa el contenedor de 1280 px; solo el Detallado desde 1600 px toma la pantalla (matriz y tabla a 6 m)', () => {
+  it('el tablero usa el contenedor de 1280 px; desde 1600 px Gráfica y Detallado toman la pantalla (decisión del 21-oct)', () => {
     const tablero = sinComentarios(readFileSync('web/tablero/tablero.css', 'utf8'))
-    expect(tablero).toMatch(/@media \(min-width: 1600px\) \{\s*\.hz-tablero\[data-modo='detallado'\]:not\(\.hz-tablero-mesas\) \{\s*--hz-ancho-pagina: 100%;/)
+    expect(tablero).toMatch(/@media \(min-width: 1600px\) \{\s*\.hz-tablero:not\(\.hz-tablero-mesas\) \{\s*--hz-ancho-pagina: 100%;/)
     // Ninguna otra regla del tablero cambia el ancho de página ni lleva la barra al 100 %.
     expect(tablero.match(/--hz-ancho-pagina/g)).toHaveLength(1)
     // La franja del tablero usa la letra de todas las vistas, no la escala del proyector.

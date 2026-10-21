@@ -135,7 +135,7 @@ describe('textos del mínimo de votos (QA-P-21, F-12)', () => {
     Object.assign(r, { ensayo: true, minimo_votos: 1, votos_por_actualizacion: 1 })
     for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 1
     const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
-    expect(screen.getByText('Ensayo: los resultados se muestran desde 1 voto. En un taller con cliente hacen falta 3.')).toBeTruthy()
+    expect(screen.getByText('Sala de ensayo: no cuenta en las cifras de talleres.')).toBeTruthy()
     expect(screen.getAllByRole('table').length).toBeGreaterThan(0)
     expect(container.textContent).toContain('Promedio de 1 voto')
     expect(container.textContent).not.toMatch(/1 votos/)

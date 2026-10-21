@@ -225,7 +225,15 @@ describe('modo demo (jurado)', () => {
     expect((await responderMock('POST', '/api/admin/demo')).status).toBe(403)
   })
 
-  it('sala de ensayo (21-oct): «Cómo votó» avisa que los resultados se muestran desde 1 voto, con el dato del servidor', async () => {
+  it('simulador: todas las salas muestran desde 1 voto y con cada voto; solo el ensayo trae `ensayo` (21-oct)', async () => {
+    await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+    const lista = (await responderMock('GET', '/api/admin/salas')).body as { id: string; tipo?: string }[]
+    const taller = lista.find((s) => s.tipo !== 'ensayo')!
+    const t = (await responderMock('GET', `/api/tablero/${taller.id}`)).body as { ensayo?: boolean; minimo_votos: number; votos_por_actualizacion: number }
+    expect([t.ensayo, t.minimo_votos, t.votos_por_actualizacion]).toEqual([undefined, 1, 1])
+  })
+
+  it('sala de ensayo (21-oct): «Cómo votó» avisa que no cuenta en las cifras de talleres, con el dato del servidor', async () => {
     montar('/admin/login')
     await entrar()
     fireEvent.click(within(screen.getByRole('region', { name: 'Demostración' })).getByRole('button', { name: 'Crear demostración' }))
@@ -234,7 +242,7 @@ describe('modo demo (jurado)', () => {
     const sala = lista.find((s) => s.nombre === 'Demostración')!
     const t = (await responderMock('GET', `/api/tablero/${sala.id}`)).body as { ensayo?: boolean; minimo_votos: number; votos_por_actualizacion: number }
     expect([t.ensayo, t.minimo_votos, t.votos_por_actualizacion]).toEqual([true, 1, 1])
-    const aviso = await screen.findAllByText('Ensayo: los resultados se muestran desde 1 voto. En un taller con cliente hacen falta 3.', {}, { timeout: 5000 })
+    const aviso = await screen.findAllByText('Sala de ensayo: no cuenta en las cifras de talleres.', {}, { timeout: 5000 })
     expect(aviso.length).toBeGreaterThan(0)
     expect(aviso.every((a) => a.textContent!.indexOf('—') < 0)).toBe(true)
   })

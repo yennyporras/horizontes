@@ -220,7 +220,7 @@ export interface Tablero {
   preliminar: boolean
   /** Votos mínimos por proyecto y ronda para mostrar resultados de un alcance: 3 en un taller, 1 en una sala de ensayo. */
   minimo_votos?: number
-  /** Aditivo (21-oct): la sala es de ensayo; los resultados se muestran desde 1 voto y se renuevan con cada voto. */
+  /** Aditivo (21-oct): la sala es de ensayo y no cuenta en las cifras de talleres. Desde el 21-oct todas las salas muestran desde 1 voto y con cada voto. */
   ensayo?: true
   /**
    * Consolidado en vivo (20-oct, D2): con la ronda abierta, el agregado de cada alcance, ronda y proyecto es una foto que se
