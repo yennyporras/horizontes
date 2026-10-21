@@ -72,12 +72,10 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
           await sinDesborde(p)
           await p.getByRole('button', { name: 'Guardar calificación' }).click()
         }
-        // Por defecto (acta A2, C5): tras votar, el consolidado parcial de la sala (D2: se renueva de 3 en 3). Con 1 voto, el
-        // aviso de mínimo. Con la ronda 1 oculta del servidor (decisión 1 de Paola del 20-oct), «Calificación enviada» y
-        // cuándo salen los resultados.
-        await titulo(p, /^(Resultado parcial de la sala|Calificación enviada)$/, espera)
-        if (await p.getByRole('heading', { name: 'Calificación enviada', level: 1 }).count()) await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.', espera)
-        else await ver(p, 'Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.', espera)
+        // Con la ronda 1 abierta y gente sin votar, el servidor la manda oculta (decisión 1 de Paola del 20-oct, vigente
+        // con cada voto en vivo desde el 21-oct): «Calificación enviada» y cuándo salen los resultados.
+        await titulo(p, 'Calificación enviada', espera)
+        await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.', espera)
         await votarApi(e, tokenB, 'insumex', 1)
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)

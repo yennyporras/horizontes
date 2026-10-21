@@ -407,17 +407,13 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     const p = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}`, 'svg.hz-matriz', true)
     const estados: number[] = []
     p.on('response', (res) => res.url().includes('/api/tablero/') && estados.push(res.status()))
-    // Decisión de Paola (20-oct): con la ronda 1 abierta el servidor puede mandarla oculta (`oculta`); entonces el
-    // tablero muestra la cortina con el avance por mesa en lugar de resultados. Sin ese campo, la foto de 3 en 3 (D2).
+    // Decisión de Paola (20-oct): con la ronda 1 abierta y sin precierre el servidor la manda oculta (`oculta`); el
+    // tablero muestra la cortina con el avance por mesa en lugar de resultados. Desde el 21-oct, cuando se muestra, el
+    // resultado sale desde 1 voto y se actualiza con cada voto (eso se prueba con la ronda 2 más abajo).
     const oculta = async () =>
       (await e.app.inject(`/api/tablero/${vivo.id}?alcance=sala&t=${vivo.token}`)).json().proyectos_vivos.some((v: { rondas: { oculta?: boolean }[] }) => v.rondas.some((r) => r.oculta))
-    if (await oculta()) {
-      expect(await p.locator('.hz-cortina').textContent()).toContain('Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.')
-      expect(await p.locator('.hz-tb-insignia-vivo').count()).toBe(0)
-    } else {
-      expect(await p.locator('.hz-vacio').textContent()).toContain('Aún no hay resultados en la ronda 1')
-      expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo: se actualiza cada 3 votos')
-    }
+    expect(await p.locator('.hz-cortina').textContent()).toContain('Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.')
+    expect(await p.locator('.hz-tb-insignia-vivo').count()).toBe(0)
     expect(await p.locator('.hz-franja').textContent()).toBe('Ronda 1 · Individual y en silencio')
     // Sin cambios: el servidor responde 304 y el <svg> sigue siendo el mismo nodo (sin parpadeo).
     await p.evaluate(() => ((window as unknown as { __svg: Element }).__svg = document.querySelector('svg.hz-matriz')!))
@@ -425,37 +421,21 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     expect(estados).toContain(304)
     expect(await p.evaluate(() => (window as unknown as { __svg: Element }).__svg === document.querySelector('svg.hz-matriz'))).toBe(true)
 
-    // Un solo voto por proyecto: bajo el mínimo (anonimato) no hay punto y el aviso dice cuántos faltan.
+    // Un solo voto por proyecto con la ronda 1 abierta: sigue oculta (falta gente), sin punto y con el avance por mesa.
     const resp = Object.fromEntries(CRITERIOS.map((c) => [c, 7]))
     const [primero, ...resto] = vivo.tokens
     for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, primero, pr, 1, resp)).statusCode).toBe(200)
-    const conCortina = await oculta()
-    if (conCortina) {
-      await expect.poll(() => p.locator('.hz-cortina-mesas').textContent(), { timeout: 10_000, interval: 100 }).toBe('Mesa 11 de 3 votaron')
-    } else {
-      await expect
-        .poll(() => p.locator('.hz-vacio').textContent(), { timeout: 10_000, interval: 100 })
-        .toBe('Hacen falta al menos 3 votos para mostrar estos resultados')
-    }
+    expect(await oculta()).toBe(true)
+    await expect.poll(() => p.locator('.hz-cortina-mesas').textContent(), { timeout: 10_000, interval: 100 }).toBe('Mesa 11 de 3 votaron')
     expect(await p.locator('svg.hz-matriz circle.hz-r1').count()).toBe(0)
     await p.keyboard.press('d')
-    if (conCortina) {
-      await p.waitForSelector('.hz-lateral .hz-cortina')
-      expect(await p.locator('.hz-comparada').count()).toBe(0)
-    } else {
-      // 21-oct: bajo el mínimo, un solo mensaje con el conteo real en lugar de «Faltan votos» en cada celda.
-      expect(await p.locator('.hz-comparada').textContent()).toMatch(/Hay \d votos? de los 3 que hacen falta para mostrar el resultado/)
-      expect(await p.locator('.hz-comparada').textContent()).not.toContain('Faltan votos')
-      // D2: la foto de 3 en 3 la dice la insignia de la barra, también en Detallado.
-      expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo: se actualiza cada 3 votos')
-    }
-    const mesa = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}&mesa=${s2.mesas[0].id}`, conCortina ? '.hz-cortina' : '.hz-vacio')
-    if (!conCortina)
-      expect(await mesa.locator('.hz-vacio').textContent()).toMatch(/^Hay \d votos? de los 3 que hacen falta para mostrar el resultado\. Así nadie puede deducir cómo votó otra persona\.$/)
+    await p.waitForSelector('.hz-lateral .hz-cortina')
+    expect(await p.locator('.hz-comparada').count()).toBe(0)
+    const mesa = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}&mesa=${s2.mesas[0].id}`, '.hz-cortina')
     await mesa.context().close()
     // En el celular (360 px), con el mensaje del mínimo (o la cortina), nada se desborda (triage #5).
     const cel = await abrir(360, 740, `/tablero/${vivo.id}?t=${vivo.token}&modo=detallado`, '.hz-lateral')
-    await cel.waitForSelector(conCortina ? '.hz-cortina' : '.hz-panel')
+    await cel.waitForSelector('.hz-cortina')
     expect(await cel.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'desborde a 360 px').toBeLessThanOrEqual(0)
     await cel.context().close()
 
@@ -485,9 +465,14 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     await expect.poll(() => p.locator('.hz-franja').textContent(), { timeout: 10_000, interval: 100 }).toBe('Ronda 2 · Discusión en la mesa')
     expect(await vistaActiva()).toBe('Ronda 1')
     const resp2 = Object.fromEntries(CRITERIOS.map((c) => [c, 3]))
-    for (const tk of vivo.tokens) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 2, resp2)).statusCode).toBe(200)
-    await p.waitForSelector('svg.hz-matriz circle.hz-r2')
+    // 21-oct: cada voto en vivo en todas las salas. Con el primer voto de la ronda 2 ya hay burbuja R2 y la insignia lo dice.
+    const [unoR2, ...restoR2] = vivo.tokens
+    for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, unoR2, pr, 2, resp2)).statusCode).toBe(200)
+    await p.waitForSelector('svg.hz-matriz circle.hz-r2', { timeout: 10_000 })
+    expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo: se actualiza con cada voto')
+    expect(await p.locator('body').textContent()).not.toMatch(/que hacen falta para mostrar el resultado/)
     await expect.poll(vistaActiva, { timeout: 10_000, interval: 100 }).toBe('Ronda 2')
+    for (const tk of restoR2) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 2, resp2)).statusCode).toBe(200)
     // Registro cuadro a cuadro de las burbujas R2 para medir la animación R1 → R2 al cerrar la ronda.
     await p.evaluate(registrarCuadros)
     const t2 = Date.now()
