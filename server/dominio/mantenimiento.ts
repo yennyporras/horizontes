@@ -1,8 +1,9 @@
-// Respaldo de la BD (antes y después de cada sala), reinicio limpio de una sala y límite de peticiones.
+// Respaldo de la BD (antes y después de cada sala), reinicio limpio y eliminación de una sala, y límite de peticiones.
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { type Db, ejecutar, transaccion } from '../db/index.js'
-import { CONFIG_POR_DEFECTO, cargarSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
+import { ErrorApi } from '../http.js'
+import { CONFIG_POR_DEFECTO, type SalaFila, cargarSala, regenerarTokenTablero, registrarEvento, tocar } from './salas.js'
 import { type ZonaHoraria, isoEnZona } from './util.js'
 
 /** Respaldos que se conservan por sala (inicio, antes de cada reinicio y cierre). La rotación es por sala desde el 20-oct. */
@@ -101,5 +102,44 @@ export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
     registrarEvento(db, sala.id, ahora, 'sala_reiniciada', 'sistema', borrados)
     tocar(db, sala.id)
     return { sala: cargarSala(db, sala.id), borrados }
+  })
+}
+
+/**
+ * 422 CONFIRMACION_INVALIDA si `confirmar` no es el nombre exacto de la sala (se ignoran los espacios de los extremos).
+ * La ruta lo revisa antes del respaldo, así un nombre mal escrito no gasta la rotación de respaldos.
+ */
+export function exigirConfirmacionSala(sala: Pick<SalaFila, 'nombre'>, confirmar: unknown, para = 'eliminar la sala') {
+  if (typeof confirmar !== 'string' || confirmar.trim() !== sala.nombre) {
+    throw new ErrorApi(422, 'CONFIRMACION_INVALIDA', `Para ${para} escribe su nombre exacto: «${sala.nombre}».`)
+  }
+}
+
+/**
+ * Elimina la sala y todo lo suyo en una transacción (pedido de Paola, 21-oct): votos, fotos del consolidado, accesos,
+ * consentimientos, participantes, mesas, hojas, proyectos, contenido (con sus rúbricas), bitácora y la sala. Las
+ * rúbricas guardadas para las salas nuevas (`rubricas_plantilla`) no son de la sala y se quedan. Quien la llame debe
+ * respaldar antes. Devuelve lo que borró.
+ */
+export function eliminarSala(db: Db, salaId: string, confirmar: unknown) {
+  return transaccion(db, () => {
+    const sala = cargarSala(db, salaId)
+    exigirConfirmacionSala(sala, confirmar)
+    const ids = 'SELECT id FROM participantes WHERE sala_id = ?'
+    const borrar = (sql: string, ...p: unknown[]) => Number(ejecutar(db, sql, ...p).changes)
+    const borrados = {
+      votos: borrar(`DELETE FROM votos WHERE sala_id = ? OR participante_id IN (${ids})`, sala.id, sala.id),
+      fotos: borrar('DELETE FROM fotos_agregado WHERE sala_id = ?', sala.id),
+      accesos: borrar(`DELETE FROM accesos_participante WHERE sala_id = ? OR participante_id IN (${ids})`, sala.id, sala.id),
+      consentimientos: borrar(`DELETE FROM consentimientos WHERE participante_id IN (${ids})`, sala.id),
+      participantes: borrar('DELETE FROM participantes WHERE sala_id = ?', sala.id),
+      mesas: borrar('DELETE FROM mesas WHERE sala_id = ?', sala.id),
+      hojas: borrar('DELETE FROM hojas WHERE sala_id = ?', sala.id),
+      proyectos: borrar('DELETE FROM proyectos WHERE sala_id = ?', sala.id),
+      contenido: borrar('DELETE FROM contenido_sala WHERE sala_id = ?', sala.id),
+      eventos: borrar('DELETE FROM eventos WHERE sala_id = ?', sala.id),
+    }
+    borrar('DELETE FROM salas WHERE id = ?', sala.id)
+    return { sala: { id: sala.id, codigo: sala.codigo, nombre: sala.nombre }, borrados }
   })
 }

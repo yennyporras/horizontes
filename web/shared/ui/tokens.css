@@ -71,7 +71,9 @@
   --hz-fs-56: 3.5rem;
   --hz-fs-72: 4.5rem;
   --hz-fs-96: 6rem;
-  --hz-fs-h1: clamp(1.5rem, 1.2391rem + 1.1594vw, 2rem);          /* título de página: 24 → 32 px */
+  /* Título de página: una sola escala en landing (salvo su héroe), celular, tablero y panel (21-oct). 24 → 32 px, 900. */
+  --hz-fs-h1: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  --hz-fw-h1: var(--hz-fw-display);
   --hz-fs-h2: clamp(1.25rem, 1.1196rem + 0.5797vw, 1.5rem);       /* título de sección: 20 → 24 px */
   --hz-fs-display: clamp(2.5rem, 1.8rem + 3vw, 3.5rem);           /* landing: 40 → 56 px */
   --hz-fs-display-2: clamp(2rem, 1.7rem + 1.3vw, 2.5rem);         /* landing, secciones: 32 → 40 px */
@@ -90,6 +92,16 @@
      comparten los mismos bordes; el margen lateral crece con la pantalla (16, 24 y 32 px). */
   --hz-ancho-pagina: 1280px;
   --hz-margen-pagina: 1rem;
+  /* Columna de lectura del celular (21-oct): centrada dentro del contenedor de página, nunca pegada a la izquierda. */
+  --hz-ancho-lectura: 40rem;
+  /* Composición común (21-oct, docs/DISENO.md §Composición): la barra mide lo mismo en todas las vistas (64 px en
+     celular y tableta, 72 px desde 1024 px, con la línea del degradado incluida) y la segunda franja (pestañas del
+     panel, controles del tablero) mide 56 px. */
+  --hz-alto-barra: 4rem;
+  --hz-alto-franja: 3.5rem;
+  /* Aire entre bloques de una página y relleno de las tarjetas: la misma escala en las cuatro áreas. */
+  --hz-sp-bloque: var(--hz-sp-6);
+  --hz-sp-tarjeta: var(--hz-sp-4);
 
   /* Espaciado (§5): retícula de 8 con medio paso de 4. 20 (--hz-sp-5) se conserva. */
   --hz-sp-1: 0.25rem;
@@ -209,3 +221,7 @@
 /* Margen lateral de la página estándar: 16 px en celular, 24 px en tableta y 32 px en escritorio ancho. */
 @media (min-width: 48rem) { :root { --hz-margen-pagina: 1.5rem; } }
 @media (min-width: 80rem) { :root { --hz-margen-pagina: 2rem; } }
+/* Composición común (21-oct): relleno de tarjeta y aire entre bloques más amplios desde la tableta; la barra crece a
+   72 px desde 1024 px, donde el menú de cada área va abierto en ella. */
+@media (min-width: 48rem) { :root { --hz-sp-tarjeta: var(--hz-sp-6); --hz-sp-bloque: var(--hz-sp-8); } }
+@media (min-width: 64rem) { :root { --hz-alto-barra: 4.5rem; } }

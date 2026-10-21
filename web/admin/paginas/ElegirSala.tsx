@@ -5,6 +5,7 @@ import type { SalaResumen } from '../tipos'
 import { ESTADOS } from '../textos'
 import { nombreSeccionSala } from '../secciones'
 import { useTituloPagina } from './EncabezadoSala'
+import { CabeceraPagina } from '../../shared/ui'
 
 /**
  * Sección de sala sin sala elegida en este navegador (por ejemplo, un admin que entra por primera vez desde su equipo).
@@ -27,11 +28,11 @@ export function ElegirSala() {
   // Mismo esquema que las demás secciones: el título afuera y la lista en su tarjeta.
   return (
     <>
-      <h1 tabIndex={-1}>Elige una sala</h1>
-      <p className="intro">
-        {nombreSeccion ? `${nombreSeccion} trabaja sobre una sala.` : 'Esta sección trabaja sobre una sala.'} Elige con cuál sigues; el panel la recuerda en este
-        navegador.
-      </p>
+      <CabeceraPagina
+        enfocable
+        titulo="Elige una sala"
+        contexto={`${nombreSeccion ? `${nombreSeccion} trabaja sobre una sala.` : 'Esta sección trabaja sobre una sala.'} Elige con cuál sigues; el panel la recuerda en este navegador.`}
+      />
       <section className="panel" aria-label="Salas">
         {error ? (
           <p className="alerta alerta--error" role="alert">

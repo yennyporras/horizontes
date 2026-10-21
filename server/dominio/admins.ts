@@ -179,6 +179,25 @@ export function crearAdmin(db: Db, por: AdminFila, d: DatosAdmin, ahora: number)
   })
 }
 
+/**
+ * Elimina un administrador (pedido de Paola, 21-oct). Solo superadmin. 409 OPERACION_INVALIDA si es la propia cuenta o
+ * una cuenta superadministradora. Cierra sus sesiones. Lo que creó se conserva: las salas no dependen del admin y la
+ * bitácora guarda su usuario como texto; las cuentas que creó quedan con `creado_por` en null. Devuelve la cuenta borrada.
+ */
+export function eliminarAdmin(db: Db, por: AdminFila, id: number) {
+  exigirSuperadmin(por)
+  return transaccion(db, () => {
+    const a = uno<AdminFila>(db, 'SELECT * FROM admins WHERE id = ?', id)
+    if (!a) throw new ErrorApi(404, 'ADMIN_NO_EXISTE', 'Ese administrador no existe.')
+    if (a.id === por.id) throw new ErrorApi(409, 'OPERACION_INVALIDA', 'No puedes eliminar tu propia cuenta.')
+    if (a.rol === 'superadmin') throw new ErrorApi(409, 'OPERACION_INVALIDA', 'La cuenta superadministradora no se elimina desde aquí.')
+    ejecutar(db, 'UPDATE admins SET creado_por = NULL WHERE creado_por = ?', a.id)
+    ejecutar(db, 'DELETE FROM sesiones_admin WHERE admin_id = ?', a.id)
+    ejecutar(db, 'DELETE FROM admins WHERE id = ?', a.id)
+    return adminPublico(a)
+  })
+}
+
 export interface CambiosAdmin {
   activo?: unknown
   nombre?: unknown

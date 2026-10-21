@@ -5,11 +5,8 @@ import { NOMBRE_CORTO } from '../shared/criterios'
 import type { CriterioId } from '../shared/api/contrato'
 import semilla from './semilla_inicio.json'
 
-/** Política vigente (docs/CONSENTIMIENTO.md §2 y docs/DESPLIEGUE.md). La raíz no tiene mesa: no hay `politica_url` del servidor. */
-export const URL_POLITICA = 'https://estratek.com.co/politica-de-privacidad-y-tratamiento-de-datos/'
-
-/** Canal de derechos del titular, contacto del aviso de datos y contacto comercial (docs/CONSENTIMIENTO.md §3). */
-export const CORREO_ESTRATEK = 'info@estratek.com.co'
+/** Política y correo de Estratek: los mismos del pie común (web/shared/estratek.ts). La raíz no tiene mesa: no hay `politica_url` del servidor. */
+export { URL_POLITICA, CORREO_ESTRATEK } from '../shared/estratek'
 
 export const ESCALA = semilla.escala
 

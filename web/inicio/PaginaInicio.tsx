@@ -1,8 +1,8 @@
 // Landing pública de la raíz `/`. Qué es Horizontes, cómo se entra a una mesa, cómo funciona y dónde está el panel.
 // Tema claro con la barra superior carbón, como el celular, el tablero y el panel (decisión de Paola del 20-oct).
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { EncabezadoProducto, LogoEstratek, Rubrica, useTemaDocumento } from '../shared/ui'
+import { EncabezadoProducto, PiePagina, Rubrica, useTemaDocumento } from '../shared/ui'
 import { HORIZONTES, LECTURA_EJES, LECTURA_ESCALA } from '../shared/criterios'
 import { CORREO_ESTRATEK, EJES, RUBRICA_EJEMPLO, URL_POLITICA } from './contenido'
 import { EntradaMesa } from './EntradaMesa'
@@ -30,9 +30,9 @@ const PASOS: { id: IdPaso; titulo: string; texto: string; ronda?: 'r1' | 'r2' }[
   },
 ]
 
-/** Secciones de la landing: el menú de escritorio y el del celular son la misma lista. */
+/** Secciones de la landing: van en la barra desde 1024 px y en el menú plegable común por debajo (EncabezadoProducto). */
 const SECCIONES = [
-  { href: '#entrar', texto: 'Entrar a tu mesa' },
+  { href: '#entrar', texto: 'Tu mesa' },
   { href: '#como-funciona', texto: 'Cómo funciona' },
   { href: '#que-se-evalua', texto: 'Qué se evalúa' },
   { href: '#facilitadores', texto: 'Facilitadores' },
@@ -56,67 +56,6 @@ function Firma() {
     <span className="in-firma" aria-hidden="true">
       »
     </span>
-  )
-}
-
-/**
- * Menú del celular: por debajo de 72 rem (1152 px) las secciones y «Ingresar al panel» no caben en el encabezado.
- * Botón de 48 px que abre la lista debajo del encabezado; se cierra al elegir, con Escape, con el mismo botón o con un
- * toque fuera del menú.
- */
-function MenuMovil() {
-  const [abierto, setAbierto] = useState(false)
-  const boton = useRef<HTMLButtonElement>(null)
-  const menu = useRef<HTMLElement>(null)
-  useEffect(() => {
-    if (!abierto) return
-    const alTeclear = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      setAbierto(false)
-      boton.current?.focus()
-    }
-    // Un toque fuera del menú (en la página) también lo cierra: el menú tapa el héroe.
-    const alTocar = (e: PointerEvent) => {
-      const t = e.target as Node
-      if (!menu.current?.contains(t) && !boton.current?.contains(t)) setAbierto(false)
-    }
-    document.addEventListener('keydown', alTeclear)
-    document.addEventListener('pointerdown', alTocar)
-    return () => {
-      document.removeEventListener('keydown', alTeclear)
-      document.removeEventListener('pointerdown', alTocar)
-    }
-  }, [abierto])
-  const cerrar = () => setAbierto(false)
-  return (
-    <>
-      <button
-        ref={boton}
-        type="button"
-        className="hz-boton hz-boton--secundario in-menu__boton"
-        aria-expanded={abierto}
-        aria-controls="in-menu"
-        onClick={() => setAbierto((a) => !a)}
-      >
-        {abierto ? 'Cerrar menú' : 'Menú'}
-      </button>
-      <nav ref={menu} id="in-menu" className="in-menu" aria-label="Menú" hidden={!abierto}>
-        <ul>
-          {SECCIONES.map((s) => (
-            <li key={s.href}>
-              <a href={s.href} onClick={cerrar}>
-                {s.texto}
-              </a>
-            </li>
-          ))}
-          <li>
-            <Link to="/admin" onClick={cerrar}>
-              Ingresar al panel
-            </Link>
-          </li>
-        </ul>
-      </nav>
-    </>
   )
 }
 
@@ -149,21 +88,26 @@ export default function PaginaInicio() {
       <a className="in-saltar" href="#contenido">
         Saltar al contenido
       </a>
-      <EncabezadoProducto href="#inicio" className="in-nav">
-        <nav className="in-nav__secciones" aria-label="Secciones">
-          <ul>
-            {SECCIONES.map((s) => (
-              <li key={s.href}>
-                <a href={s.href}>{s.texto}</a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <Link className="hz-boton hz-boton--secundario in-nav__panel" to="/admin">
-          Ingresar al panel
-        </Link>
-        <MenuMovil />
-      </EncabezadoProducto>
+      <EncabezadoProducto
+        href="#inicio"
+        className="in-nav"
+        menu={
+          <>
+            <nav className="in-nav__secciones" aria-label="Secciones">
+              <ul>
+                {SECCIONES.map((s) => (
+                  <li key={s.href}>
+                    <a href={s.href}>{s.texto}</a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <Link className="hz-boton hz-boton--secundario in-nav__panel" to="/admin">
+              Ingresar al panel
+            </Link>
+          </>
+        }
+      />
 
       <main id="contenido">
         <section id="inicio" className="in-hero hz-pagina" aria-labelledby="in-titulo">
@@ -329,8 +273,9 @@ export default function PaginaInicio() {
                   celular. No los usamos para publicidad ni los compartimos con terceros.
                 </li>
                 <li>
-                  <strong>Quién ve qué.</strong> En el tablero y en los celulares nadie ve tu nombre ni tus calificaciones: solo promedios de al
-                  menos 3 personas. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo.
+                  <strong>Quién ve qué.</strong> En el tablero y en los celulares nadie ve tu nombre: se ven los promedios de tu mesa o de la
+                  sala, que se actualizan con cada calificación. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu
+                  nombre, para conducirlo.
                 </li>
                 <li>
                   <strong>Con tu autorización.</strong> Los tratamos según la ley del país donde se hace el taller: en Colombia, la Ley 1581
@@ -370,41 +315,7 @@ export default function PaginaInicio() {
         </section>
       </main>
 
-      <footer className="in-pie">
-        <div className="hz-pagina in-pie__interior">
-          <p className="in-pie__nombre">
-            Horizontes
-            <span className="in-firma" aria-hidden="true">
-              »
-            </span>
-          </p>
-          <div className="in-pie__datos">
-            <LogoEstratek className="in-pie__logo" />
-            <p>Una herramienta de Estratek S.A.S., Medellín, Colombia.</p>
-            <p>
-              <a href={`mailto:${CORREO_ESTRATEK}`}>{CORREO_ESTRATEK}</a>
-            </p>
-            <nav aria-label="Pie de página">
-              <ul>
-                <li><a href="#inicio">Inicio</a></li>
-                <li><Link to="/admin">Ingresar al panel</Link></li>
-                <li>
-                  <a href={URL_POLITICA} target="_blank" rel="noreferrer">
-                    Política de datos<span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
-                  </a>
-                </li>
-                <li>
-                  <a href="https://estratek.com.co" target="_blank" rel="noreferrer">
-                    estratek.com.co
-                    <Firma />
-                    <span className="hz-visual-oculto"> (se abre en otra pestaña)</span>
-                  </a>
-                </li>
-              </ul>
-            </nav>
-          </div>
-        </div>
-      </footer>
+      <PiePagina />
     </div>
   )
 }

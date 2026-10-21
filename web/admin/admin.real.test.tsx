@@ -8,6 +8,7 @@ import PaginaAdmin from './PaginaAdmin'
 import { type Transporte, usarTransporte } from './api'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from '../../tests/server/ayuda'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
+import { RONDA_2_SOLA } from './textos'
 
 let e: Entorno
 let cookie = ''
@@ -52,7 +53,7 @@ const programar = (grupo: string, etiqueta: string, valor: string) => {
 }
 
 async function crearSalaDesdePanel(nombre: string, mesas: number) {
-  await screen.findByRole('heading', { level: 1, name: 'Salas' })
+  await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
   fireEvent.change(screen.getByLabelText('Nombre del taller'), { target: { value: nombre } })
   fireEvent.change(screen.getByLabelText('Mesas'), { target: { value: String(mesas) } })
   fireEvent.click(boton('Crear sala'))
@@ -107,11 +108,12 @@ describe('panel admin contra la API real', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    // La tabla llega con la consulta del tablero, después del título: se espera.
-    const tabla = await screen.findByRole('table', { name: 'INSUMEX' })
-    // Preentrega 19-oct: los 6 criterios, sin fila «Total».
-    expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
-    expect(within(tabla).getAllByRole('rowheader')).toHaveLength(6)
+    // La Mesa 1 tiene 2 votos: desde el 21-oct se muestran desde 1 voto en todas las salas, así que hay tablas y ningún
+    // mensaje de mínimo.
+    const preliminar = (await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).closest('section')!
+    await waitFor(() => expect(within(preliminar).queryAllByRole('table').length).toBeGreaterThan(0))
+    expect(within(preliminar).queryByText(/que hacen falta para mostrar el resultado/)).toBeNull()
+    expect(screen.queryByText('Faltan votos')).toBeNull()
 
     // QA-A-06: la persona de la Mesa 2 no votó: cerrar la ronda lo advierte y pide confirmación.
     fireEvent.click(boton('Cerrar ronda 1'))
@@ -210,7 +212,7 @@ describe('panel admin contra la API real', () => {
   it('el superadmin crea un admin y ese admin cambia la clave en su primer ingreso', async () => {
     montar('/admin/login')
     await entrar('paola', 'superclave123')
-    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
     fireEvent.click(nav().getByText('Administradores'))
     await screen.findByRole('heading', { name: 'Nuevo administrador' })
     fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'nicolai' } })
@@ -230,7 +232,7 @@ describe('panel admin contra la API real', () => {
     fireEvent.change(screen.getByLabelText('Clave nueva'), { target: { value: 'definitiva-6789' } })
     fireEvent.change(screen.getByLabelText('Repite la clave nueva'), { target: { value: 'definitiva-6789' } })
     fireEvent.click(boton('Guardar clave'))
-    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
     // Admin normal: sin menú de administradores y la API responde 403.
     expect(nav().queryByText('Administradores')).toBeNull()
     cleanup()
@@ -279,7 +281,7 @@ describe('panel admin contra la API real', () => {
     expect(inversion.rubrica[0]).toEqual({ valor: 9, texto: 'Inversión muy alta (> USD 2MM)' })
   })
 
-  it('«Cómo votó la sala» con los conteos reales (mínimo de 3 votos) y las 6 hojas de cada proyecto', async () => {
+  it('«Cómo votó la sala» con los conteos reales (desde 1 voto, 21-oct) y las 6 hojas de cada proyecto', async () => {
     montar('/admin/login')
     await entrar('paola', 'superclave123')
     const { salaId, mesas } = await crearSalaDesdePanel('Dispersión real', 1)
@@ -288,14 +290,20 @@ describe('panel admin contra la API real', () => {
     for (const correo of ['ana@x.co', 'beto@x.co', 'caro@x.co']) tokens.push((await inscribir(e, mesas[0].codigo, correo)).json().token)
     await pasar('Abrir ronda 1', 'Ronda 1 abierta')
     const resp = (v: number) => ({ alistamiento_tecnico: v, conocimiento_cliente: v, regulacion: v, capacidades_organizacionales: v, alineacion_core: v, inversion_requerida: v })
-    // Con 2 votos por proyecto la sala está bajo el mínimo: aviso, sin barras.
+    // Desde el 21-oct, con 2 votos por proyecto ya hay barras (el panel ve la ronda 1 abierta) y ningún mensaje de mínimo.
     for (const [i, v] of [1, 9].entries()) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[i], p, 1, resp(v))).statusCode).toBe(200)
-    // El texto viene del componente del tablero, con la concordancia de F-12.
-    expect(await screen.findByText(/^Hacen falta al menos 3 votos para mostrar estos resultados en la ronda 1\.$/, {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.queryAllByRole('img', { name: /ronda 1:/ })).toHaveLength(0)
+    const dos = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })
+    expect(dos.getAttribute('aria-label')).toBe('NUTRIWHAT, Regulación, ronda 1: 1 voto en 1, 0 votos en 3, 0 votos en 5, 0 votos en 7, 1 voto en 9')
+    expect(screen.queryByText(/que hacen falta para mostrar el resultado/)).toBeNull()
     for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[2], p, 1, resp(9))).statusCode).toBe(200)
-    const barra = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })
-    expect(barra.getAttribute('aria-label')).toBe('NUTRIWHAT, Regulación, ronda 1: 1 voto en 1, 0 votos en 3, 0 votos en 5, 0 votos en 7, 2 votos en 9')
+    // Cada voto se ve en la siguiente lectura.
+    await waitFor(
+      () =>
+        expect(screen.getByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }).getAttribute('aria-label')).toBe(
+          'NUTRIWHAT, Regulación, ronda 1: 1 voto en 1, 0 votos en 3, 0 votos en 5, 0 votos en 7, 2 votos en 9',
+        ),
+      { timeout: 5000 },
+    )
     expect(screen.getAllByRole('img', { name: /ronda 1:/ })).toHaveLength(12)
 
     fireEvent.click(nav().getByText('Hojas'))
@@ -305,6 +313,42 @@ describe('panel admin contra la API real', () => {
     const reg = api.find((h) => h.proyecto_id === 'nutriwhat' && h.perfil === 'Regulación')!
     expect(within(nutriwhat).getByRole('article', { name: 'Regulación' }).textContent).toContain(reg.texto)
   })
+})
+
+describe('reiniciar a elección contra la API real (decisión 3 de Paola, 21-oct)', () => {
+  it('«Reiniciar…» vuelve a la ronda 1 con los votos y después reinicia la sala completa con su nombre', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId, mesas } = await crearSalaDesdePanel('Taller para reiniciar', 1)
+    await pasar('Abrir inscripción', 'Inscripción abierta')
+    const t = (await inscribir(e, mesas[0].codigo, 'ana@x.co')).json().token
+    await pasar('Abrir ronda 1', 'Ronda 1 abierta')
+    // 21-oct: con el voto de la única persona la R1 se cierra y la R2 se abre sola; el panel lo avisa.
+    for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, t, p, 1)).statusCode).toBe(200)
+    await screen.findByText('Ronda 2 abierta', { selector: '.estado' }, { timeout: 5000 })
+    expect(await screen.findByText(RONDA_2_SOLA, {}, { timeout: 5000 })).toBeTruthy()
+    const votos = () => (e.db.prepare('SELECT COUNT(*) AS n FROM votos WHERE sala_id = ?').get(salaId) as { n: number }).n
+
+    const corregir = () => within(screen.getByRole('group', { name: 'Corregir' }))
+    fireEvent.click(corregir().getByRole('button', { name: 'Reiniciar…' }))
+    let dialogo = within(await screen.findByRole('dialog', { name: '¿Qué quieres reiniciar?' }))
+    fireEvent.click(dialogo.getByLabelText(/^Volver a la ronda anterior/))
+    fireEvent.click(dialogo.getByRole('button', { name: 'Volver a la ronda anterior' }))
+    await screen.findByText('Ronda 1 abierta', { selector: '.estado' }, { timeout: 3000 })
+    expect(votos()).toBe(2)
+    // Con todos los votos de vuelta en la R1, la R2 no se vuelve a abrir sola y el aviso se va.
+    expect(screen.queryByText(RONDA_2_SOLA)).toBeNull()
+
+    fireEvent.click(corregir().getByRole('button', { name: 'Reiniciar…' }))
+    dialogo = within(await screen.findByRole('dialog', { name: '¿Qué quieres reiniciar?' }))
+    fireEvent.click(dialogo.getByLabelText(/^Reiniciar la sala completa/))
+    fireEvent.change(dialogo.getByLabelText('Escribe el nombre de la sala para confirmar: Taller para reiniciar'), { target: { value: 'Taller para reiniciar' } })
+    fireEvent.click(dialogo.getByRole('button', { name: 'Reiniciar la sala' }))
+    await screen.findByText('Inscripción abierta', { selector: '.estado' }, { timeout: 3000 })
+    expect(votos()).toBe(0)
+    expect((e.db.prepare('SELECT COUNT(*) AS n FROM participantes WHERE sala_id = ?').get(salaId) as { n: number }).n).toBe(1)
+    expect(await screen.findByText(/Sala reiniciada: votos de las dos rondas borrados, inscripción abierta \(2 votos\) · paola/, {}, { timeout: 5000 })).toBeTruthy()
+  }, 20_000)
 })
 
 describe('cambios del 19-oct contra la API real', () => {
@@ -329,7 +373,7 @@ describe('cambios del 19-oct contra la API real', () => {
 
     montar('/admin/login')
     await entrar('jorge', 'definitiva-6789')
-    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
     expect(nav().getAllByRole('link').map((a) => a.textContent)).toEqual([
       'Salas',
       'Configuración',
@@ -431,6 +475,27 @@ describe('cambios del 19-oct contra la API real', () => {
     expect((await yo()).sala.pregunta_guiada).toEqual({ proyecto_id: 'insumex', criterio_id: 'conocimiento_cliente' })
   }, 20_000)
 
+  // Pedido de Paola (21-oct): eliminar una mesa vacía y la sala completa contra la API real.
+  it('elimina una mesa vacía y después la sala, que desaparece de la base', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId } = await crearSalaDesdePanel('Para eliminar', 2)
+    fireEvent.click(nav().getByText('Mesas y QR'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Eliminar Mesa 2' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sí, eliminar mesa' }))
+    expect(await screen.findByText('Eliminamos Mesa 2.')).toBeTruthy()
+    expect(e.db.prepare('SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?').get(salaId)).toEqual({ n: 1 })
+
+    fireEvent.click(nav().getByText('Configuración'))
+    fireEvent.click(within(await screen.findByRole('region', { name: 'Eliminar sala' })).getByRole('button', { name: 'Eliminar sala' }))
+    const dialogo = within(await screen.findByRole('dialog', { name: '¿Eliminar «Para eliminar»?' }))
+    fireEvent.change(dialogo.getByLabelText(/^Escribe el nombre de la sala/), { target: { value: 'Para eliminar' } })
+    fireEvent.click(dialogo.getByRole('button', { name: 'Eliminar sala' }))
+    expect(await screen.findByText('Eliminamos la sala «Para eliminar». Quedó un respaldo de la base en el servidor.')).toBeTruthy()
+    expect(e.db.prepare('SELECT COUNT(*) AS n FROM salas WHERE id = ?').get(salaId)).toEqual({ n: 0 })
+    expect(e.db.prepare('SELECT COUNT(*) AS n FROM mesas WHERE sala_id = ?').get(salaId)).toEqual({ n: 0 })
+  }, 20_000)
+
   // A5 (C19-1): el servidor de prueba arma los QR con https://horizontes.test, que no es el origen de jsdom.
   it('avisa en rojo que BASE_URL del servidor no es el dominio del panel', async () => {
     montar('/admin/login')
@@ -456,7 +521,7 @@ describe('correcciones de la QA del panel contra la API real', () => {
   async function entrarA(ruta: string) {
     montar('/admin/login')
     await entrar('paola', 'superclave123')
-    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
     cleanup()
     montar(ruta)
   }

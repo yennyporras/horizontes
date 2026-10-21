@@ -2,6 +2,7 @@
 import type { CriterioTablero, DatosTablero, EstadoSala, ProyectoVivo, RondaVivo, Vista } from './tipos'
 import type { Rubrica } from '../shared/api/contrato'
 import { nombreCortoCriterio } from '../shared/criterios'
+import { cadaCuantos, maxVotos, mensajeFaltanVotos, textoEnVivo } from '../shared/votos'
 
 export const INTERVALO_POLLING_MS = 2500
 
@@ -70,15 +71,24 @@ export function bajoMinimoEnRonda(datos: DatosTablero | null | undefined, n: num
   return (datos?.proyectos_vivos ?? []).some((v) => !!rondaDe(v, n)?.bajo_minimo)
 }
 
-/** «Hacen falta al menos 3 votos» (F-12: concordancia; con 1, «Hace falta al menos 1 voto»). */
-export function faltanVotos(minimo: number): string {
-  return minimo === 1 ? 'Hace falta al menos 1 voto' : `Hacen falta al menos ${minimo} votos`
+/** Mínimo de votos del alcance: el del servidor (3 en un taller, 1 en un ensayo); sin dato, el del acta. */
+export const minimoDe = (datos: { minimo_votos?: number } | null | undefined) => datos?.minimo_votos ?? MINIMO_VOTOS
+
+/** Votos por foto del consolidado en vivo: el del servidor (3 en un taller, 1 en un ensayo). */
+export const porFotoDe = (datos: { votos_por_actualizacion?: number } | null | undefined) => datos?.votos_por_actualizacion ?? VOTOS_POR_FOTO
+
+/**
+ * Un solo mensaje para la ronda bajo el mínimo, con el conteo real (21-oct): «Hay 1 voto de los 3 que hacen falta para
+ * mostrar el resultado. Así nadie puede deducir cómo votó otra persona.» null si la ronda no está bajo el mínimo.
+ */
+export function mensajeMinimo(datos: DatosTablero | null | undefined, n: number): string | null {
+  const bajo = (datos?.proyectos_vivos ?? []).map((v) => rondaDe(v, n)).filter((r) => !!r?.bajo_minimo)
+  return bajo.length ? mensajeFaltanVotos(maxVotos(bajo), minimoDe(datos)) : null
 }
 
-/** «Hacen falta al menos 3 votos para mostrar esta mesa» (alcance mesa) o «… estos resultados» (sala). */
-export function mensajeMinimo(datos: DatosTablero | null | undefined): string {
-  const que = datos?.alcance?.tipo === 'mesa' ? 'esta mesa' : 'estos resultados'
-  return `${faltanVotos(datos?.minimo_votos ?? MINIMO_VOTOS)} para mostrar ${que}`
+/** La ronda tiene resultado publicado para el proyecto (ni oculta ni bajo el mínimo). */
+export function conResultado(r: RondaVivo | null | undefined): boolean {
+  return !!r && !r.bajo_minimo && !r.oculta && !!r.promedios
 }
 
 /**
@@ -120,10 +130,15 @@ export function votosRecibidos(datos: DatosTablero | null | undefined): string |
  * Texto visible de la insignia de la ronda abierta y su explicación (title). Es un estado de la ronda, no un modo
  * de proyección: por eso va como insignia neutra junto al estado y no como botón.
  */
-export const EN_VIVO = {
-  texto: `En vivo: se actualiza cada ${VOTOS_POR_FOTO} votos`,
-  titulo: `La ronda sigue abierta: el resultado se actualiza cada ${VOTOS_POR_FOTO} votos nuevos. Al cerrar la ronda se muestra el resultado final.`,
+export function enVivo(datos: { votos_por_actualizacion?: number } | null | undefined) {
+  const n = porFotoDe(datos)
+  return {
+    texto: textoEnVivo(n),
+    titulo: `La ronda sigue abierta: el resultado se actualiza ${cadaCuantos(n)}. Al cerrar la ronda se muestra el resultado final.`,
+  }
 }
+/** El de un taller (fotos de 3 en 3). */
+export const EN_VIVO = enVivo(null)
 
 /** Texto del estado vacío para la vista elegida, o null si hay algo que dibujar. */
 export function mensajeVacio(datos: DatosTablero | null | undefined, vista: Vista): string | null {
@@ -131,17 +146,16 @@ export function mensajeVacio(datos: DatosTablero | null | undefined, vista: Vist
   const r2 = hayVotosEnRonda(datos, 2)
   // Con la ronda abierta lo que llega es la última foto (D2): puede haber votos que aún no se ven.
   const sinRonda = (n: 1 | 2) =>
-    bajoMinimoEnRonda(datos, n)
-      ? mensajeMinimo(datos)
-      : rondaEnCurso(datos?.sala?.estado) === n
-        ? `Aún no hay resultados en la ronda ${n}. Se actualizan cada ${VOTOS_POR_FOTO} votos nuevos`
-        : `Aún no hay votos en la ronda ${n}`
+    mensajeMinimo(datos, n) ??
+    (rondaEnCurso(datos?.sala?.estado) === n
+      ? `Aún no hay resultados en la ronda ${n}. Se actualizan ${cadaCuantos(porFotoDe(datos))}.`
+      : `Aún no hay votos en la ronda ${n}.`)
   // La ronda 1 oculta la explica la cortina (avance por mesa en grande), no un aviso.
   const oculta = rondaOculta(datos, 1)
   if (vista === 1) return r1 || oculta ? null : sinRonda(1)
   if (vista === 2) return r2 ? null : sinRonda(2)
   if (!r1 && !r2) return oculta ? null : sinRonda(1)
-  if (!r2) return `${sinRonda(2)}. La comparación muestra solo la ronda 1.`
+  if (!r2) return `${mensajeMinimo(datos, 2) ? 'Ronda 2: ' : ''}${sinRonda(2)} La comparación muestra solo la ronda 1.`
   return null
 }
 
@@ -150,9 +164,12 @@ export function mostrarR2(datos: DatosTablero): boolean {
   return hayVotosEnRonda(datos, 2) || (datos.sala?.ronda_actual ?? 0) >= 2
 }
 
-/** Celda de una tabla de resultados: la cifra del servidor, «Faltan votos» bajo el mínimo o «Sin votos». */
+/**
+ * Celda de una tabla de resultados: la cifra del servidor o «Sin votos». Bajo el mínimo queda vacía: el mensaje con el
+ * conteo va una sola vez bajo la tabla (21-oct: 24 celdas «Faltan votos» se leían como un error de conteo).
+ */
 export function cifraRonda(r: RondaVivo | null, valor: number | null | undefined): string {
-  return r?.bajo_minimo ? 'Faltan votos' : numero(valor)
+  return r?.bajo_minimo ? '' : numero(valor)
 }
 
 /**

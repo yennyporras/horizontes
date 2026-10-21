@@ -4,7 +4,7 @@ import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
 import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Metricas, Participante, RubricasSala, SalaDetalle, SalaResumen, Sector, TipoSala } from '../tipos'
-import { ACCIONES_POR_ESTADO, LARGO_MINIMO_CLAVE, rondaAbierta } from '../textos'
+import { ACCIONES_POR_ESTADO, LARGO_MINIMO_CLAVE, RONDA_2_SOLA, rondaAbierta } from '../textos'
 import { REGLA_USUARIO, RE_USUARIO_ADMIN } from '../paginas/Administradores'
 import type { Respuesta } from '../api'
 import type { CriterioId } from '../../shared/api/contrato'
@@ -86,9 +86,13 @@ interface Estado {
 
 const NOMBRES = ['Ana Pérez', 'Luis Gómez', 'Marta Ríos', 'Carlos Díaz', 'Sofía Mejía', 'Andrés Rojas', 'Laura Vélez', 'Diego Castro', 'Paula Henao', 'Jorge Arango', 'Camila Ortiz', 'Felipe Duque']
 
-function mesa(codigo: string, i: number): Mesa {
+/**
+ * La sala de ejemplo usa m1, m2…; las salas nuevas llevan su id delante (`s_abc_m1`), así `DELETE /api/admin/mesas/{id}`
+ * encuentra una sola mesa.
+ */
+function mesa(codigo: string, i: number, prefijo = ''): Mesa {
   return {
-    id: `m${i}`,
+    id: `${prefijo}m${i}`,
     nombre: `Mesa ${i}`,
     codigo: `${codigo}-${i}`,
     url_participante: `https://horizontes.estratek.com.co/m/${codigo}-${i}`,
@@ -99,6 +103,9 @@ function mesa(codigo: string, i: number): Mesa {
     perfiles: {},
   }
 }
+
+const numeroMesa = (m: Mesa) => Number(/m(\d+)$/.exec(m.id)?.[1] ?? 0)
+const prefijoMesas = (s: SalaDetalle) => s.mesas[0]?.id.replace(/m\d+$/, '') ?? `${s.sala.id}_`
 
 /** Recalcula conteos y precierre por mesa como lo haría el servidor (SPEC §4). */
 function derivar(s: SalaDetalle) {
@@ -307,6 +314,7 @@ function avanzarDemo() {
     tocar(s, ev.tipo, 'sistema', { accion: a, ...(typeof ev.ronda === 'number' ? { ronda: ev.ronda } : {}) })
   }
   const votar = (desde: number, dura: number) => {
+    const antes = precierreSala(s)
     const meta = Math.min(s.participantes.length, Math.floor((s.participantes.length * (t - desde)) / dura))
     const faltan = meta - s.participantes.filter((p) => p.completo_ronda).length
     for (const p of s.participantes.filter((x) => !x.completo_ronda).slice(0, Math.max(0, faltan))) {
@@ -314,6 +322,8 @@ function avanzarDemo() {
       tocar(s, 'voto', 'participante')
     }
     derivar(s)
+    // Con el último voto de la ronda 1 la ronda 2 se abre sola (21-oct), como en el servidor.
+    abrirRonda2SiTodosVotaron(s, antes)
   }
   if (t >= DEMO_MS.inscribir && s.sala.estado === 'preparada') {
     accion('abrir_inscripcion')
@@ -343,11 +353,71 @@ function avanzarDemo() {
     accion('cerrar_ronda_1')
   }
   if (t >= abreR2 && s.sala.estado === 'r1_cerrada') accion('abrir_ronda_2')
+  // Si todos votaron la ronda 1, la ronda 2 ya se abrió sola; sus votos siguen el reloj de la demostración.
   if (s.sala.estado === 'r2_abierta') votar(abreR2, DEMO_MS.votarR2)
   if (t >= cierraR2 && s.sala.estado === 'r2_abierta') {
     accion('cerrar_ronda_2')
     d.terminada = true
   }
+}
+
+/** Reiniciar a elección (21-oct), como server/dominio/estados.ts: a dónde vuelve cada estado. */
+const VOLVER: Partial<Record<EstadoSala, EstadoSala>> = { r1_abierta: 'inscripcion', r1_cerrada: 'inscripcion', r2_abierta: 'r1_abierta', r2_cerrada: 'r1_abierta' }
+const NOMBRE_ESTADO: Record<EstadoSala, string> = {
+  preparada: 'preparada',
+  inscripcion: 'en inscripción',
+  r1_abierta: 'con la ronda 1 abierta',
+  r1_cerrada: 'con la ronda 1 cerrada',
+  r2_abierta: 'con la ronda 2 abierta',
+  r2_cerrada: 'con la ronda 2 cerrada',
+  cerrada: 'cerrada',
+}
+
+/**
+ * `volver_ronda_anterior`, `reiniciar_desde_ronda` y `reiniciar_sala` como el servidor: mismos estados, errores y
+ * eventos. El simulador no guarda votos sueltos: borrar votos es dejar a todos sin completar la ronda.
+ */
+function reiniciarSimulado(s: SalaDetalle, b: Record<string, unknown>, por: string): Respuesta | null {
+  const accion = b.accion
+  if (accion !== 'volver_ronda_anterior' && accion !== 'reiniciar_desde_ronda' && accion !== 'reiniciar_sala') return null
+  const desde = s.sala.estado
+  const invalida = (que: string) => error(409, 'TRANSICION_INVALIDA', `No se puede ${que}: la sala está ${NOMBRE_ESTADO[desde]}.`)
+  const enRonda = ['r1_abierta', 'r1_cerrada', 'r2_abierta', 'r2_cerrada'].includes(desde)
+  let hacia: EstadoSala
+  let tipo: string
+  const detalle: Record<string, unknown> = { accion, desde }
+  if (accion === 'volver_ronda_anterior') {
+    if (!VOLVER[desde]) return invalida('volver a la ronda anterior')
+    hacia = VOLVER[desde]!
+    tipo = 'ronda_anterior'
+  } else if (accion === 'reiniciar_desde_ronda') {
+    if (b.ronda !== 1 && b.ronda !== 2) return error(422, 'RONDA_INVALIDA', 'La ronda a reiniciar debe ser 1 o 2.')
+    if (b.ronda === 2 ? !desde.startsWith('r2_') : !enRonda) return invalida(`reiniciar la ronda ${b.ronda}`)
+    hacia = b.ronda === 2 ? 'r2_abierta' : 'r1_abierta'
+    detalle.rondas_borradas = b.ronda === 2 ? [2] : [1, 2]
+    detalle.votos_borrados = s.participantes.filter((p) => p.completo_ronda).length * 2
+    tipo = 'reinicio_ronda'
+  } else {
+    if (desde === 'preparada') return invalida('reiniciar la sala completa')
+    if (typeof b.confirmar !== 'string' || b.confirmar.trim() !== s.sala.nombre) {
+      return error(422, 'CONFIRMACION_INVALIDA', `Para reiniciar la sala escribe su nombre exacto: «${s.sala.nombre}».`)
+    }
+    hacia = 'inscripcion'
+    detalle.votos_borrados = s.participantes.filter((p) => p.completo_ronda).length * 2
+    tipo = 'reinicio_sala'
+  }
+  const ronda = hacia === 'r2_abierta' ? 2 : hacia === 'r1_abierta' ? 1 : 0
+  s.sala.estado = hacia
+  s.sala.ronda_actual = ronda
+  s.sala.pregunta_guiada = null
+  if (ronda < 2) s.sala.config.revelar_hojas = false
+  if (accion !== 'volver_ronda_anterior') {
+    s.participantes.forEach((p) => (p.completo_ronda = false))
+    completaronR1.delete(s.sala.id)
+  }
+  derivar(s)
+  tocar(s, tipo, por, { ...detalle, hacia, ...(ronda ? { ronda } : {}) })
+  return ok({ sala: s.sala })
 }
 
 function aplicarAccion(s: SalaDetalle, accion: Accion): EstadoSala | null {
@@ -364,7 +434,8 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
   const cliente = datosCliente(b)
   if ('error' in cliente) return cliente.error
   const codigo = Math.random().toString(36).slice(2, 7).toUpperCase()
-  const nueva = structuredClone(estado.salas[0])
+  // Si se eliminaron todas las salas, la base vuelve a ser la de ejemplo.
+  const nueva = structuredClone(estado.salas[0] ?? inicial().salas[0])
   nueva.sala = {
     ...nueva.sala,
     id: `s_${codigo.toLowerCase()}`,
@@ -389,7 +460,7 @@ function crearSala(b: Record<string, unknown>, por: string): Respuesta {
       ...CONFIG_19OCT,
     },
   }
-  nueva.mesas = Array.from({ length: n }, (_, i) => mesa(codigo, i + 1))
+  nueva.mesas = Array.from({ length: n }, (_, i) => mesa(codigo, i + 1, `${nueva.sala.id}_`))
   estado.rubricas[nueva.sala.id] = rubricasIniciales()
   nueva.participantes = []
   nueva.eventos = []
@@ -422,6 +493,13 @@ function admins(metodo: string, camino: string, b: Record<string, unknown>, a: A
     return ok(filaPublica(nuevo), 201)
   }
   const objetivo = estado.admins.find((x) => x.id === Number(camino.split('/').pop()))
+  // Como el servidor: ni la propia cuenta ni otra superadministradora; borra sus sesiones (aquí, la del simulador si era la suya).
+  if (metodo === 'DELETE' && objetivo) {
+    if (objetivo.id === a.id) return error(409, 'OPERACION_INVALIDA', 'No puedes eliminar tu propia cuenta.')
+    if (objetivo.rol === 'superadmin') return error(409, 'OPERACION_INVALIDA', 'La cuenta superadministradora no se elimina desde aquí.')
+    estado.admins = estado.admins.filter((x) => x.id !== objetivo.id)
+    return { status: 204, body: null }
+  }
   if (metodo === 'PATCH' && objetivo) {
     if (objetivo.rol === 'superadmin') return error(409, 'NO_EDITABLE', 'El superadmin se administra desde el servidor.')
     if (typeof b.activo === 'boolean') objetivo.activo = b.activo
@@ -441,9 +519,37 @@ function simularVoto(s: SalaDetalle) {
   if (!simular || !rondaAbierta(s.sala.estado) || Math.random() < 0.6) return
   const pendiente = s.participantes.find((p) => p.activo && !p.completo_ronda)
   if (!pendiente) return
+  const antes = precierreSala(s)
   pendiente.completo_ronda = true
   derivar(s)
   tocar(s, 'voto', 'participante')
+  abrirRonda2SiTodosVotaron(s, antes)
+}
+
+/** Precierre de la sala: todas las mesas con inscritos activos completaron la ronda abierta (como el servidor). */
+function precierreSala(s: SalaDetalle) {
+  const conGente = s.mesas.filter((m) => m.inscritos > 0)
+  return rondaAbierta(s.sala.estado) !== null && conGente.length > 0 && conGente.every((m) => m.precierre)
+}
+
+/**
+ * Como el servidor (decisión de Paola del 21-oct): cuando la sala ENTRA en precierre con la ronda 1 abierta, la ronda 1
+ * se cierra y la ronda 2 se abre sola, por «sistema», con el evento `ronda_2_automatica`. `antes` es el precierre de la
+ * sala antes del cambio: si ya estaba (por ejemplo tras «Volver a la ronda anterior» con todos los votos), no se repite.
+ */
+function abrirRonda2SiTodosVotaron(s: SalaDetalle, antes: boolean) {
+  if (antes || s.sala.estado !== 'r1_abierta' || !precierreSala(s)) return
+  completaronR1.set(s.sala.id, s.participantes.filter((p) => p.activo && p.completo_ronda).length)
+  s.sala.estado = 'r1_cerrada'
+  s.sala.pregunta_guiada = null
+  tocar(s, 'ronda_cerrada', 'sistema', { accion: 'cerrar_ronda_1', desde: 'r1_abierta', hacia: 'r1_cerrada', ronda: 1 })
+  s.sala.estado = 'r2_abierta'
+  s.sala.ronda_actual = 2
+  s.sala.config.revelar_hojas = true
+  s.participantes.forEach((p) => (p.completo_ronda = false))
+  derivar(s)
+  tocar(s, 'ronda_abierta', 'sistema', { accion: 'abrir_ronda_2', desde: 'r1_cerrada', hacia: 'r2_abierta', ronda: 2 })
+  tocar(s, 'ronda_2_automatica', 'sistema', { ronda: 2, mensaje: RONDA_2_SOLA })
 }
 
 /** Como el servidor en resultados.csv: coma decimal (6,33). */
@@ -460,15 +566,15 @@ function csv(s: SalaDetalle, archivo: string): string {
     archivo === 'inscritos.csv'
       ? [
           ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'ip', 'pais'],
-          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.1', p.consentimiento_at, p.ip, p.pais]),
+          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.3', p.consentimiento_at, p.ip, p.pais]),
         ]
       : archivo === 'resultados.csv'
         ? [
-            // Como el servidor: sin datos personales, solo alcances con 3 votos o más (aquí, los del tablero de ejemplo).
+            // Como el servidor: sin datos personales, desde 1 voto (21-oct; aquí, los del tablero de ejemplo).
             ['alcance', 'ronda', 'proyecto', 'n_votos', ...CRITERIOS.map((c) => c.id), 't2m', 'eje_x', 'eje_y'],
             ...tableroBase.proyectos_vivos.flatMap((p) =>
               p.rondas
-                .filter((r) => r.n_votos >= 3 && r.promedios)
+                .filter((r) => r.n_votos >= 1 && r.promedios)
                 .map((r) => ['sala', r.ronda, p.nombre, r.n_votos, ...[...CRITERIOS.map((c) => (r.promedios as Record<string, number>)[c.id]), r.t2m, r.eje_x, r.eje_y].map(coma)]),
             ),
           ]
@@ -565,7 +671,9 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (!s) return error(404, 'SALA_NO_EXISTE', 'Esa sala no existe.')
     const m = s.mesas.find((x) => x.id === new URLSearchParams(consulta).get('mesa'))
     const alcance = m ? { tipo: 'mesa', mesa_id: m.id, mesa_nombre: m.nombre } : { tipo: 'sala' }
-    return ok({ ...structuredClone(tableroBase), version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null })
+    // Como el servidor (21-oct): en todas las salas, resultados desde 1 voto y con cada voto; `ensayo: true` solo en los ensayos.
+    const ensayo = s.sala.tipo === 'ensayo' ? { ensayo: true } : {}
+    return ok({ ...structuredClone(tableroBase), version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null, minimo_votos: 1, votos_por_actualizacion: 1, ...ensayo })
   }
 
   const a = sesion()
@@ -611,6 +719,17 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     const s = salaPorId(m[1])
     if (!s) return error(404, 'SALA_NO_EXISTE', 'Esa sala no existe.')
     const resto = m[2] ?? ''
+    // Como el servidor: solo superadmin, con el nombre exacto; el simulador no guarda respaldos. 204.
+    if (metodo === 'DELETE' && resto === '') {
+      if (a.rol !== 'superadmin') return error(403, 'SOLO_SUPERADMIN', 'Solo la cuenta superadministradora puede eliminar salas.')
+      if (typeof b.confirmar !== 'string' || b.confirmar.trim() !== s.sala.nombre) {
+        return error(422, 'CONFIRMACION_INVALIDA', `Para eliminar la sala escribe su nombre exacto: «${s.sala.nombre}».`)
+      }
+      estado.salas = estado.salas.filter((x) => x !== s)
+      delete estado.rubricas[s.sala.id]
+      if (estado.demo?.salaId === s.sala.id) estado.demo = null
+      return { status: 204, body: null }
+    }
     if (metodo === 'GET' && resto === '') {
       simularVoto(s)
       // ETag fuerte entre comillas, como el servidor (RFC 9110): el navegador lo devuelve tal cual en If-None-Match.
@@ -663,8 +782,9 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (metodo === 'POST' && resto === '/mesas') {
       const n = Number(b.cantidad)
       if (!(n >= 1 && n <= 20)) return error(422, 'DATOS_INVALIDOS', 'Agrega entre 1 y 20 mesas.')
-      const inicio = s.mesas.length
-      for (let i = 1; i <= n; i++) s.mesas.push(mesa(s.sala.codigo, inicio + i))
+      // Como el servidor: sigue después de la mayor (si se eliminó una mesa, no repite su número).
+      const inicio = Math.max(0, ...s.mesas.map(numeroMesa))
+      for (let i = 1; i <= n; i++) s.mesas.push(mesa(s.sala.codigo, inicio + i, prefijoMesas(s)))
       derivar(s)
       tocar(s, 'mesas_agregadas', por, { cantidad: n })
       return ok({ mesas: s.mesas }, 201)
@@ -679,6 +799,8 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
         tocar(s, 'token_tablero_regenerado', por)
         return ok({ sala: s.sala })
       }
+      const reinicio = reiniciarSimulado(s, b, por)
+      if (reinicio) return reinicio
       const accion = b.accion as Accion
       const destino = aplicarAccion(s, accion)
       if (!destino) return error(409, 'TRANSICION_INVALIDA', 'Esa acción no aplica en el estado actual de la sala.')
@@ -696,6 +818,25 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
       tocar(s, ev.tipo, por, { accion, ...(ev.ronda ? { ronda: ev.ronda === 'actual' ? s.sala.ronda_actual : ev.ronda } : {}) })
       return ok({ estado: destino })
     }
+  }
+
+  // Como el servidor: solo sin inscritos (activos o inactivos) y nunca la última mesa. Evento mesa_eliminada.
+  const mesaBorrar = /^\/api\/admin\/mesas\/([^/]+)$/.exec(camino)
+  if (metodo === 'DELETE' && mesaBorrar) {
+    const id = decodeURIComponent(mesaBorrar[1])
+    const s = estado.salas.find((x) => x.mesas.some((m) => m.id === id))
+    const m = s?.mesas.find((x) => x.id === id)
+    if (!s || !m) return error(404, 'MESA_NO_EXISTE', 'Esa mesa no existe.')
+    const n = s.participantes.filter((p) => p.mesa_id === m.id).length
+    if (n > 0) {
+      const quienes = n === 1 ? '1 persona inscrita' : `${n} personas inscritas`
+      return error(409, 'MESA_CON_INSCRITOS', `${m.nombre} tiene ${quienes}. Muévelas a otra mesa en Participantes antes de eliminarla.`)
+    }
+    if (s.mesas.length <= 1) return error(409, 'ULTIMA_MESA', `${m.nombre} es la única mesa de la sala. Una sala necesita al menos una mesa.`)
+    s.mesas = s.mesas.filter((x) => x !== m)
+    derivar(s)
+    tocar(s, 'mesa_eliminada', por, { mesa_id: m.id, nombre: m.nombre, codigo: m.codigo })
+    return ok({ mesas: s.mesas })
   }
 
   // D1: enlace personal de un solo uso que vence en 15 minutos (el servidor real lo implementa en POST .../acceso).
@@ -720,9 +861,12 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     for (const s of estado.salas) {
       const par = s.participantes.find((x) => x.id === p[1])
       if (par) {
+        const antes = precierreSala(s)
         Object.assign(par, b)
         derivar(s)
         tocar(s, 'participante_editado', por, { id: par.id })
+        // Desactivar a quien faltaba también completa la sala (como el servidor).
+        abrirRonda2SiTodosVotaron(s, antes)
         return ok(par)
       }
     }

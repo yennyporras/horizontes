@@ -13,7 +13,7 @@ import { recordarSala, salaRecordada, olvidarSala } from './memoria'
 import { useSala } from './useSala'
 import { moverProgramacion } from './paginas/Configuracion'
 import { semaforo } from './paginas/Salud'
-import { conPunto, confirmacionCierreRonda, nombreEnsayo, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE } from './textos'
+import { conPunto, confirmacionCierreRonda, nombreEnsayo, urlVistaPrevia, accionesParaCorregir, PASO_SIGUIENTE, TECLAS_TABLERO } from './textos'
 import { numeroPregunta } from './contenido'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
 
@@ -78,13 +78,41 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+describe('teclas del tablero en Sala en vivo', () => {
+  it('F lleva a la pantalla completa de la matriz, 0 la muestra entera y la rueda o el pellizco acercan', () => {
+    expect(TECLAS_TABLERO.map((t) => [t.teclas.join(' o '), t.texto])).toEqual([
+      ['F', 'Pantalla completa de la matriz (entra y sale)'],
+      ['0', 'Ver la matriz entera'],
+      ['Rueda del mouse o Pellizco', 'Acerca o aleja la matriz en pantalla completa; arrastrar la mueve'],
+      ['G', 'Gráfica: solo la matriz'],
+      ['D', 'Detallado: la matriz con los promedios'],
+      ['M', 'Cambia entre Gráfica y Detallado'],
+      ['V', 'Promedios o «Cómo votó»'],
+      ['1', 'Ronda 1'],
+      ['2', 'Ronda 2'],
+      ['C', 'Comparación; otra vez, repite la animación'],
+      ['→ o ←', 'Vista siguiente o anterior, también con el control de presentaciones'],
+      ['?', 'La ayuda de teclas en el tablero'],
+    ])
+  })
+
+  it('Sala en vivo las muestra en su lista', async () => {
+    await abrirDemo()
+    expect(await screen.findByText('Ver la matriz entera')).toBeTruthy()
+    expect(screen.getByText('Pantalla completa de la matriz (entra y sale)')).toBeTruthy()
+    expect(screen.getByText('Rueda del mouse', { selector: 'kbd' })).toBeTruthy()
+  })
+})
+
 describe('textos y utilidades de las correcciones', () => {
   it('QA-A-01: el paso que sigue nunca es una acción que deshace', () => {
     for (const paso of Object.values(PASO_SIGUIENTE)) expect(paso ?? '').not.toMatch(/^reabrir|reiniciar/)
     expect(PASO_SIGUIENTE.r2_cerrada).toBe('cerrar_sala')
     expect(PASO_SIGUIENTE.cerrada).toBeNull()
     // QA-A-05: lo que se puede corregir excluye el paso que sigue.
-    expect(accionesParaCorregir('r2_cerrada')).toEqual(['reabrir_ronda', 'reiniciar_ronda'])
+    expect(accionesParaCorregir('r2_cerrada')).toEqual(['reabrir_ronda'])
+    // 21-oct: «Reiniciar votos de la ronda» ya no va suelto en Corregir; lo reemplaza «Reiniciar…» (reiniciar.test.tsx).
+    expect(accionesParaCorregir('r1_abierta')).not.toContain('reiniciar_ronda')
     expect(accionesParaCorregir('preparada')).toEqual(['cerrar_sala'])
   })
 
@@ -180,7 +208,9 @@ describe('textos y utilidades de las correcciones', () => {
       expect(texto, f).not.toMatch(/Ver como participante|Tablero de toda la sala|Abrir tablero de la sala/)
     }
     const guia = readFileSync(join(__dirname, '../../docs/GUIA_FACILITADOR.md'), 'utf8')
-    for (const t of ['Tablero de la sala', 'Gráfica', 'Detallado', 'Guía de uso', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
+    for (const t of ['Tablero de la sala', 'Gráfica', 'Detallado', 'Guía de uso', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'con cada voto nuevo', 'Reiniciar…', 'Volver a la ronda anterior', 'Reiniciar la sala completa']) expect(guia).toContain(t)
+    // 21-oct: los promedios se ven desde 1 voto; la guía ya no promete el mínimo de 3.
+    expect(guia).not.toMatch(/Hacen falta al menos 3 votos|cada 3 votos nuevos|3 votos o más/)
     expect(guia).not.toMatch(/Abrir tablero de la sala|recuperar mi sesión|Hace falta al menos|En vivo, solo la gráfica|Con tabla|Recorrido/)
   })
 })
@@ -210,8 +240,8 @@ describe('Sala en vivo', () => {
     expect(document.getElementById(boton('Cerrar ronda 1').getAttribute('aria-describedby')!)?.textContent).toMatch(/Nadie más responde la ronda 1/)
     const corregir = within(control.getByRole('group', { name: 'Corregir' }))
     expect(corregir.getAllByRole('button').map((b) => [b.textContent, b.className.includes('hz-boton--peligro')])).toEqual([
-      ['Reiniciar votos de la ronda', true],
       ['Cerrar sala', true],
+      ['Reiniciar…', true],
     ])
     for (const n of ['Abrir inscripción', 'Abrir ronda 2', 'Reabrir ronda', 'Reabrir sala']) expect(screen.queryByRole('button', { name: n })).toBeNull()
   })
@@ -268,14 +298,14 @@ describe('Sala en vivo', () => {
     expect(await screen.findByText(/Enlace del tablero cambiado: los anteriores dejaron de funcionar/)).toBeTruthy()
   })
 
-  it('F-8 y D2: el resultado preliminar no parpadea al renovarse y explica que se renueva de 3 en 3', async () => {
+  it('F-8 y D2: el resultado preliminar no parpadea al renovarse y explica que se renueva con cada voto (21-oct)', async () => {
     let lento = false
     espiar((metodo, ruta) => (lento && ruta.startsWith('/api/tablero/') ? new Promise((r) => setTimeout(() => r(responderMock(metodo, ruta)), 300)) : undefined))
     await abrirDemo()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     const region = await screen.findByRole('region', { name: /Resultado preliminar · Mesa 1/ })
-    expect(within(region).getByText(/Se renueva cada 3 votos nuevos/)).toBeTruthy()
-    expect(screen.getByText(/El resultado preliminar se renueva cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final./)).toBeTruthy()
+    expect(within(region).getByText(/Se renueva con cada voto nuevo/)).toBeTruthy()
+    expect(screen.getByText(/El resultado preliminar se renueva con cada voto nuevo. Al cerrar la ronda se muestra el resultado final./)).toBeTruthy()
     lento = true
     // Siguiente (modo guiado) cambia la versión de la sala: el resultado se vuelve a pedir y tarda.
     fireEvent.click(within(screen.getByRole('region', { name: 'Pregunta en pantalla' })).getByRole('button', { name: 'Siguiente' }))
@@ -423,7 +453,7 @@ describe('Configuración', () => {
     await salaNueva('Avisos')
     fireEvent.click(nav().getByText('Configuración'))
     const despues = within(await screen.findByRole('group', { name: 'Después de votar' }))
-    expect(despues.getByText(/Se renueva cada 3 votos nuevos/)).toBeTruthy()
+    expect(despues.getByText(/Se renueva con cada voto nuevo/)).toBeTruthy()
     const registrado = despues.getByLabelText(/Voto registrado/) as HTMLInputElement
     fireEvent.click(registrado)
     expect(registrado.checked).toBe(true)
@@ -564,14 +594,49 @@ describe('Login, cuenta y navegación', () => {
   })
 })
 
+describe('Composición común de las cuatro áreas (21-oct)', () => {
+  it('las secciones van en la franja de pestañas y la cuenta en la barra; bajo 1024 px todo va en «Menú», sin perder la Guía de uso', async () => {
+    montar('/admin/login')
+    await entrar()
+    const franja = document.querySelector<HTMLElement>('.hz-franja-pagina')!
+    expect(franja.getAttribute('data-tema')).toBe('claro')
+    expect(within(franja).getByRole('link', { name: 'Salas' }).getAttribute('aria-current')).toBe('page')
+    const cuenta = document.querySelector<HTMLElement>('.hz-producto__menu')!
+    for (const n of ['Guía de uso', 'Salir']) expect(within(cuenta).getByRole('button', { name: n })).toBeTruthy()
+    expect(within(cuenta).getByRole('link', { name: 'Cambiar mi clave' })).toBeTruthy()
+    // Celular y tableta: un solo botón con la sección actual abre las pestañas y la cuenta, una sola vez cada una.
+    fireEvent.click(screen.getByRole('button', { name: 'Menú · Salas' }))
+    const menu = document.querySelector<HTMLElement>('.hz-producto__desplegable')!
+    expect(within(menu).getByRole('navigation', { name: 'Secciones del panel' })).toBeTruthy()
+    expect(screen.getAllByRole('navigation', { name: 'Secciones del panel' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Guía de uso' })).toHaveLength(1)
+    expect(within(menu).getByRole('link', { name: 'Cambiar mi clave' })).toBeTruthy()
+    expect(within(menu).getByRole('button', { name: 'Salir' })).toBeTruthy()
+    fireEvent.click(within(menu).getByRole('button', { name: 'Guía de uso' }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(document.querySelector('.hz-producto__desplegable')).toBeNull()
+  })
+
+  it('cada sección abre con la cabecera de página común (h1 con la escala única y la sala como contexto)', async () => {
+    await abrirDemo()
+    const h1 = screen.getByRole('heading', { level: 1, name: 'Sala en vivo' })
+    expect(h1.className).toBe('hz-h1')
+    expect(h1.closest('.hz-cabecera-pagina')!.querySelector('.encabezado-sala__meta strong')!.textContent).toBe('Taller Horizontes demo')
+    const css = readFileSync(join(__dirname, 'admin.css'), 'utf8')
+    expect(css).toMatch(/\.hz-admin h1 \{ font-size: var\(--hz-fs-h1\); font-weight: var\(--hz-fw-h1\);/)
+  })
+})
+
 describe('Ancho de página común (pedido del 20-oct)', () => {
   it('la barra, el contenido y el pie usan el mismo contenedor .hz-pagina, también en el login', async () => {
     montar('/admin/login')
     await screen.findByRole('heading', { name: 'Panel del facilitador' })
-    const login = [document.querySelector('.hz-producto__fila'), screen.getByRole('main'), screen.getByRole('contentinfo')]
+    // El pie común (21-oct) va de borde a borde con la línea del degradado; su fila es el contenedor de página.
+    expect(screen.getByRole('contentinfo').classList.contains('hz-pie')).toBe(true)
+    const login = [document.querySelector('.hz-producto__fila'), screen.getByRole('main'), screen.getByRole('contentinfo').firstElementChild]
     for (const el of login) expect(el?.classList.contains('hz-pagina')).toBe(true)
     await entrar()
-    const panel = [document.querySelector('.hz-producto__fila'), document.getElementById('contenido'), screen.getByRole('contentinfo')]
+    const panel = [document.querySelector('.hz-producto__fila'), document.getElementById('contenido'), screen.getByRole('contentinfo').firstElementChild]
     for (const el of panel) expect(el?.classList.contains('hz-pagina')).toBe(true)
     const css = readFileSync(join(__dirname, 'admin.css'), 'utf8').split('@media print')[0]
     // El contenido no redefine su ancho ni su relleno lateral: manda el contenedor común.

@@ -181,18 +181,19 @@ describe('2. ronda 1 sin resultados en vivo (decisión 1 de Paola)', () => {
   })
 })
 
-describe('3. aviso de datos hz-1.2 (decisión 2 de Paola)', () => {
+describe('3. aviso de datos hz-1.3 (decisiones 2 de Paola, 20 y 21-oct)', () => {
   it('dice qué datos se guardan, para qué, quién ve qué y el plazo; la casilla sale del servidor una sola vez', async () => {
     servidor(() => ({ status: 200, body: MESA }))
     const { container } = montar()
     await screen.findByRole('heading', { name: 'Te damos la bienvenida al taller Horizontes' })
     const fila = (dt: string) => screen.getByText(dt, { selector: 'dt' }).nextElementSibling!.textContent
     expect(container.querySelector('.hzp-aviso-datos')!.getAttribute('data-version')).toBe(VERSION_AVISO_DATOS)
-    expect(VERSION_AVISO_DATOS).toBe('hz-1.2')
+    expect(VERSION_AVISO_DATOS).toBe('hz-1.3')
     expect(fila('Qué datos')).toBe(AVISO_DATOS.datos)
     expect(fila('Qué datos')).toMatch(/IP, el país y el navegador/)
     expect(fila('Para qué')).toMatch(/^Identificarte en tu mesa, evitar inscripciones dobles y devolverte el acceso si cambias de celular\./)
-    expect(fila('Quién ve qué')).toMatch(/solo se ven promedios de 3 o más personas/)
+    expect(fila('Quién ve qué')).toMatch(/nadie ve tu nombre: se ven los promedios de tu mesa o de la sala, que se actualizan con cada calificación/)
+    expect(fila('Quién ve qué')).not.toMatch(/3 o más/)
     expect(fila('Quién ve qué')).toMatch(/sí ve tus calificaciones con tu nombre/)
     expect(fila('Tus derechos')).toMatch(/respondemos en un plazo máximo de 10 días hábiles\./)
     expect(screen.queryByText('Dónde se guardan')).toBeNull()

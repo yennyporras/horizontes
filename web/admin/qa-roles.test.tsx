@@ -225,6 +225,28 @@ describe('modo demo (jurado)', () => {
     expect((await responderMock('POST', '/api/admin/demo')).status).toBe(403)
   })
 
+  it('simulador: todas las salas muestran desde 1 voto y con cada voto; solo el ensayo trae `ensayo` (21-oct)', async () => {
+    await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
+    const lista = (await responderMock('GET', '/api/admin/salas')).body as { id: string; tipo?: string }[]
+    const taller = lista.find((s) => s.tipo !== 'ensayo')!
+    const t = (await responderMock('GET', `/api/tablero/${taller.id}`)).body as { ensayo?: boolean; minimo_votos: number; votos_por_actualizacion: number }
+    expect([t.ensayo, t.minimo_votos, t.votos_por_actualizacion]).toEqual([undefined, 1, 1])
+  })
+
+  it('sala de ensayo (21-oct): «Cómo votó» avisa que no cuenta en las cifras de talleres, con el dato del servidor', async () => {
+    montar('/admin/login')
+    await entrar()
+    fireEvent.click(within(screen.getByRole('region', { name: 'Demostración' })).getByRole('button', { name: 'Crear demostración' }))
+    await screen.findByRole('heading', { level: 1, name: 'Sala en vivo' })
+    const lista = (await responderMock('GET', '/api/admin/salas')).body as { id: string; nombre: string }[]
+    const sala = lista.find((s) => s.nombre === 'Demostración')!
+    const t = (await responderMock('GET', `/api/tablero/${sala.id}`)).body as { ensayo?: boolean; minimo_votos: number; votos_por_actualizacion: number }
+    expect([t.ensayo, t.minimo_votos, t.votos_por_actualizacion]).toEqual([true, 1, 1])
+    const aviso = await screen.findAllByText('Sala de ensayo: no cuenta en las cifras de talleres.', {}, { timeout: 5000 })
+    expect(aviso.length).toBeGreaterThan(0)
+    expect(aviso.every((a) => a.textContent!.indexOf('—') < 0)).toBe(true)
+  })
+
   it('una segunda demostración mientras corre la primera sale con el mensaje del servidor (409)', async () => {
     await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
     expect((await responderMock('POST', '/api/admin/demo')).status).toBe(201)
@@ -305,7 +327,8 @@ describe('Sala en vivo (Nicolai, inversionista y decisión de Paola sobre la ron
     const proyectar = screen.getByRole('region', { name: 'Proyectar el tablero' })
     expect(screen.queryByRole('region', { name: 'Ver en vivo' })).toBeNull()
     const teclas = [...proyectar.querySelectorAll('.teclas__lista kbd')].map((k) => k.textContent)
-    expect(teclas).toEqual(['F', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
+    expect(teclas).toEqual(['F', '0', 'Rueda del mouse', 'Pellizco', 'G', 'D', 'M', 'V', '1', '2', 'C', '→', '←', '?'])
+    expect(within(proyectar.querySelector('.teclas__lista') as HTMLElement).getByText('Pantalla completa de la matriz (entra y sale)')).toBeTruthy()
     expect(within(proyectar.querySelector('.teclas__lista') as HTMLElement).getByText('Comparación; otra vez, repite la animación')).toBeTruthy()
     expect(within(proyectar).getByText(/^Con la ronda 1 abierta, el tablero muestra cuántos votaron, pero no los resultados: aparecen cuando todos hayan votado o al cerrar la ronda\./)).toBeTruthy()
     // Las teclas ya no van en un párrafo.

@@ -38,6 +38,9 @@ function escribirCodigo(texto: string) {
   fireEvent.click(screen.getByRole('button', { name: 'Entrar a mi mesa' }))
 }
 
+/** El menú plegable común (EncabezadoProducto), si está abierto. */
+const desplegable = () => document.querySelector<HTMLElement>('.hz-producto__desplegable')
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -177,24 +180,28 @@ describe('correcciones de la QA de la landing', () => {
     expect(await screen.findByText('Mesa destino HZ5MG-1')).toBeTruthy()
   })
 
-  it('en el celular hay un menú con las secciones y el panel (QA-P-18)', () => {
+  it('en el celular hay un menú con las secciones y el panel (QA-P-18), el mismo menú común de todas las vistas', () => {
     montar()
     const boton = screen.getByRole('button', { name: 'Menú' })
     expect(boton.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
+    expect(desplegable()).toBeNull()
     fireEvent.click(boton)
-    const menu = screen.getByRole('navigation', { name: 'Menú' })
+    const menu = desplegable()!
     expect(boton.getAttribute('aria-expanded')).toBe('true')
+    expect(boton.getAttribute('aria-controls')).toBe(menu.id)
     expect([...menu.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['#entrar', '#como-funciona', '#que-se-evalua', '#facilitadores', '#privacidad', '/admin'])
+    // Las secciones existen una sola vez: al abrir el menú se mudan de la barra al desplegable.
+    expect(screen.getAllByRole('navigation', { name: 'Secciones' })).toHaveLength(1)
     // Elegir una sección cierra el menú; Escape también, y el foco vuelve al botón.
     fireEvent.click(within(menu).getByRole('link', { name: 'Tus datos' }))
-    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
+    expect(desplegable()).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Menú' }))
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
+    expect(desplegable()).toBeNull()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Menú' }))
-    const css = readFileSync('web/inicio/inicio.css', 'utf8')
-    expect(css).toMatch(/@media \(min-width: 72rem\) \{ \.in-menu__boton, \.in-menu \{ display: none; \} \}/)
+    // El menú común se pliega por debajo de 1024 px (64 rem) en todas las vistas.
+    const css = readFileSync('web/shared/ui/componentes.css', 'utf8')
+    expect(css).toMatch(/@media \(min-width: 64rem\) \{\s*\.hz-producto__menu \{ display: flex; \}\s*\.hz-producto__menu-boton, \.hz-producto__desplegable \{ display: none; \}/)
   })
 
   it('la ilustración no usa verde agua ni azul en los horizontes, junto a R1 y R2 (QA-P-20)', () => {
@@ -273,10 +280,10 @@ describe('auditoría final de la landing (20-oct)', () => {
   it('el menú del celular se cierra con un toque fuera de él', () => {
     montar()
     fireEvent.click(screen.getByRole('button', { name: 'Menú' }))
-    fireEvent.pointerDown(screen.getByRole('navigation', { name: 'Menú' }))
-    expect(screen.getByRole('navigation', { name: 'Menú' })).toBeTruthy()
+    fireEvent.pointerDown(desplegable()!)
+    expect(desplegable()).toBeTruthy()
     fireEvent.pointerDown(screen.getByRole('heading', { level: 1 }))
-    expect(screen.queryByRole('navigation', { name: 'Menú' })).toBeNull()
+    expect(desplegable()).toBeNull()
   })
 
   it('el ejemplo del campo es un código de mesa de hoy y la entrada lo acepta tal cual', () => {
@@ -330,7 +337,7 @@ describe('QA por roles de la landing (20-oct)', () => {
   it('Horizontes es la herramienta; el taller es donde se usa', () => {
     const { container } = montar()
     expect(container.textContent).toContain('Horizontes es la herramienta de Estratek para priorizar el portafolio por horizontes.')
-    expect(container.textContent).toContain('Una herramienta de Estratek S.A.S.')
+    expect(container.textContent).toContain('Horizontes, una herramienta de Estratek')
     expect(container.textContent).not.toMatch(/Horizontes es el taller|Un taller de Estratek/)
     expect(document.title).toBe('Horizontes · Priorización de portafolio por horizontes · Estratek')
   })
@@ -353,13 +360,13 @@ describe('QA por roles de la landing (20-oct)', () => {
     expect(items).toEqual(HORIZONTES.map((h) => `${h.id}${h.nombre}: ${h.texto}.`))
   })
 
-  it('«Tus datos» dice lo que de verdad se guarda y quién lo ve (aviso hz-1.2)', () => {
+  it('«Tus datos» dice lo que de verdad se guarda y quién lo ve (aviso hz-1.3)', () => {
     montar()
     const datos = document.getElementById('privacidad')!.textContent!.replace(/\s+/g, ' ')
     expect(datos).toContain('Tu nombre, tu correo y tus calificaciones. Por seguridad, también la IP, el país y el navegador desde donde entras.')
     expect(datos).toContain('identificarte en tu mesa, evitar inscripciones dobles y devolverte el acceso si cambias de celular')
-    expect(datos).toContain('En el tablero y en los celulares nadie ve tu nombre ni tus calificaciones: solo promedios de al menos 3 personas.')
-    expect(datos).toContain('El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo.')
+    expect(datos).toContain('En el tablero y en los celulares nadie ve tu nombre: se ven los promedios de tu mesa o de la sala, que se actualizan con cada calificación. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo.')
+    expect(datos).not.toContain('3 personas')
     expect(datos).toContain('los datos se guardan en servidores fuera del Perú')
     // La promesa vieja era falsa: el facilitador sí ve las respuestas con el nombre.
     expect(datos).not.toMatch(/Resultados anónimos|Solo tu nombre y tu correo/)

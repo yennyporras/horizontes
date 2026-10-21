@@ -5,12 +5,12 @@ import { accionDeTecla } from './usePantallaCompleta'
 import type { DatosTablero } from './tipos'
 import {
   EN_VIVO,
+  enVivo,
   avisosPrecierre,
   cifraRonda,
   conteoMesa,
   delta,
   esSinPermiso,
-  faltanVotos,
   modoDeUrl,
   rondaEnCurso,
   votosRecibidos,
@@ -31,6 +31,7 @@ import {
   mayorCambioEn,
   hayConvergencia,
 } from './logica'
+import { AVISO_ENSAYO, mensajeFaltanVotos, textoEnVivo } from '../shared/votos'
 
 const mock: DatosTablero = JSON.parse(readFileSync(new URL('../../mocks/GET_api_tablero.json', import.meta.url), 'utf8'))
 
@@ -59,17 +60,21 @@ describe('estados vacíos', () => {
   test('sin votos en R1', () => {
     const d = sinVotos(sinVotos(mock, 1), 2)
     d.sala.estado = 'r2_cerrada'
-    expect(mensajeVacio(d, 1)).toBe('Aún no hay votos en la ronda 1')
-    expect(mensajeVacio(d, 'comparacion')).toBe('Aún no hay votos en la ronda 1')
-    expect(mensajeVacio(d, 2)).toBe('Aún no hay votos en la ronda 2')
+    expect(mensajeVacio(d, 1)).toBe('Aún no hay votos en la ronda 1.')
+    expect(mensajeVacio(d, 'comparacion')).toBe('Aún no hay votos en la ronda 1.')
+    expect(mensajeVacio(d, 2)).toBe('Aún no hay votos en la ronda 2.')
   })
   test('D2: con la ronda abierta llega la última foto, así que no se afirma que no haya votos', () => {
     const d = sinVotos(sinVotos(mock, 1), 2)
     d.sala.estado = 'r2_abierta'
-    expect(mensajeVacio(d, 2)).toBe('Aún no hay resultados en la ronda 2. Se actualizan cada 3 votos nuevos')
-    expect(mensajeVacio(d, 1)).toBe('Aún no hay votos en la ronda 1')
+    expect(mensajeVacio(d, 2)).toBe('Aún no hay resultados en la ronda 2. Se actualizan cada 3 votos nuevos.')
+    expect(mensajeVacio(d, 1)).toBe('Aún no hay votos en la ronda 1.')
     expect(EN_VIVO.texto).toBe('En vivo: se actualiza cada 3 votos')
     expect(EN_VIVO.titulo).toMatch(/cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final./)
+    // Sala de ensayo (21-oct): fotos de 1 en 1, del servidor.
+    expect(enVivo({ votos_por_actualizacion: 1 }).texto).toBe('En vivo: se actualiza con cada voto')
+    expect(enVivo({ votos_por_actualizacion: 1 }).titulo).toMatch(/se actualiza con cada voto nuevo\./)
+    expect(mensajeVacio({ ...d, votos_por_actualizacion: 1 }, 2)).toBe('Aún no hay resultados en la ronda 2. Se actualizan con cada voto nuevo.')
     expect(rondaEnCurso('r1_abierta')).toBe(1)
     expect(rondaEnCurso('r1_cerrada')).toBeNull()
   })
@@ -84,23 +89,33 @@ describe('estados vacíos', () => {
     for (const v of d.proyectos_vivos) Object.assign(v.rondas[0], { n_votos: 2, bajo_minimo: true })
     d.minimo_votos = 3
     d.alcance = { tipo: 'mesa', mesa_id: 'm1', mesa_nombre: 'Mesa 1' }
-    expect(mensajeVacio(d, 1)).toBe('Hacen falta al menos 3 votos para mostrar esta mesa')
-    expect(mensajeVacio(d, 'comparacion')).toBe('Hacen falta al menos 3 votos para mostrar esta mesa')
-    expect(mensajeVacio(d, 2)).toBe('Aún no hay votos en la ronda 2')
+    // 21-oct: un solo mensaje con el conteo real del servidor (n_votos y minimo_votos).
+    const msg2 = 'Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.'
+    expect(mensajeVacio(d, 1)).toBe(msg2)
+    expect(mensajeVacio(d, 'comparacion')).toBe(msg2)
+    expect(mensajeVacio(d, 2)).toBe('Aún no hay votos en la ronda 2.')
     d.alcance = { tipo: 'sala', mesa_id: null, mesa_nombre: null }
+    d.minimo_votos = 5
+    expect(mensajeVacio(d, 1)).toBe('Hay 2 votos de los 5 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')
     delete d.minimo_votos
-    expect(mensajeVacio(d, 1)).toBe('Hacen falta al menos 3 votos para mostrar estos resultados')
+    expect(mensajeVacio(d, 1)).toBe(msg2)
     const r2 = sinVotos(mock, 2)
     for (const v of r2.proyectos_vivos) Object.assign(v.rondas[1], { n_votos: 1, bajo_minimo: true })
-    expect(mensajeVacio(r2, 'comparacion')).toBe('Hacen falta al menos 3 votos para mostrar esta mesa. La comparación muestra solo la ronda 1.')
-    expect(cifraRonda(r2.proyectos_vivos[0].rondas[1], null)).toBe('Faltan votos')
+    expect(mensajeVacio(r2, 'comparacion')).toBe(
+      'Ronda 2: Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona. La comparación muestra solo la ronda 1.',
+    )
+    // La celda bajo el mínimo queda vacía: el mensaje va una sola vez, no «Faltan votos» en cada celda.
+    expect(cifraRonda(r2.proyectos_vivos[0].rondas[1], null)).toBe('')
     expect(cifraRonda(mock.proyectos_vivos[0].rondas[0], 4.567)).toBe('4,57')
     expect(cifraRonda(null, null)).toBe('Sin votos')
   })
-  test('F-12: concordancia del mínimo de votos', () => {
-    expect(faltanVotos(3)).toBe('Hacen falta al menos 3 votos')
-    expect(faltanVotos(5)).toBe('Hacen falta al menos 5 votos')
-    expect(faltanVotos(1)).toBe('Hace falta al menos 1 voto')
+  test('F-12: concordancia del mínimo de votos (singular y plural, 21-oct)', () => {
+    expect(mensajeFaltanVotos(1, 3)).toBe('Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')
+    expect(mensajeFaltanVotos(2, 3)).toMatch(/^Hay 2 votos de los 3 que hacen falta/)
+    expect(mensajeFaltanVotos(0, 3)).toMatch(/^Todavía no hay votos: hacen falta 3 para mostrar el resultado\./)
+    expect(mensajeFaltanVotos(0, 1)).toMatch(/^Todavía no hay votos: hace falta 1 para mostrar el resultado\./)
+    expect(AVISO_ENSAYO).toBe('Sala de ensayo: no cuenta en las cifras de talleres.')
+    for (const t of [mensajeFaltanVotos(1, 3), AVISO_ENSAYO, textoEnVivo(1), textoEnVivo(3)]) expect(t).not.toMatch(/[—–]/)
   })
   test('columna R2 solo desde la ronda 2', () => {
     const d = sinVotos(mock, 2)
@@ -111,7 +126,7 @@ describe('estados vacíos', () => {
     expect(mostrarR2(mock)).toBe(true)
   })
   test('datos nulos', () => {
-    expect(mensajeVacio(null, 1)).toBe('Aún no hay votos en la ronda 1')
+    expect(mensajeVacio(null, 1)).toBe('Aún no hay votos en la ronda 1.')
     expect(avisosPrecierre(null)).toEqual([])
     expect(esPreliminar(null)).toBe(false)
   })
@@ -127,7 +142,7 @@ describe('modos de proyección y votos recibidos', () => {
     expect(modoDeUrl(null)).toBe('grafica')
     expect(modoDeUrl('otro')).toBe('grafica')
   })
-  test('teclas del proyector: G Gráfica, D Detallado, M alterna, V «Cómo votó», F pantalla completa, 1, 2 y C la vista', () => {
+  test('teclas del proyector: G Gráfica, D Detallado, M alterna, V «Cómo votó», F pantalla completa, 0 matriz entera, 1, 2 y C la vista', () => {
     expect(accionDeTecla('g')).toEqual({ tipo: 'matriz', sola: true })
     expect(accionDeTecla('G')).toEqual({ tipo: 'matriz', sola: true })
     expect(accionDeTecla('d')).toEqual({ tipo: 'matriz', sola: false })
@@ -142,6 +157,8 @@ describe('modos de proyección y votos recibidos', () => {
     expect(accionDeTecla('m')).toEqual({ tipo: 'matriz', sola: null })
     expect(accionDeTecla('v')).toEqual({ tipo: 'detalle' })
     expect(accionDeTecla('f')).toEqual({ tipo: 'pantalla' })
+    // Zoom de la matriz: 0 la muestra entera.
+    expect(accionDeTecla('0')).toEqual({ tipo: 'entera' })
     expect(accionDeTecla('1')).toEqual({ tipo: 'vista', vista: 1 })
     expect(accionDeTecla('2')).toEqual({ tipo: 'vista', vista: 2 })
     expect(accionDeTecla('c')).toEqual({ tipo: 'vista', vista: 'comparacion' })

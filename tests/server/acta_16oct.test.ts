@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { construirApp } from '../../server/app'
 import { migrar, uno } from '../../server/db/index'
 import { MIGRACIONES } from '../../server/db/esquema'
-import { TEXTOS_AUTORIZACION, VERSION_CONSENTIMIENTO } from '../../server/dominio/consentimiento'
+import { TEXTOS_AUTORIZACION, VERSIONES_CONSENTIMIENTO_ACEPTADAS, VERSION_CONSENTIMIENTO, hashTextoConsentimiento } from '../../server/dominio/consentimiento'
 import { reiniciarSalaLimpia } from '../../server/dominio/mantenimiento'
 import { sha256 } from '../../server/dominio/util'
 import { type Entorno, T0, accion, crearEntorno, crearSala, inscribir, votar } from './ayuda'
@@ -43,9 +43,13 @@ describe('visibilidad por defecto (acta A2)', () => {
     for (const [i, correo] of ['a@x.co', 'b@x.co', 'c@x.co'].entries()) tokens.push((await inscribir(e, s.mesas[i % 2].codigo, correo)).json().token)
     await accion(e, s.id, 'abrir_ronda_1')
     for (const t of tokens) for (const p of ['insumex', 'nutriwhat']) await votar(e, t, p, 1)
-    const y = (await e.app.inject({ url: '/api/yo', headers: { 'x-participante-token': tokens[0] } })).json()
-    expect(y.resultados).toMatchObject({ alcance: { tipo: 'sala' }, preliminar: true })
-    expect(y.resultados.proyectos_vivos[0].rondas[0]).toMatchObject({ n_votos: 3, total: 10 })
+    // 21-oct: con toda la sala completa la R1 se cierra y la R2 se abre sola; el consolidado de la R1 queda a la vista
+    // de quien votó, sin que el facilitador active nada.
+    expect((await detalle(s.id)).sala.estado).toBe('r2_abierta')
+    const r = await e.app.inject({ url: '/api/resultados?ronda=1', headers: { 'x-participante-token': tokens[0] } })
+    expect(r.statusCode).toBe(200)
+    expect(r.json()).toMatchObject({ alcance: { tipo: 'sala' }, preliminar: false })
+    expect(r.json().proyectos_vivos[0].rondas[0]).toMatchObject({ n_votos: 3, total: 10 })
   })
 })
 
@@ -112,13 +116,13 @@ describe('aviso de datos según el país (C6)', () => {
     ['CO', 'Ley 1581 de 2012'],
     ['PE', 'Ley 29733'],
     ['GT', 'Guatemala'],
-  ])('%s: GET /api/mesas trae país, versión hz-1.2 y el texto que cita %s; el consentimiento guarda el hash de ese texto', async (pais, cita) => {
+  ])('%s: GET /api/mesas trae país, versión hz-1.3 y el texto que cita %s; el consentimiento guarda el hash de ese texto', async (pais, cita) => {
     const s = await crearSala(e, 1)
     await config(s.id, { pais })
     await accion(e, s.id, 'abrir_inscripcion')
     const m = (await e.app.inject(`/api/mesas/${s.mesas[0].codigo}`)).json()
     expect(m.sala.pais).toBe(pais)
-    expect(m.consentimiento.version).toBe('hz-1.2')
+    expect(m.consentimiento.version).toBe('hz-1.3')
     expect(m.consentimiento.texto_autorizacion).toContain(cita)
     expect(m.consentimiento.texto_autorizacion).not.toContain('—')
     const r = await inscribir(e, s.mesas[0].codigo, `aviso-${pais}@x.co`)
@@ -126,16 +130,37 @@ describe('aviso de datos según el país (C6)', () => {
     expect(c).toEqual({ texto_hash: sha256(TEXTOS_AUTORIZACION[pais as 'CO']), version_aviso: VERSION_CONSENTIMIENTO })
   })
 
-  it('una versión vieja del aviso se rechaza con 422 CONSENTIMIENTO_REQUERIDO', async () => {
+  it.each(['estratek-v1', 'hz-1.1', '', 'hz-1.4', null, 13])('una versión vieja, vacía o desconocida del aviso (%s) se rechaza con 422 CONSENTIMIENTO_REQUERIDO', async (version) => {
     const s = await crearSala(e, 1)
     await accion(e, s.id, 'abrir_inscripcion')
     const r = await e.app.inject({
       method: 'POST',
       url: '/api/inscripcion',
-      payload: { codigoMesa: s.mesas[0].codigo, nombre: 'Viejo', correo: 'viejo@x.co', consentimiento: { aceptado: true, version: 'estratek-v1' } },
+      payload: { codigoMesa: s.mesas[0].codigo, nombre: 'Viejo', correo: 'viejo@x.co', consentimiento: { aceptado: true, version } },
     })
     expect(r.statusCode).toBe(422)
     expect(r.json().error.codigo).toBe('CONSENTIMIENTO_REQUERIDO')
+  })
+
+  it('21-oct: un celular que cargó el aviso hz-1.2 antes del despliegue sigue inscribiendo; se guarda hz-1.2 con el hash de su texto', async () => {
+    expect(VERSIONES_CONSENTIMIENTO_ACEPTADAS).toEqual(['hz-1.3', 'hz-1.2'])
+    const s = await crearSala(e, 1)
+    await accion(e, s.id, 'abrir_inscripcion')
+    const r = await e.app.inject({
+      method: 'POST',
+      url: '/api/inscripcion',
+      payload: { codigoMesa: s.mesas[0].codigo, nombre: 'Antes del despliegue', correo: 'antes@x.co', consentimiento: { aceptado: true, version: 'hz-1.2' } },
+    })
+    expect(r.statusCode).toBe(201)
+    const c = uno<{ texto_hash: string; version_aviso: string }>(e.db, 'SELECT texto_hash, version_aviso FROM consentimientos WHERE participante_id = ?', r.json().participante.id)!
+    expect(c.version_aviso).toBe('hz-1.2')
+    expect(c.texto_hash).toBe(hashTextoConsentimiento('CO', 'hz-1.2'))
+    expect(c.texto_hash).not.toBe(sha256(TEXTOS_AUTORIZACION.CO))
+    // Ya inscrita, su sesión sigue sin pedir el aviso otra vez: /api/yo responde y puede votar.
+    const token = r.json().token
+    expect((await e.app.inject({ url: '/api/yo', headers: { 'x-participante-token': token } })).statusCode).toBe(200)
+    await accion(e, s.id, 'abrir_ronda_1')
+    expect((await votar(e, token, 'insumex', 1)).statusCode).toBe(200)
   })
 })
 
@@ -195,7 +220,7 @@ describe('IP real de inscripción y voto (C7, C8)', () => {
   })
 })
 
-describe('aviso de datos hz-1.2', () => {
+describe('aviso de datos hz-1.3', () => {
   it('el texto que sirve el servidor es el de docs/CONSENTIMIENTO.md §5.1, por país', () => {
     const doc = readFileSync(new URL('../../docs/CONSENTIMIENTO.md', import.meta.url), 'utf8')
     for (const texto of Object.values(TEXTOS_AUTORIZACION)) {
@@ -207,13 +232,15 @@ describe('aviso de datos hz-1.2', () => {
   })
 
   it('decisión 2 de Paola: nombra todos los datos, para qué, quién ve qué y, solo en Perú, que se guardan fuera del país', () => {
-    expect(VERSION_CONSENTIMIENTO).toBe('hz-1.2')
+    expect(VERSION_CONSENTIMIENTO).toBe('hz-1.3')
     for (const texto of Object.values(TEXTOS_AUTORIZACION)) {
       for (const dato of ['mi nombre', 'mi correo', 'mis calificaciones', 'la IP', 'el país', 'el navegador']) expect(texto).toContain(dato)
       for (const fin of ['identificarme en mi mesa', 'evitar inscripciones dobles', 'devolverme el acceso si cambio de celular']) expect(texto).toContain(fin)
       expect(texto).toContain('No se usan para publicidad ni se entregan a terceros.')
-      expect(texto).toContain('solo se muestran promedios de 3 o más personas')
-      expect(texto).toContain('el equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre')
+      // hz-1.3 (21-oct): resultados con cada calificación, sin la promesa de 3 o más personas.
+      expect(texto).toContain('nadie ve mi nombre: se ven los promedios de mi mesa o de la sala, que se actualizan con cada calificación')
+      expect(texto).not.toContain('3 o más')
+      expect(texto).toContain('El equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre')
       expect(texto).not.toMatch(/[—–]/)
       expect(texto).not.toContain('fines informativos')
     }

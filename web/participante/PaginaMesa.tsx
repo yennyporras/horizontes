@@ -11,6 +11,7 @@ import { CierrePersonal, MIN_VOTOS, ResultadoAlcance, rondaOculta, resultadoVisi
 import { Calificar, ElegirProyecto, PreguntaGuiada, proyectosVivos, votoDe } from './pantallas/Votacion'
 import { bienvenidaPendiente, guardarBorrador, guardarToken, guardarVista, leerBorrador, leerToken, leerVista, marcarBienvenida, olvidarDatos } from './sesion'
 import { usarYo } from './usarYo'
+import { cadaCuantos } from '../shared/votos'
 
 // La muestra del sistema de diseño trae el mock de /api/yo: se carga aparte para no inflar el bundle.
 // Solo en desarrollo: en el build no hay import y la muestra no se publica.
@@ -530,8 +531,8 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
   // votó no ve promedios ni matriz hasta que todos voten o se cierre la ronda.
   const r1Oculta = abierta && ronda === 1 && rondaOculta(yo.resultados, 1)
   const minimo = yo.resultados?.minimo_votos ?? MIN_VOTOS
-  // D2: la foto del consolidado se renueva cuando llegan estos votos nuevos (hoy 3).
-  const deAPocos = yo.resultados?.votos_por_actualizacion ?? 3
+  // D2: la foto del consolidado se renueva cuando llegan estos votos nuevos (desde el 21-oct, 1 en todas las salas).
+  const deAPocos = yo.resultados?.votos_por_actualizacion ?? 1
   // C19-5: en guiado cada quien ve la pregunta que elige el facilitador; sin dato, automático.
   const guiado = yo.config.modo_preguntas === 'guiado'
 
@@ -642,7 +643,7 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
       <Aviso tono="alerta" titulo={hayResultado ? `Todos votaron en ${quienes}` : undefined}>
         {hayResultado
           ? 'Puedes editar tus calificaciones hasta que el facilitador cierre la ronda. Al cerrarla sale el resultado final.'
-          : `Puedes editar tus calificaciones hasta que el facilitador cierre la ronda. El resultado se muestra cuando hay al menos ${minimo} votos.`}
+          : `Puedes editar tus calificaciones hasta que el facilitador cierre la ronda. El resultado se muestra cuando hay al menos ${minimo === 1 ? '1 voto' : `${minimo} votos`}.`}
       </Aviso>
       {hayResultado && resultado(true)}
     </section>
@@ -817,13 +818,13 @@ function Participante({ codigo, token, reingreso }: { codigo: string; token: str
     )
   }
 
-  // 8.10 Resultado parcial (D2): el consolidado se renueva de 3 en 3 votos, no con cada voto.
+  // 8.10 Resultado parcial (D2): el consolidado se renueva con lo que diga el servidor (desde el 21-oct, con cada voto).
   if (yo.config.vista_participante === 'en_vivo' && yo.resultados && !precierre && !r1Oculta) {
     return (
       <Marco {...marco} claveFoco={`envivo-${ronda}`}>
         <h1 className="hz-titulo">Resultado parcial de {donde}</h1>
         <p className="hz-texto-2">
-          Calificaste los {vivos.length} proyectos en la ronda {ronda}. Este resultado se renueva cada vez que llegan {deAPocos} votos nuevos y el final sale
+          Calificaste los {vivos.length} proyectos en la ronda {ronda}. Este resultado se renueva {cadaCuantos(deAPocos)} y el final sale
           cuando el facilitador cierra la ronda. Puedes editar mientras la ronda siga abierta.
         </p>
         {resultado(true)}

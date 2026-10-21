@@ -1,6 +1,6 @@
 # Entrega · Horizontes
 
-Qué recibe Estratek, dónde está, qué falta y qué hace Paola para ponerlo en producción. Estado al 20-oct, versión 1.2.0 (acta del 16-oct, preentrega del 19-oct y auditoría y pedidos del 20-oct).
+Qué recibe Estratek, dónde está, qué falta y qué hace Paola para ponerlo en producción. Estado al cierre del 20-oct: versión 1.3.0 en producción y staging (acta del 16-oct, preentrega del 19-oct, auditoría final y QA por roles del 20-oct).
 
 ## 1. Qué es
 App web del taller "Portafolio por Horizontes" (caso Foodsume). Los participantes se inscriben con el QR de su mesa, leen el caso y su hoja de perfil, califican INSUMEX y NUTRIWHAT en 6 criterios (1, 3, 5, 7, 9) en 2 rondas (R1 individual y en silencio, R2 con discusión), y la matriz de burbujas muestra cómo se mueven sobre 8 proyectos fijos: R1 en verde y R2 en rojo.
@@ -9,8 +9,8 @@ App web del taller "Portafolio por Horizontes" (caso Foodsume). Los participante
 | Qué | Dónde | Estado |
 |---|---|---|
 | Código | `github.com/yennyporras/horizontes` (rama `main`) | Arriba. Pasa a la cuenta de Estratek: `docs/MIGRACION_GITHUB.md` |
-| Producción | `https://horizontes.estratek.com.co` → luego `https://horizontes.com.co` | Arriba desde el 19-oct (v1.1.0). Se despliega a mano desde Coolify |
-| Staging | `https://staging-horizontes.estratek.com.co` | Arriba desde el 19-oct; sigue a `main` |
+| Producción | `https://horizontes.estratek.com.co` → luego `https://horizontes.com.co` | v1.3.0 desde el 20-oct (`8a32559`), verificada desde fuera. Se despliega a mano desde Coolify |
+| Staging | `https://staging-horizontes.estratek.com.co` | v1.3.0; sigue a `main` |
 | Servidor | Coolify en el VPS de Hostinger, 1 contenedor, SQLite en el volumen `/data` | Imagen probada en local (`tools/deploy.sh local`) |
 
 Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}` (celular, lo abre el QR), `/tablero/{sala}?t=...` (proyector, el enlace sale del panel).
@@ -22,7 +22,7 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 - **Tablero:** cada sala tiene su enlace con token; se abre desde **Sala en vivo** → **Proyectar el tablero** → *Tablero de la sala*, en el modo *Gráfica* (solo la matriz moviéndose) o *Detallado* (con el progreso y los promedios).
 
 ## 4. Qué está listo
-- Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.1`. Sin autorización no hay inscripción.
+- Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.3`. Sin autorización no hay inscripción.
 - Votación 1-3-5-7-9 en 6 criterios, 2 rondas, precierre cuando todos votan, cierres programados en la hora del país de la sala.
 - Resultados anónimos: tablas con los 6 criterios y su descripción corta (sin fila «Total» desde la preentrega del 19-oct); mínimo de 3 votos para mostrar un alcance; con la ronda abierta, el resultado se renueva cada 3 votos nuevos y al cerrarla queda el exacto; por defecto toda la sala ve el consolidado apenas vota.
 - Tablero con dos modos de proyección, *Gráfica* (solo la matriz) y *Detallado* (con progreso y promedios), y pantalla completa con F.
@@ -115,7 +115,8 @@ Paola dice que `horizontes-staging` ya existe en Coolify. Comprobado el 19-oct a
 Pruebas integradas al 19-oct 14:15 (`tools/test.sh` sobre las ramas de las 4 áreas): 436 de 441 en verde; las 4 rojas eran pruebas e2e del celular que aún esperaban «Voto registrado» en vez de la vista en vivo por defecto (TRIAGE #31). Tras la integración del 19-oct: 457 de 458 en verde, 1 omitida. Recorrido en navegador a 360 y 1920 px en verde.
 
 ## 8. Pendientes conocidos
-- Desplegar la 1.2.0 en producción desde Coolify (Auto Deploy apagado).
+- Revisión de la semilla con Sebastián: `docs/PROPUESTA_SEMILLA.md`.
+- Supresión de datos y vencimiento de respaldos (B-5) y el resto de `docs/RECOMENDACIONES_ESTRATEGICAS.md`.
 - Hallazgos abiertos de `docs/TRIAGE.md`.
 - Formulario de respaldo en línea del plan B (Paola, cuenta de Estratek).
 - Fuera de alcance v1 (SPEC §10): multiempresa, portafolios propios, TAM normalizado, análisis por perfil, PDF, correos. Idea a futuro: panel unificado de herramientas (`docs/BACKLOG_EXTRA.md`).

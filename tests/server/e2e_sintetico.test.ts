@@ -29,8 +29,10 @@ async function tablero(query = '') {
   return r.json()
 }
 
-async function votarRonda(ronda: number) {
-  for (const v of ps.votos.filter((x) => x.ronda === ronda)) {
+async function votarRonda(ronda: number, { sinElUltimo = false, soloElUltimo = false } = {}) {
+  const todos = ps.votos.filter((x) => x.ronda === ronda)
+  const lista = sinElUltimo ? todos.slice(0, -1) : soloElUltimo ? todos.slice(-1) : todos
+  for (const v of lista) {
     const respuestas = Object.fromEntries(CRITERIOS.map((c) => [c, v[c]]))
     const r = await votar(e, tokens.get(v.respondiente_id as number)!, String(v.proyecto).toLowerCase(), ronda, respuestas)
     expect(r.statusCode, r.body).toBe(200)
@@ -65,26 +67,37 @@ describe('e2e sintético por API', () => {
     expect(t.progreso.por_mesa.map((m: { inscritos: number }) => m.inscritos)).toEqual([5, 5, 5, 5])
   })
 
-  it('ronda 1: votos, precierre de sala y resultado preliminar sin cerrar', async () => {
+  it('ronda 1: votos y precierre de mesa; con el último voto la R1 se cierra y la R2 se abre sola', async () => {
     expect((await accion(e, sala.id, 'abrir_ronda_1')).statusCode).toBe(200)
-    await votarRonda(1)
-    const t = await tablero()
-    expect(t.progreso.completos).toBe(20)
-    expect(t.progreso.precierre).toBe(true)
-    expect(t.sala.estado).toBe('r1_abierta') // el precierre nunca cierra
-    expect(t.preliminar).toBe(true)
+    await votarRonda(1, { sinElUltimo: true })
+    let t = await tablero()
+    expect(t.progreso.completos).toBe(19)
+    expect(t.progreso.precierre).toBe(false)
+    expect(t.sala.estado).toBe('r1_abierta') // el precierre de una mesa nunca cierra
+    const completa = t.progreso.por_mesa.findIndex((m: { precierre: boolean }) => m.precierre)
+    expect(completa).toBeGreaterThanOrEqual(0)
+    // Quien está en una mesa completa ve el resultado preliminar de su mesa aunque la vista sea "registrado".
+    const id = [...tokens.keys()].find((k) => (k - 1) % 4 === completa)!
+    const pre = await e.app.inject({ url: '/api/resultados', headers: { 'x-participante-token': tokens.get(id)! } })
+    expect(pre.statusCode).toBe(200)
+    expect(pre.json().preliminar).toBe(true)
+    expect(pre.json().alcance.tipo).toBe('mesa')
+
+    // 21-oct: el último voto completa la sala y la R2 se abre sola; la R1 queda cerrada y reproduce el golden.
+    await votarRonda(1, { soloElUltimo: true })
+    t = await tablero()
+    expect(t.sala.estado).toBe('r2_abierta')
     compararConGolden(t, 1)
-    // El participante ve el resultado preliminar de su mesa aunque la vista sea "registrado".
-    const r = await e.app.inject({ url: '/api/resultados', headers: { 'x-participante-token': tokens.get(1)! } })
+    const r = await e.app.inject({ url: '/api/resultados?ronda=1', headers: { 'x-participante-token': tokens.get(1)! } })
     expect(r.statusCode).toBe(200)
-    expect(r.json().preliminar).toBe(true)
+    expect(r.json().preliminar).toBe(false)
     expect(r.json().alcance.tipo).toBe('mesa')
   })
 
-  it('cierra R1, abre R2 (revela hojas) y reproduce el golden de R2', async () => {
-    expect((await accion(e, sala.id, 'cerrar_ronda_1')).statusCode).toBe(200)
-    const r2 = await accion(e, sala.id, 'abrir_ronda_2')
-    expect(r2.json().sala.config.revelar_hojas).toBe(true)
+  it('la R2 abierta sola revela las hojas y reproduce el golden de R2', async () => {
+    const d = (await e.app.inject({ url: `/api/admin/salas/${sala.id}`, headers: { cookie: e.cookie } })).json()
+    expect(d.sala.config.revelar_hojas).toBe(true)
+    expect(d.eventos.some((ev: { tipo: string }) => ev.tipo === 'ronda_2_automatica')).toBe(true)
     await votarRonda(2)
     expect((await accion(e, sala.id, 'cerrar_ronda_2')).statusCode).toBe(200)
     const t = await tablero()

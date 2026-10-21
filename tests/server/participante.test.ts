@@ -255,13 +255,14 @@ describe('GET /api/yo', () => {
     await votarAmbos(ana.token)
     await votarAmbos(beto.token)
 
+    // 21-oct: con los dos votos la R1 se cerró y la R2 se abrió sola; el consolidado de la R1 queda a la vista.
     const cuerpos = [
       (await yo(ana.token)).body,
-      (await resultados(ana.token)).body,
+      (await resultados(ana.token, 1)).body,
       (await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).body,
       (await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}&alcance=mesa&mesa=${s.mesas[0].id}`)).body,
     ]
-    expect((await resultados(ana.token)).statusCode).toBe(200)
+    expect((await resultados(ana.token, 1)).statusCode).toBe(200)
     for (const c of cuerpos) {
       expect(c).not.toContain('@correo.co')
       expect(c).not.toContain('Beto')
@@ -358,8 +359,13 @@ describe('PUT /api/votos', () => {
     const t = (await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).json()
     const ins = t.proyectos_vivos.find((p: { id: string }) => p.id === 'insumex').rondas[0]
     expect(ins.n_votos).toBe(1)
-    // Con un solo voto el tablero no lo muestra (sería la respuesta individual); el valor nuevo ya se verificó en la BD.
-    expect(ins).toMatchObject({ bajo_minimo: true, promedios: null })
+    // La ronda 1 abierta sigue oculta en el tablero público hasta que todos voten o se cierre (decisión del 20-oct).
+    expect(ins).toMatchObject({ oculta: true, promedios: null })
+    expect(ins.bajo_minimo).toBeUndefined()
+    // Al cerrarla, desde el 21-oct se muestra desde 1 voto: el promedio es el voto nuevo, sin nombre.
+    await accion(e, s.id, 'cerrar_ronda_1')
+    const c = (await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).json()
+    expect(c.proyectos_vivos.find((p: { id: string }) => p.id === 'insumex').rondas[0].promedios).toMatchObject({ regulacion: 9, alineacion_core: 1 })
   })
 
   it('completo_ronda se vuelve true tras votar los 2 vivos y progreso_mesa lo refleja', async () => {
@@ -369,11 +375,13 @@ describe('PUT /api/votos', () => {
     expect(r1.json().progreso_mesa).toEqual({ inscritos: 1, completos: 0, precierre: false })
     const r2 = await votar(e, a.token, 'nutriwhat', 1)
     expect(r2.json().completo_ronda).toBe(true)
+    // La respuesta describe la ronda votada aunque ese voto haya abierto la R2 sola (21-oct).
     expect(r2.json().progreso_mesa).toEqual({ inscritos: 1, completos: 1, precierre: true })
     const b = (await yo(a.token)).json()
-    expect(b.completo_ronda).toBe(true)
-    expect(b.mis_votos).toHaveLength(2)
-    expect(b.pendientes).toEqual([])
+    expect(b.sala).toMatchObject({ estado: 'r2_abierta', ronda_actual: 2 })
+    expect(b.mis_votos_anteriores).toHaveLength(2)
+    expect(b.mis_votos).toEqual([])
+    expect(b.completo_ronda).toBe(false)
   })
 
   it('un participante desactivado recibe 403', async () => {
@@ -428,10 +436,12 @@ describe('GET /api/resultados', () => {
     const c = await inscrito(s.mesas[1].codigo, 'c@correo.co')
     await votarAmbos(a.token)
     expect((await resultados(a.token)).statusCode).toBe(403)
+    // 21-oct: con todas las mesas completas la R1 se cierra y la R2 se abre sola; la R1 se ve, ya no preliminar.
     await votarAmbos(c.token)
-    const r = await resultados(a.token)
+    expect((await resultados(a.token)).statusCode).toBe(403) // la R2 aún sin votos
+    const r = await resultados(a.token, 1)
     expect(r.statusCode).toBe(200)
-    expect(r.json()).toMatchObject({ preliminar: true, alcance: { tipo: 'sala' } })
+    expect(r.json()).toMatchObject({ preliminar: false, alcance: { tipo: 'sala' } })
     expect(r.json().proyectos_vivos[0].rondas[0].n_votos).toBe(2)
   })
 
@@ -451,8 +461,8 @@ describe('GET /api/resultados', () => {
     const s = await salaAbierta(1, 'r1_abierta')
     const a = await inscrito(s.mesas[0].codigo, 'a@correo.co')
     await votarAmbos(a.token)
-    await accion(e, s.id, 'cerrar_ronda_1')
-    await accion(e, s.id, 'abrir_ronda_2')
+    // 21-oct: la única persona completó la R1, así que la R1 se cerró y la R2 se abrió sola.
+    expect((await yo(a.token)).json().sala.estado).toBe('r2_abierta')
     expect((await resultados(a.token)).statusCode).toBe(403)
     const r1 = await resultados(a.token, 1)
     expect(r1.statusCode).toBe(200)
@@ -488,11 +498,13 @@ describe('GET /api/resultados', () => {
     // Desactivar a b (que votó) y a c (que no votó).
     await editarParticipante(b.participante.id, { activo: false })
     await editarParticipante(c.participante.id, { activo: false })
-    const r = await resultados(a.token)
+    // Sin c, la sala queda completa: la R1 se cierra y la R2 se abre sola (21-oct).
+    expect((await yo(a.token)).json().sala.estado).toBe('r2_abierta')
+    const r = await resultados(a.token, 1)
     expect(r.statusCode).toBe(200)
     const t = r.json()
     expect(t.progreso.inscritos).toBe(1)
-    expect(t.progreso.precierre).toBe(true)
+    expect(t.preliminar).toBe(false)
     for (const p of t.proyectos_vivos) expect(p.rondas[0].n_votos).toBe(1)
     const tab = (await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).json()
     for (const p of tab.proyectos_vivos) expect(p.rondas[0].n_votos).toBe(1)

@@ -74,7 +74,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     // Acta P4: sala sin país = Colombia, con su ley y su autoridad.
     await ver(p, 'La Ley 1581 de 2012 de Colombia')
     await ver(p, /Superintendencia de Industria y Comercio/)
-    // La casilla trae el texto vigente (hz-1.2) que sirve el servidor para Colombia (C6).
+    // La casilla trae el texto vigente (hz-1.3) que sirve el servidor para Colombia (C6).
     expect(await p.locator('.hz-casilla__texto').textContent()).toContain('Ley 1581 de 2012')
     expect(await p.getByRole('link', { name: 'info@estratek.com.co' }).getAttribute('href')).toBe('mailto:info@estratek.com.co')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('href')).toMatch(/^https:\/\/estratek\.com\.co\/politica/)
@@ -96,6 +96,8 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     // Otra persona de la mesa (otro celular, por API).
     const tokenB = await inscribirApi(e, mesa, 'Beto Ruiz', 'beto.e2e@empresa.com')
     const tokenC = await inscribirApi(e, mesa, 'Ciro Ríos', 'ciro.e2e@empresa.com')
+    // Alguien de otra mesa que no vota: la sala no queda completa, así la ronda 2 no se abre sola y se ve el precierre.
+    await inscribirApi(e, sala.mesas[1].codigo, 'Dana Gil', 'dana.e2e@empresa.com')
 
     // Ronda 1: el celular se entera solo (polling).
     await accion(e, sala.id, 'abrir_ronda_1')
@@ -385,24 +387,15 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
       await calificar(p, 5)
       await p.getByRole('button', { name: 'Guardar calificación' }).click()
     }
-    // Con la ronda 1 oculta del servidor (decisión 1 de Paola del 20-oct) no hay resultado parcial en la ronda 1: se
-    // ve «Calificación enviada» y cuándo salen los resultados.
-    await titulo(p, /^(Resultado parcial de la sala|Calificación enviada)$/).catch(async (err) => {
+    // Con la ronda 1 abierta y gente sin votar, el servidor la manda oculta (decisión 1 de Paola del 20-oct, vigente con
+    // cada voto en vivo desde el 21-oct): no hay resultado parcial en la ronda 1, se ve «Calificación enviada» y cuándo
+    // salen los resultados.
+    await titulo(p, 'Calificación enviada').catch(async (err) => {
       console.log(await p.locator('body').innerText())
       throw err
     })
-    if (await p.getByRole('heading', { name: 'Calificación enviada', level: 1 }).count()) {
-      await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.')
-      expect(await p.locator('.hzp-matriz').count()).toBe(0)
-      await sinDesborde(p)
-      await ctx.close()
-      return
-    }
-    await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
-    // INSUMEX suma 3 votos en la sala (2 de la mesa 2 y el propio): tabla con los promedios del servidor y tu calificación, sin Total.
-    // NUTRIWHAT tiene 1: no se muestra.
-    await revisarTabla(p, sala.mesas[0].codigo)
-    await ver(p, 'Hacen falta al menos 3 votos para mostrar este proyecto.')
+    await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.')
+    expect(await p.locator('.hzp-matriz').count()).toBe(0)
     await sinDesborde(p)
     await ctx.close()
   }, 120_000)

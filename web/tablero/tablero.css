@@ -10,8 +10,6 @@
  * Escala tipográfica fluida: ~15 px en 360, ~17 px en 1366 y ~20 px en 1920 (lectura a 6 m).
  */
 .hz-tablero {
-  /* Margen lateral del contenido y de la fila de la barra (la barra y su línea van de borde a borde). */
-  --hz-tablero-lado: 1em;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -46,53 +44,47 @@ body:has(> #root > .hz-tablero) {
   white-space: nowrap;
 }
 
-/* ── Barra carbón: logo de Horizontes y firma (EncabezadoProducto), la sala y los controles ── */
+/* ── Barra común (EncabezadoProducto) y segunda franja con la sala y los controles (21-oct) ──
+   La barra es la de todas las vistas (64 px; 72 px desde 1024 px) en el contenedor de página. La sala (h1 con la
+   escala común), su estado y los controles van en la franja clara de 56 px, en una fila. Bajo 1100 px la sala va en
+   su línea y los controles en una fila que se desliza de lado: nunca 300 px de controles apilados. */
 .hz-cab {
   flex: none;
 }
-/* Proyección: la fila va al 100 % del ancho (no al ancho de página de 1280 px), alineada con el contenido. */
-.hz-tablero .hz-cab .hz-producto__fila {
-  flex-wrap: wrap;
-  gap: 0.5em 1.5em;
-  max-width: none;
-  padding: 0.5em var(--hz-tablero-lado) calc(0.5em + 4px);
+.hz-cab .hz-cab-logo {
+  height: 1.5rem;
 }
-/* La sala y los controles son hijos directos de la fila: se reparten el ancho con la marca y bajan solos. */
-.hz-cab .hz-producto__extra {
-  display: contents;
+.hz-cab .hz-franja-pagina__fila {
+  gap: var(--hz-sp-3) var(--hz-sp-6);
+  /* Los controles son del facilitador: la letra de la franja es la de todas las vistas, no la escala del proyector. */
+  font-size: var(--hz-fs-16);
+  line-height: var(--hz-lh);
 }
-/* La sala cede ancho antes que los controles: en 1280 y 1366 px la barra sigue en una sola franja. */
 .hz-cab-titulo {
-  flex: 1 1 14em;
+  display: grid;
+  flex: 1 1 auto;
   min-width: 0;
 }
-@media (min-width: 600px) {
-  .hz-cab-titulo {
-    padding-left: 1.5em;
-    border-left: 1px solid var(--hz-borde);
-  }
-}
+/* El nombre de la sala en una línea: si no cabe, termina en «…» (está completo en el title y en la pestaña). */
 .hz-cab h1 {
-  margin: 0;
-  font-size: 1.5em;
-  font-weight: var(--hz-fw-titulo);
-  line-height: 1.15;
-  letter-spacing: var(--hz-ls-titulo);
-  color: var(--hz-tinta);
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.1;
 }
 .hz-cab-meta {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.25em 0.6em;
-  margin: 0.2em 0 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--hz-fs-14);
+  line-height: 1.3;
   color: var(--hz-tinta-2);
-  font-weight: 600;
-}
-.hz-cab-vista {
-  font-weight: 800;
-  color: var(--hz-tinta);
+  font-weight: var(--hz-fw-etiqueta);
+  white-space: nowrap;
 }
 /* Insignias de estado: «Preliminar» y la de la ronda abierta («En vivo: se actualiza cada 3 votos»). Sin borde ni color de
    acción, para que no se confundan con los botones del selector de modo. */
@@ -125,70 +117,56 @@ body:has(> #root > .hz-tablero) {
 }
 .hz-cab-controles {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.6em 1em;
+  gap: var(--hz-sp-2);
 }
 .hz-alcance {
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 0.5em;
-  min-width: 0;
-  max-width: 100%;
-  font-weight: 600;
-  color: var(--hz-tinta-2);
 }
 .hz-alcance select {
-  min-width: 0;
-  max-width: 100%;
-  min-height: 2.4em;
-  padding: 0.3em 0.6em;
+  max-width: 14em;
+  min-height: var(--hz-tactil);
+  padding: 0 var(--hz-sp-3);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--hz-fw-etiqueta);
   color: var(--hz-tinta);
-  background: var(--hz-superficie-1);
-  border: 1px solid var(--hz-borde-control);
+  background: var(--hz-fondo);
+  border: 1.5px solid var(--hz-borde-control);
   border-radius: var(--hz-r-campo);
 }
-.hz-segmento,
-.hz-detalle {
-  display: inline-flex;
-  padding: 0.2em;
-  background: var(--hz-superficie-1);
-  border: 1px solid var(--hz-borde);
-  border-radius: var(--hz-r-pill);
+/* Fuera del proyector (bajo 1100 px, el corte del tablero): la sala en su línea y los controles debajo, en las filas
+   que hagan falta. Desde 1100 px, sala y controles en una sola fila de 56 px. */
+@media (max-width: 1099px) {
+  .hz-cab .hz-franja-pagina__fila {
+    flex-wrap: wrap;
+    padding-block: var(--hz-sp-2);
+    overflow: visible;
+  }
+  .hz-cab-titulo {
+    flex-basis: 100%;
+  }
+  .hz-alcance select {
+    max-width: 11.5em;
+  }
+  /* Nicolai (21-oct): la fila deslizable escondía Ronda 1, Ronda 2 y Comparación fuera de la pantalla sin ninguna
+     pista. Ahora los controles se parten en filas y se ven todos: alcance, modo y vista. */
+  .hz-cab-controles {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
 }
-.hz-segmento button,
-.hz-detalle button {
-  min-height: 2.4em;
-  padding: 0.3em 1em;
-  font: inherit;
-  font-weight: 600;
-  color: var(--hz-tinta-2);
-  white-space: nowrap;
-  background: transparent;
-  border: 0;
-  border-radius: var(--hz-r-pill);
-  cursor: pointer;
-}
-.hz-segmento button:hover,
-.hz-detalle button:hover {
-  color: var(--hz-tinta);
-}
-.hz-segmento button[aria-pressed='true'],
-.hz-detalle button[aria-pressed='true'] {
-  color: var(--hz-sobre-accion);
-  font-weight: 800;
-  background: var(--hz-accion);
-}
-
 /* ── Contenido bajo la barra ── */
 .hz-area {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  padding: 0 var(--hz-tablero-lado) 1em;
+  padding-block: 0 0.5em;
 }
 .hz-cuerpo {
   display: flex;
@@ -202,10 +180,10 @@ body:has(> #root > .hz-tablero) {
   min-width: 0;
 }
 .hz-lienzo {
+  position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
   max-height: 85vh;
-  cursor: pointer;
 }
 .hz-lienzo svg {
   display: block;
@@ -253,14 +231,15 @@ body:has(> #root > .hz-tablero) {
   gap: 0.4em 1em;
 }
 .hz-boton-pantalla {
-  min-height: 2.4em;
-  padding: 0.3em 0.9em;
+  /* El botón secundario común: 48 px, contorno de control (también en el tablero, 21-oct). */
+  min-height: var(--hz-tactil);
+  padding: 0 var(--hz-sp-4);
   font: inherit;
-  font-weight: 700;
+  font-weight: var(--hz-fw-etiqueta);
   color: var(--hz-tinta);
   white-space: nowrap;
   background: transparent;
-  border: 1px solid var(--hz-borde-control);
+  border: 1.5px solid var(--hz-borde-control);
   border-radius: var(--hz-r-pill);
   cursor: pointer;
 }
@@ -319,7 +298,7 @@ body:has(> #root > .hz-tablero) {
   line-height: 1.3;
   background: var(--hz-fondo);
   border: 1px solid var(--hz-borde);
-  border-radius: 8px;
+  border-radius: var(--hz-r-campo);
 }
 .hz-tb-rubrica-valor {
   display: inline-grid;
@@ -337,14 +316,15 @@ body:has(> #root > .hz-tablero) {
   font-weight: 700;
   color: var(--hz-tinta-2);
 }
-.hz-vacio {
+.hz-vacio,
+.hz-tabla-aviso {
   margin: 0 0 0.5em;
   padding: 0.6em 0.9em;
   font-weight: 700;
   color: var(--hz-tinta);
   background: var(--hz-superficie-1);
   border-left: 4px solid var(--hz-accion);
-  border-radius: 6px;
+  border-radius: var(--hz-r-campo);
 }
 .hz-leyenda {
   display: flex;
@@ -413,7 +393,7 @@ body:has(> #root > .hz-tablero) {
   font-size: 1.3em;
   font-weight: 800;
   line-height: 1.25;
-  border-radius: 10px;
+  border-radius: var(--hz-r-campo);
 }
 .hz-franja-r1 {
   color: var(--hz-r1);
@@ -638,7 +618,7 @@ body:has(> #root > .hz-tablero) {
   font-weight: 600;
   color: var(--hz-error);
   background: var(--hz-error-fondo);
-  border-radius: 10px;
+  border-radius: var(--hz-r-campo);
 }
 .hz-area-centrada {
   display: grid;
@@ -661,7 +641,9 @@ body:has(> #root > .hz-tablero) {
 }
 .hz-error-grande h1 {
   margin: 0 0 0.4em;
-  font-size: 1.4em;
+  font-size: var(--hz-fs-h1);
+  font-weight: var(--hz-fw-h1);
+  line-height: 1.15;
 }
 .hz-error-grande p {
   margin: 0;
@@ -715,9 +697,10 @@ body:has(> #root > .hz-tablero) {
   }
   /* Detallado: la matriz es casi cuadrada (su alto menos el pie de una línea, --hz-pie); el resto va al panel. */
   .hz-zona-matriz {
-    --hz-pie: 2.6em;
+    --hz-pie: 2.2em;
     flex: 0 1 auto;
-    width: min(calc(100cqh - var(--hz-pie)), 52vw);
+    /* Un poco más ancha que alta (2 em): el subtítulo del eje X cabe entero en la letra de proyector. */
+    width: min(calc(100cqh - var(--hz-pie) + 2em), 52vw);
   }
   /* Gráfica (por defecto): la matriz ocupa todo el ancho y el alto bajo la barra; el pie va en una línea. */
   .hz-matriz-sola .hz-zona-matriz {
@@ -727,6 +710,11 @@ body:has(> #root > .hz-tablero) {
   .hz-pie-matriz {
     flex-wrap: nowrap;
     white-space: nowrap;
+  }
+  /* Teclas y Pantalla completa (48 px) en una sola línea junto a la leyenda. */
+  .hz-pie-matriz .hz-pie-controles {
+    flex: none;
+    flex-wrap: nowrap;
   }
   /* Gráfica: la columna «Qué se movió» y la lectura de la matriz llenan el espacio libre a la derecha (la matriz es
      cuadrada y el proyector, apaisado). Ancho: lo que sobra al lado de un cuadrado del alto disponible. */
@@ -870,7 +858,21 @@ body:has(> #root > .hz-tablero) {
   }
   .hz-cuerpo {
     gap: 0.8em;
-    margin-top: 0.5em;
+    margin-top: 0.3em;
+  }
+  /* Con la barra y la franja comunes arriba, el aire de abajo se ajusta a lo justo para no quitarle alto a la matriz. */
+  .hz-area {
+    padding-bottom: 0.3em;
+  }
+  /* «Cómo votó» con poco alto: el rótulo del progreso queda para el lector de pantalla (el avance por mesa y la barra
+     siguen a la vista), así el conteo entra entero bajo la barra y la franja comunes. */
+  [data-detalle='votos'] .hz-lateral .hz-tb-progreso .hz-sub {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
   .hz-lateral {
     gap: 0.6em;
@@ -890,8 +892,9 @@ body:has(> #root > .hz-tablero) {
     margin-top: 0.4em;
     font-size: 1.15em;
   }
+  /* Barras más bajas (10 px en 1280 × 720): el conteo de los seis criterios entra entero bajo la barra y la franja. */
   .hz-lateral .hz-cv-pista {
-    height: 0.8em;
+    height: 0.6em;
   }
   .hz-lateral .hz-cv .hz-cv-crit {
     margin-top: 0.15em;
@@ -909,52 +912,29 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Proyector angosto (1280 a 1599 px): barra más compacta para que quede en una sola franja. */
+/* Proyector angosto (1100 a 1599 px): la franja sigue en una fila; en el panel de Detallado la ayuda de teclas no
+   cabe junto a la pantalla completa (sigue en la tecla ?). */
 @media (min-width: 1100px) and (max-width: 1599px) {
-  .hz-tablero .hz-cab .hz-producto__fila {
-    column-gap: 0.8em;
+  .hz-cab .hz-franja-pagina__fila {
+    column-gap: var(--hz-sp-4);
   }
-  .hz-cab-titulo {
-    padding-left: 0.8em;
-  }
-  .hz-cab-controles {
-    gap: 0.5em;
-  }
-  .hz-segmento button {
-    padding: 0.3em 0.6em;
-  }
-  .hz-cab h1 {
-    font-size: 1.35em;
-  }
-  .hz-cab-meta {
-    gap: 0.2em 0.45em;
-    font-size: 0.9em;
-  }
-  /* Con el logo de Estratek a la derecha, la barra sigue en una franja: selector y botones más angostos. */
-  .hz-cab-controles {
-    font-size: 0.88em;
+  .hz-segmento > button {
+    padding-inline: var(--hz-sp-3);
   }
   .hz-alcance select {
-    max-width: 9.5em;
+    max-width: 10em;
   }
-  .hz-segmento button {
-    padding: 0.3em 0.5em;
-  }
-  .hz-cab .hz-cab-logo {
-    height: 24px;
-  }
-  .hz-cab-titulo {
-    flex-basis: 8em;
-  }
-  /* El nombre de la sala en una línea: si no cabe, termina en «…» (está completo en el title de la pestaña). */
-  .hz-cab h1 {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  /* En el panel de Detallado no cabe junto a la pantalla completa: la ayuda sigue en la tecla ?. */
   .hz-lateral .hz-boton-teclas {
     display: none;
+  }
+}
+
+/* Proyector de 1600 px o más, en Gráfica y en Detallado: a 6 m la matriz necesita su alto completo y la columna de al
+   lado («Qué se movió», leyenda, tabla comparada) no cabe en 1280 (en Gráfica a 1920 la leyenda quedaba cortada). Solo
+   ahí el tablero (barra, franja y contenido, juntos) usa el ancho de la pantalla con el margen común de 32 px. */
+@media (min-width: 1600px) {
+  .hz-tablero:not(.hz-tablero-mesas) {
+    --hz-ancho-pagina: 100%;
   }
 }
 
@@ -970,22 +950,10 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Celular (360 px): sin desborde horizontal; los selectores ocupan el ancho. */
+/* Celular (360 px): sin desborde horizontal; los controles de la franja se deslizan de lado. */
 @media (max-width: 599px) {
-  .hz-tablero {
-    --hz-tablero-lado: 0.75em;
-  }
-  .hz-cab-controles,
-  .hz-alcance,
-  .hz-alcance select,
-  .hz-segmento,
-  .hz-detalle {
-    width: 100%;
-  }
-  .hz-segmento button,
-  .hz-detalle button {
-    flex: 1 1 auto;
-    padding: 0.3em 0.5em;
+  .hz-segmento > button {
+    padding-inline: var(--hz-sp-3);
   }
   .hz-panel {
     padding: 0.6em 0.5em;
@@ -999,11 +967,93 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Pantalla completa (tecla F): el tablero en el modo elegido llena la pantalla del navegador, sin los controles
-   de la barra; quedan la marca, la sala, la ronda, la vista y los votos recibidos. Sin la API, igual se
-   ocultan los controles. */
-.hz-pantalla-completa .hz-cab-controles {
-  display: none;
+/* Pantalla completa de la matriz (tecla F, pedido de Paola del 21-oct): solo el lienzo, sobre el fondo claro del
+   tema, con la matriz centrada y lo más grande que quepa (el plano es cuadrado y se centra solo). Sin la API del
+   navegador, el lienzo se superpone a la ventana (.hz-lienzo-completo). En Cada mesa por separado, la cuadrícula. */
+.hz-mesas-lienzo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.hz-lienzo:fullscreen,
+.hz-mesas-lienzo:fullscreen,
+.hz-lienzo-completo {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+  box-sizing: border-box;
+  padding: clamp(8px, 2vh, 28px);
+  background: var(--hz-fondo);
+  color: var(--hz-tinta);
+}
+.hz-lienzo-completo {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
+/* Zoom: con el foco (o en pantalla completa) el pellizco va a la matriz; con zoom, arrastrar la mueve. */
+.hz-lienzo:focus {
+  touch-action: pan-x pan-y;
+}
+.hz-lienzo[data-pantalla],
+.hz-lienzo[data-zoom] {
+  touch-action: none;
+}
+.hz-lienzo[data-zoom] {
+  cursor: grab;
+}
+.hz-lienzo[data-arrastrando] {
+  cursor: grabbing;
+}
+.hz-lienzo[data-pantalla]:focus-visible {
+  box-shadow: none;
+}
+/* «Ver entera» y «Salir»: discretos, en la esquina superior derecha, sin tapar el plano más de lo justo. */
+.hz-lienzo-controles {
+  position: absolute;
+  top: clamp(6px, 1.5vh, 20px);
+  right: clamp(6px, 1.5vh, 20px);
+  z-index: 2;
+  display: flex;
+  gap: 0.5em;
+}
+.hz-boton-lienzo {
+  min-height: 2.4em;
+  padding: 0.25em 0.85em;
+  font: inherit;
+  font-size: max(14px, 0.85em);
+  font-weight: 700;
+  color: var(--hz-tinta);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--hz-fondo) 88%, transparent);
+  border: 1px solid var(--hz-borde-control);
+  border-radius: var(--hz-r-pill);
+  cursor: pointer;
+  opacity: 0.8;
+}
+.hz-boton-lienzo:hover,
+.hz-boton-lienzo:focus-visible {
+  opacity: 1;
+  background: var(--hz-superficie-1);
+}
+.hz-boton-lienzo kbd {
+  margin-left: 0.3em;
+  padding: 0 0.35em;
+  font: inherit;
+  font-size: 0.8em;
+  border: 1px solid var(--hz-borde-control);
+  border-radius: 4px;
+}
+@media (hover: none) {
+  .hz-boton-lienzo kbd {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1014,11 +1064,7 @@ body:has(> #root > .hz-tablero) {
 
 /* ── QA por roles (20-oct) ── */
 
-/* Logo de Estratek a la derecha de la barra, en hielo (tinta del tema carbón), al menos 24 px de alto. */
-.hz-cab .hz-cab-logo {
-  height: max(24px, 1.5em);
-  margin-left: auto;
-}
+/* Logo de Estratek a la derecha de la barra, en hielo (tinta del tema carbón): 24 px de alto, como en el pie. */
 
 /* Sin conexión, los primeros 20 s: un punto discreto en la barra. */
 .hz-reconectando {
@@ -1282,4 +1328,29 @@ body:has(> #root > .hz-tablero) {
   .hz-explica-lateral {
     display: none;
   }
+}
+
+/* Pie común (21-oct): en celular y tableta, al final del tablero. En el proyector (≥ 1100 px) el tablero ocupa justo la
+   pantalla, sin desplazar, y la firma de Estratek ya va en la barra; el pie vuelve en la carga y en el error. */
+.hz-tablero-pie {
+  margin-top: var(--hz-sp-8);
+}
+@media (min-width: 1100px) {
+  .hz-tablero:not(.hz-tablero-solo) > .hz-tablero-pie {
+    display: none;
+  }
+}
+
+/* Aviso de sala de ensayo (21-oct): resultados desde 1 voto. Fondo de información, una línea sobre el contenido. */
+.hz-aviso-ensayo {
+  margin: 0.5em 0 0;
+  padding: 0.35em 0.9em;
+  font-weight: var(--hz-fw-etiqueta);
+  color: var(--hz-tinta);
+  background: var(--hz-info-fondo);
+  border-left: 4px solid var(--hz-accion);
+  border-radius: var(--hz-r-campo);
+}
+.hz-tabla + .hz-tabla-aviso {
+  margin-top: 0.5em;
 }

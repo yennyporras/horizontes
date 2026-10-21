@@ -32,12 +32,47 @@ const CAMINO: Record<Estado, string[]> = {
 // Estado al que lleva cada acción permitida (SPEC §3). Lo que no aparece debe responder 409 TRANSICION_INVALIDA.
 const PERMITIDAS: Record<Estado, Partial<Record<(typeof ACCIONES)[number], Estado>>> = {
   preparada: { abrir_inscripcion: 'inscripcion', abrir_ronda_1: 'r1_abierta', cerrar_sala: 'cerrada' },
-  inscripcion: { abrir_ronda_1: 'r1_abierta', cerrar_sala: 'cerrada' },
-  r1_abierta: { cerrar_ronda_1: 'r1_cerrada', reiniciar_ronda: 'r1_abierta', cerrar_sala: 'cerrada' },
-  r1_cerrada: { abrir_ronda_2: 'r2_abierta', reabrir_ronda: 'r1_abierta', reiniciar_ronda: 'r1_cerrada', cerrar_sala: 'cerrada' },
-  r2_abierta: { cerrar_ronda_2: 'r2_cerrada', reiniciar_ronda: 'r2_abierta', cerrar_sala: 'cerrada' },
-  r2_cerrada: { reabrir_ronda: 'r2_abierta', reiniciar_ronda: 'r2_cerrada', cerrar_sala: 'cerrada' },
-  cerrada: { reabrir_sala: 'r1_cerrada' },
+  inscripcion: { abrir_ronda_1: 'r1_abierta', cerrar_sala: 'cerrada', reiniciar_sala: 'inscripcion' },
+  r1_abierta: {
+    cerrar_ronda_1: 'r1_cerrada',
+    reiniciar_ronda: 'r1_abierta',
+    cerrar_sala: 'cerrada',
+    volver_ronda_anterior: 'inscripcion',
+    reiniciar_desde_ronda: 'r1_abierta',
+    reiniciar_sala: 'inscripcion',
+  },
+  r1_cerrada: {
+    abrir_ronda_2: 'r2_abierta',
+    reabrir_ronda: 'r1_abierta',
+    reiniciar_ronda: 'r1_cerrada',
+    cerrar_sala: 'cerrada',
+    volver_ronda_anterior: 'inscripcion',
+    reiniciar_desde_ronda: 'r1_abierta',
+    reiniciar_sala: 'inscripcion',
+  },
+  r2_abierta: {
+    cerrar_ronda_2: 'r2_cerrada',
+    reiniciar_ronda: 'r2_abierta',
+    cerrar_sala: 'cerrada',
+    volver_ronda_anterior: 'r1_abierta',
+    reiniciar_desde_ronda: 'r1_abierta',
+    reiniciar_sala: 'inscripcion',
+  },
+  r2_cerrada: {
+    reabrir_ronda: 'r2_abierta',
+    reiniciar_ronda: 'r2_cerrada',
+    cerrar_sala: 'cerrada',
+    volver_ronda_anterior: 'r1_abierta',
+    reiniciar_desde_ronda: 'r1_abierta',
+    reiniciar_sala: 'inscripcion',
+  },
+  cerrada: { reabrir_sala: 'r1_cerrada', reiniciar_sala: 'inscripcion' },
+}
+
+// Cuerpo de las acciones que lo piden (21-oct): la ronda a reiniciar y el nombre de la sala.
+const CUERPO: Partial<Record<(typeof ACCIONES)[number], object>> = {
+  reiniciar_desde_ronda: { ronda: 1 },
+  reiniciar_sala: { confirmar: 'Sala de prueba' },
 }
 
 describe('máquina de estados: matriz completa estado × acción', () => {
@@ -48,7 +83,7 @@ describe('máquina de estados: matriz completa estado × acción', () => {
         const s = await crearSala(e, 1)
         for (const paso of CAMINO[estado]) expect((await accion(e, s.id, paso)).statusCode).toBe(200)
         const antes = await detalle(s.id)
-        const r = await accion(e, s.id, a)
+        const r = await accion(e, s.id, a, CUERPO[a])
         const despues = await detalle(s.id)
         if (hacia) {
           expect(r.statusCode, r.body).toBe(200)
@@ -117,21 +152,18 @@ describe('taller con precierre, hojas en R2 y cierres programados (reloj simulad
     expect((await resultados(tokens[1][0])).statusCode).toBe(403)
     expect((await yo(tokens[0][0])).json().progreso_mesa.precierre).toBe(true)
 
-    // Mesa 2 completa → precierre de sala. El precierre nunca cierra la ronda y se puede seguir editando.
-    for (const t of tokens[1]) for (const p of ['insumex', 'nutriwhat']) await votar(e, t, p, 1)
-    tb = await tablero(s)
-    expect(tb.progreso.precierre).toBe(true)
-    expect(tb.preliminar).toBe(true)
-    expect((await detalle(s.id)).sala.estado).toBe('r1_abierta')
-    expect((await votar(e, tokens[1][0], 'insumex', 1, { ...RESPUESTAS_5, regulacion: 9 })).statusCode).toBe(200)
-
-    // Alguien llega tarde: el precierre de su mesa y el de la sala desaparecen.
+    // Alguien llega tarde a la Mesa 2 y no vota: la Mesa 2 completa a los demás pero no entra en precierre, la sala
+    // tampoco, y la ronda sigue abierta para editar (21-oct: con la sala completa, la R2 se abriría sola).
     const tarde = (await inscribir(e, s.mesas[1].codigo, 'tarde@prueba.co')).json().token
+    for (const t of tokens[1]) for (const p of ['insumex', 'nutriwhat']) await votar(e, t, p, 1)
     tb = await tablero(s)
     expect(tb.progreso.precierre).toBe(false)
     expect(tb.progreso.por_mesa.find((m: { mesa_id: string }) => m.mesa_id === s.mesas[1].id).precierre).toBe(false)
-    for (const p of ['insumex', 'nutriwhat']) await votar(e, tarde, p, 1)
-    expect((await tablero(s)).progreso.precierre).toBe(true)
+    expect((await detalle(s.id)).sala.estado).toBe('r1_abierta')
+    expect((await votar(e, tokens[1][0], 'insumex', 1, { ...RESPUESTAS_5, regulacion: 9 })).statusCode).toBe(200)
+    // Quien llegó tarde vota solo uno: sigue sin completar.
+    expect((await votar(e, tarde, 'insumex', 1)).statusCode).toBe(200)
+    expect((await tablero(s)).progreso.precierre).toBe(false)
 
     // A la hora exacta el programado cierra R1 (chequeo perezoso) y el resultado deja de ser preliminar.
     e.reloj.ms = cierreR1 - 1
@@ -143,6 +175,7 @@ describe('taller con precierre, hojas en R2 y cierres programados (reloj simulad
     expect((await tablero(s)).preliminar).toBe(false)
     expect((await resultados(tokens[0][0])).json().preliminar).toBe(false)
     expect((await votar(e, tokens[0][0], 'insumex', 1)).statusCode).toBe(409)
+    expect(d1.eventos.some((ev: { tipo: string }) => ev.tipo === 'ronda_2_automatica')).toBe(false)
 
     // Abrir R2 revela las 6 hojas (12 con los 2 vivos) en el celular, con las propias primero.
     const etag = (await yo(tokens[0][0])).headers.etag as string

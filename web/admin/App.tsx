@@ -15,6 +15,7 @@ import { MesasQR } from './paginas/MesasQR'
 import { Salud } from './paginas/Salud'
 import { Hojas } from './paginas/Hojas'
 import { Respuestas } from './paginas/Respuestas'
+import { CabeceraPagina } from '../shared/ui'
 
 function RequiereSesion({ children }: { children: ReactNode }) {
   const { admin, cargando } = useSesion()
@@ -29,10 +30,12 @@ export function SoloSuperadmin({ children }: { children: ReactNode }) {
   const { admin } = useSesion()
   if (admin?.rol !== 'superadmin') {
     return (
-      <section className="panel" aria-labelledby="t403">
-        <h1 id="t403">Sin permiso</h1>
-        <p>La gestión de administradores es solo para el superadmin. Si necesitas una cuenta nueva, pídesela a quien administra el panel.</p>
-      </section>
+      <CabeceraPagina
+        id="t403"
+        enfocable
+        titulo="Sin permiso"
+        contexto="La gestión de administradores es solo para el superadmin. Si necesitas una cuenta nueva, pídesela a quien administra el panel."
+      />
     )
   }
   return <>{children}</>

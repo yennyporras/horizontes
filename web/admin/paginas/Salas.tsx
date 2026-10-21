@@ -5,6 +5,8 @@ import type { Metricas, SalaResumen, Sector, TipoSala } from '../tipos'
 import { ESTADOS, LARGO_MAXIMO_EMPRESA, SECTORES, TIPOS_SALA, enumerar, fechaHora, nombreEnsayo, nombrePais } from '../textos'
 import { useTituloPagina } from './EncabezadoSala'
 import { useSesion } from '../sesion'
+import type { EstadoSalaEliminada } from './Configuracion'
+import { CabeceraPagina } from '../../shared/ui'
 
 const personas = (n: number) => (n === 1 ? '1 persona' : `${n} personas`)
 
@@ -23,7 +25,9 @@ export function Salas() {
   const navegar = useNavigate()
   const { admin } = useSesion()
   useTituloPagina('Salas')
-  const claveCambiada = Boolean((useLocation().state as { claveCambiada?: boolean } | null)?.claveCambiada)
+  const estadoRuta = useLocation().state as ({ claveCambiada?: boolean } & EstadoSalaEliminada) | null
+  const claveCambiada = Boolean(estadoRuta?.claveCambiada)
+  const salaEliminada = estadoRuta?.salaEliminada
 
   const cargar = () =>
     api
@@ -82,10 +86,15 @@ export function Salas() {
 
   return (
     <>
-      <h1 tabIndex={-1}>Salas</h1>
+      <CabeceraPagina enfocable titulo="Salas" />
       {claveCambiada && (
         <p className="alerta alerta--exito" role="status">
           Tu clave quedó cambiada.
+        </p>
+      )}
+      {salaEliminada && (
+        <p className="alerta alerta--exito" role="status">
+          Eliminamos la sala «{salaEliminada}». Quedó un respaldo de la base en el servidor.
         </p>
       )}
       <CifrasTalleres />

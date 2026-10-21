@@ -58,7 +58,8 @@ export const PASOS_GUIA: PasoGuia[] = [
     espera: (
       <p>
         Los cambios se aplican de inmediato. Las horas programadas se cumplen solas y las rúbricas se bloquean con el primer
-        voto. Siempre puedes abrir o cerrar a mano desde Sala en vivo.
+        voto. Siempre puedes abrir o cerrar a mano desde Sala en vivo. Si eres superadmin, al final está «Eliminar sala»: pide
+        escribir su nombre, no se puede deshacer y deja un respaldo en el servidor.
       </p>
     ),
   },
@@ -74,7 +75,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     hace: (
       <p>
         Pulsa «Imprimir los QR», cuatro mesas por página, y pon cada QR en su mesa. Si llega más gente de la esperada, agrega
-        mesas al final de la sección.
+        mesas al final de la sección. «Eliminar mesa», en cada tarjeta, quita una mesa sin inscritos; la última no se borra.
       </p>
     ),
     espera: <p>Cuando abres la inscripción, quien escanea el QR de su mesa se inscribe con su nombre y correo, y recibe su perfil.</p>,
@@ -85,15 +86,17 @@ export const PASOS_GUIA: PasoGuia[] = [
     hace: (
       <p>
         Es el control del taller: un solo botón con el paso que sigue (abrir la inscripción, abrir y cerrar cada ronda,
-        cerrar la sala) y, aparte, Corregir. Ves cuántas personas de cada mesa ya votaron, la pregunta en pantalla si usas el
-        modo guiado y la bitácora.
+        cerrar la sala) y, aparte, Corregir. Cuando todos votan la ronda 1, esa ronda se cierra y la ronda 2 se abre
+        sola, y el panel te lo dice; puedes abrirla antes a mano. En Corregir, «Reiniciar…» te deja elegir qué reiniciar: volver a la ronda
+        anterior sin borrar votos, reiniciar la ronda 2, la ronda 1 o la sala completa, con una línea de qué pasa en cada
+        opción. Ves cuántas personas de cada mesa ya votaron, la pregunta en pantalla si usas el modo guiado y la bitácora.
       </p>
     ),
     espera: (
       <p>
         En «Proyectar el tablero» abres el tablero de la sala en Gráfica o Detallado, con la lista de teclas (F pantalla
         completa, → y ← cambian de vista, C repite la animación de la comparación, ? muestra la ayuda). Con la ronda 1 abierta
-        el tablero no muestra resultados hasta que todos voten o la cierres; tú sí los ves aquí. «Ver quién falta» en cada mesa
+        el tablero no muestra resultados hasta que la ronda se cierre; tú sí los ves aquí. «Ver quién falta» en cada mesa
         abre Participantes con los pendientes, y al cerrar la ronda 2 sale el resumen del taller.
       </p>
     ),
@@ -113,7 +116,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     titulo: 'Respuestas',
     seccion: 'Respuestas',
     hace: <p>Mira qué calificó cada persona en cada ronda y proyecto, con filtros por mesa, ronda y proyecto.</p>,
-    espera: <p>Los datos por persona solo los ven los administradores: no los proyectes. El público ve promedios y solo con 3 votos o más.</p>,
+    espera: <p>Los datos por persona solo los ven los administradores: no los proyectes. El público ve promedios de la mesa o de la sala, que se actualizan con cada voto, sin nombres.</p>,
   },
   {
     titulo: 'Exportar',
@@ -121,7 +124,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     hace: (
       <p>
         Al terminar el taller, descarga resultados.csv y la matriz en SVG: es lo que se entrega al cliente, sin nombres ni IP.
-        Inscritos y votos son registro interno.
+        Inscritos y votos son registro interno. Arriba eliges de qué sala exportas, sin salir de la sección.
       </p>
     ),
     espera: <p>Inscritos y votos llevan país e IP y no se entregan al cliente. Guárdalos solo donde lo permita la política de datos de Estratek.</p>,
@@ -136,7 +139,12 @@ export const PASOS_GUIA: PasoGuia[] = [
     titulo: 'Administradores',
     seccion: 'Administradores',
     soloSuperadmin: true,
-    hace: <p>Crea las cuentas de los demás facilitadores, restablece su clave o desactiva a quien ya no deba entrar.</p>,
+    hace: (
+      <p>
+        Crea las cuentas de los demás facilitadores, restablece su clave o desactiva a quien ya no deba entrar. «Eliminar»
+        borra la cuenta para siempre; sus salas se quedan.
+      </p>
+    ),
     espera: <p>Solo tú, como superadmin, ves esta sección. Las cuentas nuevas manejan salas, pero no crean otros administradores.</p>,
   },
 ]

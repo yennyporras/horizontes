@@ -149,5 +149,6 @@ export const api = {
   post: <T>(ruta: string, cuerpo?: unknown) => pedir<T>('POST', ruta, cuerpo ?? {}),
   patch: <T>(ruta: string, cuerpo: unknown) => pedir<T>('PATCH', ruta, cuerpo),
   put: <T>(ruta: string, cuerpo: unknown) => pedir<T>('PUT', ruta, cuerpo),
-  delete: <T>(ruta: string) => pedir<T>('DELETE', ruta),
+  /** `cuerpo` solo si la ruta lo pide (eliminar una sala lleva `{confirmar}`); sin cuerpo no se manda Content-Type. */
+  delete: <T>(ruta: string, cuerpo?: unknown) => pedir<T>('DELETE', ruta, cuerpo),
 }

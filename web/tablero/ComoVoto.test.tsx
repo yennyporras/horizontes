@@ -50,7 +50,9 @@ test('bajo el mínimo (distribución null) muestra el aviso y no dibuja esa rond
     Object.assign(r2, { n_votos: 2, promedios: null, distribucion: null, bajo_minimo: true })
   })
   const { container } = render(<ComoVoto datos={datos} rondas={[1, 2]} />)
-  expect(screen.getByRole('status').textContent).toBe('Hacen falta al menos 3 votos para mostrar esta mesa en la ronda 2.')
+  // 21-oct: un solo mensaje con el conteo real, que dice de qué ronda habla.
+  expect(screen.getByRole('status').textContent).toBe('Ronda 2: Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')
+  expect(container.textContent).not.toContain('Faltan votos')
   expect(container.querySelectorAll('.hz-cv-barras-r2')).toHaveLength(0)
   expect(container.querySelectorAll('.hz-cv-barras-r1')).toHaveLength(datos.proyectos_vivos.length * datos.criterios.length)
 })
@@ -63,12 +65,14 @@ test('sin votos en la ronda: aviso y ninguna barra', () => {
   expect(barras(container)).toHaveLength(0)
 })
 
-test('un proyecto bajo el mínimo y el otro con datos: «Faltan votos» en sus celdas', () => {
+test('un proyecto bajo el mínimo y el otro con datos: un solo mensaje con el conteo, no «Faltan votos» en cada celda (21-oct)', () => {
   const datos: DatosTablero = structuredClone(mock)
   Object.assign(datos.proyectos_vivos[1].rondas.find((r) => r.ronda === 1)!, { n_votos: 1, distribucion: null, bajo_minimo: true })
   render(<ComoVoto datos={datos} rondas={[1]} />)
   const segundo = screen.getByRole('region', { name: datos.proyectos_vivos[1].nombre })
-  expect(within(segundo).getAllByText('Faltan votos')).toHaveLength(datos.criterios.length)
+  expect(segundo.textContent).not.toContain('Faltan votos')
+  expect(within(segundo).getAllByText('Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')).toHaveLength(1)
+  expect(segundo.querySelectorAll('.hz-cv-barras')).toHaveLength(0)
   expect(segundo.querySelector('.hz-cv-r1')!.textContent).toBe('R1 · 1 persona')
 })
 

@@ -56,7 +56,8 @@ describe('resultado del alcance', () => {
     const r = clonar(tablero) as unknown as Resultados
     for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 2
     const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
-    expect(screen.getByText(/^Hacen falta al menos 3 votos para mostrar estos resultados\./)).toBeTruthy()
+    // 21-oct: un solo mensaje con el conteo real.
+    expect(screen.getByText(`Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.`)).toBeTruthy()
     expect(container.querySelector('table')).toBeNull()
     expect(container.querySelector('.hzp-matriz')).toBeNull()
   })
@@ -67,8 +68,8 @@ describe('resultado del alcance', () => {
     for (const x of a.rondas) x.n_votos = 2
     for (const x of b.rondas) if (x.ronda === 2) x.n_votos = 2
     render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
-    expect(screen.getByText('Hacen falta al menos 3 votos para mostrar este proyecto.')).toBeTruthy()
-    expect(screen.getByText('Ronda 2: hacen falta al menos 3 votos para mostrarla.')).toBeTruthy()
+    expect(screen.getByText('Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')).toBeTruthy()
+    expect(screen.getByText('Ronda 2: Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')).toBeTruthy()
     // Solo queda la tabla de b con su ronda 1: una sola columna de datos, R1.
     expect(screen.getAllByRole('table')).toHaveLength(1)
     expect(screen.getByRole('columnheader', { name: 'R1' })).toBeTruthy()
@@ -107,7 +108,7 @@ describe('resultado del alcance', () => {
     r.minimo_votos = 5
     for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 4
     const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="sala" />)
-    expect(screen.getByText(/^Hacen falta al menos 5 votos para mostrar estos resultados\./)).toBeTruthy()
+    expect(screen.getByText(/^Hay 4 votos de los 5 que hacen falta para mostrar el resultado\./)).toBeTruthy()
     expect(container.querySelector('table')).toBeNull()
     cleanup()
     const s = conTotal()
@@ -118,15 +119,30 @@ describe('resultado del alcance', () => {
 })
 
 describe('textos del mínimo de votos (QA-P-21, F-12)', () => {
-  it('concuerdan en plural: «Hacen falta al menos N votos»', () => {
+  it('concuerdan en singular y plural: «Hay 1 voto de los 3 que hacen falta»', () => {
     const r = clonar(tablero) as unknown as Resultados
     const [a, b] = r.proyectos_vivos
     for (const x of a.rondas) x.n_votos = 1
     for (const x of b.rondas) if (x.ronda === 2) x.n_votos = 1
     const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
-    expect(container.textContent).not.toMatch(/[Hh]ace falta/)
-    expect(container.textContent).toContain('Hacen falta al menos 3 votos para mostrar este proyecto.')
-    expect(container.textContent).toContain('Ronda 2: hacen falta al menos 3 votos para mostrarla.')
+    expect(container.textContent).not.toMatch(/1 votos|[Hh]ace falta/)
+    expect(container.textContent).toContain('Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')
+    expect(container.textContent).toContain('Ronda 2: Hay 1 voto de los 3 que hacen falta para mostrar el resultado.')
+  })
+
+  it('sala de ensayo (21-oct): aviso visible y el resultado desde 1 voto, con «Promedio de 1 voto»', () => {
+    const r = clonar(tablero) as unknown as Resultados
+    Object.assign(r, { ensayo: true, minimo_votos: 1, votos_por_actualizacion: 1 })
+    for (const p of r.proyectos_vivos) for (const x of p.rondas) x.n_votos = 1
+    const { container } = render(<ResultadoAlcance resultados={r} criterios={yo.criterios} alcance="mesa" />)
+    expect(screen.getByText('Sala de ensayo: no cuenta en las cifras de talleres.')).toBeTruthy()
+    expect(screen.getAllByRole('table').length).toBeGreaterThan(0)
+    expect(container.textContent).toContain('Promedio de 1 voto')
+    expect(container.textContent).not.toMatch(/1 votos/)
+    cleanup()
+    // Sin ensayo no hay aviso.
+    render(<ResultadoAlcance resultados={clonar(tablero) as unknown as Resultados} criterios={yo.criterios} alcance="mesa" />)
+    expect(screen.queryByText(/^Ensayo:/)).toBeNull()
   })
 })
 

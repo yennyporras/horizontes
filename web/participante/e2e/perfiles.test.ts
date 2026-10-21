@@ -72,26 +72,20 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
           await sinDesborde(p)
           await p.getByRole('button', { name: 'Guardar calificación' }).click()
         }
-        // Por defecto (acta A2, C5): tras votar, el consolidado parcial de la sala (D2: se renueva de 3 en 3). Con 1 voto, el
-        // aviso de mínimo. Con la ronda 1 oculta del servidor (decisión 1 de Paola del 20-oct), «Calificación enviada» y
-        // cuándo salen los resultados.
-        await titulo(p, /^(Resultado parcial de la sala|Calificación enviada)$/, espera)
-        if (await p.getByRole('heading', { name: 'Calificación enviada', level: 1 }).count()) await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.', espera)
-        else await ver(p, 'Hacen falta al menos 3 votos para mostrar estos resultados.', espera)
+        // Con la ronda 1 abierta y gente sin votar, el servidor la manda oculta (decisión 1 de Paola del 20-oct, vigente
+        // con cada voto en vivo desde el 21-oct): «Calificación enviada» y cuándo salen los resultados.
+        await titulo(p, 'Calificación enviada', espera)
+        await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.', espera)
         await votarApi(e, tokenB, 'insumex', 1)
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)
         await votarApi(e, tokenC, 'nutriwhat', 1)
-        // Alcance sala (por defecto): el precierre que se anuncia es el de la sala.
-        await ver(p, /^Todos votaron en la sala/, espera)
-        await accion(e, sala.id, 'cerrar_ronda_1')
-        await titulo(p, 'Ronda 1 cerrada', espera)
-        await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
+        // Decisión de Paola (21-oct): con toda la sala votada, la ronda 1 se cierra y la ronda 2 se abre sola; el
+        // celular pasa a la ronda 2 sin que el facilitador haga nada. (El cierre a mano lo recorre recorrido.test.ts.)
+        await titulo(p, 'Ronda 2: califica los 2 proyectos', espera)
         await sinDesborde(p)
 
         // Ronda 2 y comparación R1→R2.
-        await accion(e, sala.id, 'abrir_ronda_2')
-        await titulo(p, 'Ronda 2: califica los 2 proyectos', espera)
         await p.getByRole('button', { name: 'Calificar INSUMEX' }).click()
         await calificar(p, 9)
         await p.getByRole('button', { name: 'Guardar calificación' }).click()

@@ -154,16 +154,34 @@ export async function simularTaller(op: OpcionesSimulacion): Promise<Informe> {
   const votar = (p: Persona, ronda: 1 | 2, proyecto: Proyecto, respuestas: Respuestas) =>
     c.pedir('PUT', '/api/votos', { cuerpo: { proyecto_id: proyecto, ronda, respuestas }, headers: { 'x-participante-token': p.token } })
 
+  const detalleAdmin = async () => (await c.pedir('GET', `/api/admin/salas/${sala.id}`, { headers: adm })).json
+  // Cada celular lee su vista: guarda cuántas hojas ve en la ronda en curso.
+  const leerHojas = () =>
+    Promise.all(
+      personas.map(async (p) => {
+        const y = await c.pedir('GET', '/api/yo', { headers: { 'x-participante-token': p.token } })
+        if (y.status === 200 && y.json.sala.ronda_actual) p.hojas[y.json.sala.ronda_actual] = y.json.contenido.hojas.length
+      }),
+    )
+
   async function ronda(n: 1 | 2) {
-    const abierta = await accion(`abrir_ronda_${n}`)
-    if (n === 2) verificar('abrir_ronda_2 revela las hojas', abierta.json?.sala?.config?.revelar_hojas === true)
+    if (n === 1) await accion('abrir_ronda_1')
+    else {
+      // 21-oct: cuando todos votaron la R1, el servidor la cierra y abre la R2 solo. Si no pasó, el facilitador la abre.
+      const d = await detalleAdmin()
+      if (d?.sala?.estado !== 'r2_abierta') await accion('abrir_ronda_2')
+      verificar('la ronda 2 abierta revela las hojas', (await detalleAdmin())?.sala?.config?.revelar_hojas === true)
+    }
+    await leerHojas()
     await Promise.all(
       personas.map(async (p, i) => {
         p.votos[n] = {}
         for (const proyecto of PROYECTOS) {
           await pausa(op.pollMs * 2) // lectura de la rúbrica
           // Algunos votan primero algo distinto y lo corrigen: el servidor debe quedarse con el último.
-          if (!op.golden && azar.siguiente() < 0.15) await votar(p, n, proyecto, respuestasDe(p, n === 1 ? 2 : 1, proyecto))
+          // En la R1 no se corrige el último proyecto: el último voto de la sala cierra la R1 sola (21-oct) y la
+          // corrección llegaría con la ronda ya cerrada.
+          if (!op.golden && azar.siguiente() < 0.15 && (n === 2 || proyecto !== PROYECTOS[PROYECTOS.length - 1])) await votar(p, n, proyecto, respuestasDe(p, n === 1 ? 2 : 1, proyecto))
           p.votos[n][proyecto] = respuestasDe(p, n, proyecto)
           await votar(p, n, proyecto, p.votos[n][proyecto])
         }
@@ -188,12 +206,19 @@ export async function simularTaller(op: OpcionesSimulacion): Promise<Informe> {
       }),
     )
     // Cada celular lee su vista al terminar de votar (no depender de que el polling haya alcanzado a pasar).
-    await Promise.all(
-      personas.map(async (p) => {
-        const y = await c.pedir('GET', '/api/yo', { headers: { 'x-participante-token': p.token } })
-        if (y.status === 200) p.hojas[n] = y.json.contenido.hojas.length
-      }),
-    )
+    await leerHojas()
+    if (n === 1) {
+      // 21-oct: con el último voto la R1 se cerró y la R2 se abrió sola, con su evento en la bitácora.
+      const d = await detalleAdmin()
+      verificar(
+        'R1: al votar todos, la R1 se cierra y la R2 se abre sola',
+        d?.sala?.estado === 'r2_abierta' && (d?.eventos ?? []).some((ev: { tipo: string }) => ev.tipo === 'ronda_2_automatica'),
+        d?.sala?.estado,
+      )
+      const res = await c.pedir('GET', '/api/resultados?ronda=1', { headers: { 'x-participante-token': personas[personas.length - 1].token } })
+      verificar('R1: el participante ve el resultado de la R1 cerrada', res.status === 200 && res.json?.preliminar === false)
+      return
+    }
     const t = (await tablero()).json
     verificar(`R${n}: precierre de sala al votar todos`, t?.progreso?.precierre === true && t?.preliminar === true, `${t?.progreso?.completos}/${t?.progreso?.inscritos}`)
     const res = await c.pedir('GET', '/api/resultados', { headers: { 'x-participante-token': personas[personas.length - 1].token } })
