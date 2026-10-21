@@ -78,6 +78,8 @@ export interface ClaveFoto {
   ronda: number
   proyectoId: string
   versionSala: number
+  /** Votantes distintos que renuevan la foto. Por defecto VOTOS_POR_ACTUALIZACION; en una sala de ensayo, 1. */
+  umbral?: number
 }
 
 /**
@@ -89,7 +91,7 @@ export function agregadoPublicado(db: Db, k: ClaveFoto, votos: VotoAlcance[], pe
   const actual = huellas(votos)
   const h = JSON.stringify(actual)
   const f = uno<FotoFila>(db, 'SELECT n_votos, agregado_json, huellas_json FROM fotos_agregado WHERE sala_id = ? AND alcance = ? AND ronda = ? AND proyecto_id = ?', ...clave)
-  if (exacto || cambios(actual, f ? JSON.parse(f.huellas_json) : {}) >= VOTOS_POR_ACTUALIZACION) {
+  if (exacto || cambios(actual, f ? JSON.parse(f.huellas_json) : {}) >= (k.umbral ?? VOTOS_POR_ACTUALIZACION)) {
     const a = agregar(
       votos.map((v) => v.entradas),
       pesos,

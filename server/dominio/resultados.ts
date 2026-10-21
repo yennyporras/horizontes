@@ -147,6 +147,15 @@ export type Alcance = { tipo: 'sala' } | { tipo: 'mesa'; mesa: MesaFila }
  */
 export const MINIMO_VOTOS = 3
 
+/**
+ * En una sala de ensayo (y en la demostración) los resultados se muestran desde 1 voto y se renuevan con cada voto, para
+ * probar sin juntar 3 personas (decisión de Paola del 21-oct). Los talleres con cliente conservan el mínimo de 3 y las
+ * fotos de 3 en 3. Las vistas lo avisan con `ensayo: true`.
+ */
+export const esEnsayo = (sala: { tipo?: string | null }) => sala.tipo === 'ensayo'
+export const minimoVotos = (sala: { tipo?: string | null }) => (esEnsayo(sala) ? 1 : MINIMO_VOTOS)
+export const votosPorActualizacion = (sala: { tipo?: string | null }) => (esEnsayo(sala) ? 1 : VOTOS_POR_ACTUALIZACION)
+
 export interface OpcionesTablero {
   alcance: Alcance
   /** Rondas a incluir en proyectos_vivos[].rondas (las demás no se envían). */
@@ -220,14 +229,14 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
         // D2: con la ronda abierta, la última foto del alcance (se renueva de 3 en 3); con la ronda cerrada, el exacto.
         const { agregado: a, n_votos } = agregadoPublicado(
           db,
-          { salaId: sala.id, alcance: mesaId ?? 'sala', ronda: r, proyectoId: p.id, versionSala: sala.version },
+          { salaId: sala.id, alcance: mesaId ?? 'sala', ronda: r, proyectoId: p.id, versionSala: sala.version, umbral: votosPorActualizacion(sala) },
           porRonda.get(r)?.get(p.id) ?? [],
           c.pesos,
           rondaCerrada(sala, r),
         )
         if (n_votos === 0) return vacia(r)
         // SPEC §7: nunca respuestas individuales. Con pocos votos en el alcance, el promedio delata cada respuesta.
-        if (!a || a.n_votos < MINIMO_VOTOS) return { ...vacia(r), n_votos, bajo_minimo: true }
+        if (!a || a.n_votos < minimoVotos(sala)) return { ...vacia(r), n_votos, bajo_minimo: true }
         return { ronda: r, n_votos: a.n_votos, promedios: a.promedios, distribucion: a.distribucion, t2m: a.t2m, eje_x: a.eje_x, eje_y: a.eje_y, total: a.total }
       })
       const conv = convergencia(rondas.find((r) => r.ronda === 1), rondas.find((r) => r.ronda === 2))
@@ -256,8 +265,9 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
       }),
     proyectos_vivos: vivosConRondas,
     preliminar: op.preliminar,
-    minimo_votos: MINIMO_VOTOS,
-    votos_por_actualizacion: VOTOS_POR_ACTUALIZACION,
+    minimo_votos: minimoVotos(sala),
+    votos_por_actualizacion: votosPorActualizacion(sala),
+    ...(esEnsayo(sala) ? { ensayo: true as const } : {}),
     convergencia_alcance: (reducciones.length ? { reduccion_pct: Math.round(reducciones.reduce((a, b) => a + b, 0) / reducciones.length) } : undefined) as { reduccion_pct: number } | undefined,
   }
   return { vista, precierreAlcance }
