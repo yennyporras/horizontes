@@ -8,6 +8,7 @@ import PaginaAdmin from './PaginaAdmin'
 import { type Transporte, usarTransporte } from './api'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, loginCookie, votar } from '../../tests/server/ayuda'
 import { CLAVE_GUIA } from './componentes/GuiaUso'
+import { RONDA_2_SOLA } from './textos'
 
 let e: Entorno
 let cookie = ''
@@ -52,7 +53,7 @@ const programar = (grupo: string, etiqueta: string, valor: string) => {
 }
 
 async function crearSalaDesdePanel(nombre: string, mesas: number) {
-  await screen.findByRole('heading', { level: 1, name: 'Salas' })
+  await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
   fireEvent.change(screen.getByLabelText('Nombre del taller'), { target: { value: nombre } })
   fireEvent.change(screen.getByLabelText('Mesas'), { target: { value: String(mesas) } })
   fireEvent.click(boton('Crear sala'))
@@ -211,7 +212,7 @@ describe('panel admin contra la API real', () => {
   it('el superadmin crea un admin y ese admin cambia la clave en su primer ingreso', async () => {
     montar('/admin/login')
     await entrar('paola', 'superclave123')
-    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
     fireEvent.click(nav().getByText('Administradores'))
     await screen.findByRole('heading', { name: 'Nuevo administrador' })
     fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'nicolai' } })
@@ -231,7 +232,7 @@ describe('panel admin contra la API real', () => {
     fireEvent.change(screen.getByLabelText('Clave nueva'), { target: { value: 'definitiva-6789' } })
     fireEvent.change(screen.getByLabelText('Repite la clave nueva'), { target: { value: 'definitiva-6789' } })
     fireEvent.click(boton('Guardar clave'))
-    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
     // Admin normal: sin menú de administradores y la API responde 403.
     expect(nav().queryByText('Administradores')).toBeNull()
     cleanup()
@@ -322,10 +323,10 @@ describe('reiniciar a elección contra la API real (decisión 3 de Paola, 21-oct
     await pasar('Abrir inscripción', 'Inscripción abierta')
     const t = (await inscribir(e, mesas[0].codigo, 'ana@x.co')).json().token
     await pasar('Abrir ronda 1', 'Ronda 1 abierta')
+    // 21-oct: con el voto de la única persona la R1 se cierra y la R2 se abre sola; el panel lo avisa.
     for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, t, p, 1)).statusCode).toBe(200)
-    expect((await accion(e, salaId, 'cerrar_ronda_1')).statusCode).toBe(200)
-    expect((await accion(e, salaId, 'abrir_ronda_2')).statusCode).toBe(200)
     await screen.findByText('Ronda 2 abierta', { selector: '.estado' }, { timeout: 5000 })
+    expect(await screen.findByText(RONDA_2_SOLA, {}, { timeout: 5000 })).toBeTruthy()
     const votos = () => (e.db.prepare('SELECT COUNT(*) AS n FROM votos WHERE sala_id = ?').get(salaId) as { n: number }).n
 
     const corregir = () => within(screen.getByRole('group', { name: 'Corregir' }))
@@ -335,6 +336,8 @@ describe('reiniciar a elección contra la API real (decisión 3 de Paola, 21-oct
     fireEvent.click(dialogo.getByRole('button', { name: 'Volver a la ronda anterior' }))
     await screen.findByText('Ronda 1 abierta', { selector: '.estado' }, { timeout: 3000 })
     expect(votos()).toBe(2)
+    // Con todos los votos de vuelta en la R1, la R2 no se vuelve a abrir sola y el aviso se va.
+    expect(screen.queryByText(RONDA_2_SOLA)).toBeNull()
 
     fireEvent.click(corregir().getByRole('button', { name: 'Reiniciar…' }))
     dialogo = within(await screen.findByRole('dialog', { name: '¿Qué quieres reiniciar?' }))
@@ -370,7 +373,7 @@ describe('cambios del 19-oct contra la API real', () => {
 
     montar('/admin/login')
     await entrar('jorge', 'definitiva-6789')
-    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
     expect(nav().getAllByRole('link').map((a) => a.textContent)).toEqual([
       'Salas',
       'Configuración',
@@ -518,7 +521,7 @@ describe('correcciones de la QA del panel contra la API real', () => {
   async function entrarA(ruta: string) {
     montar('/admin/login')
     await entrar('paola', 'superclave123')
-    await screen.findByRole('heading', { level: 1, name: 'Salas' })
+    await screen.findByRole('heading', { level: 1, name: 'Salas' }, { timeout: 5000 })
     cleanup()
     montar(ruta)
   }

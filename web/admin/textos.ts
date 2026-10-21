@@ -400,7 +400,11 @@ export const fechaHora = (iso: string | null, zona: ZonaHoraria = 'America/Bogot
 export const fechaCorta = (iso: string | null, zona: ZonaHoraria = 'America/Bogota') =>
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: zona, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'Sin definir'
 
+/** Aviso del panel y texto del evento `ronda_2_automatica` (decisión de Paola del 21-oct). */
+export const RONDA_2_SOLA = 'Todos votaron la ronda 1: la ronda 2 se abrió sola.'
+
 const TEXTO_EVENTO: Record<string, string> = {
+  ronda_2_automatica: RONDA_2_SOLA.replace(/\.$/, ''),
   token_tablero_regenerado: 'Enlace del tablero cambiado: los anteriores dejaron de funcionar',
   sala_creada: 'Sala creada',
   sala_duplicada: 'Sala creada como copia para ensayo',

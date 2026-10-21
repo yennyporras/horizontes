@@ -4,7 +4,7 @@ import detalleBase from '../../../mocks/GET_api_admin_salas_id.json'
 import tableroBase from '../../../mocks/GET_api_tablero.json'
 import seed from '../../../data/seed_foodsume.json'
 import type { Accion, AdminFila, AdminYo, ConfigSala, EstadoSala, Mesa, Metricas, Participante, RubricasSala, SalaDetalle, SalaResumen, Sector, TipoSala } from '../tipos'
-import { ACCIONES_POR_ESTADO, LARGO_MINIMO_CLAVE, rondaAbierta } from '../textos'
+import { ACCIONES_POR_ESTADO, LARGO_MINIMO_CLAVE, RONDA_2_SOLA, rondaAbierta } from '../textos'
 import { REGLA_USUARIO, RE_USUARIO_ADMIN } from '../paginas/Administradores'
 import type { Respuesta } from '../api'
 import type { CriterioId } from '../../shared/api/contrato'
@@ -314,6 +314,7 @@ function avanzarDemo() {
     tocar(s, ev.tipo, 'sistema', { accion: a, ...(typeof ev.ronda === 'number' ? { ronda: ev.ronda } : {}) })
   }
   const votar = (desde: number, dura: number) => {
+    const antes = precierreSala(s)
     const meta = Math.min(s.participantes.length, Math.floor((s.participantes.length * (t - desde)) / dura))
     const faltan = meta - s.participantes.filter((p) => p.completo_ronda).length
     for (const p of s.participantes.filter((x) => !x.completo_ronda).slice(0, Math.max(0, faltan))) {
@@ -321,6 +322,8 @@ function avanzarDemo() {
       tocar(s, 'voto', 'participante')
     }
     derivar(s)
+    // Con el último voto de la ronda 1 la ronda 2 se abre sola (21-oct), como en el servidor.
+    abrirRonda2SiTodosVotaron(s, antes)
   }
   if (t >= DEMO_MS.inscribir && s.sala.estado === 'preparada') {
     accion('abrir_inscripcion')
@@ -350,6 +353,7 @@ function avanzarDemo() {
     accion('cerrar_ronda_1')
   }
   if (t >= abreR2 && s.sala.estado === 'r1_cerrada') accion('abrir_ronda_2')
+  // Si todos votaron la ronda 1, la ronda 2 ya se abrió sola; sus votos siguen el reloj de la demostración.
   if (s.sala.estado === 'r2_abierta') votar(abreR2, DEMO_MS.votarR2)
   if (t >= cierraR2 && s.sala.estado === 'r2_abierta') {
     accion('cerrar_ronda_2')
@@ -515,9 +519,37 @@ function simularVoto(s: SalaDetalle) {
   if (!simular || !rondaAbierta(s.sala.estado) || Math.random() < 0.6) return
   const pendiente = s.participantes.find((p) => p.activo && !p.completo_ronda)
   if (!pendiente) return
+  const antes = precierreSala(s)
   pendiente.completo_ronda = true
   derivar(s)
   tocar(s, 'voto', 'participante')
+  abrirRonda2SiTodosVotaron(s, antes)
+}
+
+/** Precierre de la sala: todas las mesas con inscritos activos completaron la ronda abierta (como el servidor). */
+function precierreSala(s: SalaDetalle) {
+  const conGente = s.mesas.filter((m) => m.inscritos > 0)
+  return rondaAbierta(s.sala.estado) !== null && conGente.length > 0 && conGente.every((m) => m.precierre)
+}
+
+/**
+ * Como el servidor (decisión de Paola del 21-oct): cuando la sala ENTRA en precierre con la ronda 1 abierta, la ronda 1
+ * se cierra y la ronda 2 se abre sola, por «sistema», con el evento `ronda_2_automatica`. `antes` es el precierre de la
+ * sala antes del cambio: si ya estaba (por ejemplo tras «Volver a la ronda anterior» con todos los votos), no se repite.
+ */
+function abrirRonda2SiTodosVotaron(s: SalaDetalle, antes: boolean) {
+  if (antes || s.sala.estado !== 'r1_abierta' || !precierreSala(s)) return
+  completaronR1.set(s.sala.id, s.participantes.filter((p) => p.activo && p.completo_ronda).length)
+  s.sala.estado = 'r1_cerrada'
+  s.sala.pregunta_guiada = null
+  tocar(s, 'ronda_cerrada', 'sistema', { accion: 'cerrar_ronda_1', desde: 'r1_abierta', hacia: 'r1_cerrada', ronda: 1 })
+  s.sala.estado = 'r2_abierta'
+  s.sala.ronda_actual = 2
+  s.sala.config.revelar_hojas = true
+  s.participantes.forEach((p) => (p.completo_ronda = false))
+  derivar(s)
+  tocar(s, 'ronda_abierta', 'sistema', { accion: 'abrir_ronda_2', desde: 'r1_cerrada', hacia: 'r2_abierta', ronda: 2 })
+  tocar(s, 'ronda_2_automatica', 'sistema', { ronda: 2, mensaje: RONDA_2_SOLA })
 }
 
 /** Como el servidor en resultados.csv: coma decimal (6,33). */
@@ -829,9 +861,12 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     for (const s of estado.salas) {
       const par = s.participantes.find((x) => x.id === p[1])
       if (par) {
+        const antes = precierreSala(s)
         Object.assign(par, b)
         derivar(s)
         tocar(s, 'participante_editado', por, { id: par.id })
+        // Desactivar a quien faltaba también completa la sala (como el servidor).
+        abrirRonda2SiTodosVotaron(s, antes)
         return ok(par)
       }
     }

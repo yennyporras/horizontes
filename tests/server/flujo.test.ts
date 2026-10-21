@@ -18,11 +18,14 @@ async function detalle(salaId: string) {
 }
 
 describe('precierre', () => {
-  it('aparece solo cuando todos los inscritos activos completan, se recalcula y nunca cierra', async () => {
-    const s = await crearSala(e, 2, 'Sala de prueba', VISTA_MESA_REGISTRADO)
+  it('aparece solo cuando todos los inscritos activos completan, se recalcula y el de una mesa nunca cierra', async () => {
+    // 21-oct: el precierre de toda la sala en la R1 abre la R2 solo; aquí alguien de la Mesa 2 no vota, así que solo la
+    // Mesa 1 entra en precierre y la ronda sigue abierta.
+    const s = await crearSala(e, 3, 'Sala de prueba', VISTA_MESA_REGISTRADO)
     await accion(e, s.id, 'abrir_inscripcion')
     const a = (await inscribir(e, s.mesas[0].codigo, 'a@x.co')).json().token
     const b = (await inscribir(e, s.mesas[0].codigo, 'b@x.co')).json().token
+    await inscribir(e, s.mesas[1].codigo, 'sin-votar@x.co')
     await accion(e, s.id, 'abrir_ronda_1')
 
     await votar(e, a, 'insumex', 1)
@@ -35,8 +38,9 @@ describe('precierre', () => {
     expect(r.json().progreso_mesa).toEqual({ inscritos: 2, completos: 2, precierre: true })
     d = await detalle(s.id)
     expect(d.mesas[0].precierre).toBe(true)
-    expect(d.mesas[1].precierre).toBe(false) // mesa sin inscritos no está en precierre
-    expect(d.progreso.precierre).toBe(true) // todas las mesas con inscritos están en precierre
+    expect(d.mesas[1].precierre).toBe(false) // mesa con alguien sin votar
+    expect(d.mesas[2].precierre).toBe(false) // mesa sin inscritos no está en precierre
+    expect(d.progreso.precierre).toBe(false) // falta la Mesa 2
     expect(d.sala.estado).toBe('r1_abierta')
     expect(d.eventos.some((ev: { tipo: string; detalle: { mensaje?: string } }) => ev.tipo === 'precierre' && ev.detalle.mensaje?.includes('Mesa 1'))).toBe(true)
 
@@ -49,16 +53,20 @@ describe('precierre', () => {
   })
 
   it('un participante desactivado no bloquea el precierre', async () => {
-    const s = await crearSala(e, 1)
+    // Con alguien sin votar en la Mesa 2 la sala no entra en precierre y la R1 sigue abierta (21-oct).
+    const s = await crearSala(e, 2)
     await accion(e, s.id, 'abrir_inscripcion')
     const a = (await inscribir(e, s.mesas[0].codigo, 'a@x.co')).json().token
     const b = (await inscribir(e, s.mesas[0].codigo, 'b@x.co')).json()
+    await inscribir(e, s.mesas[1].codigo, 'sin-votar@x.co')
     await accion(e, s.id, 'abrir_ronda_1')
     await votar(e, a, 'insumex', 1)
     await votar(e, a, 'nutriwhat', 1)
     expect((await detalle(s.id)).mesas[0].precierre).toBe(false)
     await e.app.inject({ method: 'PATCH', url: `/api/admin/participantes/${b.participante.id}`, headers: { cookie: e.cookie }, payload: { activo: false } })
-    expect((await detalle(s.id)).mesas[0].precierre).toBe(true)
+    const d = await detalle(s.id)
+    expect(d.mesas[0].precierre).toBe(true)
+    expect(d.sala.estado).toBe('r1_abierta')
   })
 })
 

@@ -1,6 +1,7 @@
 // Modo demo (QA por roles, 20-oct): una sala «Demostración» que se juega sola en cerca de un minuto, para mostrar el
 // taller sin gente. Crea la sala (tipo ensayo, 4 mesas, Colombia) y en segundo plano inscribe 24 personas de ejemplo,
-// abre la ronda 1, las hace votar repartidas en el tiempo, la cierra, abre la ronda 2, votan otra vez y la cierra.
+// abre la ronda 1, las hace votar repartidas en el tiempo (con el último voto la ronda 1 se cierra y la ronda 2 se abre
+// sola, 21-oct), votan otra vez y cierra la ronda 2.
 // Usa las mismas funciones que la API (inscripción, voto, acciones), así el panel, el tablero y los celulares la ven
 // como una sala real. Los temporizadores viven en memoria: si el servidor se reinicia a mitad, la sala queda donde iba.
 import type { Db } from '../db/index.js'
@@ -63,6 +64,13 @@ export class Demostracion {
     const tokens: string[] = []
     const { inscripcionMs, rondaMs, pausaMs } = this.tiempos
     const accion = (a: string) => aplicarAccion(db, sala.id, a, this.ahora(), 'demo')
+    // 21-oct: cuando todos votaron la ronda 1, el servidor la cierra y abre la ronda 2 solo. Cerrar la R1 o abrir la R2
+    // se saltan si ya ocurrieron; en cualquier otro estado (la sala cerrada a mano, por ejemplo) la acción falla y la
+    // demostración se detiene como antes.
+    const yaHecho: Record<string, string[]> = { cerrar_ronda_1: ['r1_cerrada', 'r2_abierta'], abrir_ronda_2: ['r2_abierta'] }
+    const accionSiFalta = (a: string) => {
+      if (!yaHecho[a]?.includes(cargarSala(db, sala.id).estado)) accion(a)
+    }
 
     const pasos: Paso[] = [{ enMs: 0, hacer: () => accion('abrir_inscripcion') }]
     for (let i = 0; i < PERSONAS_DEMO; i++) {
@@ -86,7 +94,7 @@ export class Demostracion {
     }
     let t = inscripcionMs + pausaMs
     for (const ronda of [1, 2] as const) {
-      pasos.push({ enMs: t, hacer: () => accion(`abrir_ronda_${ronda}`) })
+      pasos.push({ enMs: t, hacer: () => accionSiFalta(`abrir_ronda_${ronda}`) })
       // Cada persona vota los 2 proyectos; los votos se reparten parejo en la ronda, primero un proyecto y luego el otro.
       const votos = proyectos.flatMap((proyecto) => Array.from({ length: PERSONAS_DEMO }, (_, i) => ({ i, proyecto })))
       votos.forEach(({ i, proyecto }, k) => {
@@ -99,7 +107,7 @@ export class Demostracion {
         })
       })
       t += rondaMs + pausaMs
-      pasos.push({ enMs: t, hacer: () => accion(`cerrar_ronda_${ronda}`) })
+      pasos.push({ enMs: t, hacer: () => accionSiFalta(`cerrar_ronda_${ronda}`) })
       t += pausaMs
     }
     const ultimo = pasos.length - 1

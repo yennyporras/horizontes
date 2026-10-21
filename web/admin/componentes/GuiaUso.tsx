@@ -86,7 +86,8 @@ export const PASOS_GUIA: PasoGuia[] = [
     hace: (
       <p>
         Es el control del taller: un solo botón con el paso que sigue (abrir la inscripción, abrir y cerrar cada ronda,
-        cerrar la sala) y, aparte, Corregir. En Corregir, «Reiniciar…» te deja elegir qué reiniciar: volver a la ronda
+        cerrar la sala) y, aparte, Corregir. Cuando todos votan la ronda 1, esa ronda se cierra y la ronda 2 se abre
+        sola, y el panel te lo dice; puedes abrirla antes a mano. En Corregir, «Reiniciar…» te deja elegir qué reiniciar: volver a la ronda
         anterior sin borrar votos, reiniciar la ronda 2, la ronda 1 o la sala completa, con una línea de qué pasa en cada
         opción. Ves cuántas personas de cada mesa ya votaron, la pregunta en pantalla si usas el modo guiado y la bitácora.
       </p>
@@ -95,7 +96,7 @@ export const PASOS_GUIA: PasoGuia[] = [
       <p>
         En «Proyectar el tablero» abres el tablero de la sala en Gráfica o Detallado, con la lista de teclas (F pantalla
         completa, → y ← cambian de vista, C repite la animación de la comparación, ? muestra la ayuda). Con la ronda 1 abierta
-        el tablero no muestra resultados hasta que todos voten o la cierres; tú sí los ves aquí. «Ver quién falta» en cada mesa
+        el tablero no muestra resultados hasta que la ronda se cierre; tú sí los ves aquí. «Ver quién falta» en cada mesa
         abre Participantes con los pendientes, y al cerrar la ronda 2 sale el resumen del taller.
       </p>
     ),

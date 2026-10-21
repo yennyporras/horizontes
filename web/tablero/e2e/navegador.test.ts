@@ -397,7 +397,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     await sinToken.context().close()
   }, 60_000)
 
-  it('con R1 abierta: 304 sin cambios y mismo SVG; un voto y el cierre se ven en menos de 5 s', async () => {
+  it('con R1 abierta: 304 sin cambios y mismo SVG; el último voto abre la ronda 2 sola y se ve en menos de 5 s', async () => {
     // Sala propia de esta prueba (un reintento empieza limpio): R1 abierta, 3 personas en 1 mesa, sin votos.
     const s2 = await crearSala(e, 1, 'Sala en vivo')
     await accion(e, s2.id, 'abrir_inscripcion')
@@ -439,30 +439,21 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     expect(await cel.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'desborde a 360 px').toBeLessThanOrEqual(0)
     await cel.context().close()
 
-    // Voto de las otras 2 personas: aparece el punto y la sala entra en precierre.
+    // Voto de las otras 2 personas: toda la sala votó, así que la ronda 1 se cierra y la ronda 2 se abre sola
+    // (decisión de Paola del 21-oct). El tablero lo muestra en menos de 5 s: el punto R1 final, sin «Preliminar», y la
+    // franja de la ronda 2.
     const t0 = Date.now()
     for (const tk of resto) for (const pr of ['insumex', 'nutriwhat']) expect((await votar(e, tk, pr, 1, resp)).statusCode).toBe(200)
     await p.waitForSelector('svg.hz-matriz circle.hz-r1', { timeout: 10_000 })
-    await p.waitForSelector('.hz-tb-insignia-alerta', { timeout: 10_000 })
+    await expect.poll(() => p.locator('.hz-franja').textContent(), { timeout: 10_000, interval: 100 }).toBe('Ronda 2 · Discusión en la mesa')
     const tVoto = Date.now() - t0
-    expect(await p.locator('.hz-tb-insignia-alerta').textContent()).toBe('Preliminar')
-    expect(await p.locator('.hz-lateral').textContent()).toContain('Toda la sala votó')
-
-    // Cierre de la ronda: desaparece "Preliminar" y el estado cambia.
-    const t1 = Date.now()
-    await accion(e, vivo.id, 'cerrar_ronda_1')
-    await expect.poll(() => p.locator('.hz-cab-meta').textContent(), { timeout: 10_000, interval: 100 }).toContain('Ronda 1 cerrada')
-    const tCierre = Date.now() - t1
-    expect(await p.locator('.hz-tb-insignia').count()).toBe(0)
+    expect(await p.locator('.hz-tb-insignia-alerta').count()).toBe(0)
     expect(tVoto).toBeLessThan(5000)
-    expect(tCierre).toBeLessThan(5000)
-    if (capturas) await p.screenshot({ path: join(capturas, 'tablero-vivo-cerrada.png') })
+    if (capturas) await p.screenshot({ path: join(capturas, 'tablero-vivo-ronda-2-sola.png') })
 
     // Ronda 2: mientras no tiene resultados la vista sigue en «Ronda 1» (Nicolai: no una matriz vacía); con los votos
     // pasa sola a «Ronda 2»; al cerrar R2, sola a «Comparación» (no hubo elección a mano).
     const vistaActiva = () => p.locator('[aria-label="Vista de la matriz"] [aria-pressed="true"]').textContent()
-    await accion(e, vivo.id, 'abrir_ronda_2')
-    await expect.poll(() => p.locator('.hz-franja').textContent(), { timeout: 10_000, interval: 100 }).toBe('Ronda 2 · Discusión en la mesa')
     expect(await vistaActiva()).toBe('Ronda 1')
     const resp2 = Object.fromEntries(CRITERIOS.map((c) => [c, 3]))
     // 21-oct: cada voto en vivo en todas las salas. Con el primer voto de la ronda 2 ya hay burbuja R2 y la insignia lo dice.
@@ -502,7 +493,7 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
     expect(anim.errorFinal, 'terminan en su punto R2').toBeLessThan(0.5)
     // Fluida sin afectar el rendimiento: mediana ≤ 1 cuadro a 30 fps.
     expect(anim.mediana).toBeLessThanOrEqual(34)
-    console.info(`[tablero e2e] voto visible en ${tVoto} ms · cierre R1 en ${tCierre} ms · Comparación tras cerrar R2 en ${tComparacion} ms`)
+    console.info(`[tablero e2e] último voto R1 y ronda 2 sola en ${tVoto} ms · Comparación tras cerrar R2 en ${tComparacion} ms`)
     if (capturas) await p.screenshot({ path: join(capturas, 'tablero-vivo-comparacion.png') })
     await p.context().close()
   }, 60_000)
@@ -978,6 +969,12 @@ function marcaClara(): string[] {
   else if (innerWidth >= 1100 && Math.round(franja.getBoundingClientRect().height) > 57) fallas.push(`franja de ${franja.getBoundingClientRect().height} px en una fila`)
   for (const b of barra.querySelectorAll<HTMLElement>('.hz-cab-controles button, .hz-cab-controles select'))
     if (b.getBoundingClientRect().height < 47.5) fallas.push(`control «${b.textContent}» de ${b.getBoundingClientRect().height} px`)
+  // Nicolai (21-oct): en el celular Ronda 1, Ronda 2 y Comparación quedaban fuera de la pantalla en una fila deslizable.
+  // Cada control (alcance, modo y vista) se ve entero sin deslizar, en cualquier ancho.
+  for (const b of barra.querySelectorAll<HTMLElement>('.hz-cab-controles button, .hz-cab-controles select')) {
+    const r = b.getBoundingClientRect()
+    if (r.left < -0.5 || r.right > document.documentElement.clientWidth + 0.5) fallas.push(`control «${b.textContent}» fuera de la pantalla (${Math.round(r.left)} a ${Math.round(r.right)} px)`)
+  }
   return fallas
 }
 

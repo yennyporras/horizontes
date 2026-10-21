@@ -107,6 +107,8 @@ describe('participante desactivado', () => {
     const a = await inscrito(s.mesas[0].codigo, 'a@correo.co')
     const b = await inscrito(s.mesas[0].codigo, 'b@correo.co')
     const c = await inscrito(s.mesas[0].codigo, 'c@correo.co')
+    // Alguien sin votar: con toda la sala completa la R2 se abriría sola (21-oct).
+    await inscrito(s.mesas[0].codigo, 'sin-votar@correo.co')
     await votarAmbos(a.token, 1)
     await votarAmbos(b.token, 1, RESPUESTAS_9)
     await votarAmbos(c.token, 1, RESPUESTAS_9)
@@ -124,7 +126,7 @@ describe('participante desactivado', () => {
     expect(v.json().error.codigo).toBe('PARTICIPANTE_INACTIVO')
 
     let t = await tablero(s)
-    expect(t.progreso).toMatchObject({ inscritos: 2, completos: 2, precierre: true })
+    expect(t.progreso).toMatchObject({ inscritos: 3, completos: 2, precierre: false })
     // Desde el 21-oct cada cambio se ve en vivo: su voto sale de los promedios en la siguiente consulta.
     expect(nVotos(t, 1)).toEqual([2, 2])
     await accion(e, s.id, 'cerrar_ronda_1')
@@ -157,6 +159,8 @@ describe('doble pestaña', () => {
   it('dos pestañas con el mismo token votan a la vez: un voto por proyecto, el último gana', async () => {
     const s = await sala('r1_abierta')
     const a = await inscrito(s.mesas[0].codigo, 'a@correo.co')
+    // Alguien sin votar: con toda la sala completa la R2 se abriría sola (21-oct).
+    await inscrito(s.mesas[0].codigo, 'sin-votar@correo.co')
     const rs = await Promise.all([
       votar(e, a.token, 'insumex', 1, RESPUESTAS_5),
       votar(e, a.token, 'insumex', 1, RESPUESTAS_9),
@@ -234,11 +238,13 @@ describe('reloj del cliente desfasado', () => {
 
 describe('reinicio de ronda', () => {
   it('en R1 abierta borra los votos, quita el precierre y los celulares lo ven en el siguiente polling', async () => {
-    const s = await sala('r1_abierta')
+    // Precierre de la Mesa 1; en la Mesa 2 alguien no vota, así la R1 sigue abierta (21-oct).
+    const s = await sala('r1_abierta', 2)
     const a = await inscrito(s.mesas[0].codigo, 'a@correo.co')
+    await inscrito(s.mesas[1].codigo, 'sin-votar@correo.co')
     await votarAmbos(a.token, 1)
     const etag = (await yo(a.token)).headers.etag as string
-    expect((await tablero(s)).progreso.precierre).toBe(true)
+    expect((await detalle(s.id)).mesas[0].precierre).toBe(true)
 
     expect((await accion(e, s.id, 'reiniciar_ronda')).statusCode).toBe(200)
     const y = await yo(a.token, etag)
@@ -246,20 +252,23 @@ describe('reinicio de ronda', () => {
     expect(y.json()).toMatchObject({ mis_votos: [], pendientes: ['insumex', 'nutriwhat'], completo_ronda: false, resultados: null })
     const t = await tablero(s)
     expect(t.progreso).toMatchObject({ completos: 0, precierre: false })
+    expect((await detalle(s.id)).mesas[0].precierre).toBe(false)
     expect(t.proyectos_vivos[0].rondas[0]).toMatchObject({ n_votos: 0, eje_x: null, eje_y: null })
     const ev = (await detalle(s.id)).eventos[0]
     expect(ev).toMatchObject({ tipo: 'reinicio', detalle: { ronda: 1, votos_borrados: 2 } })
     // Se vuelve a votar y el precierre vuelve.
     await votarAmbos(a.token, 1, RESPUESTAS_9)
-    expect((await tablero(s)).progreso.precierre).toBe(true)
+    const d = await detalle(s.id)
+    expect(d.mesas[0].precierre).toBe(true)
+    expect(d.sala.estado).toBe('r1_abierta')
   })
 
   it('reiniciar la R1 con la R2 abierta borra solo la R1; la R2 sigue intacta', async () => {
     const s = await sala('r1_abierta')
     const a = await inscrito(s.mesas[0].codigo, 'a@correo.co')
     await votarAmbos(a.token, 1)
-    await accion(e, s.id, 'cerrar_ronda_1')
-    await accion(e, s.id, 'abrir_ronda_2')
+    // 21-oct: la única persona completó la R1, así que la R2 se abrió sola.
+    expect((await detalle(s.id)).sala.estado).toBe('r2_abierta')
     await votarAmbos(a.token, 2)
     expect((await accion(e, s.id, 'reiniciar_ronda', { ronda: 1 })).statusCode).toBe(200)
     const t = await tablero(s)
@@ -271,7 +280,10 @@ describe('reinicio de ronda', () => {
   it('reiniciar una ronda que no existe o con un valor que no es 1 ni 2 responde error sin borrar nada', async () => {
     const s = await sala('r1_abierta')
     const a = await inscrito(s.mesas[0].codigo, 'a@correo.co')
+    // Alguien sin votar: con toda la sala completa la R2 se abriría sola (21-oct).
+    await inscrito(s.mesas[0].codigo, 'sin-votar@correo.co')
     await votarAmbos(a.token, 1)
+    expect((await detalle(s.id)).sala.estado).toBe('r1_abierta')
     for (const ronda of [2, 0, 'uno', 1.5]) {
       const r = await accion(e, s.id, 'reiniciar_ronda', { ronda })
       expect(r.statusCode, String(ronda)).toBeGreaterThanOrEqual(400)
@@ -283,24 +295,28 @@ describe('reinicio de ronda', () => {
   it('reiniciar y reabrir la R1 ya cerrada permite repetirla', async () => {
     const s = await sala('r1_abierta')
     const personas = [await inscrito(s.mesas[0].codigo, 'a@correo.co'), await inscrito(s.mesas[0].codigo, 'b@correo.co'), await inscrito(s.mesas[0].codigo, 'c@correo.co')]
+    // Alguien sin votar: con toda la sala completa la R2 se abriría sola (21-oct).
+    await inscrito(s.mesas[0].codigo, 'sin-votar@correo.co')
     for (const p of personas) await votarAmbos(p.token, 1)
-    await accion(e, s.id, 'cerrar_ronda_1')
+    expect((await accion(e, s.id, 'cerrar_ronda_1')).statusCode).toBe(200)
     await accion(e, s.id, 'reiniciar_ronda')
     expect((await detalle(s.id)).sala.estado).toBe('r1_cerrada')
     await accion(e, s.id, 'reabrir_ronda')
     for (const p of personas) await votarAmbos(p.token, 1, RESPUESTAS_9)
-    await accion(e, s.id, 'cerrar_ronda_1')
+    expect((await accion(e, s.id, 'cerrar_ronda_1')).statusCode).toBe(200)
     expect((await tablero(s)).proyectos_vivos[0].rondas[0].promedios.alineacion_core).toBe(9)
   })
 })
 
 describe('resultados desde 1 voto en todas las salas (antes triage #1, decisión de Paola del 21-oct)', () => {
   it('una mesa con 2 votos muestra promedios y punto en el tablero y en el celular, sin nombres', async () => {
-    const s = await sala('r1_abierta', 2)
+    const s = await sala('r1_abierta', 3)
     await config(s.id, { alcance_resultados: 'mesa' })
     const solo = await inscrito(s.mesas[0].codigo, 'solo@correo.co')
     await votarAmbos((await inscrito(s.mesas[0].codigo, 'par@correo.co')).token, 1, RESPUESTAS_9)
     for (const correo of ['b@correo.co', 'c@correo.co', 'd@correo.co']) await votarAmbos((await inscrito(s.mesas[1].codigo, correo)).token, 1)
+    // En la Mesa 3 alguien no vota: las mesas 1 y 2 quedan en precierre y la R1 sigue abierta (21-oct).
+    const sinVotar = await inscrito(s.mesas[2].codigo, 'sin-votar@correo.co')
     await votarAmbos(solo.token, 1, RESPUESTAS_9)
 
     const mesa1 = await tablero(s, `&alcance=mesa&mesa=${s.mesas[0].id}`)
@@ -316,6 +332,9 @@ describe('resultados desde 1 voto en todas las salas (antes triage #1, decisión
 
     const mesa2 = await tablero(s, `&alcance=mesa&mesa=${s.mesas[1].id}`)
     expect(mesa2.proyectos_vivos[0].rondas[0]).toMatchObject({ n_votos: 3, promedios: { alineacion_core: 5 }, eje_x: 5, eje_y: 5, total: 10 })
+    // Al desactivar a quien faltaba, la sala completa la R1 y la R2 se abre sola: la R1 cerrada se ve en el consolidado.
+    expect((await editar(sinVotar.participante.id, { activo: false })).statusCode).toBe(200)
+    expect((await detalle(s.id)).sala.estado).toBe('r2_abierta')
     const r = (await tablero(s)).proyectos_vivos[0].rondas[0]
     expect(r.promedios.alineacion_core).toBeCloseTo(33 / 5, 9)
     expect(r.total).toBe(r.eje_x + r.eje_y)

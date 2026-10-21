@@ -191,8 +191,10 @@ export async function ensayarTaller(op: OpcionesEnsayo): Promise<InformeEnsayo> 
   await accion('abrir_ronda_1')
   const abiertaR1 = await enCelulares('R1 abierta', personas, (yo) => yo.sala.estado === 'r1_abierta', performance.now())
   verificar('R1 abierta en todos los celulares', abiertaR1.todos, `último a los ${(abiertaR1.maxMs / 1000).toFixed(1)} s`)
+  // 21-oct: cuando toda la sala votó la R1, el servidor la cierra y abre la R2 solo. Por eso el precierre mesa por mesa
+  // se recorre en todas las mesas menos la última; la última completa la sala.
   const ordenMesas = mesasConGente()
-  for (const [k, m] of ordenMesas.entries()) {
+  for (const [k, m] of ordenMesas.slice(0, -1).entries()) {
     await votarTodo(deMesa(m), 1)
     const desde = performance.now()
     const nombreMesa = sala.mesas[m].nombre
@@ -215,24 +217,29 @@ export async function ensayarTaller(op: OpcionesEnsayo): Promise<InformeEnsayo> 
       verificar(`R1: al votar quien llegó tarde, ${mesaTarde.nombre} vuelve a precierre`, (await precierreTablero()).get(mesaTarde.id) === true)
     }
   }
+  if (personas.length < op.personas) await inscribir(tarde, 0) // una sola mesa con gente: llega antes del último voto
   personas.sort((a, b) => a.n - b.n)
-  const sinVotar = personas.filter((p) => !p.votos[1])
-  if (sinVotar.length) await votarTodo(sinVotar, 1)
-  const t1 = (await tablero()).json
-  verificar('R1: precierre de sala con todos los votos, ronda todavía abierta', t1.progreso.precierre === true && t1.preliminar === true && t1.sala?.estado !== 'r1_cerrada', `${t1.progreso.completos}/${t1.progreso.inscritos}`)
 
-  // Cambio de alcance en vivo: todos pasan a ver el agregado de la sala.
+  // Cambio de alcance en vivo con la R1 abierta: el agregado de la sala no se ve hasta que todos voten, así que las mesas
+  // que veían su preliminar dejan de verlo.
   let r = await config({ alcance_resultados: 'sala' })
   let desde = performance.now()
-  await medirPropagacion('alcance mesa → sala', personas, (yo) => yo.config.alcance_resultados === 'sala' && yo.resultados?.alcance?.tipo === 'sala', desde)
+  await medirPropagacion('alcance mesa → sala', personas, (yo) => yo.config.alcance_resultados === 'sala' && yo.resultados === null && yo.sala.estado === 'r1_abierta', desde)
   verificar('config de alcance → 200', r.status === 200)
-  await accion('cerrar_ronda_1')
+
+  // La última mesa (y cualquiera que faltara) vota: la R1 se cierra y la R2 se abre sola.
+  const sinVotar = personas.filter((p) => !p.votos[1])
+  if (sinVotar.length) await votarTodo(sinVotar, 1)
   desde = performance.now()
-  const cerr1 = await enCelulares('R1 cerrada', personas, (yo) => yo.sala.estado === 'r1_cerrada' && yo.resultados?.preliminar === false, desde)
-  verificar('R1: al cerrar, todos ven el resultado definitivo', cerr1.todos, `último a los ${(cerr1.maxMs / 1000).toFixed(1)} s`)
+  const sola = await enCelulares('R2 abierta sola', personas, (yo) => yo.sala.estado === 'r2_abierta' && yo.config.revelar_hojas === true, desde)
+  verificar('R1: al votar todos, la R1 se cierra y la R2 se abre sola en todos los celulares', sola.todos, `último a los ${(sola.maxMs / 1000).toFixed(1)} s`)
+  const evR1 = (await detalle()).eventos as { tipo: string; por: string }[]
+  verificar('R1: aviso al admin "la ronda 2 se abrió sola"', evR1.some((e) => e.tipo === 'ronda_2_automatica' && e.por === 'sistema'))
+  const defR1 = await Promise.all(personas.map((p) => c.pedir('GET', '/api/resultados?ronda=1', { headers: { 'x-participante-token': p.token } })))
+  verificar('R1: cerrada, todos ven el resultado definitivo de la sala', defR1.every((x) => x.status === 200 && x.json?.preliminar === false && x.json?.alcance?.tipo === 'sala'))
 
   // --- Ronda 2: vista en vivo, cierre programado real de la ronda y de la sala ------------------------
-  await accion('abrir_ronda_2')
+  if ((await detalle()).sala?.estado !== 'r2_abierta') await accion('abrir_ronda_2')
   r = await config({ vista_participante: 'en_vivo' })
   desde = performance.now()
   await medirPropagacion('vista registrado → en vivo', personas, (yo) => yo.config.vista_participante === 'en_vivo' && yo.sala.estado === 'r2_abierta', desde)
