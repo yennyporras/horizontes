@@ -443,14 +443,17 @@ describe.skipIf(!CHROMIUM)('tablero en navegador real contra la API real', { ret
       await p.waitForSelector('.hz-lateral .hz-cortina')
       expect(await p.locator('.hz-comparada').count()).toBe(0)
     } else {
-      expect(await p.locator('.hz-comparada').textContent()).toContain('Faltan votos')
+      // 21-oct: bajo el mínimo, un solo mensaje con el conteo real en lugar de «Faltan votos» en cada celda.
+      expect(await p.locator('.hz-comparada').textContent()).toMatch(/Hay \d votos? de los 3 que hacen falta para mostrar el resultado/)
+      expect(await p.locator('.hz-comparada').textContent()).not.toContain('Faltan votos')
       // D2: la foto de 3 en 3 la dice la insignia de la barra, también en Detallado.
       expect(await p.locator('.hz-tb-insignia-vivo').textContent()).toBe('En vivo: se actualiza cada 3 votos')
     }
     const mesa = await abrir(1920, 1080, `/tablero/${vivo.id}?t=${vivo.token}&mesa=${s2.mesas[0].id}`, conCortina ? '.hz-cortina' : '.hz-vacio')
-    if (!conCortina) expect(await mesa.locator('.hz-vacio').textContent()).toBe('Hacen falta al menos 3 votos para mostrar esta mesa')
+    if (!conCortina)
+      expect(await mesa.locator('.hz-vacio').textContent()).toMatch(/^Hay \d votos? de los 3 que hacen falta para mostrar el resultado\. Así nadie puede deducir cómo votó otra persona\.$/)
     await mesa.context().close()
-    // En el celular (360 px), con «Faltan votos» en las celdas (o la cortina), nada se desborda (triage #5).
+    // En el celular (360 px), con el mensaje del mínimo (o la cortina), nada se desborda (triage #5).
     const cel = await abrir(360, 740, `/tablero/${vivo.id}?t=${vivo.token}&modo=detallado`, '.hz-lateral')
     await cel.waitForSelector(conCortina ? '.hz-cortina' : '.hz-panel')
     expect(await cel.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'desborde a 360 px').toBeLessThanOrEqual(0)

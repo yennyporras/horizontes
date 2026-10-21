@@ -4,6 +4,7 @@ import { DESCRIPCION_CRITERIO } from '../shared/criterios'
 import { cleanup, render, within } from '@testing-library/react'
 import mockJson from '../../mocks/GET_api_tablero.json'
 import { TablaComparada } from './TablaComparada'
+import { PanelProyecto } from './PanelProyecto'
 import type { DatosTablero } from './tipos'
 
 const mock = mockJson as unknown as DatosTablero
@@ -39,7 +40,7 @@ test('antes de la ronda 2 no muestra la columna R2 (solo diría "Sin votos")', (
   expect(encabezados(container).filter((t) => t === 'R1')).toHaveLength(datos.proyectos_vivos.length)
 })
 
-test('«Sin votos» y «Faltan votos» van en texto secundario; la cifra de la ronda que se ve, resaltada', () => {
+test('«Sin votos» en texto secundario y la celda bajo el mínimo vacía, con un solo mensaje bajo la tabla; la cifra de la ronda que se ve, resaltada', () => {
   const datos: DatosTablero = structuredClone(mock)
   const [a, b] = datos.proyectos_vivos
   Object.assign(a.rondas.find((r) => r.ronda === 2)!, { n_votos: 0, promedios: null, eje_x: null, eje_y: null })
@@ -47,8 +48,12 @@ test('«Sin votos» y «Faltan votos» van en texto secundario; la cifra de la r
   const { container } = render(<TablaComparada datos={datos} vista={2} />)
   const fila = within(container).getByRole('rowheader', { name: /^Regulación/ }).parentElement!
   const celdas = [...fila.querySelectorAll('td')]
-  expect(celdas.map((c) => c.textContent)).toEqual([expect.stringMatching(/^\d,\d\d$/), 'Sin votos', expect.stringMatching(/^\d,\d\d$/), 'Faltan votos'])
+  expect(celdas.map((c) => c.textContent)).toEqual([expect.stringMatching(/^\d,\d\d$/), 'Sin votos', expect.stringMatching(/^\d,\d\d$/), ''])
   expect(celdas.map((c) => c.className)).toEqual(['hz-ini', 'hz-sin-dato', 'hz-ini', 'hz-sin-dato'])
+  expect(container.textContent).not.toContain('Faltan votos')
+  expect([...container.querySelectorAll('.hz-tabla-aviso')].map((p) => p.textContent)).toEqual([
+    `Ronda 2: Hay ${b.rondas.find((r) => r.ronda === 2)!.n_votos} votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.`,
+  ])
   cleanup()
   const { container: c2 } = render(<TablaComparada datos={mock} vista={2} />)
   const f2 = within(c2).getByRole('rowheader', { name: /^Regulación/ }).parentElement!
@@ -62,4 +67,22 @@ test('cada criterio lleva su descripción corta bajo el nombre (máximo 100 cara
   expect(fila.querySelector('.hz-crit-desc')!.textContent).toBe(DESCRIPCION_CRITERIO.alineacion_core)
   for (const d of container.querySelectorAll('.hz-crit-desc')) expect(d.textContent!.length).toBeLessThanOrEqual(100)
   expect(container.querySelectorAll('.hz-crit-desc')).toHaveLength(6)
+})
+
+test('bajo el mínimo en todas las columnas: el mensaje con el conteo en lugar de la tabla (21-oct)', () => {
+  const datos: DatosTablero = structuredClone(mock)
+  datos.sala.ronda_actual = 1
+  for (const p of datos.proyectos_vivos) {
+    p.rondas = p.rondas.filter((r) => r.ronda === 1)
+    Object.assign(p.rondas[0], { n_votos: 1, bajo_minimo: true, promedios: null, eje_x: null, eje_y: null })
+  }
+  const { container } = render(<TablaComparada datos={datos} vista={1} />)
+  expect(container.querySelector('table')).toBeNull()
+  expect(container.querySelector('.hz-tabla-aviso')!.textContent).toBe(
+    'Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.',
+  )
+  cleanup()
+  const { container: c2 } = render(<PanelProyecto proyecto={datos.proyectos_vivos[0]} datos={datos} vista={1} />)
+  expect(c2.querySelector('table')).toBeNull()
+  expect(c2.querySelector('.hz-tabla-aviso')!.textContent).toMatch(/^Hay 1 voto de los 3 que hacen falta/)
 })

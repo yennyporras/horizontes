@@ -133,7 +133,7 @@ describe('MatrizHorizontes', () => {
   })
 
   test('ayudas exportadas para la pantalla del participante', () => {
-    expect(mensajeVacio(null, 1)).toBe('Aún no hay votos en la ronda 1')
+    expect(mensajeVacio(null, 1)).toBe('Aún no hay votos en la ronda 1.')
     expect(['preliminar', 'en_vivo', null]).toContain(insigniaResultado(mock))
   })
 })

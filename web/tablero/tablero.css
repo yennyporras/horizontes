@@ -317,7 +317,8 @@ body:has(> #root > .hz-tablero) {
   font-weight: 700;
   color: var(--hz-tinta-2);
 }
-.hz-vacio {
+.hz-vacio,
+.hz-tabla-aviso {
   margin: 0 0 0.5em;
   padding: 0.6em 0.9em;
   font-weight: 700;
@@ -1338,4 +1339,18 @@ body:has(> #root > .hz-tablero) {
   .hz-tablero:not(.hz-tablero-solo) > .hz-tablero-pie {
     display: none;
   }
+}
+
+/* Aviso de sala de ensayo (21-oct): resultados desde 1 voto. Fondo de información, una línea sobre el contenido. */
+.hz-aviso-ensayo {
+  margin: 0.5em 0 0;
+  padding: 0.35em 0.9em;
+  font-weight: var(--hz-fw-etiqueta);
+  color: var(--hz-tinta);
+  background: var(--hz-info-fondo);
+  border-left: 4px solid var(--hz-accion);
+  border-radius: var(--hz-r-campo);
+}
+.hz-tabla + .hz-tabla-aviso {
+  margin-top: 0.5em;
 }

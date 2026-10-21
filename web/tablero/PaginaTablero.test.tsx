@@ -522,12 +522,48 @@ describe('PaginaTablero', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(vacio), { status: 200 })))
     montar('/tablero/s_demo')
     // D2: con la ronda abierta llega la última foto; no se afirma que no haya votos.
-    expect(await screen.findByText('Aún no hay resultados en la ronda 1. Se actualizan cada 3 votos nuevos')).toBeTruthy()
+    expect(await screen.findByText('Aún no hay resultados en la ronda 1. Se actualizan cada 3 votos nuevos.')).toBeTruthy()
+    expect(document.querySelector('.hz-aviso-ensayo')).toBeNull()
     expect(document.querySelector('.hz-tb-insignia-vivo')!.textContent).toBe('En vivo: se actualiza cada 3 votos')
     await verDatos()
     // En Detallado la foto de 3 en 3 la sigue diciendo la insignia de la barra (sin repetirla en el panel).
     expect(document.querySelector('.hz-tb-insignia-vivo')!.textContent).toBe('En vivo: se actualiza cada 3 votos')
     expect(document.querySelector('.hz-lateral')!.textContent).not.toContain('Se actualizan cada')
+    await act(async () => {})
+  })
+
+  test('sala de ensayo (21-oct): aviso visible, insignia «con cada voto» y el mensaje con el conteo real desde 1 voto', async () => {
+    const ensayo = { ...structuredClone(mock), ensayo: true as const, minimo_votos: 1, votos_por_actualizacion: 1 }
+    ensayo.sala.estado = 'r1_abierta'
+    ensayo.sala.ronda_actual = 1
+    ensayo.progreso.por_mesa.forEach((m) => (m.precierre = false))
+    for (const v of ensayo.proyectos_vivos) for (const r of v.rondas) Object.assign(r, { n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(ensayo), { status: 200 })))
+    montar('/tablero/s_demo')
+    expect((await screen.findByRole('note')).textContent).toBe('Ensayo: los resultados se muestran desde 1 voto. En un taller con cliente hacen falta 3.')
+    expect(document.querySelector('.hz-tb-insignia-vivo')!.textContent).toBe('En vivo: se actualiza con cada voto')
+    expect(screen.getByText('Aún no hay resultados en la ronda 1. Se actualizan con cada voto nuevo.')).toBeTruthy()
+    // El aviso va en el contenido (claro), no en la barra.
+    expect(document.querySelector('.hz-aviso-ensayo')!.closest('.hz-area')).toBeTruthy()
+    await act(async () => {})
+  })
+
+  test('bajo el mínimo (21-oct): un solo mensaje con el conteo real en la matriz y en el Detallado, sin «Faltan votos»', async () => {
+    const pocos = structuredClone(mock)
+    pocos.sala.estado = 'r1_cerrada'
+    pocos.sala.ronda_actual = 1
+    pocos.minimo_votos = 3
+    for (const v of pocos.proyectos_vivos) {
+      v.rondas = v.rondas.filter((r) => r.ronda === 1)
+      Object.assign(v.rondas[0], { n_votos: 1, bajo_minimo: true, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null })
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(pocos), { status: 200 })))
+    montar('/tablero/s_demo?t=tok&modo=detallado')
+    const msg = 'Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.'
+    expect((await screen.findAllByText(msg)).length).toBeGreaterThanOrEqual(1)
+    expect(document.querySelector('.hz-tablero')!.textContent).not.toContain('Faltan votos')
+    // Ninguna columna con resultado: el mensaje va en lugar de la tabla.
+    expect(document.querySelector('.hz-comparada table')).toBeNull()
     await act(async () => {})
   })
 

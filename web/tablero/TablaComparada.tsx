@@ -1,5 +1,5 @@
 import type { CriterioId, DatosTablero, RondaVivo, Vista } from './tipos'
-import { cifraRonda, claseCifra, mayorCambioEn, mostrarR2, nombreCorto, rondaDe, titularConvergencia } from './logica'
+import { cifraRonda, claseCifra, conResultado, mayorCambioEn, mensajeMinimo, mostrarR2, nombreCorto, rondaDe, titularConvergencia } from './logica'
 import { descripcionCriterio } from '../shared/criterios'
 
 /**
@@ -65,6 +65,29 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
     </tr>
   )
   const prom = (c: CriterioId) => (r: RondaVivo | null) => r?.promedios?.[c]
+  // Bajo el mínimo (21-oct): un solo mensaje por ronda con el conteo real, nunca «Faltan votos» en cada celda. Si ninguna
+  // columna tiene resultado, el mensaje va en lugar de la tabla.
+  const rondas: (1 | 2)[] = conR2 ? [1, 2] : [1]
+  const avisos = rondas.flatMap((n) => {
+    const m = mensajeMinimo(datos, n)
+    return m ? [`${conR2 ? `Ronda ${n}: ` : ''}${m}`] : []
+  })
+  const conAlguno = vivos.some(({ r1, r2 }) => conResultado(r1) || (conR2 && conResultado(r2)))
+  const notas = avisos.map((a) => (
+    <p key={a} className="hz-tabla-aviso" role="status">
+      {a}
+    </p>
+  ))
+  if (!conAlguno) {
+    return (
+      <section className="hz-comparada" aria-labelledby="hz-comparada-t">
+        <h2 id="hz-comparada-t" className="hz-sub">
+          Promedios por criterio
+        </h2>
+        {notas.length ? notas : <p className="hz-tabla-aviso">Aún no hay votos.</p>}
+      </section>
+    )
+  }
 
   return (
     <section className="hz-comparada" aria-labelledby="hz-comparada-t">
@@ -94,6 +117,7 @@ export function TablaComparada({ datos, vista }: { datos: DatosTablero; vista: V
         </thead>
         <tbody>{datos.criterios.map((c) => fila(c, prom(c.id)))}</tbody>
       </table>
+      {notas}
     </section>
   )
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Distribucion } from '../shared/api/contrato'
-import { MINIMO_VOTOS, TEXTO_OCULTA, VOTOS_POR_FOTO, faltanVotos, nombreCorto } from './logica'
+import { TEXTO_OCULTA, minimoDe, nombreCorto, porFotoDe } from './logica'
+import { cadaCuantos, maxVotos, mensajeFaltanVotos } from '../shared/votos'
 import { descripcionCriterio } from '../shared/criterios'
 import './como-voto.css'
 
@@ -16,6 +17,8 @@ export interface DatosComoVoto {
     rondas: { ronda: number; n_votos: number; distribucion?: Record<string, Distribucion> | null; bajo_minimo?: boolean; oculta?: boolean }[]
   }[]
   minimo_votos?: number
+  /** Votos por foto del consolidado (3 en un taller, 1 en un ensayo). */
+  votos_por_actualizacion?: number
   /** Si llega, con la ronda abierta el aviso dice que los conteos se renuevan cada 3 votos (D2). */
   sala?: { estado?: string }
 }
@@ -51,7 +54,9 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
   const deRonda = (p: DatosComoVoto['proyectos_vivos'][number], n: number) => p.rondas.find((r) => r.ronda === n)
   const conDatos = rondas.filter((n) => datos.proyectos_vivos.some((p) => deRonda(p, n)?.distribucion))
   const quien = datos.alcance.tipo === 'mesa' ? 'la mesa' : 'la sala'
-  const minimo = datos.minimo_votos ?? MINIMO_VOTOS
+  const minimo = minimoDe(datos)
+  // Con las dos rondas a la vista, el aviso dice de cuál habla.
+  const deCual = (n: number) => (rondas.length > 1 ? `Ronda ${n}: ` : '')
   // Una línea por ronda pedida que no trae distribución: bajo el mínimo (anonimato) o sin votos todavía.
   const enCurso = datos.sala?.estado === 'r1_abierta' ? 1 : datos.sala?.estado === 'r2_abierta' ? 2 : null
   const avisos = rondas
@@ -61,9 +66,9 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
       datos.proyectos_vivos.some((p) => deRonda(p, n)?.oculta)
         ? TEXTO_OCULTA
         : datos.proyectos_vivos.some((p) => deRonda(p, n)?.bajo_minimo)
-        ? `${faltanVotos(minimo)} para mostrar ${datos.alcance.tipo === 'mesa' ? 'esta mesa' : 'estos resultados'} en la ronda ${n}.`
+        ? deCual(n) + mensajeFaltanVotos(maxVotos(datos.proyectos_vivos.map((p) => deRonda(p, n)).filter((r) => r?.bajo_minimo)), minimo)
         : enCurso === n
-          ? `Aún no hay resultados en la ronda ${n}. Se actualizan cada ${VOTOS_POR_FOTO} votos nuevos.`
+          ? `Aún no hay resultados en la ronda ${n}. Se actualizan ${cadaCuantos(porFotoDe(datos))}.`
           : `Aún no hay votos en la ronda ${n}.`,
     )
   // Escala común: los votos de la ronda con más votos entre las que se ven.
@@ -96,7 +101,7 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
               </h3>
               <div className="hz-cv-rejilla" style={{ gridTemplateColumns: `repeat(${conDatos.length}, minmax(0, 1fr))` }}>
                 {conDatos.map((n) => (
-                  <CabRonda key={n} n={n} r={deRonda(p, n)} />
+                  <CabRonda key={n} n={n} r={deRonda(p, n)} minimo={minimo} />
                 ))}
                 {datos.criterios.map((c) => [
                   <p key={c.id} className="hz-cv-crit" style={{ gridColumn: `1 / span ${conDatos.length}` }} title={descripcionCriterio(c.id) ?? undefined}>
@@ -126,18 +131,23 @@ export function ComoVoto({ datos, rondas, controles }: { datos: DatosComoVoto; r
 }
 
 /** «R1 · 12 votos» y la escala 1 3 5 7 9 alineada con las barras. */
-function CabRonda({ n, r }: { n: 1 | 2; r: RondaDatos | undefined }) {
+function CabRonda({ n, r, minimo }: { n: 1 | 2; r: RondaDatos | undefined; minimo: number }) {
   return (
     <div className="hz-cv-ronda">
       <p className={`hz-cv-ronda-t hz-cv-r${n}`}>
         <i className={`hz-cv-marca hz-cv-marca-r${n}`} aria-hidden="true" />R{n}
         <span className="hz-cv-n"> · {personas(r?.n_votos ?? 0)}</span>
       </p>
-      <p className="hz-cv-escala" aria-hidden="true">
-        {ESCALA.map((k) => (
-          <span key={k}>{k}</span>
-        ))}
-      </p>
+      {r?.distribucion ? (
+        <p className="hz-cv-escala" aria-hidden="true">
+          {ESCALA.map((k) => (
+            <span key={k}>{k}</span>
+          ))}
+        </p>
+      ) : (
+        // Este proyecto no llega al mínimo en esta ronda: un mensaje con el conteo, no una celda por criterio.
+        <p className="hz-cv-falta">{r?.bajo_minimo ? mensajeFaltanVotos(r.n_votos ?? 0, minimo) : 'Sin votos todavía.'}</p>
+      )}
     </div>
   )
 }
@@ -160,7 +170,7 @@ function Barras({
   escala: number
 }) {
   const dist = r?.distribucion?.[criterioId]
-  if (!dist) return <p className="hz-cv-falta">{r?.bajo_minimo ? 'Faltan votos' : 'Sin votos'}</p>
+  if (!dist) return <span className="hz-cv-vacia" aria-hidden="true" />
   const texto = `${proyecto}, ${criterio}, ronda ${n}: ` + ESCALA.map((k) => `${votos(dist[k] ?? 0)} en ${k}`).join(', ')
   return (
     <div className={`hz-cv-barras hz-cv-barras-r${n}`} role="img" aria-label={texto}>

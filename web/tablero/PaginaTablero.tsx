@@ -15,7 +15,7 @@ import { PreguntaGuiada } from './PreguntaGuiada'
 import { usePollingTablero } from './usePollingTablero'
 import { accionDeTecla, usePantallaCompleta } from './usePantallaCompleta'
 import {
-  EN_VIVO,
+  enVivo,
   PARAMETRO_MODO,
   esSinPermiso,
   hayConvergencia,
@@ -36,6 +36,7 @@ import {
 import { EncabezadoProducto, LogoEstratek, PiePagina, useTemaDocumento } from '../shared/ui'
 import type { DatosTablero, EstadoSala, Vista } from './tipos'
 import './tablero.css'
+import { AVISO_ENSAYO } from '../shared/votos'
 
 const VISTAS: { id: Vista; texto: string; tecla: string }[] = [
   { id: 1, texto: 'Ronda 1', tecla: '1' },
@@ -251,6 +252,12 @@ export default function PaginaTablero() {
         reconectando={conexion === 'punto'}
       />
       <div className="hz-area hz-pagina">
+        {/* Sala de ensayo (21-oct): el mínimo es 1 voto; se dice para que nadie lo lea como un taller con cliente. */}
+        {datos.ensayo && (
+          <p className="hz-aviso-ensayo" role="note">
+            {AVISO_ENSAYO}
+          </p>
+        )}
         <FranjaFase estado={datos.sala?.estado} />
         {conexion === 'aviso' && error && (
           <p className="hz-aviso-error" role="alert">
@@ -498,8 +505,8 @@ function Encabezado({
                 </span>
               )}
               {insignia === 'en_vivo' && (
-                <span className="hz-tb-insignia hz-tb-insignia-vivo" title={EN_VIVO.titulo}>
-                  {EN_VIVO.texto}
+                <span className="hz-tb-insignia hz-tb-insignia-vivo" title={enVivo(datos).titulo}>
+                  {enVivo(datos).texto}
                 </span>
               )}
               {reconectando && (
