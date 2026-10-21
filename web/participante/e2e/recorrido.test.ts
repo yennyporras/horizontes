@@ -96,6 +96,8 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     // Otra persona de la mesa (otro celular, por API).
     const tokenB = await inscribirApi(e, mesa, 'Beto Ruiz', 'beto.e2e@empresa.com')
     const tokenC = await inscribirApi(e, mesa, 'Ciro Ríos', 'ciro.e2e@empresa.com')
+    // Alguien de otra mesa que no vota: la sala no queda completa, así la ronda 2 no se abre sola y se ve el precierre.
+    await inscribirApi(e, sala.mesas[1].codigo, 'Dana Gil', 'dana.e2e@empresa.com')
 
     // Ronda 1: el celular se entera solo (polling).
     await accion(e, sala.id, 'abrir_ronda_1')
