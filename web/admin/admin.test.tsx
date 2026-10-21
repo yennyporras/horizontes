@@ -278,7 +278,7 @@ describe('panel admin contra el simulador', () => {
   it('avisa el precierre de una mesa sin cerrar la ronda y muestra el resultado preliminar', async () => {
     montar('/admin/login')
     await entrar('paola')
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     // En el simulador inicial la Mesa 1 tiene a todos sus inscritos completos.
     expect(await screen.findByText(/Todos votaron en Mesa 1/, { selector: 'strong' })).toBeTruthy()
@@ -324,7 +324,7 @@ describe('panel admin contra el simulador', () => {
   it('explica que el export es registro interno y que las vistas públicas siguen anónimas', async () => {
     montar('/admin/login')
     await entrar('paola')
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Exportar'))
     // QA-A-30: el mismo aviso de datos personales que Participantes y Respuestas.
@@ -338,7 +338,7 @@ describe('panel admin contra el simulador', () => {
   it('Sala en vivo muestra «Cómo votó la sala» con el conteo 1-3-5-7-9 y cambia a una mesa', async () => {
     montar('/admin/login')
     await entrar('paola')
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     expect(await screen.findByRole('heading', { name: 'Cómo votó la sala' })).toBeTruthy()
     // Ronda 1 en curso: solo R1, 6 criterios por cada proyecto vivo, cada barra con su conteo accesible.
     const barras = screen.getAllByRole('img', { name: /, ronda 1: / })
@@ -352,7 +352,7 @@ describe('panel admin contra el simulador', () => {
   it('Hojas muestra las 6 hojas de cada proyecto vivo, de solo lectura', async () => {
     montar('/admin/login')
     await entrar('paola')
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Hojas'))
     const insumex = await screen.findByRole('region', { name: 'INSUMEX' })
@@ -427,7 +427,7 @@ describe('rúbricas en la configuración de la sala', () => {
   it('con votos deja todo deshabilitado y explica por qué', async () => {
     montar('/admin/login')
     await entrar('paola')
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Secciones del panel' })).getByText('Configuración'))
     await screen.findByLabelText('Nivel 9')
@@ -454,7 +454,7 @@ describe('cambios del 19-oct en el panel', () => {
   async function abrirDemo(usuario = 'paola') {
     montar('/admin/login')
     await entrar(usuario)
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
   }
 
