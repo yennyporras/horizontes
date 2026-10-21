@@ -794,6 +794,14 @@ async function pantallaCompletaMatriz(page: Page, w: number, h: number, capturas
   await page.mouse.move(px, py)
   for (let i = 0; i < 4; i++) await page.mouse.wheel(0, -200)
   await expect.poll(async () => (await caja())[2]).toBeLessThan(entera[2] * 0.6)
+  // La rueda llega en varios eventos: se espera a que el zoom se asiente antes de medir.
+  let previa = ''
+  await expect.poll(async () => {
+    const ahora = (await caja()).join(' ')
+    const quieta = ahora === previa
+    previa = ahora
+    return quieta
+  }, { interval: 250 }).toBe(true)
   const z = await caja()
   expect(z[2] / z[3], 'el zoom conserva la proporción').toBeCloseTo(entera[2] / entera[3], 2)
   // Punto del lienzo bajo el puntero: el mismo antes y después del zoom.
