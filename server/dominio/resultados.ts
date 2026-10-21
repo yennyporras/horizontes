@@ -1,6 +1,6 @@
 import { type Db, todos } from '../db/index.js'
 import { CRITERIOS, type CriterioId, type Distribucion, type Entradas, type Pesos, calcularPunto } from '../../shared/motor/motor.js'
-import { VOTOS_POR_ACTUALIZACION, agregadoPublicado, votosDelAlcance } from './fotos.js'
+import { agregadoPublicado, votosDelAlcance } from './fotos.js'
 import type { CriterioSemilla } from './semilla.js'
 import { type MesaFila, type SalaFila, mesasDeSala } from './salas.js'
 import { isoEnZona } from './util.js'
@@ -142,19 +142,20 @@ export function progreso(db: Db, sala: SalaFila, mesas: MesaFila[] = mesasDeSala
 export type Alcance = { tipo: 'sala' } | { tipo: 'mesa'; mesa: MesaFila }
 
 /**
- * Votos mínimos de un proyecto en un alcance y ronda para mostrar promedios, distribución, punto y total (privacidad).
- * 3 y no 2: con 2 votos, quien votó despeja la respuesta del otro (acta del 16-oct P6).
+ * Mínimo histórico de votos para mostrar resultados en un taller (acta del 16-oct P6). Desde el 21-oct no se aplica:
+ * `minimoVotos(sala)` es 1 en todas las salas. Se conserva por si vuelve.
  */
 export const MINIMO_VOTOS = 3
 
 /**
- * En una sala de ensayo (y en la demostración) los resultados se muestran desde 1 voto y se renuevan con cada voto, para
- * probar sin juntar 3 personas (decisión de Paola del 21-oct). Los talleres con cliente conservan el mínimo de 3 y las
- * fotos de 3 en 3. Las vistas lo avisan con `ensayo: true`.
+ * Decisión de Paola del 21-oct («cada voto en todas siempre en anonimato»): en todas las salas, talleres y ensayos, los
+ * resultados se muestran desde 1 voto y las fotos del consolidado se renuevan con cada voto. Las vistas públicas nunca
+ * muestran nombres ni respuestas sueltas con nombre. Las funciones se conservan por si vuelve el mínimo por sala.
+ * `ensayo: true` sigue en la respuesta para las salas de ensayo: las vistas lo avisan y las métricas no las cuentan.
  */
 export const esEnsayo = (sala: { tipo?: string | null }) => sala.tipo === 'ensayo'
-export const minimoVotos = (sala: { tipo?: string | null }) => (esEnsayo(sala) ? 1 : MINIMO_VOTOS)
-export const votosPorActualizacion = (sala: { tipo?: string | null }) => (esEnsayo(sala) ? 1 : VOTOS_POR_ACTUALIZACION)
+export const minimoVotos = (_sala: { tipo?: string | null }) => 1
+export const votosPorActualizacion = (_sala: { tipo?: string | null }) => 1
 
 export interface OpcionesTablero {
   alcance: Alcance
@@ -226,7 +227,7 @@ function calcularTablero(db: Db, sala: SalaFila, op: OpcionesTablero) {
     .filter((p) => p.modo === 'vivo')
     .map((p) => {
       const rondas: RondaPublicada[] = op.rondas.map((r) => {
-        // D2: con la ronda abierta, la última foto del alcance (se renueva de 3 en 3); con la ronda cerrada, el exacto.
+        // D2: con la ronda abierta, la última foto del alcance (desde el 21-oct se renueva con cada voto); con la ronda cerrada, el exacto.
         const { agregado: a, n_votos } = agregadoPublicado(
           db,
           { salaId: sala.id, alcance: mesaId ?? 'sala', ronda: r, proyectoId: p.id, versionSala: sala.version, umbral: votosPorActualizacion(sala) },

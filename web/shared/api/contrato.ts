@@ -220,7 +220,7 @@ export interface Tablero {
   preliminar: boolean
   /** Votos mínimos por proyecto y ronda para mostrar resultados de un alcance: 3 en un taller, 1 en una sala de ensayo. */
   minimo_votos?: number
-  /** Aditivo (21-oct): la sala es de ensayo; los resultados se muestran desde 1 voto y se renuevan con cada voto. */
+  /** Aditivo (21-oct): la sala es de ensayo y no cuenta en las cifras de talleres. Desde el 21-oct todas las salas muestran desde 1 voto y con cada voto. */
   ensayo?: true
   /**
    * Consolidado en vivo (20-oct, D2): con la ronda abierta, el agregado de cada alcance, ronda y proyecto es una foto que se
@@ -465,3 +465,20 @@ export type AccionSala =
   | 'reabrir_sala'
   /** B-2 (20-oct): token nuevo para el tablero; los enlaces anteriores dejan de funcionar. Válida en cualquier estado. */
   | 'regenerar_token_tablero'
+  /** 21-oct: ronda 2 (abierta o cerrada) → ronda 1 abierta; ronda 1 → inscripción. Conserva los votos. */
+  | 'volver_ronda_anterior'
+  /** 21-oct, con `ronda`: 2 borra la ronda 2 y la deja abierta; 1 borra las dos rondas y deja la ronda 1 abierta. */
+  | 'reiniciar_desde_ronda'
+  /** 21-oct, con `confirmar`: borra los votos de las dos rondas y vuelve a inscripción, con mesas e inscritos. */
+  | 'reiniciar_sala'
+
+/**
+ * Cuerpo de `POST /api/admin/salas/{id}/acciones`. `ronda` (1 o 2): en `reiniciar_ronda` es opcional (por defecto la
+ * actual) y en `reiniciar_desde_ronda` obligatoria (422 RONDA_INVALIDA). `confirmar`: solo `reiniciar_sala`, el nombre
+ * exacto de la sala (422 CONFIRMACION_INVALIDA; 500 RESPALDO_FALLIDO si no se pudo respaldar: no se borra nada).
+ */
+export interface CuerpoAccionSala {
+  accion: AccionSala
+  ronda?: 1 | 2
+  confirmar?: string
+}

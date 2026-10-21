@@ -48,6 +48,9 @@ describe('Exportar: selector de sala', () => {
     expect(selector.tagName).toBe('SELECT')
     expect(selector.disabled).toBe(true)
     expect(screen.getByText('Solo hay una sala.')).toBeTruthy()
+    // 21-oct: resultados.csv trae los promedios desde 1 voto, como el tablero.
+    expect(screen.getByText(/Los promedios salen desde 1 voto por mesa y ronda, sin nombres, como en el tablero\./)).toBeTruthy()
+    expect(screen.queryByText(/3 votos o más/)).toBeNull()
   })
 
   it('lista todas las salas con código, estado y si es ensayo; al cambiar va a Exportar de esa sala y la recuerda', async () => {

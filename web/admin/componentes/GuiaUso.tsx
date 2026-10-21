@@ -86,8 +86,9 @@ export const PASOS_GUIA: PasoGuia[] = [
     hace: (
       <p>
         Es el control del taller: un solo botón con el paso que sigue (abrir la inscripción, abrir y cerrar cada ronda,
-        cerrar la sala) y, aparte, Corregir. Ves cuántas personas de cada mesa ya votaron, la pregunta en pantalla si usas el
-        modo guiado y la bitácora.
+        cerrar la sala) y, aparte, Corregir. En Corregir, «Reiniciar…» te deja elegir qué reiniciar: volver a la ronda
+        anterior sin borrar votos, reiniciar la ronda 2, la ronda 1 o la sala completa, con una línea de qué pasa en cada
+        opción. Ves cuántas personas de cada mesa ya votaron, la pregunta en pantalla si usas el modo guiado y la bitácora.
       </p>
     ),
     espera: (
@@ -114,7 +115,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     titulo: 'Respuestas',
     seccion: 'Respuestas',
     hace: <p>Mira qué calificó cada persona en cada ronda y proyecto, con filtros por mesa, ronda y proyecto.</p>,
-    espera: <p>Los datos por persona solo los ven los administradores: no los proyectes. El público ve promedios y solo con 3 votos o más.</p>,
+    espera: <p>Los datos por persona solo los ven los administradores: no los proyectes. El público ve promedios de la mesa o de la sala, que se actualizan con cada voto, sin nombres.</p>,
   },
   {
     titulo: 'Exportar',

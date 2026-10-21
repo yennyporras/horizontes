@@ -1,5 +1,5 @@
-// Salas de ensayo (decisión de Paola del 21-oct): resultados desde 1 voto y fotos que se renuevan con cada voto, para
-// probar sin juntar 3 personas. Un taller con cliente conserva el mínimo de 3.
+// Salas de ensayo y talleres (decisiones de Paola del 21-oct): primero los ensayos y después todas las salas muestran
+// resultados desde 1 voto, con fotos que se renuevan con cada voto. `ensayo: true` solo marca las salas de ensayo.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { type Entorno, accion, crearEntorno, crearSala, inscribir, votar } from './ayuda'
 
@@ -24,13 +24,15 @@ async function salaConUnVoto(tipo: 'taller' | 'ensayo') {
 }
 
 describe('mínimo de votos según el tipo de sala', () => {
-  it('taller con cliente: con 1 voto no muestra resultados (mínimo 3)', async () => {
+  it('taller con cliente: con 1 voto ya muestra el resultado y no lo marca como ensayo', async () => {
     const t = await salaConUnVoto('taller')
-    expect(t.minimo_votos).toBe(3)
+    expect(t.minimo_votos).toBe(1)
+    expect(t.votos_por_actualizacion).toBe(1)
     expect(t.ensayo).toBeUndefined()
     const r1 = t.proyectos_vivos.find((p: { id: string }) => p.id === 'insumex').rondas.find((r: { ronda: number }) => r.ronda === 1)
-    expect(r1.bajo_minimo).toBe(true)
-    expect(r1.promedios).toBeNull()
+    expect(r1.bajo_minimo).toBeUndefined()
+    expect(r1.n_votos).toBe(1)
+    expect(r1.promedios).not.toBeNull()
   })
 
   it('ensayo: con 1 voto ya muestra el resultado y lo marca como ensayo', async () => {

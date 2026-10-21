@@ -32,12 +32,47 @@ const CAMINO: Record<Estado, string[]> = {
 // Estado al que lleva cada acción permitida (SPEC §3). Lo que no aparece debe responder 409 TRANSICION_INVALIDA.
 const PERMITIDAS: Record<Estado, Partial<Record<(typeof ACCIONES)[number], Estado>>> = {
   preparada: { abrir_inscripcion: 'inscripcion', abrir_ronda_1: 'r1_abierta', cerrar_sala: 'cerrada' },
-  inscripcion: { abrir_ronda_1: 'r1_abierta', cerrar_sala: 'cerrada' },
-  r1_abierta: { cerrar_ronda_1: 'r1_cerrada', reiniciar_ronda: 'r1_abierta', cerrar_sala: 'cerrada' },
-  r1_cerrada: { abrir_ronda_2: 'r2_abierta', reabrir_ronda: 'r1_abierta', reiniciar_ronda: 'r1_cerrada', cerrar_sala: 'cerrada' },
-  r2_abierta: { cerrar_ronda_2: 'r2_cerrada', reiniciar_ronda: 'r2_abierta', cerrar_sala: 'cerrada' },
-  r2_cerrada: { reabrir_ronda: 'r2_abierta', reiniciar_ronda: 'r2_cerrada', cerrar_sala: 'cerrada' },
-  cerrada: { reabrir_sala: 'r1_cerrada' },
+  inscripcion: { abrir_ronda_1: 'r1_abierta', cerrar_sala: 'cerrada', reiniciar_sala: 'inscripcion' },
+  r1_abierta: {
+    cerrar_ronda_1: 'r1_cerrada',
+    reiniciar_ronda: 'r1_abierta',
+    cerrar_sala: 'cerrada',
+    volver_ronda_anterior: 'inscripcion',
+    reiniciar_desde_ronda: 'r1_abierta',
+    reiniciar_sala: 'inscripcion',
+  },
+  r1_cerrada: {
+    abrir_ronda_2: 'r2_abierta',
+    reabrir_ronda: 'r1_abierta',
+    reiniciar_ronda: 'r1_cerrada',
+    cerrar_sala: 'cerrada',
+    volver_ronda_anterior: 'inscripcion',
+    reiniciar_desde_ronda: 'r1_abierta',
+    reiniciar_sala: 'inscripcion',
+  },
+  r2_abierta: {
+    cerrar_ronda_2: 'r2_cerrada',
+    reiniciar_ronda: 'r2_abierta',
+    cerrar_sala: 'cerrada',
+    volver_ronda_anterior: 'r1_abierta',
+    reiniciar_desde_ronda: 'r1_abierta',
+    reiniciar_sala: 'inscripcion',
+  },
+  r2_cerrada: {
+    reabrir_ronda: 'r2_abierta',
+    reiniciar_ronda: 'r2_cerrada',
+    cerrar_sala: 'cerrada',
+    volver_ronda_anterior: 'r1_abierta',
+    reiniciar_desde_ronda: 'r1_abierta',
+    reiniciar_sala: 'inscripcion',
+  },
+  cerrada: { reabrir_sala: 'r1_cerrada', reiniciar_sala: 'inscripcion' },
+}
+
+// Cuerpo de las acciones que lo piden (21-oct): la ronda a reiniciar y el nombre de la sala.
+const CUERPO: Partial<Record<(typeof ACCIONES)[number], object>> = {
+  reiniciar_desde_ronda: { ronda: 1 },
+  reiniciar_sala: { confirmar: 'Sala de prueba' },
 }
 
 describe('máquina de estados: matriz completa estado × acción', () => {
@@ -48,7 +83,7 @@ describe('máquina de estados: matriz completa estado × acción', () => {
         const s = await crearSala(e, 1)
         for (const paso of CAMINO[estado]) expect((await accion(e, s.id, paso)).statusCode).toBe(200)
         const antes = await detalle(s.id)
-        const r = await accion(e, s.id, a)
+        const r = await accion(e, s.id, a, CUERPO[a])
         const despues = await detalle(s.id)
         if (hacia) {
           expect(r.statusCode, r.body).toBe(200)

@@ -273,8 +273,9 @@ export default function PaginaInicio() {
                   celular. No los usamos para publicidad ni los compartimos con terceros.
                 </li>
                 <li>
-                  <strong>Quién ve qué.</strong> En el tablero y en los celulares nadie ve tu nombre ni tus calificaciones: solo promedios de al
-                  menos 3 personas. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo.
+                  <strong>Quién ve qué.</strong> En el tablero y en los celulares nadie ve tu nombre: se ven los promedios de tu mesa o de la
+                  sala, que se actualizan con cada calificación. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu
+                  nombre, para conducirlo.
                 </li>
                 <li>
                   <strong>Con tu autorización.</strong> Los tratamos según la ley del país donde se hace el taller: en Colombia, la Ley 1581

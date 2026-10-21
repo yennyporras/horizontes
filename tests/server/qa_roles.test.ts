@@ -237,7 +237,7 @@ describe('convergencia R1 → R2', () => {
     expect(res.convergencia_alcance).toEqual({ reduccion_pct: 48 })
   })
 
-  it('sin convergencia si una de las rondas está bajo el mínimo', async () => {
+  it('sin convergencia si una de las rondas no tiene resultados', async () => {
     const s = await crearSala(e, 1)
     await accion(e, s.id, 'abrir_inscripcion')
     await accion(e, s.id, 'abrir_ronda_1')
@@ -245,10 +245,9 @@ describe('convergencia R1 → R2', () => {
     for (const p of ps) await votarAmbos(p.token, 1)
     await accion(e, s.id, 'cerrar_ronda_1')
     await accion(e, s.id, 'abrir_ronda_2')
-    for (const p of ps.slice(0, 2)) await votarAmbos(p.token, 2)
     await accion(e, s.id, 'cerrar_ronda_2')
     const t = (await tablero(s)).json()
-    expect(ronda(t, 'insumex', 2).bajo_minimo).toBe(true)
+    expect(ronda(t, 'insumex', 2)).toMatchObject({ n_votos: 0, promedios: null })
     expect(vivo(t, 'insumex')).not.toHaveProperty('convergencia')
     expect(t).not.toHaveProperty('convergencia_alcance')
   })
@@ -268,7 +267,7 @@ describe('convergencia R1 → R2', () => {
 })
 
 describe('resultados.csv', () => {
-  it('sin datos personales: por alcance, ronda y proyecto, solo con 3 votos o más, con coma decimal', async () => {
+  it('sin datos personales: por alcance, ronda y proyecto, desde 1 voto (21-oct), con coma decimal', async () => {
     const s = await crearSala(e, 2)
     await accion(e, s.id, 'abrir_inscripcion')
     await accion(e, s.id, 'abrir_ronda_1')
@@ -291,12 +290,14 @@ describe('resultados.csv', () => {
       ['sala', '1', 'NUTRIWHAT', '5'],
       ['Mesa 1', '1', 'INSUMEX', '3'],
       ['Mesa 1', '1', 'NUTRIWHAT', '3'],
+      ['Mesa 2', '1', 'INSUMEX', '2'],
+      ['Mesa 2', '1', 'NUTRIWHAT', '2'],
     ])
     // Mesa 1: alineación (1 + 5 + 5) / 3 = 3,67; eje Y = 3,67·0,7 + 5·0,3 = 4,07.
     expect(lineas[3][8]).toBe('3,67')
     expect(lineas[3][12]).toBe('4,07')
     expect(lineas[1][4]).toBe('5,00')
-    for (const dato of ['uno0@x.co', 'Persona Prueba', 'Mesa 2', '127.0.0.1']) expect(r.body).not.toContain(dato)
+    for (const dato of ['uno0@x.co', 'Persona Prueba', '127.0.0.1']) expect(r.body).not.toContain(dato)
   })
 
   it('un archivo que no existe responde 404 y nombra los tres', async () => {

@@ -357,6 +357,65 @@ function avanzarDemo() {
   }
 }
 
+/** Reiniciar a elección (21-oct), como server/dominio/estados.ts: a dónde vuelve cada estado. */
+const VOLVER: Partial<Record<EstadoSala, EstadoSala>> = { r1_abierta: 'inscripcion', r1_cerrada: 'inscripcion', r2_abierta: 'r1_abierta', r2_cerrada: 'r1_abierta' }
+const NOMBRE_ESTADO: Record<EstadoSala, string> = {
+  preparada: 'preparada',
+  inscripcion: 'en inscripción',
+  r1_abierta: 'con la ronda 1 abierta',
+  r1_cerrada: 'con la ronda 1 cerrada',
+  r2_abierta: 'con la ronda 2 abierta',
+  r2_cerrada: 'con la ronda 2 cerrada',
+  cerrada: 'cerrada',
+}
+
+/**
+ * `volver_ronda_anterior`, `reiniciar_desde_ronda` y `reiniciar_sala` como el servidor: mismos estados, errores y
+ * eventos. El simulador no guarda votos sueltos: borrar votos es dejar a todos sin completar la ronda.
+ */
+function reiniciarSimulado(s: SalaDetalle, b: Record<string, unknown>, por: string): Respuesta | null {
+  const accion = b.accion
+  if (accion !== 'volver_ronda_anterior' && accion !== 'reiniciar_desde_ronda' && accion !== 'reiniciar_sala') return null
+  const desde = s.sala.estado
+  const invalida = (que: string) => error(409, 'TRANSICION_INVALIDA', `No se puede ${que}: la sala está ${NOMBRE_ESTADO[desde]}.`)
+  const enRonda = ['r1_abierta', 'r1_cerrada', 'r2_abierta', 'r2_cerrada'].includes(desde)
+  let hacia: EstadoSala
+  let tipo: string
+  const detalle: Record<string, unknown> = { accion, desde }
+  if (accion === 'volver_ronda_anterior') {
+    if (!VOLVER[desde]) return invalida('volver a la ronda anterior')
+    hacia = VOLVER[desde]!
+    tipo = 'ronda_anterior'
+  } else if (accion === 'reiniciar_desde_ronda') {
+    if (b.ronda !== 1 && b.ronda !== 2) return error(422, 'RONDA_INVALIDA', 'La ronda a reiniciar debe ser 1 o 2.')
+    if (b.ronda === 2 ? !desde.startsWith('r2_') : !enRonda) return invalida(`reiniciar la ronda ${b.ronda}`)
+    hacia = b.ronda === 2 ? 'r2_abierta' : 'r1_abierta'
+    detalle.rondas_borradas = b.ronda === 2 ? [2] : [1, 2]
+    detalle.votos_borrados = s.participantes.filter((p) => p.completo_ronda).length * 2
+    tipo = 'reinicio_ronda'
+  } else {
+    if (desde === 'preparada') return invalida('reiniciar la sala completa')
+    if (typeof b.confirmar !== 'string' || b.confirmar.trim() !== s.sala.nombre) {
+      return error(422, 'CONFIRMACION_INVALIDA', `Para reiniciar la sala escribe su nombre exacto: «${s.sala.nombre}».`)
+    }
+    hacia = 'inscripcion'
+    detalle.votos_borrados = s.participantes.filter((p) => p.completo_ronda).length * 2
+    tipo = 'reinicio_sala'
+  }
+  const ronda = hacia === 'r2_abierta' ? 2 : hacia === 'r1_abierta' ? 1 : 0
+  s.sala.estado = hacia
+  s.sala.ronda_actual = ronda
+  s.sala.pregunta_guiada = null
+  if (ronda < 2) s.sala.config.revelar_hojas = false
+  if (accion !== 'volver_ronda_anterior') {
+    s.participantes.forEach((p) => (p.completo_ronda = false))
+    completaronR1.delete(s.sala.id)
+  }
+  derivar(s)
+  tocar(s, tipo, por, { ...detalle, hacia, ...(ronda ? { ronda } : {}) })
+  return ok({ sala: s.sala })
+}
+
 function aplicarAccion(s: SalaDetalle, accion: Accion): EstadoSala | null {
   if (!ACCIONES_POR_ESTADO[s.sala.estado].includes(accion)) return null
   if (accion === 'reiniciar_ronda') return s.sala.estado
@@ -475,15 +534,15 @@ function csv(s: SalaDetalle, archivo: string): string {
     archivo === 'inscritos.csv'
       ? [
           ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'ip', 'pais'],
-          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.1', p.consentimiento_at, p.ip, p.pais]),
+          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.3', p.consentimiento_at, p.ip, p.pais]),
         ]
       : archivo === 'resultados.csv'
         ? [
-            // Como el servidor: sin datos personales, solo alcances con 3 votos o más (aquí, los del tablero de ejemplo).
+            // Como el servidor: sin datos personales, desde 1 voto (21-oct; aquí, los del tablero de ejemplo).
             ['alcance', 'ronda', 'proyecto', 'n_votos', ...CRITERIOS.map((c) => c.id), 't2m', 'eje_x', 'eje_y'],
             ...tableroBase.proyectos_vivos.flatMap((p) =>
               p.rondas
-                .filter((r) => r.n_votos >= 3 && r.promedios)
+                .filter((r) => r.n_votos >= 1 && r.promedios)
                 .map((r) => ['sala', r.ronda, p.nombre, r.n_votos, ...[...CRITERIOS.map((c) => (r.promedios as Record<string, number>)[c.id]), r.t2m, r.eje_x, r.eje_y].map(coma)]),
             ),
           ]
@@ -580,9 +639,9 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (!s) return error(404, 'SALA_NO_EXISTE', 'Esa sala no existe.')
     const m = s.mesas.find((x) => x.id === new URLSearchParams(consulta).get('mesa'))
     const alcance = m ? { tipo: 'mesa', mesa_id: m.id, mesa_nombre: m.nombre } : { tipo: 'sala' }
-    // Como el servidor (21-oct): en una sala de ensayo, resultados desde 1 voto, fotos de 1 en 1 y `ensayo: true`.
-    const ensayo = s.sala.tipo === 'ensayo' ? { ensayo: true, minimo_votos: 1, votos_por_actualizacion: 1 } : {}
-    return ok({ ...structuredClone(tableroBase), version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null, ...ensayo })
+    // Como el servidor (21-oct): en todas las salas, resultados desde 1 voto y con cada voto; `ensayo: true` solo en los ensayos.
+    const ensayo = s.sala.tipo === 'ensayo' ? { ensayo: true } : {}
+    return ok({ ...structuredClone(tableroBase), version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null, minimo_votos: 1, votos_por_actualizacion: 1, ...ensayo })
   }
 
   const a = sesion()
@@ -708,6 +767,8 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
         tocar(s, 'token_tablero_regenerado', por)
         return ok({ sala: s.sala })
       }
+      const reinicio = reiniciarSimulado(s, b, por)
+      if (reinicio) return reinicio
       const accion = b.accion as Accion
       const destino = aplicarAccion(s, accion)
       if (!destino) return error(409, 'TRANSICION_INVALIDA', 'Esa acción no aplica en el estado actual de la sala.')

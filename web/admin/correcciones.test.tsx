@@ -110,7 +110,9 @@ describe('textos y utilidades de las correcciones', () => {
     expect(PASO_SIGUIENTE.r2_cerrada).toBe('cerrar_sala')
     expect(PASO_SIGUIENTE.cerrada).toBeNull()
     // QA-A-05: lo que se puede corregir excluye el paso que sigue.
-    expect(accionesParaCorregir('r2_cerrada')).toEqual(['reabrir_ronda', 'reiniciar_ronda'])
+    expect(accionesParaCorregir('r2_cerrada')).toEqual(['reabrir_ronda'])
+    // 21-oct: «Reiniciar votos de la ronda» ya no va suelto en Corregir; lo reemplaza «Reiniciar…» (reiniciar.test.tsx).
+    expect(accionesParaCorregir('r1_abierta')).not.toContain('reiniciar_ronda')
     expect(accionesParaCorregir('preparada')).toEqual(['cerrar_sala'])
   })
 
@@ -206,7 +208,9 @@ describe('textos y utilidades de las correcciones', () => {
       expect(texto, f).not.toMatch(/Ver como participante|Tablero de toda la sala|Abrir tablero de la sala/)
     }
     const guia = readFileSync(join(__dirname, '../../docs/GUIA_FACILITADOR.md'), 'utf8')
-    for (const t of ['Tablero de la sala', 'Gráfica', 'Detallado', 'Guía de uso', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'Hacen falta al menos 3 votos', 'cada 3 votos nuevos']) expect(guia).toContain(t)
+    for (const t of ['Tablero de la sala', 'Gráfica', 'Detallado', 'Guía de uso', 'Vista previa del celular', 'Dar acceso de nuevo', 'Quitar la pregunta', 'con cada voto nuevo', 'Reiniciar…', 'Volver a la ronda anterior', 'Reiniciar la sala completa']) expect(guia).toContain(t)
+    // 21-oct: los promedios se ven desde 1 voto; la guía ya no promete el mínimo de 3.
+    expect(guia).not.toMatch(/Hacen falta al menos 3 votos|cada 3 votos nuevos|3 votos o más/)
     expect(guia).not.toMatch(/Abrir tablero de la sala|recuperar mi sesión|Hace falta al menos|En vivo, solo la gráfica|Con tabla|Recorrido/)
   })
 })
@@ -236,8 +240,8 @@ describe('Sala en vivo', () => {
     expect(document.getElementById(boton('Cerrar ronda 1').getAttribute('aria-describedby')!)?.textContent).toMatch(/Nadie más responde la ronda 1/)
     const corregir = within(control.getByRole('group', { name: 'Corregir' }))
     expect(corregir.getAllByRole('button').map((b) => [b.textContent, b.className.includes('hz-boton--peligro')])).toEqual([
-      ['Reiniciar votos de la ronda', true],
       ['Cerrar sala', true],
+      ['Reiniciar…', true],
     ])
     for (const n of ['Abrir inscripción', 'Abrir ronda 2', 'Reabrir ronda', 'Reabrir sala']) expect(screen.queryByRole('button', { name: n })).toBeNull()
   })
@@ -294,14 +298,14 @@ describe('Sala en vivo', () => {
     expect(await screen.findByText(/Enlace del tablero cambiado: los anteriores dejaron de funcionar/)).toBeTruthy()
   })
 
-  it('F-8 y D2: el resultado preliminar no parpadea al renovarse y explica que se renueva de 3 en 3', async () => {
+  it('F-8 y D2: el resultado preliminar no parpadea al renovarse y explica que se renueva con cada voto (21-oct)', async () => {
     let lento = false
     espiar((metodo, ruta) => (lento && ruta.startsWith('/api/tablero/') ? new Promise((r) => setTimeout(() => r(responderMock(metodo, ruta)), 300)) : undefined))
     await abrirDemo()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     const region = await screen.findByRole('region', { name: /Resultado preliminar · Mesa 1/ })
-    expect(within(region).getByText(/Se renueva cada 3 votos nuevos/)).toBeTruthy()
-    expect(screen.getByText(/El resultado preliminar se renueva cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final./)).toBeTruthy()
+    expect(within(region).getByText(/Se renueva con cada voto nuevo/)).toBeTruthy()
+    expect(screen.getByText(/El resultado preliminar se renueva con cada voto nuevo. Al cerrar la ronda se muestra el resultado final./)).toBeTruthy()
     lento = true
     // Siguiente (modo guiado) cambia la versión de la sala: el resultado se vuelve a pedir y tarda.
     fireEvent.click(within(screen.getByRole('region', { name: 'Pregunta en pantalla' })).getByRole('button', { name: 'Siguiente' }))
@@ -449,7 +453,7 @@ describe('Configuración', () => {
     await salaNueva('Avisos')
     fireEvent.click(nav().getByText('Configuración'))
     const despues = within(await screen.findByRole('group', { name: 'Después de votar' }))
-    expect(despues.getByText(/Se renueva cada 3 votos nuevos/)).toBeTruthy()
+    expect(despues.getByText(/Se renueva con cada voto nuevo/)).toBeTruthy()
     const registrado = despues.getByLabelText(/Voto registrado/) as HTMLInputElement
     fireEvent.click(registrado)
     expect(registrado.checked).toBe(true)

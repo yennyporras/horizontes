@@ -9,7 +9,7 @@ import { ConSala } from './EncabezadoSala'
 import { Rubricas } from './Rubricas'
 import type { ConfigSala, EstadoSala, Pais, SalaDetalle, Sector, TipoSala, ZonaHoraria } from '../tipos'
 import { ESTADOS, LARGO_MAXIMO_EMPRESA, PAISES, SECTORES, TIPOS_SALA, ZONAS, conPunto, fechaHora, horaLocalAIso, isoAHoraLocal, zonaSala, type CampoProgramado } from '../textos'
-import { MINIMO_TALLER, cadaCuantos } from '../../shared/votos'
+import { VOTOS_POR_FOTO, cadaCuantos } from '../../shared/votos'
 
 /** QA-A-13: el resultado de cada cambio sale junto al control que lo produjo (`lugar`), no arriba de la página. */
 type Aviso = { lugar: string; tono: 'exito' | 'error' | 'aviso'; texto: string } | null
@@ -277,10 +277,10 @@ function Visibilidad({ d, guardar, aviso }: PropsSeccion) {
             onChange={() => guardar({ vista_participante: 'en_vivo' }, 'Tras votar, el participante ve el resultado en vivo.', 'vista')}
           >
             Resultado en vivo <span className="etiqueta">Por defecto</span>
-            {/* D2: el consolidado en vivo se renueva de 3 en 3 votos (en un ensayo, con cada voto: 21-oct). */}
+            {/* Desde el 21-oct el consolidado en vivo se renueva con cada voto en todas las salas, sin nombres. */}
             <small>
-              Apenas vota, cada persona ve el resultado consolidado. Se renueva {cadaCuantos(d.sala.tipo === 'ensayo' ? 1 : MINIMO_TALLER)}
-              {d.sala.tipo === 'ensayo' ? ' porque es un ensayo' : ', así nadie deduce el voto de otro'}. Al cerrar la ronda se muestra el resultado final.
+              Apenas vota, cada persona ve el resultado consolidado de su mesa o de la sala, sin nombres. Se renueva {cadaCuantos(VOTOS_POR_FOTO)}. Al cerrar
+              la ronda se muestra el resultado final.
             </small>
           </Opcion>
           <Opcion

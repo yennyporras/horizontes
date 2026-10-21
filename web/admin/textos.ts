@@ -123,9 +123,92 @@ export const PASO_SIGUIENTE: Record<EstadoSala, Accion | null> = {
   cerrada: null,
 }
 
-/** QA-A-05: lo posible en este estado que no es el paso que sigue; va aparte, en «Corregir». */
+/**
+ * QA-A-05: lo posible en este estado que no es el paso que sigue; va aparte, en «Corregir». Desde el 21-oct
+ * «Reiniciar votos de la ronda» no va como botón suelto: lo reemplaza «Reiniciar…», que deja elegir qué reiniciar.
+ */
 export const accionesParaCorregir = (estado: EstadoSala): Accion[] =>
-  ORDEN_ACCIONES.filter((a) => ACCIONES_POR_ESTADO[estado].includes(a) && a !== PASO_SIGUIENTE[estado])
+  ORDEN_ACCIONES.filter((a) => ACCIONES_POR_ESTADO[estado].includes(a) && a !== PASO_SIGUIENTE[estado] && a !== 'reiniciar_ronda')
+
+/** Opciones del diálogo «Reiniciar…» (decisión 3 de Paola, 21-oct). */
+export type OpcionReinicio = 'volver' | 'ronda_2' | 'ronda_1' | 'sala'
+
+export interface Reinicio {
+  id: OpcionReinicio
+  titulo: string
+  /** Qué pasa con esta opción, en una línea, según el estado actual. */
+  quePasa: string
+  /** Cuerpo de POST /api/admin/salas/{id}/acciones. */
+  cuerpo: { accion: 'volver_ronda_anterior' | 'reiniciar_desde_ronda' | 'reiniciar_sala'; ronda?: 1 | 2 }
+  /** Borra votos: el botón va en rojo. */
+  borra: boolean
+  /** Texto del botón que confirma. */
+  boton: string
+  /** Aviso al terminar. */
+  hecho: string
+}
+
+const EN_RONDA_1: EstadoSala[] = ['r1_abierta', 'r1_cerrada']
+const EN_RONDA_2: EstadoSala[] = ['r2_abierta', 'r2_cerrada']
+
+/**
+ * Lo que se puede reiniciar en cada estado (el servidor valida lo mismo en server/dominio/estados.ts). Solo se muestran
+ * las opciones que aplican: con la sala cerrada o en inscripción, solo la sala completa; en preparada, nada.
+ */
+export function opcionesReinicio(estado: EstadoSala): Reinicio[] {
+  const r1 = EN_RONDA_1.includes(estado)
+  const r2 = EN_RONDA_2.includes(estado)
+  const opciones: Reinicio[] = []
+  if (r1 || r2) {
+    opciones.push({
+      id: 'volver',
+      titulo: 'Volver a la ronda anterior',
+      quePasa: r2
+        ? 'La sala vuelve a la ronda 1 abierta. Se conservan todos los votos de las dos rondas.'
+        : 'La sala vuelve a la inscripción abierta. Se conservan los votos de la ronda 1.',
+      cuerpo: { accion: 'volver_ronda_anterior' },
+      borra: false,
+      boton: 'Volver a la ronda anterior',
+      hecho: r2 ? 'Volviste a la ronda 1 abierta. Los votos se conservan.' : 'Volviste a la inscripción abierta. Los votos de la ronda 1 se conservan.',
+    })
+  }
+  if (r2) {
+    opciones.push({
+      id: 'ronda_2',
+      titulo: 'Reiniciar la ronda 2',
+      quePasa: 'Borra solo los votos de la ronda 2 y deja la ronda 2 abierta para votar de nuevo.',
+      cuerpo: { accion: 'reiniciar_desde_ronda', ronda: 2 },
+      borra: true,
+      boton: 'Reiniciar la ronda 2',
+      hecho: 'Reiniciaste la ronda 2: sus votos se borraron y está abierta.',
+    })
+  }
+  if (r1 || r2) {
+    opciones.push({
+      id: 'ronda_1',
+      titulo: 'Reiniciar la ronda 1',
+      quePasa: r2
+        ? 'Borra los votos de la ronda 1 y de la ronda 2 y deja la ronda 1 abierta.'
+        : 'Borra los votos de la ronda 1 y la deja abierta para votar de nuevo.',
+      cuerpo: { accion: 'reiniciar_desde_ronda', ronda: 1 },
+      borra: true,
+      boton: 'Reiniciar la ronda 1',
+      hecho: 'Reiniciaste la ronda 1: los votos se borraron y la ronda 1 está abierta.',
+    })
+  }
+  if (estado !== 'preparada') {
+    opciones.push({
+      id: 'sala',
+      titulo: 'Reiniciar la sala completa',
+      quePasa: 'Borra los votos de las dos rondas y vuelve a la inscripción abierta. Se conservan las mesas y los inscritos. Antes queda un respaldo de la base.',
+      cuerpo: { accion: 'reiniciar_sala' },
+      borra: true,
+      boton: 'Reiniciar la sala',
+      hecho: 'Reiniciaste la sala: los votos se borraron y la inscripción está abierta. Quedó un respaldo de la base en el servidor.',
+    })
+  }
+  return opciones
+}
 
 /** Qué pasa al pulsar cada acción, en una línea, junto al botón. */
 export const QUE_PASA: Record<Accion, string> = {
@@ -328,6 +411,9 @@ const TEXTO_EVENTO: Record<string, string> = {
   ronda_cerrada: 'Ronda cerrada',
   ronda_reabierta: 'Ronda reabierta',
   reinicio: 'Votos de la ronda reiniciados',
+  ronda_anterior: 'Volvió a la ronda anterior',
+  reinicio_ronda: 'Ronda reiniciada',
+  reinicio_sala: 'Sala reiniciada: votos borrados',
   sala_cerrada: 'Sala cerrada',
   sala_reabierta: 'Sala reabierta',
   precierre: 'Todos votaron',
@@ -400,6 +486,18 @@ export function textoEvento(ev: { tipo: string; detalle?: Record<string, unknown
       if (ronda) t = `Votos de la ronda ${ronda} reiniciados`
       if (typeof d.votos_borrados === 'number') t += ` (${d.votos_borrados} ${d.votos_borrados === 1 ? 'borrado' : 'borrados'})`
       break
+    case 'ronda_anterior':
+      t = d.hacia === 'inscripcion' ? 'Volvió a la inscripción abierta, con los votos de la ronda 1' : 'Volvió a la ronda 1 abierta, con los votos de las dos rondas'
+      break
+    case 'reinicio_ronda':
+    case 'reinicio_sala': {
+      const borradas = Array.isArray(d.rondas_borradas) ? d.rondas_borradas : null
+      if (ev.tipo === 'reinicio_sala') t = 'Sala reiniciada: votos de las dos rondas borrados, inscripción abierta'
+      else if (borradas?.length === 2) t = 'Ronda 1 reiniciada: votos de las dos rondas borrados'
+      else if (ronda) t = `Ronda ${ronda} reiniciada: sus votos borrados`
+      if (typeof d.votos_borrados === 'number') t += ` (${d.votos_borrados} ${d.votos_borrados === 1 ? 'voto' : 'votos'})`
+      break
+    }
     case 'precierre': {
       const delMensaje = typeof d.mensaje === 'string' ? /en (.+?)\./.exec(d.mensaje)?.[1] : undefined
       const donde = d.alcance === 'sala' ? 'la sala' : (mesa(d.mesa_id) ?? delMensaje ?? 'una mesa')

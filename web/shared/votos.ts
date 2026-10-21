@@ -1,9 +1,13 @@
 // Textos del mínimo de votos y del ensayo que comparten el tablero, el celular y el panel (21-oct, pedido de Paola: con
 // 1 persona, «Hacen falta al menos 3 votos» más 24 celdas «Faltan votos» se leían como un error de conteo).
 // El mínimo y la frecuencia de la foto los manda el servidor (`minimo_votos`, `votos_por_actualizacion`); aquí no se fijan.
+// Desde el 21-oct (decisión de Paola: «cada voto en todas siempre en anonimato») los dos son 1 en todas las salas.
 
-/** Mínimo de un taller con cliente: solo para el aviso del ensayo, que explica la diferencia. */
-export const MINIMO_TALLER = 3
+/**
+ * Votos que renuevan el resultado en vivo en todas las salas desde el 21-oct: con cada voto. Solo para los textos del
+ * panel que no tienen a mano la respuesta del tablero; donde llega `votos_por_actualizacion`, manda ese.
+ */
+export const VOTOS_POR_FOTO = 1
 
 const votos = (n: number) => `${n} ${n === 1 ? 'voto' : 'votos'}`
 
@@ -17,8 +21,11 @@ export function mensajeFaltanVotos(nVotos: number, minimo: number): string {
   return `${cuantos} para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.`
 }
 
-/** Aviso visible en una sala de ensayo (`ensayo: true`). */
-export const AVISO_ENSAYO = `Ensayo: los resultados se muestran desde 1 voto. En un taller con cliente hacen falta ${MINIMO_TALLER}.`
+/**
+ * Aviso visible en una sala de ensayo (`ensayo: true`). Desde el 21-oct todas las salas muestran desde 1 voto, así que
+ * el aviso ya no habla del mínimo: dice lo que de verdad distingue un ensayo.
+ */
+export const AVISO_ENSAYO = 'Sala de ensayo: no cuenta en las cifras de talleres.'
 
 /** «En vivo: se actualiza cada 3 votos» o, con fotos de 1 en 1 (ensayo), «En vivo: se actualiza con cada voto». */
 export function textoEnVivo(porFoto: number): string {

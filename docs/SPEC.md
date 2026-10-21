@@ -29,7 +29,7 @@ Fuente principal de requisitos: `docs/REQUISITOS_ORIGEN.md` (reunión Sebastian 
 - Solo el admin abre y cierra rondas. Abrir R2 exige R1 cerrada.
 - Inscripción permitida en `inscripcion`, `r1_abierta`, `r1_cerrada`, `r2_abierta`. No en `cerrada`.
 - Votos solo en `r1_abierta` (ronda 1) y `r2_abierta` (ronda 2).
-- El admin puede reabrir la ronda actual y reiniciar votos de una ronda (para ensayos). Todo queda en `eventos`.
+- El admin puede reabrir la ronda actual y reiniciar votos de una ronda (para ensayos). Desde el 21-oct elige qué reiniciar: volver a la ronda anterior (conserva los votos), reiniciar la ronda 2, reiniciar la ronda 1 (con la 2) o reiniciar la sala completa (votos de las dos rondas, con su nombre y respaldo). Todo queda en `eventos`.
 
 ## 4. Precierre automático
 - Participante **completo** en la ronda = tiene voto guardado para los 2 vivos en esa ronda.

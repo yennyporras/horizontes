@@ -186,7 +186,7 @@ export function Exportar() {
             )}
           </div>
           <p className="pista">
-            Los promedios solo salen con 3 votos o más por mesa y ronda. La matriz es la del tablero de la sala, como imagen que se abre en cualquier navegador o en
+            Los promedios salen desde 1 voto por mesa y ronda, sin nombres, como en el tablero. La matriz es la del tablero de la sala, como imagen que se abre en cualquier navegador o en
             PowerPoint.
           </p>
           <h2 className="titulo-grupo">Registro interno</h2>

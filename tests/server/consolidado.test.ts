@@ -1,9 +1,12 @@
-// D2 (20-oct): consolidado en vivo de 3 en 3. Reproduce el ataque de la auditoría (S-2): consultar el resultado antes y
-// después de un voto nuevo y restar para despejarlo. Con la foto congelada ya no se reconstruye.
+// D2 (20-oct): consolidado en vivo de 3 en 3 contra el ataque S-2 de la auditoría (restar dos consultas para despejar un
+// voto). Desde el 21-oct (decisión de Paola: «cada voto en todas siempre en anonimato») el tablero y los celulares se
+// actualizan con cada voto en todas las salas; el anonimato es que ninguna vista pública muestra nombres. El mecanismo
+// de la foto con umbral se conserva y se prueba directo, por si vuelve.
 // Desde la decisión 1 de Paola (R1 oculta, 20-oct) el tablero público y el celular no muestran la ronda 1 abierta: el
 // consolidado en vivo que todos ven es el de la ronda 2, así que el ataque se reproduce con la ronda 2 abierta.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { vistasEnCache } from '../../server/dominio/resultados'
+import { agregadoPublicado } from '../../server/dominio/fotos'
+import { contenido, vistasEnCache } from '../../server/dominio/resultados'
 import { type Entorno, RESPUESTAS_5, accion, crearEntorno, crearSala, inscribir, votar } from './ayuda'
 
 let e: Entorno
@@ -60,83 +63,72 @@ async function salaConTres() {
   return { s, tres }
 }
 
-describe('S-2: un voto nuevo ya no se despeja comparando consultas', () => {
-  it('reproduce el ataque por /api/resultados: tras un voto la foto no cambia; tras 3 votos cambia mezclada', async () => {
-    const { s, tres } = await salaConTres()
-    const antes = (await resultados(tres[0].token)).json()
-    expect(antes.votos_por_actualizacion).toBe(3)
-    expect(insumexR2(antes).n_votos).toBe(3)
-
-    const victima = await persona(s.mesas[2].codigo, 'victima@x.co')
-    expect((await votar(e, victima.token, 'insumex', 2, SECRETO)).statusCode).toBe(200)
-    const despues1 = (await resultados(tres[0].token)).json()
-    // La foto sigue igual: mismo n_votos, mismos promedios y misma distribución.
-    expect(despues1.proyectos_vivos).toEqual(antes.proyectos_vivos)
-    expect(reconstruir(insumexR2(antes), insumexR2(despues1))).toBeNull()
-
-    // Con 2 votos más de otras personas (3 cambios) la foto se renueva, pero la diferencia mezcla 3 votos.
-    const o1 = await persona(s.mesas[1].codigo, 'o1@x.co')
-    expect((await votar(e, o1.token, 'insumex', 2, OTRO_1)).statusCode).toBe(200)
-    expect((await resultados(tres[0].token)).json().proyectos_vivos).toEqual(antes.proyectos_vivos)
-    const o2 = await persona(s.mesas[1].codigo, 'o2@x.co')
-    expect((await votar(e, o2.token, 'insumex', 2, OTRO_2)).statusCode).toBe(200)
-    const despues3 = (await resultados(tres[0].token)).json()
-    expect(insumexR2(despues3).n_votos).toBe(6)
-    expect(reconstruir(insumexR2(antes), insumexR2(despues3))).toBeNull()
-    for (const c of Object.keys(SECRETO)) {
-      const suma = Object.values(insumexR2(despues3).distribucion[c] as Resp).reduce((a, n) => a + n, 0)
-      expect(suma).toBe(6)
-    }
-  })
-
-  it('igual en el tablero (sala y mesa) y en /api/yo', async () => {
-    const { s, tres } = await salaConTres()
-    const salaAntes = insumexR2((await tablero(s)).json())
-    const mesaAntes = insumexR2((await tablero(s, `&alcance=mesa&mesa=${s.mesas[0].id}`)).json())
-    const yoAntes = insumexR2((await yo(tres[1].token)).json().resultados)
-    const otra = await persona(s.mesas[0].codigo, 'victima@x.co')
-    expect((await votar(e, otra.token, 'insumex', 2, SECRETO)).statusCode).toBe(200)
-    expect(insumexR2((await tablero(s)).json())).toEqual(salaAntes)
-    expect(insumexR2((await tablero(s, `&alcance=mesa&mesa=${s.mesas[0].id}`)).json())).toEqual(mesaAntes)
-    expect(insumexR2((await yo(tres[1].token)).json().resultados)).toEqual(yoAntes)
-  })
-
-  it('una persona que cambia su voto muchas veces cuenta como un solo cambio: no fuerza la renovación', async () => {
-    const { s, tres } = await salaConTres()
-    const antes = insumexR2((await resultados(tres[0].token)).json())
-    const victima = await persona(s.mesas[1].codigo, 'victima@x.co')
-    await votar(e, victima.token, 'insumex', 2, SECRETO)
-    // Quien ataca conoce su propio voto y lo cambia dos veces para sumar «3 votos nuevos».
-    await votar(e, tres[0].token, 'insumex', 2, OTRO_1)
-    await votar(e, tres[0].token, 'insumex', 2, OTRO_2)
-    expect(insumexR2((await resultados(tres[0].token)).json())).toEqual(antes)
-  })
-
-  it('antes de la primera foto con valores solo se ve el conteo (bajo el mínimo), sin promedios ni distribución', async () => {
+describe('cada voto en vivo en todas las salas (decisión de Paola del 21-oct)', () => {
+  it('un taller con cliente muestra el resultado desde 1 voto y lo actualiza con cada voto', async () => {
     const s = await crearSala(e, 1)
     await abrirR2(s.id)
     const a = await persona(s.mesas[0].codigo, 'a@x.co')
+    await votar(e, a.token, 'insumex', 2, SECRETO)
+    const uno = (await tablero(s)).json()
+    expect(uno.minimo_votos).toBe(1)
+    expect(uno.votos_por_actualizacion).toBe(1)
+    expect(uno).not.toHaveProperty('ensayo')
+    expect(insumexR2(uno)).toMatchObject({ n_votos: 1, promedios: SECRETO })
+    expect(insumexR2(uno)).not.toHaveProperty('bajo_minimo')
     const b = await persona(s.mesas[0].codigo, 'b@x.co')
-    await votar(e, a.token, 'insumex', 2)
-    expect(insumexR2((await tablero(s)).json())).toMatchObject({ n_votos: 1, bajo_minimo: true, promedios: null, distribucion: null })
-    await votar(e, b.token, 'insumex', 2, SECRETO)
-    expect(insumexR2((await tablero(s)).json())).toMatchObject({ n_votos: 2, bajo_minimo: true, promedios: null })
-    const c = await persona(s.mesas[0].codigo, 'c@x.co')
-    await votar(e, c.token, 'insumex', 2)
-    const tres = insumexR2((await tablero(s)).json())
-    expect(tres.n_votos).toBe(3)
-    expect(tres).not.toHaveProperty('bajo_minimo')
-    expect(tres.promedios.conocimiento_cliente).toBeCloseTo(19 / 3, 9)
+    await votar(e, b.token, 'insumex', 2, OTRO_1)
+    const dos = insumexR2((await tablero(s)).json())
+    expect(dos.n_votos).toBe(2)
+    expect(dos.promedios.regulacion).toBeCloseTo((3 + 9) / 2, 9)
+    // Cambiar el voto también se ve en la siguiente consulta.
+    await votar(e, b.token, 'insumex', 2, OTRO_2)
+    expect(insumexR2((await tablero(s)).json()).promedios.regulacion).toBeCloseTo((3 + 1) / 2, 9)
+  })
+
+  it('igual en el tablero (sala y mesa), en /api/resultados y en /api/yo, sin nombres ni correos', async () => {
+    const { s, tres } = await salaConTres()
+    const otra = await persona(s.mesas[0].codigo, 'victima@x.co')
+    expect((await votar(e, otra.token, 'insumex', 2, SECRETO)).statusCode).toBe(200)
+    const vistas = [
+      (await tablero(s)).json(),
+      (await tablero(s, `&alcance=mesa&mesa=${s.mesas[0].id}`)).json(),
+      (await resultados(tres[0].token)).json(),
+      (await yo(tres[1].token)).json().resultados,
+    ]
+    for (const v of vistas) {
+      expect(insumexR2(v).n_votos).toBe(4)
+      expect(insumexR2(v).promedios.alineacion_core).toBeCloseTo((5 * 3 + 1) / 4, 9)
+      const texto = JSON.stringify(v)
+      expect(texto).not.toContain('Persona Prueba')
+      expect(texto).not.toContain('@x.co')
+      expect(texto).not.toContain(otra.participante.id)
+    }
+  })
+})
+
+describe('foto del consolidado con umbral (se conserva por si vuelve el mínimo)', () => {
+  it('con umbral 3, un voto nuevo no cambia lo publicado y 3 cambios lo renuevan; con umbral 1, cada voto', async () => {
+    const pesos = contenido(e.db, (await crearSala(e, 1)).id).pesos
+    const v = (id: string, r: Resp) => ({ participante_id: id, entradas: r as never })
+    const k = (umbral: number) => ({ salaId: 'x', alcance: 'sala', ronda: 2, proyectoId: 'insumex', versionSala: 1, umbral })
+    const base = [v('a', RESPUESTAS_5), v('b', RESPUESTAS_5), v('c', RESPUESTAS_5)]
+    const p0 = agregadoPublicado(e.db, k(3), base, pesos, false)
+    expect(p0.n_votos).toBe(3)
+    expect(agregadoPublicado(e.db, k(3), [...base, v('d', SECRETO)], pesos, false)).toEqual(p0)
+    const p3 = agregadoPublicado(e.db, k(3), [...base, v('d', SECRETO), v('e', OTRO_1), v('f', OTRO_2)], pesos, false)
+    expect(p3.n_votos).toBe(6)
+    const p4 = agregadoPublicado(e.db, k(1), [...base, v('d', SECRETO), v('e', OTRO_1), v('f', OTRO_2), v('g', SECRETO)], pesos, false)
+    expect(p4.n_votos).toBe(7)
   })
 })
 
 describe('ronda cerrada, reabierta y reiniciada', () => {
-  it('al cerrar la ronda se publica el exacto; al reabrirla, la foto parte del exacto que se mostró', async () => {
+  it('al cerrar la ronda se publica el exacto; al reabrirla, cada voto nuevo se ve de inmediato', async () => {
     const { s, tres } = await salaConTres()
-    await tablero(s) // foto con 3
+    await tablero(s)
     const v = await persona(s.mesas[1].codigo, 'v@x.co')
     await votar(e, v.token, 'insumex', 2, SECRETO)
-    expect(insumexR2((await tablero(s)).json()).n_votos).toBe(3)
+    expect(insumexR2((await tablero(s)).json()).n_votos).toBe(4)
     await accion(e, s.id, 'cerrar_ronda_2')
     const exacto = insumexR2((await tablero(s)).json())
     expect(exacto.n_votos).toBe(4)
@@ -145,9 +137,8 @@ describe('ronda cerrada, reabierta y reiniciada', () => {
     await accion(e, s.id, 'reabrir_ronda')
     const w = await persona(s.mesas[1].codigo, 'w@x.co')
     await votar(e, w.token, 'insumex', 2, OTRO_1)
-    // Un voto después del exacto no cambia lo publicado (si partiera de la foto de 3, lo despejaría el exacto de 4).
-    expect(insumexR2((await tablero(s)).json())).toEqual(exacto)
-    expect(insumexR2((await resultados(tres[0].token)).json())).toEqual(exacto)
+    expect(insumexR2((await tablero(s)).json()).n_votos).toBe(5)
+    expect(insumexR2((await resultados(tres[0].token)).json()).n_votos).toBe(5)
   })
 
   it('reiniciar la ronda borra las fotos de esa ronda', async () => {

@@ -166,6 +166,6 @@ export interface TableroResumen {
   minimo_votos?: number
   /** 3 en un taller, 1 en una sala de ensayo (21-oct). */
   votos_por_actualizacion?: number
-  /** La sala es de ensayo: resultados desde 1 voto (21-oct). */
+  /** La sala es de ensayo: no cuenta en las cifras de talleres (21-oct; desde 1 voto, como todas las salas). */
   ensayo?: true
 }

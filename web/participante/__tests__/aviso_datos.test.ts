@@ -1,4 +1,4 @@
-// El aviso corto del celular (hz-1.2) y la tabla §5.2 de docs/CONSENTIMIENTO.md dicen lo mismo, palabra por palabra.
+// El aviso corto del celular (hz-1.3) y la tabla §5.2 de docs/CONSENTIMIENTO.md dicen lo mismo, palabra por palabra.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { AVISO_DATOS, LEY_DATOS, VERSION_AVISO_DATOS } from '../pantallas/Inscripcion'

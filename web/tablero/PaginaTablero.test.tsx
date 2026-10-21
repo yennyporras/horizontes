@@ -540,7 +540,7 @@ describe('PaginaTablero', () => {
     for (const v of ensayo.proyectos_vivos) for (const r of v.rondas) Object.assign(r, { n_votos: 0, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null })
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(ensayo), { status: 200 })))
     montar('/tablero/s_demo')
-    expect((await screen.findByRole('note')).textContent).toBe('Ensayo: los resultados se muestran desde 1 voto. En un taller con cliente hacen falta 3.')
+    expect((await screen.findByRole('note')).textContent).toBe('Sala de ensayo: no cuenta en las cifras de talleres.')
     expect(document.querySelector('.hz-tb-insignia-vivo')!.textContent).toBe('En vivo: se actualiza con cada voto')
     expect(screen.getByText('Aún no hay resultados en la ronda 1. Se actualizan con cada voto nuevo.')).toBeTruthy()
     // El aviso va en el contenido (claro), no en la barra.

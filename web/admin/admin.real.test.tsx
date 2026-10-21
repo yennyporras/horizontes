@@ -107,13 +107,11 @@ describe('panel admin contra la API real', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    // La Mesa 1 tiene 2 votos, bajo el mínimo de 3 de un taller: un solo mensaje con el conteo real (21-oct), en lugar de
-    // las tablas con «Faltan votos» en cada celda.
+    // La Mesa 1 tiene 2 votos: desde el 21-oct se muestran desde 1 voto en todas las salas, así que hay tablas y ningún
+    // mensaje de mínimo.
     const preliminar = (await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).closest('section')!
-    await waitFor(() =>
-      expect(within(preliminar).getByText('Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')).toBeTruthy(),
-    )
-    expect(within(preliminar).queryByRole('table')).toBeNull()
+    await waitFor(() => expect(within(preliminar).queryAllByRole('table').length).toBeGreaterThan(0))
+    expect(within(preliminar).queryByText(/que hacen falta para mostrar el resultado/)).toBeNull()
     expect(screen.queryByText('Faltan votos')).toBeNull()
 
     // QA-A-06: la persona de la Mesa 2 no votó: cerrar la ronda lo advierte y pide confirmación.
@@ -282,7 +280,7 @@ describe('panel admin contra la API real', () => {
     expect(inversion.rubrica[0]).toEqual({ valor: 9, texto: 'Inversión muy alta (> USD 2MM)' })
   })
 
-  it('«Cómo votó la sala» con los conteos reales (mínimo de 3 votos) y las 6 hojas de cada proyecto', async () => {
+  it('«Cómo votó la sala» con los conteos reales (desde 1 voto, 21-oct) y las 6 hojas de cada proyecto', async () => {
     montar('/admin/login')
     await entrar('paola', 'superclave123')
     const { salaId, mesas } = await crearSalaDesdePanel('Dispersión real', 1)
@@ -291,16 +289,20 @@ describe('panel admin contra la API real', () => {
     for (const correo of ['ana@x.co', 'beto@x.co', 'caro@x.co']) tokens.push((await inscribir(e, mesas[0].codigo, correo)).json().token)
     await pasar('Abrir ronda 1', 'Ronda 1 abierta')
     const resp = (v: number) => ({ alistamiento_tecnico: v, conocimiento_cliente: v, regulacion: v, capacidades_organizacionales: v, alineacion_core: v, inversion_requerida: v })
-    // Con 2 votos por proyecto la sala está bajo el mínimo: aviso, sin barras.
+    // Desde el 21-oct, con 2 votos por proyecto ya hay barras (el panel ve la ronda 1 abierta) y ningún mensaje de mínimo.
     for (const [i, v] of [1, 9].entries()) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[i], p, 1, resp(v))).statusCode).toBe(200)
-    // El texto viene del componente del tablero, con la concordancia de F-12.
-    expect(
-      await screen.findByText('Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.', {}, { timeout: 5000 }),
-    ).toBeTruthy()
-    expect(screen.queryAllByRole('img', { name: /ronda 1:/ })).toHaveLength(0)
+    const dos = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })
+    expect(dos.getAttribute('aria-label')).toBe('NUTRIWHAT, Regulación, ronda 1: 1 voto en 1, 0 votos en 3, 0 votos en 5, 0 votos en 7, 1 voto en 9')
+    expect(screen.queryByText(/que hacen falta para mostrar el resultado/)).toBeNull()
     for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[2], p, 1, resp(9))).statusCode).toBe(200)
-    const barra = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })
-    expect(barra.getAttribute('aria-label')).toBe('NUTRIWHAT, Regulación, ronda 1: 1 voto en 1, 0 votos en 3, 0 votos en 5, 0 votos en 7, 2 votos en 9')
+    // Cada voto se ve en la siguiente lectura.
+    await waitFor(
+      () =>
+        expect(screen.getByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }).getAttribute('aria-label')).toBe(
+          'NUTRIWHAT, Regulación, ronda 1: 1 voto en 1, 0 votos en 3, 0 votos en 5, 0 votos en 7, 2 votos en 9',
+        ),
+      { timeout: 5000 },
+    )
     expect(screen.getAllByRole('img', { name: /ronda 1:/ })).toHaveLength(12)
 
     fireEvent.click(nav().getByText('Hojas'))
@@ -310,6 +312,40 @@ describe('panel admin contra la API real', () => {
     const reg = api.find((h) => h.proyecto_id === 'nutriwhat' && h.perfil === 'Regulación')!
     expect(within(nutriwhat).getByRole('article', { name: 'Regulación' }).textContent).toContain(reg.texto)
   })
+})
+
+describe('reiniciar a elección contra la API real (decisión 3 de Paola, 21-oct)', () => {
+  it('«Reiniciar…» vuelve a la ronda 1 con los votos y después reinicia la sala completa con su nombre', async () => {
+    montar('/admin/login')
+    await entrar('paola', 'superclave123')
+    const { salaId, mesas } = await crearSalaDesdePanel('Taller para reiniciar', 1)
+    await pasar('Abrir inscripción', 'Inscripción abierta')
+    const t = (await inscribir(e, mesas[0].codigo, 'ana@x.co')).json().token
+    await pasar('Abrir ronda 1', 'Ronda 1 abierta')
+    for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, t, p, 1)).statusCode).toBe(200)
+    expect((await accion(e, salaId, 'cerrar_ronda_1')).statusCode).toBe(200)
+    expect((await accion(e, salaId, 'abrir_ronda_2')).statusCode).toBe(200)
+    await screen.findByText('Ronda 2 abierta', { selector: '.estado' }, { timeout: 5000 })
+    const votos = () => (e.db.prepare('SELECT COUNT(*) AS n FROM votos WHERE sala_id = ?').get(salaId) as { n: number }).n
+
+    const corregir = () => within(screen.getByRole('group', { name: 'Corregir' }))
+    fireEvent.click(corregir().getByRole('button', { name: 'Reiniciar…' }))
+    let dialogo = within(await screen.findByRole('dialog', { name: '¿Qué quieres reiniciar?' }))
+    fireEvent.click(dialogo.getByLabelText(/^Volver a la ronda anterior/))
+    fireEvent.click(dialogo.getByRole('button', { name: 'Volver a la ronda anterior' }))
+    await screen.findByText('Ronda 1 abierta', { selector: '.estado' }, { timeout: 3000 })
+    expect(votos()).toBe(2)
+
+    fireEvent.click(corregir().getByRole('button', { name: 'Reiniciar…' }))
+    dialogo = within(await screen.findByRole('dialog', { name: '¿Qué quieres reiniciar?' }))
+    fireEvent.click(dialogo.getByLabelText(/^Reiniciar la sala completa/))
+    fireEvent.change(dialogo.getByLabelText('Escribe el nombre de la sala para confirmar: Taller para reiniciar'), { target: { value: 'Taller para reiniciar' } })
+    fireEvent.click(dialogo.getByRole('button', { name: 'Reiniciar la sala' }))
+    await screen.findByText('Inscripción abierta', { selector: '.estado' }, { timeout: 3000 })
+    expect(votos()).toBe(0)
+    expect((e.db.prepare('SELECT COUNT(*) AS n FROM participantes WHERE sala_id = ?').get(salaId) as { n: number }).n).toBe(1)
+    expect(await screen.findByText(/Sala reiniciada: votos de las dos rondas borrados, inscripción abierta \(2 votos\) · paola/, {}, { timeout: 5000 })).toBeTruthy()
+  }, 20_000)
 })
 
 describe('cambios del 19-oct contra la API real', () => {

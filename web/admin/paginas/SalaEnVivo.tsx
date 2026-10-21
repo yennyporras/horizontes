@@ -3,13 +3,14 @@ import { Link, useParams } from 'react-router-dom'
 import { api, consultar } from '../api'
 import { useSala } from '../useSala'
 import { useConfirmar } from '../componentes/Confirmar'
+import { Reiniciar } from '../componentes/Reiniciar'
 import { ConSala } from './EncabezadoSala'
 import { ComoVoto } from '../../tablero'
 import type { CriterioId } from '../../shared/api/contrato'
 import { descripcionCriterio } from '../../shared/criterios'
 import type { Accion, PreguntaGuiada, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
 import { nombreCriterio, nombreProyecto, numeroPregunta, ordenPreguntas, useContenidoSala, type ContenidoSala } from '../contenido'
-import { AVISO_ENSAYO, MINIMO_TALLER, cadaCuantos, maxVotos, mensajeFaltanVotos } from '../../shared/votos'
+import { AVISO_ENSAYO, VOTOS_POR_FOTO, cadaCuantos, maxVotos, mensajeFaltanVotos } from '../../shared/votos'
 import {
   ACCIONES,
   CONFIRMACIONES,
@@ -20,6 +21,7 @@ import {
   TECLAS_TABLERO,
   ZONAS,
   accionesParaCorregir,
+  opcionesReinicio,
   bitacora,
   confirmacionCierreRonda,
   decimal,
@@ -103,11 +105,13 @@ interface PropsControl {
  */
 function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsControl) {
   const [errorAccion, setErrorAccion] = useState<string | null>(null)
+  const [hecho, setHecho] = useState<string | null>(null)
   const [enCurso, setEnCurso] = useState<Accion | null>(null)
   const [dialogo, confirmar] = useConfirmar()
   const estado = d.sala.estado
   const siguiente = PASO_SIGUIENTE[estado]
   const corregir = accionesParaCorregir(estado)
+  const hayReinicio = opcionesReinicio(estado).length > 0
   const ronda = rondaAbierta(estado)
 
   const ejecutar = async (accion: Accion) => {
@@ -117,6 +121,7 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
     const tono = ES_DESTRUCTIVA[accion] && accion !== siguiente ? 'destructivo' : 'primario'
     if (c && !(await confirmar(c.titulo, c.texto, c.boton, { tono }))) return
     setErrorAccion(null)
+    setHecho(null)
     setEnCurso(accion)
     try {
       await api.post(`/api/admin/salas/${salaId}/acciones`, { accion })
@@ -177,10 +182,15 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
           {errorAccion}
         </p>
       )}
-      {corregir.length > 0 && (
+      {hecho && (
+        <p className="alerta alerta--exito" role="status">
+          {hecho}
+        </p>
+      )}
+      {(corregir.length > 0 || hayReinicio) && (
         <div className="corregir" role="group" aria-labelledby="t-corregir">
           <h3 id="t-corregir">Corregir</h3>
-          <p className="pista">Para deshacer un paso o terminar antes de tiempo. Lo que borra o cierra pide confirmación.</p>
+          <p className="pista">Para deshacer un paso, reiniciar o terminar antes de tiempo. Lo que borra o cierra pide confirmación.</p>
           <ul className="corregir__lista">
             {corregir.map((a) => (
               <li key={a}>
@@ -190,6 +200,19 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
                 </span>
               </li>
             ))}
+            {hayReinicio && (
+              <li>
+                <Reiniciar
+                  d={d}
+                  ocupado={enCurso !== null}
+                  refrescar={refrescar}
+                  alTerminar={(t) => {
+                    setErrorAccion(null)
+                    setHecho(t)
+                  }}
+                />
+              </li>
+            )}
           </ul>
         </div>
       )}
@@ -381,10 +404,10 @@ function AvisoPrecierre({ d, ver, setVer }: { d: SalaDetalle; ver: string | null
           ? `Todos votaron en la sala. Puedes cerrar la ronda ${ronda}.`
           : `Todos votaron en ${enPrecierre.map((m) => m.nombre).join(', ')}. Puedes cerrar la ronda ${ronda} cuando las demás mesas terminen.`}
       </strong>
-      {/* D2: el resultado en vivo es una foto que se renueva de 3 en 3 votos; al cerrar la ronda queda el resultado final. */}
+      {/* Desde el 21-oct el resultado en vivo se renueva con cada voto; al cerrar la ronda queda el resultado final. */}
       <p>
-        La ronda sigue abierta y los votos se pueden editar hasta que la cierres. El resultado preliminar se renueva{' '}
-        {cadaCuantos(d.sala.tipo === 'ensayo' ? 1 : MINIMO_TALLER)}. Al cerrar la ronda se muestra el resultado final.
+        La ronda sigue abierta y los votos se pueden editar hasta que la cierres. El resultado preliminar se renueva {cadaCuantos(VOTOS_POR_FOTO)}. Al
+        cerrar la ronda se muestra el resultado final.
       </p>
       <div className="acciones">
         {salaCompleta && (
@@ -436,7 +459,7 @@ function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: st
     )
   }
   const rondas = ronda === 2 ? [1, 2] : [1]
-  const minimo = t.minimo_votos ?? MINIMO_TALLER
+  const minimo = t.minimo_votos ?? 1
   // 21-oct: un solo mensaje por ronda con el conteo real (nunca «Faltan votos» en cada celda); las columnas bajo el
   // mínimo no se dibujan y, si ninguna tiene resultado, el mensaje va en lugar de las tablas.
   const avisos = rondas.flatMap((n) => {
@@ -450,7 +473,7 @@ function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: st
       <h2 id="t-preliminar" className="titulo-3">
         {titulo}
       </h2>
-      <p className="pista">Se renueva {cadaCuantos(t.votos_por_actualizacion ?? MINIMO_TALLER)}. Para verlo en la matriz, usa Proyectar el tablero.</p>
+      <p className="pista">Se renueva {cadaCuantos(t.votos_por_actualizacion ?? VOTOS_POR_FOTO)}. Para verlo en la matriz, usa Proyectar el tablero.</p>
       {t.ensayo && <p className="alerta alerta--info">{AVISO_ENSAYO}</p>}
       {error && <p className="alerta alerta--aviso">No pudimos actualizarlo. Mostramos la última lectura. {error}</p>}
       {avisos.map((a) => (
