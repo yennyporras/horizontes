@@ -41,7 +41,7 @@ const boton = (n: string | RegExp) => screen.getByRole('button', { name: n }) as
 async function abrirDemo(usuario = 'paola') {
   montar('/admin/login')
   await entrar(usuario)
-  fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+  fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
   await screen.findByRole('heading', { name: 'Sala en vivo' })
 }
 

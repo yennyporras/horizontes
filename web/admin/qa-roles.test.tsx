@@ -42,7 +42,7 @@ const nav = () => within(screen.getByRole('navigation', { name: 'Secciones del p
 async function abrirDemo(usuario = 'paola') {
   montar('/admin/login')
   await entrar(usuario)
-  fireEvent.click(screen.getAllByRole('link', { name: 'Abrir' })[0])
+  fireEvent.click((await screen.findAllByRole('link', { name: 'Abrir' }))[0])
   await screen.findByRole('heading', { name: 'Sala en vivo' })
 }
 

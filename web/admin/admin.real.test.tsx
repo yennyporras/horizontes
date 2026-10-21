@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Panel admin contra la API real (Fastify en memoria con BD SQLite :memory: y reloj simulado).
 // El transporte del panel se conecta a app.inject y guarda la cookie de sesión como lo haría el navegador.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PaginaAdmin from './PaginaAdmin'
@@ -79,6 +79,7 @@ beforeEach(async () => {
 })
 afterEach(async () => {
   cleanup()
+  vi.useRealTimers()
   await e.app.close()
 })
 
@@ -106,7 +107,8 @@ describe('panel admin contra la API real', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    const tabla = screen.getByRole('table', { name: 'INSUMEX' })
+    // La tabla llega con la consulta del tablero, después del título: se espera.
+    const tabla = await screen.findByRole('table', { name: 'INSUMEX' })
     // Preentrega 19-oct: los 6 criterios, sin fila «Total».
     expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
     expect(within(tabla).getAllByRole('rowheader')).toHaveLength(6)
@@ -460,11 +462,16 @@ describe('correcciones de la QA del panel contra la API real', () => {
   }
 
   it('D1: «Dar acceso de nuevo» genera el enlace real, el celular lo canjea y queda en la bitácora', async () => {
+    // El panel compara `vence_at` (reloj del servidor de prueba, fijo en T0) con la hora del navegador: el navegador va a
+    // la misma hora, así la prueba no depende del día en que corre. Solo Date: los intervalos del polling siguen reales.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(e.reloj.ms)
     const sala = await salaConVotos()
     await entrarA(`/admin/salas/${sala.id}/participantes`)
     fireEvent.click(await screen.findByRole('button', { name: 'Dar acceso de nuevo a Ana Real' }))
     const dialogo = await screen.findByRole('dialog', { name: 'Acceso de nuevo para Ana Real' })
-    const enlace = within(dialogo).getByText(/^https:\/\/horizontes\.test\/m\/.+\?acceso=/).textContent!
+    // El enlace llega después de abrir el diálogo (POST .../acceso): se espera, no se busca de una vez.
+    const enlace = (await within(dialogo).findByText(/^https:\/\/horizontes\.test\/m\/.+\?acceso=/)).textContent!
     expect(await within(dialogo).findByRole('img', { name: 'Código QR del acceso de Ana Real' })).toBeTruthy()
     // El reloj del servidor de prueba está a las 2:00 p. m. de Bogotá: vence a las 2:15 p. m.
     expect(within(dialogo).getByText(/^Sirve una sola vez y vence a las 2:15/)).toBeTruthy()

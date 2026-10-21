@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versiones con [SemVer](https://semver.org/lang/es/).
 
+## [1.3.1] · 2026-10-21
+
+### Cambiado
+- Salas de ensayo desde 1 voto: en una sala marcada como «Ensayo» (también la demostración y las copias para ensayo) los resultados se muestran desde 1 voto y se renuevan con cada voto, para probar la herramienta sin juntar 3 personas. Los talleres con cliente conservan el mínimo de 3 y la actualización de 3 en 3 (anonimato). Para usarlo: Configuración → Tipo y cliente → Ensayo.
+
 ## [1.3.0] · 2026-10-20
 
 Auditoría final del 20-oct (una sola apariencia clara) y QA por roles del 20-oct (inversionista, jurado, empresa cliente, facilitador, participante, editora, CEO y CTO).
@@ -101,6 +106,7 @@ Primera versión para producción.
 ### Cambiado
 - Decisiones del acta del 16-oct: la tabla de resultados muestra los 6 criterios y «Total» (sin Time to Market, Eje X, Eje Y ni Votos); las salas nuevas muestran por defecto el consolidado de toda la sala tras votar.
 
+[1.3.1]: https://github.com/yennyporras/horizontes/releases/tag/v1.3.1
 [1.3.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.3.0
 [1.2.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.2.0
 [1.1.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.1.0

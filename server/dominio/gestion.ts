@@ -5,7 +5,7 @@ import { CRITERIOS, agregar } from '../../shared/motor/motor.js'
 import { votosDelAlcance } from './fotos.js'
 import type { ParticipanteFila } from './participantes.js'
 import { registrarCambiosPrecierre } from './participantes.js'
-import { MINIMO_VOTOS, configPublica, contenido, preguntaGuiada, progreso, rondaCerrada, rondaReferencia, vivos } from './resultados.js'
+import { minimoVotos, configPublica, contenido, preguntaGuiada, progreso, rondaCerrada, rondaReferencia, vivos } from './resultados.js'
 import { type MesaFila, type SalaFila, cargarSala, mesasDeSala, registrarEvento, tocar } from './salas.js'
 import { nombrePerfil, perfiles } from './semilla.js'
 import { isoEnZona, sha256 } from './util.js'
@@ -325,7 +325,7 @@ const decimal = (n: number) => (Math.round(n * 100) / 100).toFixed(2).replace('.
 /**
  * `resultados.csv` (QA por roles, 20-oct): lo que se le puede entregar al cliente, sin datos personales. Una fila por
  * alcance (la sala y cada mesa), ronda y proyecto vivo con el resultado exacto: votos, los 6 promedios, t2m y ejes. Solo
- * alcances con MINIMO_VOTOS o más (con menos, el promedio delata respuestas). Solo votos de participantes activos.
+ * alcances con el mínimo de votos de la sala o más (con menos, el promedio delata respuestas; en un ensayo, 1). Solo votos de participantes activos.
  */
 export function exportResultados(db: Db, salaId: string) {
   const sala = cargarSala(db, salaId)
@@ -339,7 +339,7 @@ export function exportResultados(db: Db, salaId: string) {
       const porProyecto = votosDelAlcance(db, sala.id, r, a.mesaId)
       for (const p of proyectosVivos) {
         const ag = agregar((porProyecto.get(p.id) ?? []).map((v) => v.entradas), pesos)
-        if (!ag || ag.n_votos < MINIMO_VOTOS) continue
+        if (!ag || ag.n_votos < minimoVotos(sala)) continue
         filas.push([a.nombre, r, p.nombre, ag.n_votos, ...CRITERIOS.map((c) => decimal(ag.promedios[c])), decimal(ag.t2m), decimal(ag.eje_x), decimal(ag.eje_y)])
       }
     }
