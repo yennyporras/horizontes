@@ -18,6 +18,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 - Una sola composición en toda la app: la misma barra (64 px en celular, 72 en escritorio), el mismo contenedor de 1280 px centrado, la misma cabecera de página, los mismos componentes y el mismo pie en la landing, el celular, el panel y el tablero, de 320 a 1920 px. El menú del panel y los controles del tablero van en una segunda franja; por debajo de 1024 px, en «Menú». La Guía de uso se conserva.
 - Con menos votos que el mínimo, un solo mensaje con el conteo real («Hay 1 voto de los 3 que hacen falta…») en lugar de celdas «Faltan votos».
 - En proyectores de 1600 px o más el tablero usa el ancho de la pantalla, en Gráfica y en Detallado.
+- Bajo 1100 px los controles del tablero (alcance, Gráfica/Detallado y Ronda 1/2/Comparación) se parten en filas y se ven todos; antes quedaban en una fila deslizable que escondía la vista en el celular.
 
 ### Corregido
 - Pruebas que dependían de la fecha del día o que no esperaban a que llegaran los datos.

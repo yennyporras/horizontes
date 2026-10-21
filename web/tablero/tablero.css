@@ -138,8 +138,8 @@ body:has(> #root > .hz-tablero) {
   border: 1.5px solid var(--hz-borde-control);
   border-radius: var(--hz-r-campo);
 }
-/* Fuera del proyector (bajo 1100 px, el corte del tablero): la sala en su línea y los controles en una fila deslizable
-   debajo; la franja no se parte en más. Desde 1100 px, sala y controles en una sola fila de 56 px. */
+/* Fuera del proyector (bajo 1100 px, el corte del tablero): la sala en su línea y los controles debajo, en las filas
+   que hagan falta. Desde 1100 px, sala y controles en una sola fila de 56 px. */
 @media (max-width: 1099px) {
   .hz-cab .hz-franja-pagina__fila {
     flex-wrap: wrap;
@@ -152,15 +152,14 @@ body:has(> #root > .hz-tablero) {
   .hz-alcance select {
     max-width: 11.5em;
   }
+  /* Nicolai (21-oct): la fila deslizable escondía Ronda 1, Ronda 2 y Comparación fuera de la pantalla sin ninguna
+     pista. Ahora los controles se parten en filas y se ven todos: alcance, modo y vista. */
   .hz-cab-controles {
     flex: 1 1 100%;
+    flex-wrap: wrap;
     min-width: 0;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
   }
 }
-
 /* ── Contenido bajo la barra ── */
 .hz-area {
   display: flex;
