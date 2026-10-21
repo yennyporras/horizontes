@@ -20,7 +20,7 @@ import {
 import { canjearAcceso, darAcceso } from '../dominio/accesos.js'
 import { Demostracion, TIEMPOS_DEMO, type TiemposDemo } from '../dominio/demo.js'
 import { LimitadorPeticiones, eliminarSala, exigirConfirmacionSala } from '../dominio/mantenimiento.js'
-import { aplicarAccion, cambiarConfig, fijarPreguntaGuiada } from '../dominio/estados.js'
+import { aplicarAccion, cambiarConfig, fijarPreguntaGuiada, validarReinicio } from '../dominio/estados.js'
 import {
   detalleSala,
   editarParticipante,
@@ -55,6 +55,8 @@ export interface OpcionesApi {
   respaldar?: (salaId: string, momento: string) => void
   /** Respaldo obligatorio antes de eliminar una sala: si falla, lanza y no se borra nada. */
   respaldarAntesDeEliminar?: (salaId: string) => void
+  /** Respaldo obligatorio con etiqueta (reiniciar la sala completa, 21-oct): si falla, lanza 500 y no se borra nada. */
+  respaldarObligatorio?: (salaId: string, momento: string) => void
   /** Tiempos del modo demo (las pruebas los acortan). */
   demo?: Partial<TiemposDemo>
 }
@@ -317,14 +319,24 @@ export async function rutasApi(app: FastifyInstance, op: OpcionesApi) {
     return salaResumen(s, op.baseUrl).config
   })
 
-  app.post<{ Params: { id: string }; Body: { accion?: string; ronda?: unknown } }>('/api/admin/salas/:id/acciones', async (req) => {
+  app.post<{ Params: { id: string }; Body: { accion?: string; ronda?: unknown; confirmar?: unknown } }>('/api/admin/salas/:id/acciones', async (req) => {
     const sala = cargarSala(db, req.params.id)
     const accion = String(req.body?.accion ?? '')
-    // Respaldo antes de que la sala reciba datos (arranque) y antes de borrar votos (reinicio de ronda).
+    const opciones = { ronda: req.body?.ronda, confirmar: req.body?.confirmar }
+    // Respaldo antes de que la sala reciba datos (arranque) y antes de borrar votos (reinicio de ronda o de la sala).
     // Solo si la acción aplica en el estado actual: un clic repetido que termina en 409 no gasta la rotación de respaldos de la sala.
     if ((accion === 'abrir_inscripcion' || accion === 'abrir_ronda_1') && sala.estado === 'preparada') op.respaldar?.(sala.id, 'inicio')
     if (accion === 'reiniciar_ronda' && sala.estado !== 'cerrada' && sala.ronda_actual >= 1) op.respaldar?.(sala.id, 'antes_reinicio')
-    const s = aplicarAccion(db, sala.id, accion, ahora(), por(req), { ronda: req.body?.ronda })
+    if (accion === 'reiniciar_desde_ronda') {
+      validarReinicio(sala, accion, opciones)
+      op.respaldar?.(sala.id, 'antes_reinicio')
+    }
+    // Reiniciar la sala completa: estado y nombre antes del respaldo, que es obligatorio como al eliminarla.
+    if (accion === 'reiniciar_sala') {
+      validarReinicio(sala, accion, opciones)
+      op.respaldarObligatorio?.(sala.id, 'antes_reinicio_sala')
+    }
+    const s = aplicarAccion(db, sala.id, accion, ahora(), por(req), opciones)
     if (s.estado === 'cerrada') op.alCerrarSala(s.id)
     return { sala: salaResumen(s, op.baseUrl) }
   })

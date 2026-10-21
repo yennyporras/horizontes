@@ -109,9 +109,9 @@ export function reiniciarSalaLimpia(db: Db, salaId: string, ahora: number) {
  * 422 CONFIRMACION_INVALIDA si `confirmar` no es el nombre exacto de la sala (se ignoran los espacios de los extremos).
  * La ruta lo revisa antes del respaldo, así un nombre mal escrito no gasta la rotación de respaldos.
  */
-export function exigirConfirmacionSala(sala: Pick<SalaFila, 'nombre'>, confirmar: unknown) {
+export function exigirConfirmacionSala(sala: Pick<SalaFila, 'nombre'>, confirmar: unknown, para = 'eliminar la sala') {
   if (typeof confirmar !== 'string' || confirmar.trim() !== sala.nombre) {
-    throw new ErrorApi(422, 'CONFIRMACION_INVALIDA', `Para eliminar la sala escribe su nombre exacto: «${sala.nombre}».`)
+    throw new ErrorApi(422, 'CONFIRMACION_INVALIDA', `Para ${para} escribe su nombre exacto: «${sala.nombre}».`)
   }
 }
 

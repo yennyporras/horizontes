@@ -131,6 +131,16 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
         throw new ErrorApi(500, 'RESPALDO_FALLIDO', 'No pudimos guardar el respaldo de la sala, así que no se borró nada. Intenta de nuevo; si sigue, revisa Salud.')
       }
     }
+    // Antes de reiniciar la sala completa (21-oct), igual de obligatorio: si falla, no se borra ningún voto.
+    const respaldarObligatorio = (salaId: string, momento: string) => {
+      try {
+        const r = respaldarBd(db, dbPath, salaId, momento, ahora(), cargarSala(db, salaId).zona_horaria)
+        if (r) app.log.info(`Respaldo de la BD (${momento}) de ${salaId}: ${r}`)
+      } catch (e) {
+        app.log.error({ err: e }, `No se pudo respaldar la BD (${momento})`)
+        throw new ErrorApi(500, 'RESPALDO_FALLIDO', 'No pudimos guardar el respaldo de la sala, así que no se borró nada. Intenta de nuevo; si sigue, revisa Salud.')
+      }
+    }
     const alCerrarSala = (salaId: string) => respaldar(salaId, 'cierre')
     // Aperturas y cierres programados. Una sala que arranca sola se respalda como al abrirla a mano (sin datos aún).
     const revisarCierres = () => {
@@ -139,7 +149,7 @@ export async function construirApp(op: OpcionesApp = {}): Promise<FastifyInstanc
       for (const id of r.salasCerradas) alCerrarSala(id)
     }
 
-    await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala, respaldar, respaldarAntesDeEliminar, demo: op.demo })
+    await app.register(rutasApi, { db, ahora, baseUrl, revisarCierres, alCerrarSala, respaldar, respaldarAntesDeEliminar, respaldarObligatorio, demo: op.demo })
     const intervalo = op.intervaloCierresMs ?? 15_000
     if (intervalo > 0) {
       const t = setInterval(() => {
