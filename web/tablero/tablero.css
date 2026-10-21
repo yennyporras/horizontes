@@ -930,10 +930,11 @@ body:has(> #root > .hz-tablero) {
   }
 }
 
-/* Proyector de 1600 px o más en Detallado: la matriz de 820 px y la tabla comparada no caben en 1280 a 6 m. Solo en
-   ese caso el tablero (barra, franja y contenido, juntos) usa el ancho de la pantalla con el margen común de 32 px. */
+/* Proyector de 1600 px o más, en Gráfica y en Detallado: a 6 m la matriz necesita su alto completo y la columna de al
+   lado («Qué se movió», leyenda, tabla comparada) no cabe en 1280 (en Gráfica a 1920 la leyenda quedaba cortada). Solo
+   ahí el tablero (barra, franja y contenido, juntos) usa el ancho de la pantalla con el margen común de 32 px. */
 @media (min-width: 1600px) {
-  .hz-tablero[data-modo='detallado']:not(.hz-tablero-mesas) {
+  .hz-tablero:not(.hz-tablero-mesas) {
     --hz-ancho-pagina: 100%;
   }
 }
