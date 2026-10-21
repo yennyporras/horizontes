@@ -9,6 +9,7 @@ import type { CriterioId } from '../../shared/api/contrato'
 import { descripcionCriterio } from '../../shared/criterios'
 import type { Accion, PreguntaGuiada, RondaVivo, SalaDetalle, TableroResumen } from '../tipos'
 import { nombreCriterio, nombreProyecto, numeroPregunta, ordenPreguntas, useContenidoSala, type ContenidoSala } from '../contenido'
+import { AVISO_ENSAYO, MINIMO_TALLER, cadaCuantos, maxVotos, mensajeFaltanVotos } from '../../shared/votos'
 import {
   ACCIONES,
   CONFIRMACIONES,
@@ -381,7 +382,10 @@ function AvisoPrecierre({ d, ver, setVer }: { d: SalaDetalle; ver: string | null
           : `Todos votaron en ${enPrecierre.map((m) => m.nombre).join(', ')}. Puedes cerrar la ronda ${ronda} cuando las demás mesas terminen.`}
       </strong>
       {/* D2: el resultado en vivo es una foto que se renueva de 3 en 3 votos; al cerrar la ronda queda el resultado final. */}
-      <p>La ronda sigue abierta y los votos se pueden editar hasta que la cierres. El resultado preliminar se renueva cada 3 votos nuevos. Al cerrar la ronda se muestra el resultado final.</p>
+      <p>
+        La ronda sigue abierta y los votos se pueden editar hasta que la cierres. El resultado preliminar se renueva{' '}
+        {cadaCuantos(d.sala.tipo === 'ensayo' ? 1 : MINIMO_TALLER)}. Al cerrar la ronda se muestra el resultado final.
+      </p>
       <div className="acciones">
         {salaCompleta && (
           <button type="button" className="hz-boton hz-boton--secundario hz-boton--chico" aria-expanded={ver === 'sala'} onClick={() => alternar('sala')}>
@@ -432,25 +436,35 @@ function ResultadoPreliminar({ d, mesaId, ronda }: { d: SalaDetalle; mesaId?: st
     )
   }
   const rondas = ronda === 2 ? [1, 2] : [1]
-  const minimo = t.minimo_votos ?? 3
-  const bajoMinimo = t.proyectos_vivos.some((p) => p.rondas.some((r) => rondas.includes(r.ronda) && r.bajo_minimo))
+  const minimo = t.minimo_votos ?? MINIMO_TALLER
+  // 21-oct: un solo mensaje por ronda con el conteo real (nunca «Faltan votos» en cada celda); las columnas bajo el
+  // mínimo no se dibujan y, si ninguna tiene resultado, el mensaje va en lugar de las tablas.
+  const avisos = rondas.flatMap((n) => {
+    const bajo = t.proyectos_vivos.map((p) => p.rondas.find((r) => r.ronda === n)).filter((r) => r?.bajo_minimo)
+    return bajo.length ? [`${rondas.length > 1 ? `Ronda ${n}: ` : ''}${mensajeFaltanVotos(maxVotos(bajo), minimo)}`] : []
+  })
+  const visible = (r: RondaVivo | undefined) => !!r && !r.bajo_minimo && !!r.promedios
+  const conAlguna = t.proyectos_vivos.some((p) => rondas.some((n) => visible(p.rondas.find((r) => r.ronda === n))))
   return (
     <section className="panel" aria-labelledby="t-preliminar">
       <h2 id="t-preliminar" className="titulo-3">
         {titulo}
       </h2>
-      <p className="pista">Se renueva cada 3 votos nuevos. Para verlo en la matriz, usa Proyectar el tablero.</p>
+      <p className="pista">Se renueva {cadaCuantos(t.votos_por_actualizacion ?? MINIMO_TALLER)}. Para verlo en la matriz, usa Proyectar el tablero.</p>
+      {t.ensayo && <p className="alerta alerta--info">{AVISO_ENSAYO}</p>}
       {error && <p className="alerta alerta--aviso">No pudimos actualizarlo. Mostramos la última lectura. {error}</p>}
-      {bajoMinimo && (
-        <p className="alerta alerta--info">
-          Hacen falta al menos {minimo} votos para mostrar {mesaId ? 'esta mesa' : 'estos resultados'}.
+      {avisos.map((a) => (
+        <p key={a} className="alerta alerta--info">
+          {a}
         </p>
+      ))}
+      {conAlguna && (
+        <div className="rejilla">
+          {t.proyectos_vivos.map((p) => (
+            <TablaResultado key={p.id} proyecto={p} criterios={t.criterios} rondas={rondas.filter((n) => visible(p.rondas.find((r) => r.ronda === n)))} />
+          ))}
+        </div>
       )}
-      <div className="rejilla">
-        {t.proyectos_vivos.map((p) => (
-          <TablaResultado key={p.id} proyecto={p} criterios={t.criterios} rondas={rondas} />
-        ))}
-      </div>
     </section>
   )
 }
@@ -463,7 +477,9 @@ function MarcaRonda({ ronda }: { ronda: number }) {
 /** Promedios por criterio. Sin T2M, ejes ni votos (acta A3 y A4) ni fila «Total» (preentrega 19-oct: no dice nada). */
 function TablaResultado({ proyecto, criterios, rondas }: { proyecto: TableroResumen['proyectos_vivos'][number]; criterios: TableroResumen['criterios']; rondas: number[] }) {
   const porRonda = rondas.map((n) => proyecto.rondas.find((r) => r.ronda === n))
-  const valor = (r: RondaVivo | undefined, v: number | null | undefined) => (r?.bajo_minimo ? 'Faltan votos' : decimal(v))
+  const valor = (_r: RondaVivo | undefined, v: number | null | undefined) => decimal(v)
+  // Sin ninguna ronda con resultado para este proyecto, el aviso de arriba lo explica: no hay tabla vacía.
+  if (!rondas.length) return null
   return (
     <div className="tabla-envoltura">
       <table className="tabla-resultado">
@@ -702,7 +718,10 @@ function ComoVotoSala({ d }: { d: SalaDetalle }) {
       ) : !t ? (
         <p role="status">Cargando cómo votó la sala…</p>
       ) : (
-        <ComoVoto datos={t} rondas={d.sala.ronda_actual === 2 ? [1, 2] : [1]} controles={alcance} />
+        <>
+          {t.ensayo && <p className="alerta alerta--info">{AVISO_ENSAYO}</p>}
+          <ComoVoto datos={t} rondas={d.sala.ronda_actual === 2 ? [1, 2] : [1]} controles={alcance} />
+        </>
       )}
     </div>
   )

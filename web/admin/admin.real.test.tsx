@@ -107,11 +107,14 @@ describe('panel admin contra la API real', () => {
     expect(screen.getByText('Ronda 1 abierta', { selector: '.estado' })).toBeTruthy()
     fireEvent.click(boton('Ver resultado de Mesa 1'))
     expect(await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).toBeTruthy()
-    // La tabla llega con la consulta del tablero, después del título: se espera.
-    const tabla = await screen.findByRole('table', { name: 'INSUMEX' })
-    // Preentrega 19-oct: los 6 criterios, sin fila «Total».
-    expect(within(tabla).queryByRole('rowheader', { name: 'Total' })).toBeNull()
-    expect(within(tabla).getAllByRole('rowheader')).toHaveLength(6)
+    // La Mesa 1 tiene 2 votos, bajo el mínimo de 3 de un taller: un solo mensaje con el conteo real (21-oct), en lugar de
+    // las tablas con «Faltan votos» en cada celda.
+    const preliminar = (await screen.findByRole('heading', { name: /Resultado preliminar · Mesa 1/ })).closest('section')!
+    await waitFor(() =>
+      expect(within(preliminar).getByText('Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')).toBeTruthy(),
+    )
+    expect(within(preliminar).queryByRole('table')).toBeNull()
+    expect(screen.queryByText('Faltan votos')).toBeNull()
 
     // QA-A-06: la persona de la Mesa 2 no votó: cerrar la ronda lo advierte y pide confirmación.
     fireEvent.click(boton('Cerrar ronda 1'))
@@ -291,7 +294,9 @@ describe('panel admin contra la API real', () => {
     // Con 2 votos por proyecto la sala está bajo el mínimo: aviso, sin barras.
     for (const [i, v] of [1, 9].entries()) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[i], p, 1, resp(v))).statusCode).toBe(200)
     // El texto viene del componente del tablero, con la concordancia de F-12.
-    expect(await screen.findByText(/^Hacen falta al menos 3 votos para mostrar estos resultados en la ronda 1\.$/, {}, { timeout: 5000 })).toBeTruthy()
+    expect(
+      await screen.findByText('Hay 2 votos de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.', {}, { timeout: 5000 }),
+    ).toBeTruthy()
     expect(screen.queryAllByRole('img', { name: /ronda 1:/ })).toHaveLength(0)
     for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, tokens[2], p, 1, resp(9))).statusCode).toBe(200)
     const barra = await screen.findByRole('img', { name: /^NUTRIWHAT, Regulación, ronda 1:/ }, { timeout: 5000 })

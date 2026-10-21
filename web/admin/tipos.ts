@@ -164,4 +164,8 @@ export interface TableroResumen {
   criterios: { id: string; nombre: string }[]
   proyectos_vivos: { id: string; nombre: string; rondas: RondaVivo[] }[]
   minimo_votos?: number
+  /** 3 en un taller, 1 en una sala de ensayo (21-oct). */
+  votos_por_actualizacion?: number
+  /** La sala es de ensayo: resultados desde 1 voto (21-oct). */
+  ensayo?: true
 }
