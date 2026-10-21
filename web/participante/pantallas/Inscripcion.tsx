@@ -190,7 +190,7 @@ export const CORREO_DATOS = 'info@estratek.com.co'
  * IP, país y navegador), para qué, quién ve qué y, en Perú, dónde se guardan. La casilla y su versión las sirve el
  * servidor (`consentimiento.version`); docs/CONSENTIMIENTO.md trae los dos textos.
  */
-export const VERSION_AVISO_DATOS = 'hz-1.2'
+export const VERSION_AVISO_DATOS = 'hz-1.3'
 
 /**
  * Norma, derechos y autoridad por país de la sala (acta del 16-oct, P4 y C6). Guatemala no tiene ley general de datos:
@@ -216,14 +216,14 @@ export const LEY_DATOS: Record<Pais, { norma: string; derechos: string; autorida
   },
 }
 
-/** Filas del aviso que no cambian por país (versión `hz-1.2`). */
+/** Filas del aviso que no cambian por país (versión `hz-1.3`). */
 export const AVISO_DATOS = {
   quien: 'Estratek S.A.S., Medellín, Colombia.',
   datos:
     'Tu nombre, tu correo y tus calificaciones. Por seguridad también guardamos la dirección IP, el país y el navegador desde los que te conectas.',
   para: 'Identificarte en tu mesa, evitar inscripciones dobles y devolverte el acceso si cambias de celular. No los usamos para publicidad ni los compartimos con terceros.',
   quienVe:
-    'En el tablero y en los celulares solo se ven promedios de 3 o más personas, sin nombres. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo.',
+    'En el tablero y en los celulares nadie ve tu nombre: se ven los promedios de tu mesa o de la sala, que se actualizan con cada calificación. El equipo de Estratek que facilita el taller sí ve tus calificaciones con tu nombre, para conducirlo.',
 } as const
 
 /** Aviso de privacidad corto, resumido de la política de Estratek, con la norma del país de la sala. */

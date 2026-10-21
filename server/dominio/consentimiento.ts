@@ -4,12 +4,14 @@ import { type Pais, sha256 } from './util.js'
 // Aviso de autorización de Estratek según el país de la sala (docs/CONSENTIMIENTO.md §5.1). Si cambia un texto, sube la versión.
 // hz-1.2 (decisión 2 de Paola, 20-oct): fiel a lo que pasa. Nombra todos los datos que se guardan (también IP, país y
 // navegador, por seguridad), para qué se usan, quién ve qué y, en Perú, que los datos se guardan fuera del país.
-export const VERSION_CONSENTIMIENTO = 'hz-1.2'
+// hz-1.3 (decisión 2 de Paola, 21-oct): los resultados se ven desde 1 voto y con cada calificación, así que el aviso ya
+// no promete promedios de 3 o más personas: dice que nadie ve el nombre en el tablero ni en los celulares.
+export const VERSION_CONSENTIMIENTO = 'hz-1.3'
 
 const DATOS =
   'Declaro que soy mayor de edad y autorizo a Estratek S.A.S. a tratar mi nombre, mi correo y mis calificaciones, y por seguridad la IP, el país y el navegador de mi conexión, para identificarme en mi mesa, evitar inscripciones dobles y devolverme el acceso si cambio de celular durante este taller.'
 const USO =
-  'No se usan para publicidad ni se entregan a terceros. En el tablero y en los celulares solo se muestran promedios de 3 o más personas; el equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre para conducirlo.'
+  'No se usan para publicidad ni se entregan a terceros. En el tablero y en los celulares nadie ve mi nombre: se ven los promedios de mi mesa o de la sala, que se actualizan con cada calificación. El equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre, para conducirlo.'
 const POLITICA = 'la Política de Tratamiento de Datos Personales de Estratek'
 const DERECHOS = 'Puedo conocer, actualizar, rectificar o suprimir mis datos y revocar esta autorización escribiendo a info@estratek.com.co.'
 

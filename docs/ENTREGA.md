@@ -22,7 +22,7 @@ Rutas de la app (en cualquier dominio): `/admin` (panel), `/m/{código de mesa}`
 - **Tablero:** cada sala tiene su enlace con token; se abre desde **Sala en vivo** → **Proyectar el tablero** → *Tablero de la sala*, en el modo *Gráfica* (solo la matriz moviéndose) o *Detallado* (con el progreso y los promedios).
 
 ## 4. Qué está listo
-- Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.1`. Sin autorización no hay inscripción.
+- Inscripción con aviso de datos según el país de la sala (Colombia: Ley 1581 de 2012; Perú: Ley 29733; Guatemala: política de Estratek), versión `hz-1.3`. Sin autorización no hay inscripción.
 - Votación 1-3-5-7-9 en 6 criterios, 2 rondas, precierre cuando todos votan, cierres programados en la hora del país de la sala.
 - Resultados anónimos: tablas con los 6 criterios y su descripción corta (sin fila «Total» desde la preentrega del 19-oct); mínimo de 3 votos para mostrar un alcance; con la ronda abierta, el resultado se renueva cada 3 votos nuevos y al cerrarla queda el exacto; por defecto toda la sala ve el consolidado apenas vota.
 - Tablero con dos modos de proyección, *Gráfica* (solo la matriz) y *Detallado* (con progreso y promedios), y pantalla completa con F.

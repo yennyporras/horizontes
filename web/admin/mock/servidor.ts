@@ -475,7 +475,7 @@ function csv(s: SalaDetalle, archivo: string): string {
     archivo === 'inscritos.csv'
       ? [
           ['nombre', 'correo', 'mesa', 'perfil', 'activo', 'consentimiento_version', 'consentimiento_at', 'ip', 'pais'],
-          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.1', p.consentimiento_at, p.ip, p.pais]),
+          ...s.participantes.map((p) => [p.nombre, p.correo, nombreMesa(p.mesa_id), nombrePerfil(p.perfil_id), p.activo ? 'si' : 'no', 'hz-1.3', p.consentimiento_at, p.ip, p.pais]),
         ]
       : archivo === 'resultados.csv'
         ? [

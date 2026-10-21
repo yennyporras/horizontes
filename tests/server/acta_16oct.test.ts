@@ -112,13 +112,13 @@ describe('aviso de datos según el país (C6)', () => {
     ['CO', 'Ley 1581 de 2012'],
     ['PE', 'Ley 29733'],
     ['GT', 'Guatemala'],
-  ])('%s: GET /api/mesas trae país, versión hz-1.2 y el texto que cita %s; el consentimiento guarda el hash de ese texto', async (pais, cita) => {
+  ])('%s: GET /api/mesas trae país, versión hz-1.3 y el texto que cita %s; el consentimiento guarda el hash de ese texto', async (pais, cita) => {
     const s = await crearSala(e, 1)
     await config(s.id, { pais })
     await accion(e, s.id, 'abrir_inscripcion')
     const m = (await e.app.inject(`/api/mesas/${s.mesas[0].codigo}`)).json()
     expect(m.sala.pais).toBe(pais)
-    expect(m.consentimiento.version).toBe('hz-1.2')
+    expect(m.consentimiento.version).toBe('hz-1.3')
     expect(m.consentimiento.texto_autorizacion).toContain(cita)
     expect(m.consentimiento.texto_autorizacion).not.toContain('—')
     const r = await inscribir(e, s.mesas[0].codigo, `aviso-${pais}@x.co`)
@@ -126,13 +126,13 @@ describe('aviso de datos según el país (C6)', () => {
     expect(c).toEqual({ texto_hash: sha256(TEXTOS_AUTORIZACION[pais as 'CO']), version_aviso: VERSION_CONSENTIMIENTO })
   })
 
-  it('una versión vieja del aviso se rechaza con 422 CONSENTIMIENTO_REQUERIDO', async () => {
+  it.each(['estratek-v1', 'hz-1.1', 'hz-1.2'])('una versión vieja del aviso (%s) se rechaza con 422 CONSENTIMIENTO_REQUERIDO', async (version) => {
     const s = await crearSala(e, 1)
     await accion(e, s.id, 'abrir_inscripcion')
     const r = await e.app.inject({
       method: 'POST',
       url: '/api/inscripcion',
-      payload: { codigoMesa: s.mesas[0].codigo, nombre: 'Viejo', correo: 'viejo@x.co', consentimiento: { aceptado: true, version: 'estratek-v1' } },
+      payload: { codigoMesa: s.mesas[0].codigo, nombre: 'Viejo', correo: 'viejo@x.co', consentimiento: { aceptado: true, version } },
     })
     expect(r.statusCode).toBe(422)
     expect(r.json().error.codigo).toBe('CONSENTIMIENTO_REQUERIDO')
@@ -195,7 +195,7 @@ describe('IP real de inscripción y voto (C7, C8)', () => {
   })
 })
 
-describe('aviso de datos hz-1.2', () => {
+describe('aviso de datos hz-1.3', () => {
   it('el texto que sirve el servidor es el de docs/CONSENTIMIENTO.md §5.1, por país', () => {
     const doc = readFileSync(new URL('../../docs/CONSENTIMIENTO.md', import.meta.url), 'utf8')
     for (const texto of Object.values(TEXTOS_AUTORIZACION)) {
@@ -207,13 +207,15 @@ describe('aviso de datos hz-1.2', () => {
   })
 
   it('decisión 2 de Paola: nombra todos los datos, para qué, quién ve qué y, solo en Perú, que se guardan fuera del país', () => {
-    expect(VERSION_CONSENTIMIENTO).toBe('hz-1.2')
+    expect(VERSION_CONSENTIMIENTO).toBe('hz-1.3')
     for (const texto of Object.values(TEXTOS_AUTORIZACION)) {
       for (const dato of ['mi nombre', 'mi correo', 'mis calificaciones', 'la IP', 'el país', 'el navegador']) expect(texto).toContain(dato)
       for (const fin of ['identificarme en mi mesa', 'evitar inscripciones dobles', 'devolverme el acceso si cambio de celular']) expect(texto).toContain(fin)
       expect(texto).toContain('No se usan para publicidad ni se entregan a terceros.')
-      expect(texto).toContain('solo se muestran promedios de 3 o más personas')
-      expect(texto).toContain('el equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre')
+      // hz-1.3 (21-oct): resultados con cada calificación, sin la promesa de 3 o más personas.
+      expect(texto).toContain('nadie ve mi nombre: se ven los promedios de mi mesa o de la sala, que se actualizan con cada calificación')
+      expect(texto).not.toContain('3 o más')
+      expect(texto).toContain('El equipo de Estratek que facilita el taller sí ve mis calificaciones con mi nombre')
       expect(texto).not.toMatch(/[—–]/)
       expect(texto).not.toContain('fines informativos')
     }

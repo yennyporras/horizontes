@@ -74,7 +74,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     // Acta P4: sala sin país = Colombia, con su ley y su autoridad.
     await ver(p, 'La Ley 1581 de 2012 de Colombia')
     await ver(p, /Superintendencia de Industria y Comercio/)
-    // La casilla trae el texto vigente (hz-1.2) que sirve el servidor para Colombia (C6).
+    // La casilla trae el texto vigente (hz-1.3) que sirve el servidor para Colombia (C6).
     expect(await p.locator('.hz-casilla__texto').textContent()).toContain('Ley 1581 de 2012')
     expect(await p.getByRole('link', { name: 'info@estratek.com.co' }).getAttribute('href')).toBe('mailto:info@estratek.com.co')
     expect(await p.getByRole('link', { name: /Política de Tratamiento de Datos/ }).getAttribute('href')).toMatch(/^https:\/\/estratek\.com\.co\/politica/)
