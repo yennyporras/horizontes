@@ -402,7 +402,7 @@ describe.skipIf(!conNavegador)('recorrido del participante en 360 px contra la A
     // INSUMEX suma 3 votos en la sala (2 de la mesa 2 y el propio): tabla con los promedios del servidor y tu calificación, sin Total.
     // NUTRIWHAT tiene 1: no se muestra.
     await revisarTabla(p, sala.mesas[0].codigo)
-    await ver(p, 'Hacen falta al menos 3 votos para mostrar este proyecto.')
+    await ver(p, 'Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.')
     await sinDesborde(p)
     await ctx.close()
   }, 120_000)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Insignia } from '../../shared/ui'
+import { Aviso, Insignia } from '../../shared/ui'
+import { AVISO_ENSAYO, maxVotos, mensajeFaltanVotos } from '../../shared/votos'
 import { MatrizHorizontes, type DatosTablero, type Vista } from '../../tablero'
 import type { Criterio, Resultados, RondaVivo, Voto } from '../api'
 import { cifra } from '../Comun'
@@ -100,18 +101,23 @@ export function ResultadoAlcance({
   const min = minimoDe(resultados)
   const vivos = resultados.proyectos_vivos ?? []
   const hayVotos = resultadoVisible(resultados)
-  const hayPocos = vivos.some((p) => p.rondas.some((x) => pocosVotos(x, min)))
+  const pocos = vivos.flatMap((p) => p.rondas.filter((x) => pocosVotos(x, min)))
   const marcarPreliminar = preliminar ?? resultados.preliminar
+  // Sala de ensayo (21-oct): se avisa que el mínimo es 1 y no 3, para que nadie lo lea como un taller real.
+  const avisoEnsayo = resultados.ensayo ? <Aviso tono="info">{AVISO_ENSAYO}</Aviso> : null
 
   if (!hayVotos) {
     return (
-      <p className="hz-texto-2">
-        {rondaOculta(resultados, 1)
-          ? TEXTO_R1_OCULTA
-          : hayPocos
-          ? `Hacen falta al menos ${min} votos para mostrar estos resultados. Así nadie ve las respuestas de otra persona.`
-          : `Todavía no hay votos en ${donde}. Los resultados aparecen con los primeros ${min}.`}
-      </p>
+      <>
+        {avisoEnsayo}
+        <p className="hz-texto-2">
+          {rondaOculta(resultados, 1)
+            ? TEXTO_R1_OCULTA
+            : pocos.length
+            ? mensajeFaltanVotos(maxVotos(pocos), min)
+            : `Todavía no hay votos en ${donde}. Los resultados aparecen con ${min === 1 ? 'el primero' : `los primeros ${min}`}.`}
+        </p>
+      </>
     )
   }
   const datosMatriz = sinIndividuales(resultados, min)
@@ -119,6 +125,7 @@ export function ResultadoAlcance({
 
   return (
     <section className="hzp-resultado" aria-label={`Resultado de ${donde}`}>
+      {avisoEnsayo}
       {marcarPreliminar && (
         <p>
           <Insignia>{TEXTO_PARCIAL}</Insignia>
@@ -137,7 +144,7 @@ export function ResultadoAlcance({
           return (
             <article key={p.id} className="hzp-resultado__proyecto">
               <h3 className="hzp-proyecto__nombre">{p.nombre}</h3>
-              <p className="hz-texto-3">{ocultas.length ? `Hacen falta al menos ${min} votos para mostrar este proyecto.` : 'Sin votos todavía.'}</p>
+              <p className="hz-texto-3">{ocultas.length ? mensajeFaltanVotos(maxVotos(ocultas), min) : 'Sin votos todavía.'}</p>
             </article>
           )
         }
@@ -162,8 +169,8 @@ export function ResultadoAlcance({
                   {/* «Promedio de N votos» (QA por roles del 20-oct): cuántas personas hay detrás de cada cifra. */}
                   <th scope="col">
                     {votos.length === 1
-                      ? `Promedio de ${votos[0]} votos`
-                      : `Promedio de ${visibles.map((r) => `${r.n_votos} votos en R${r.ronda}`).join(' y ')}`}
+                      ? `Promedio de ${votos[0]} ${votos[0] === 1 ? 'voto' : 'votos'}`
+                      : `Promedio de ${visibles.map((r) => `${r.n_votos} ${r.n_votos === 1 ? 'voto' : 'votos'} en R${r.ronda}`).join(' y ')}`}
                   </th>
                   {visibles.map((r) => (
                     <th key={r.ronda} scope="col">
@@ -202,7 +209,7 @@ export function ResultadoAlcance({
             </table>
             {ocultas.length > 0 && (
               <p className="hzp-resultado__pie">
-                {ocultas.map((r) => `Ronda ${r.ronda}: hacen falta al menos ${min} votos para mostrarla.`).join(' ')}
+                {ocultas.map((r) => `Ronda ${r.ronda}: ${mensajeFaltanVotos(r.n_votos, min)}`).join(' ')}
               </p>
             )}
           </article>

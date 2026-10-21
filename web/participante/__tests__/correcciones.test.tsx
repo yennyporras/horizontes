@@ -428,7 +428,7 @@ describe('QA-P-13: los textos solo prometen lo que se muestra', () => {
     const { container } = montar()
     await screen.findByRole('heading', { name: 'Ronda 2 cerrada' })
     expect(container.textContent).not.toMatch(/Así se movieron|Este es el resultado/)
-    expect(screen.getByText(/Hacen falta al menos 3 votos/)).toBeTruthy()
+    expect(screen.getByText(/Hay \d votos? de los 3 que hacen falta para mostrar el resultado/)).toBeTruthy()
   })
 })
 
@@ -540,7 +540,7 @@ describe('D2: el consolidado se renueva de 3 en 3, no con cada voto', () => {
     const { container } = montar()
     expect(await screen.findByRole('heading', { name: 'Resultado parcial de tu mesa' })).toBeTruthy()
     // Manda el número del servidor (votos_por_actualizacion).
-    expect(screen.getByText(/se renueva cada vez que llegan 4 votos nuevos/)).toBeTruthy()
+    expect(screen.getByText(/se renueva cada 4 votos nuevos/)).toBeTruthy()
     expect(container.textContent).not.toMatch(/en vivo/i)
   })
 })
