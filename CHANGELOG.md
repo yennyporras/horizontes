@@ -5,6 +5,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 ## [1.4.0] · 2026-10-21
 
 ### Agregado
+- Resultados en vivo desde el primer voto y con cada voto en todas las salas, sin nombres en vistas públicas. La ronda 1 abierta sigue oculta hasta que todos voten o se cierre.
+- «Reiniciar…» en Corregir: volver a la ronda anterior, reiniciar la ronda 2, reiniciar la ronda 1 o la sala completa (con el nombre y respaldo automático).
+- Aviso de datos hz-1.3, fiel a los promedios que se actualizan con cada calificación.
 - Eliminar salas (solo superadmin, escribiendo el nombre para confirmar y con respaldo automático antes), mesas sin inscritos y administradores (solo superadmin).
 - Exportar deja elegir la sala con un selector.
 - Pantalla completa de la matriz sola, sin barra ni tabla, con zoom de 1× a 4× (rueda, pellizco, arrastre, doble clic) y «Ver entera» (tecla 0).
