@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versiones con [SemVer](https://semver.org/lang/es/).
 
+## [1.4.0] · 2026-10-21
+
+### Agregado
+- Eliminar salas (solo superadmin, escribiendo el nombre para confirmar y con respaldo automático antes), mesas sin inscritos y administradores (solo superadmin).
+- Exportar deja elegir la sala con un selector.
+- Pantalla completa de la matriz sola, sin barra ni tabla, con zoom de 1× a 4× (rueda, pellizco, arrastre, doble clic) y «Ver entera» (tecla 0).
+- Aviso «Ensayo» en el tablero, el celular y el panel cuando la sala es de ensayo.
+
+### Cambiado
+- Una sola composición en toda la app: la misma barra (64 px en celular, 72 en escritorio), el mismo contenedor de 1280 px centrado, la misma cabecera de página, los mismos componentes y el mismo pie en la landing, el celular, el panel y el tablero, de 320 a 1920 px. El menú del panel y los controles del tablero van en una segunda franja; por debajo de 1024 px, en «Menú». La Guía de uso se conserva.
+- Con menos votos que el mínimo, un solo mensaje con el conteo real («Hay 1 voto de los 3 que hacen falta…») en lugar de celdas «Faltan votos».
+- En proyectores de 1600 px o más el tablero usa el ancho de la pantalla, en Gráfica y en Detallado.
+
+### Corregido
+- Pruebas que dependían de la fecha del día o que no esperaban a que llegaran los datos.
+
 ## [1.3.1] · 2026-10-21
 
 ### Cambiado
@@ -106,6 +122,7 @@ Primera versión para producción.
 ### Cambiado
 - Decisiones del acta del 16-oct: la tabla de resultados muestra los 6 criterios y «Total» (sin Time to Market, Eje X, Eje Y ni Votos); las salas nuevas muestran por defecto el consolidado de toda la sala tras votar.
 
+[1.4.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.4.0
 [1.3.1]: https://github.com/yennyporras/horizontes/releases/tag/v1.3.1
 [1.3.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.3.0
 [1.2.0]: https://github.com/yennyporras/horizontes/releases/tag/v1.2.0
