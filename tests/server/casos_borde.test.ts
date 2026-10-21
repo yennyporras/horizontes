@@ -125,14 +125,12 @@ describe('participante desactivado', () => {
 
     let t = await tablero(s)
     expect(t.progreso).toMatchObject({ inscritos: 2, completos: 2, precierre: true })
-    // D2: con la ronda abierta sigue la foto de los 3 votos (su celular la vio al votar): quitar un solo voto la
-    // renovaría con exactamente ese voto de diferencia.
-    expect(nVotos(t, 1)).toEqual([3, 3])
-    // Al cerrar la ronda, el exacto: quedan 2 votos activos, menos del mínimo de 3 (cada uno despejaría el del otro).
+    // Desde el 21-oct cada cambio se ve en vivo: su voto sale de los promedios en la siguiente consulta.
+    expect(nVotos(t, 1)).toEqual([2, 2])
     await accion(e, s.id, 'cerrar_ronda_1')
     t = await tablero(s)
     expect(nVotos(t, 1)).toEqual([2, 2])
-    expect(t.proyectos_vivos[0].rondas[0]).toMatchObject({ bajo_minimo: true, promedios: null, eje_x: null })
+    expect(t.proyectos_vivos[0].rondas[0].promedios.alineacion_core).toBeCloseTo(14 / 2, 9)
 
     // Volver a inscribirse con el mismo correo no lo reactiva ni le da sesión; tampoco se le da acceso de nuevo desactivado.
     const rec = await inscribir(e, s.mesas[0].codigo, 'b@correo.co')
@@ -296,8 +294,8 @@ describe('reinicio de ronda', () => {
   })
 })
 
-describe('mínimo de votos para mostrar resultados (triage #1)', () => {
-  it('una mesa con 2 votos no muestra promedios, distribución ni punto, ni en el tablero ni en el celular', async () => {
+describe('resultados desde 1 voto en todas las salas (antes triage #1, decisión de Paola del 21-oct)', () => {
+  it('una mesa con 2 votos muestra promedios y punto en el tablero y en el celular, sin nombres', async () => {
     const s = await sala('r1_abierta', 2)
     await config(s.id, { alcance_resultados: 'mesa' })
     const solo = await inscrito(s.mesas[0].codigo, 'solo@correo.co')
@@ -306,19 +304,18 @@ describe('mínimo de votos para mostrar resultados (triage #1)', () => {
     await votarAmbos(solo.token, 1, RESPUESTAS_9)
 
     const mesa1 = await tablero(s, `&alcance=mesa&mesa=${s.mesas[0].id}`)
-    expect(mesa1.minimo_votos).toBe(3)
+    expect(mesa1.minimo_votos).toBe(1)
     for (const pv of mesa1.proyectos_vivos) {
-      expect(pv.rondas[0]).toEqual({ ronda: 1, n_votos: 2, promedios: null, distribucion: null, t2m: null, eje_x: null, eje_y: null, total: null, bajo_minimo: true })
+      expect(pv.rondas[0]).toMatchObject({ ronda: 1, n_votos: 2, promedios: { alineacion_core: 9 } })
+      expect(pv.rondas[0].bajo_minimo).toBeUndefined()
     }
-    // El celular de la mesa 1 en precierre recibe lo mismo: nada que delate las respuestas.
+    // El celular de la mesa 1 en precierre ve el promedio de su mesa, sin nombres ni correos.
     const y = (await yo(solo.token)).json()
-    expect(JSON.stringify(y.resultados)).not.toContain('"alineacion_core":9')
-    expect(y.resultados.proyectos_vivos[0].rondas[0].bajo_minimo).toBe(true)
+    expect(y.resultados.proyectos_vivos[0].rondas[0].promedios.alineacion_core).toBe(9)
+    expect(JSON.stringify(y.resultados)).not.toContain('@correo.co')
 
-    // La mesa 2 (3 votos) y la sala (5 votos) sí se muestran, sin marca y con total = eje_x + eje_y.
     const mesa2 = await tablero(s, `&alcance=mesa&mesa=${s.mesas[1].id}`)
     expect(mesa2.proyectos_vivos[0].rondas[0]).toMatchObject({ n_votos: 3, promedios: { alineacion_core: 5 }, eje_x: 5, eje_y: 5, total: 10 })
-    expect(mesa2.proyectos_vivos[0].rondas[0].bajo_minimo).toBeUndefined()
     const r = (await tablero(s)).proyectos_vivos[0].rondas[0]
     expect(r.promedios.alineacion_core).toBeCloseTo(33 / 5, 9)
     expect(r.total).toBe(r.eje_x + r.eje_y)

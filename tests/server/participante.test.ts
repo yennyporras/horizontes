@@ -358,8 +358,13 @@ describe('PUT /api/votos', () => {
     const t = (await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).json()
     const ins = t.proyectos_vivos.find((p: { id: string }) => p.id === 'insumex').rondas[0]
     expect(ins.n_votos).toBe(1)
-    // Con un solo voto el tablero no lo muestra (sería la respuesta individual); el valor nuevo ya se verificó en la BD.
-    expect(ins).toMatchObject({ bajo_minimo: true, promedios: null })
+    // La ronda 1 abierta sigue oculta en el tablero público hasta que todos voten o se cierre (decisión del 20-oct).
+    expect(ins).toMatchObject({ oculta: true, promedios: null })
+    expect(ins.bajo_minimo).toBeUndefined()
+    // Al cerrarla, desde el 21-oct se muestra desde 1 voto: el promedio es el voto nuevo, sin nombre.
+    await accion(e, s.id, 'cerrar_ronda_1')
+    const c = (await e.app.inject(`/api/tablero/${s.id}?t=${s.token_tablero}`)).json()
+    expect(c.proyectos_vivos.find((p: { id: string }) => p.id === 'insumex').rondas[0].promedios).toMatchObject({ regulacion: 9, alineacion_core: 1 })
   })
 
   it('completo_ronda se vuelve true tras votar los 2 vivos y progreso_mesa lo refleja', async () => {

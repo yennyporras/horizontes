@@ -1,4 +1,5 @@
 // Consolidado en vivo de 3 en 3 (D2, 20-oct; S-2 de la auditoría).
+// Desde el 21-oct (decisión de Paola) el umbral es 1 en todas las salas: la foto se renueva con cada voto.
 // Con la ronda abierta, el agregado de cada alcance (la sala o una mesa), ronda y proyecto se publica como una foto
 // congelada: se renueva solo cuando al menos VOTOS_POR_ACTUALIZACION personas distintas votaron, cambiaron su voto o
 // salieron del alcance desde la foto anterior. Así, entre dos fotos seguidas nunca cambia un solo voto y comparar
@@ -78,7 +79,7 @@ export interface ClaveFoto {
   ronda: number
   proyectoId: string
   versionSala: number
-  /** Votantes distintos que renuevan la foto. Por defecto VOTOS_POR_ACTUALIZACION; en una sala de ensayo, 1. */
+  /** Votantes distintos que renuevan la foto. Por defecto VOTOS_POR_ACTUALIZACION; desde el 21-oct las vistas pasan 1 en todas las salas. */
   umbral?: number
 }
 
