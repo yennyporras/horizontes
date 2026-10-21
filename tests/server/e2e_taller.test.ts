@@ -152,21 +152,18 @@ describe('taller con precierre, hojas en R2 y cierres programados (reloj simulad
     expect((await resultados(tokens[1][0])).statusCode).toBe(403)
     expect((await yo(tokens[0][0])).json().progreso_mesa.precierre).toBe(true)
 
-    // Mesa 2 completa → precierre de sala. El precierre nunca cierra la ronda y se puede seguir editando.
-    for (const t of tokens[1]) for (const p of ['insumex', 'nutriwhat']) await votar(e, t, p, 1)
-    tb = await tablero(s)
-    expect(tb.progreso.precierre).toBe(true)
-    expect(tb.preliminar).toBe(true)
-    expect((await detalle(s.id)).sala.estado).toBe('r1_abierta')
-    expect((await votar(e, tokens[1][0], 'insumex', 1, { ...RESPUESTAS_5, regulacion: 9 })).statusCode).toBe(200)
-
-    // Alguien llega tarde: el precierre de su mesa y el de la sala desaparecen.
+    // Alguien llega tarde a la Mesa 2 y no vota: la Mesa 2 completa a los demás pero no entra en precierre, la sala
+    // tampoco, y la ronda sigue abierta para editar (21-oct: con la sala completa, la R2 se abriría sola).
     const tarde = (await inscribir(e, s.mesas[1].codigo, 'tarde@prueba.co')).json().token
+    for (const t of tokens[1]) for (const p of ['insumex', 'nutriwhat']) await votar(e, t, p, 1)
     tb = await tablero(s)
     expect(tb.progreso.precierre).toBe(false)
     expect(tb.progreso.por_mesa.find((m: { mesa_id: string }) => m.mesa_id === s.mesas[1].id).precierre).toBe(false)
-    for (const p of ['insumex', 'nutriwhat']) await votar(e, tarde, p, 1)
-    expect((await tablero(s)).progreso.precierre).toBe(true)
+    expect((await detalle(s.id)).sala.estado).toBe('r1_abierta')
+    expect((await votar(e, tokens[1][0], 'insumex', 1, { ...RESPUESTAS_5, regulacion: 9 })).statusCode).toBe(200)
+    // Quien llegó tarde vota solo uno: sigue sin completar.
+    expect((await votar(e, tarde, 'insumex', 1)).statusCode).toBe(200)
+    expect((await tablero(s)).progreso.precierre).toBe(false)
 
     // A la hora exacta el programado cierra R1 (chequeo perezoso) y el resultado deja de ser preliminar.
     e.reloj.ms = cierreR1 - 1
@@ -178,6 +175,7 @@ describe('taller con precierre, hojas en R2 y cierres programados (reloj simulad
     expect((await tablero(s)).preliminar).toBe(false)
     expect((await resultados(tokens[0][0])).json().preliminar).toBe(false)
     expect((await votar(e, tokens[0][0], 'insumex', 1)).statusCode).toBe(409)
+    expect(d1.eventos.some((ev: { tipo: string }) => ev.tipo === 'ronda_2_automatica')).toBe(false)
 
     // Abrir R2 revela las 6 hojas (12 con los 2 vivos) en el celular, con las propias primero.
     const etag = (await yo(tokens[0][0])).headers.etag as string

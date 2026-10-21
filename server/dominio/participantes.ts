@@ -3,7 +3,8 @@ import { type Db, ejecutar, todos, transaccion, uno } from '../db/index.js'
 import { ErrorApi } from '../http.js'
 import { CRITERIOS, type Entradas } from '../../shared/motor/motor.js'
 import { MENSAJE_CORREO_YA_INSCRITO } from './accesos.js'
-import { VERSION_CONSENTIMIENTO, consentimientoVigente, hashTextoConsentimiento } from './consentimiento.js'
+import { VERSIONES_CONSENTIMIENTO_ACEPTADAS, consentimientoVigente, hashTextoConsentimiento } from './consentimiento.js'
+import { aplicarAccion } from './estados.js'
 import { construirTablero, contenido, preguntaGuiada, progreso, proyectos, rondaAbierta, rondaCerrada, vivos } from './resultados.js'
 import { type MesaFila, type SalaFila, cargarSala, registrarEvento, tocar } from './salas.js'
 import { nombrePerfil, perfiles } from './semilla.js'
@@ -90,9 +91,12 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
   if (d.consentimiento?.aceptado !== true) {
     throw new ErrorApi(422, 'CONSENTIMIENTO_REQUERIDO', 'Para continuar debes aceptar la autorización de tratamiento de datos.')
   }
-  if (d.consentimiento.version !== VERSION_CONSENTIMIENTO) {
+  // 21-oct (decisión de Paola): se acepta la versión vigente y la anterior (`hz-1.2`), así un celular que cargó el aviso
+  // antes del despliegue sigue inscribiendo. Se guarda la versión que la persona aceptó.
+  if (typeof d.consentimiento.version !== 'string' || !VERSIONES_CONSENTIMIENTO_ACEPTADAS.includes(d.consentimiento.version)) {
     throw new ErrorApi(422, 'CONSENTIMIENTO_REQUERIDO', 'El aviso de datos cambió. Recarga la página y vuelve a aceptarlo.')
   }
+  const version = d.consentimiento.version
   const nombre = typeof d.nombre === 'string' ? d.nombre.trim().replace(/\s+/g, ' ') : ''
   const correo = typeof d.correo === 'string' ? d.correo.trim().toLowerCase() : ''
   if (nombre.length < 2 || nombre.length > 120) throw new ErrorApi(422, 'DATOS_INVALIDOS', 'Escribe tu nombre (entre 2 y 120 caracteres).')
@@ -143,9 +147,9 @@ export function inscribir(db: Db, d: DatosInscripcion, ctx: ContextoPeticion, ah
       db,
       'INSERT INTO consentimientos (participante_id, version_aviso, politica_url, texto_hash, aceptado_at, ip, user_agent, pais) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       p.id,
-      c.version,
+      version,
       c.politica_url,
-      hashTextoConsentimiento(sala.pais),
+      hashTextoConsentimiento(sala.pais, version),
       isoUtc(ahora),
       ipGuardable(ctx),
       ctx.userAgent?.slice(0, 255) ?? null,
@@ -175,7 +179,25 @@ export function registrarCambiosPrecierre(db: Db, sala: SalaFila, antes: ReturnT
   }
   if (despues.precierre && !antes.precierre) {
     registrarEvento(db, sala.id, ahora, 'precierre', 'sistema', { alcance: 'sala', ronda: despues.ronda, mensaje: 'Todos votaron en la sala. Puedes cerrar la ronda.' })
+    if (sala.estado === 'r1_abierta') abrirRonda2Sola(db, sala.id, ahora)
   }
+}
+
+/** Mensaje del evento `ronda_2_automatica` y del panel. */
+export const MENSAJE_RONDA_2_SOLA = 'Todos votaron la ronda 1: la ronda 2 se abrió sola.'
+
+/**
+ * Decisión de Paola (21-oct): cuando toda la sala votó la ronda 1 (precierre de la sala), la ronda 1 se cierra y la
+ * ronda 2 se abre sola, sin que el facilitador haga nada. Usa las mismas transiciones que el panel (consumen lo
+ * programado para ellas y revelan las hojas), con `por: sistema`, y deja el evento `ronda_2_automatica`. Solo ocurre al
+ * entrar en precierre: después de «Volver a la ronda anterior» con todos los votos, no se dispara de nuevo hasta que
+ * el precierre se pierda y se recupere.
+ */
+function abrirRonda2Sola(db: Db, salaId: string, ahora: number) {
+  aplicarAccion(db, salaId, 'cerrar_ronda_1', ahora, 'sistema')
+  aplicarAccion(db, salaId, 'abrir_ronda_2', ahora, 'sistema')
+  registrarEvento(db, salaId, ahora, 'ronda_2_automatica', 'sistema', { ronda: 2, mensaje: MENSAJE_RONDA_2_SOLA })
+  tocar(db, salaId)
 }
 
 // --- Votos ---------------------------------------------------------------------
@@ -245,11 +267,13 @@ export function votar(db: Db, p: ParticipanteFila, d: DatosVoto, ctx: ContextoPe
       isoUtc(ahora),
       ipGuardable(ctx),
     )
+    // El progreso de la respuesta es el de la ronda votada: se calcula antes de que el último voto de la R1 abra la R2
+    // sola (21-oct); calculado después, describía la R2 recién abierta (0 completos y sin precierre).
+    const prog = progreso(db, sala)
     registrarCambiosPrecierre(db, sala, antes, ahora)
     tocar(db, sala.id)
     const s2 = cargarSala(db, sala.id)
     const mios = misVotos(db, p, ronda)
-    const prog = progreso(db, s2)
     const pm = prog.por_mesa.find((m) => m.mesa_id === p.mesa_id)!
     return {
       voto: votoPublico(mios.find((v) => v.proyecto_id === proyectoId)!, s2.zona_horaria),

@@ -542,6 +542,8 @@ describe('máquina de estados', () => {
     const s = await crearSala(e, 1)
     await accion(e, s.id, 'abrir_inscripcion')
     const t = (await inscribir(e, s.mesas[0].codigo, 'ana@correo.co')).json().token
+    // Alguien sin votar: con la sala completa la R2 se abriría sola (21-oct).
+    await inscribir(e, s.mesas[0].codigo, 'sin-votar@correo.co')
     await accion(e, s.id, 'abrir_ronda_1')
     await votar(e, t, 'insumex', 1)
     await votar(e, t, 'nutriwhat', 1)

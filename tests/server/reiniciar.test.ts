@@ -42,10 +42,15 @@ async function sala(estado: 'r1_abierta' | 'r1_cerrada' | 'r2_abierta' | 'r2_cer
   for (const correo of ['a@x.co', 'b@x.co', 'c@x.co']) tokens.push((await inscribir(e, s.mesas[0].codigo, correo)).json().token)
   await accion(e, s.id, 'abrir_ronda_1')
   for (const t of tokens) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, t, p, 1)).statusCode).toBe(200)
-  if (estado === 'r1_abierta') return { s, tokens }
-  await accion(e, s.id, 'cerrar_ronda_1')
-  if (estado === 'r1_cerrada') return { s, tokens }
-  await accion(e, s.id, 'abrir_ronda_2')
+  // 21-oct: con los 3 votos la R1 se cerró y la R2 se abrió sola. A la R1 abierta o cerrada se llega volviendo atrás
+  // (con todos los votos la R2 no se vuelve a abrir sola).
+  expect(fila(s.id).estado).toBe('r2_abierta')
+  if (estado === 'r1_abierta' || estado === 'r1_cerrada') {
+    expect((await accion(e, s.id, 'volver_ronda_anterior')).statusCode).toBe(200)
+    expect(fila(s.id).estado).toBe('r1_abierta')
+    if (estado === 'r1_cerrada') expect((await accion(e, s.id, 'cerrar_ronda_1')).statusCode).toBe(200)
+    return { s, tokens }
+  }
   for (const t of tokens.slice(0, 2)) for (const p of ['insumex', 'nutriwhat']) expect((await votar(e, t, p, 2)).statusCode).toBe(200)
   await tablero(s) // foto del consolidado de la R2
   if (estado === 'r2_abierta') return { s, tokens }

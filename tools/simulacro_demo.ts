@@ -98,15 +98,17 @@ async function main() {
   const yo = (await pedir('GET', '/api/yo', undefined, personas[0].token)) as { contenido: { portafolio: { id: string; modo: string }[] } }
   const vivos = yo.contenido.portafolio.filter((p) => p.modo === 'vivo').map((p) => p.id)
 
+  const estado = async () => ((await pedir('GET', `/api/admin/salas/${sala.id}`)) as { sala: { estado: string } }).sala.estado
   for (const ronda of [1, 2] as const) {
-    await accion(sala.id, ronda === 1 ? 'abrir_ronda_1' : 'abrir_ronda_2')
+    // 21-oct: cuando todos votaron la R1, el servidor la cierra y abre la R2 solo; solo se abre a mano si no pasó.
+    if (ronda === 1 || (await estado()) !== 'r2_abierta') await accion(sala.id, ronda === 1 ? 'abrir_ronda_1' : 'abrir_ronda_2')
     for (const p of personas) {
       for (const proyecto of vivos) {
         const respuestas = generador.respuestas(p.n, p.mesa, proyecto, ronda)
         await pedir('PUT', '/api/votos', { proyecto_id: proyecto, ronda, respuestas }, p.token)
       }
     }
-    await accion(sala.id, ronda === 1 ? 'cerrar_ronda_1' : 'cerrar_ronda_2')
+    if (ronda === 2 || (await estado()) === 'r1_abierta') await accion(sala.id, ronda === 1 ? 'cerrar_ronda_1' : 'cerrar_ronda_2')
     console.log(`Ronda ${ronda}: ${personas.length} personas votaron los ${vivos.length} proyectos`)
   }
 

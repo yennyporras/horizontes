@@ -80,16 +80,12 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)
         await votarApi(e, tokenC, 'nutriwhat', 1)
-        // Alcance sala (por defecto): el precierre que se anuncia es el de la sala.
-        await ver(p, /^Todos votaron en la sala/, espera)
-        await accion(e, sala.id, 'cerrar_ronda_1')
-        await titulo(p, 'Ronda 1 cerrada', espera)
-        await p.locator('.hzp-matriz svg.hz-matriz').waitFor()
+        // Decisión de Paola (21-oct): con toda la sala votada, la ronda 1 se cierra y la ronda 2 se abre sola; el
+        // celular pasa a la ronda 2 sin que el facilitador haga nada. (El cierre a mano lo recorre recorrido.test.ts.)
+        await titulo(p, 'Ronda 2: califica los 2 proyectos', espera)
         await sinDesborde(p)
 
         // Ronda 2 y comparación R1→R2.
-        await accion(e, sala.id, 'abrir_ronda_2')
-        await titulo(p, 'Ronda 2: califica los 2 proyectos', espera)
         await p.getByRole('button', { name: 'Calificar INSUMEX' }).click()
         await calificar(p, 9)
         await p.getByRole('button', { name: 'Guardar calificación' }).click()

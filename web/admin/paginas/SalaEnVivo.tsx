@@ -18,6 +18,7 @@ import {
   MODOS_TABLERO,
   PASO_SIGUIENTE,
   QUE_PASA,
+  RONDA_2_SOLA,
   TECLAS_TABLERO,
   ZONAS,
   accionesParaCorregir,
@@ -151,6 +152,7 @@ function Control({ d, salaId, refrescar, verResultado, setVerResultado }: PropsC
     <section className="panel" aria-labelledby="t-control">
       {dialogo}
       <h2 id="t-control">Control de la sala</h2>
+      <AvisoRonda2Sola d={d} />
       <AvisoPrecierre d={d} ver={verResultado} setVer={setVerResultado} />
       <div className="paso-siguiente">
         <p className="paso-siguiente__rotulo">Paso que sigue</p>
@@ -384,6 +386,21 @@ function PreguntaEnPantalla({ d, contenido, refrescar }: { d: SalaDetalle; conte
         </>
       )}
     </section>
+  )
+}
+
+/**
+ * Decisión de Paola (21-oct): cuando toda la sala votó la ronda 1, el servidor cierra esa ronda y abre la ronda 2 solo.
+ * El aviso se ve mientras la ronda 2 siga abierta y el último cambio de ronda de la bitácora sea ese.
+ */
+function AvisoRonda2Sola({ d }: { d: SalaDetalle }) {
+  if (d.sala.estado !== 'r2_abierta') return null
+  const ultimo = d.eventos.find((e) => e.tipo === 'ronda_2_automatica' || e.tipo.startsWith('ronda_') || e.tipo.startsWith('reinicio'))
+  if (ultimo?.tipo !== 'ronda_2_automatica') return null
+  return (
+    <p className="alerta alerta--exito" role="status">
+      <strong>{RONDA_2_SOLA}</strong> Puedes volver a la ronda anterior desde Corregir.
+    </p>
   )
 }
 

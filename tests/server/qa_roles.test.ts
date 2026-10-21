@@ -128,13 +128,14 @@ describe('R1 oculta (decisión 1 de Paola)', () => {
     const s = await crearSala(e, 2)
     await accion(e, s.id, 'abrir_inscripcion')
     await accion(e, s.id, 'abrir_ronda_1')
+    // La de la mesa 2 se inscribe antes: con la sala completa la R1 se cerraría y la R2 se abriría sola (21-oct).
+    const tarde = await persona(s.mesas[1].codigo, 'm2@x.co')
     const mesa1 = []
     for (let i = 0; i < 3; i++) {
       const p = await persona(s.mesas[0].codigo, `m1-${i}@x.co`)
       await votarAmbos(p.token, 1, con({ regulacion: i === 0 ? 9 : 5 }))
       mesa1.push(p)
     }
-    const tarde = await persona(s.mesas[1].codigo, 'm2@x.co')
     return { s, mesa1, tarde }
   }
 
@@ -178,9 +179,10 @@ describe('R1 oculta (decisión 1 de Paola)', () => {
     expect(ronda(yo, 'insumex', 1)).not.toHaveProperty('oculta')
     await pedir('PATCH', `/api/admin/salas/${s.id}/config`, { alcance_resultados: 'sala' })
     expect(ronda((await tablero(s)).json(), 'insumex', 1).oculta).toBe(true)
+    // Cuando todos votaron, la R1 se cierra y la R2 se abre sola (21-oct): la R1 se muestra.
     await votarAmbos(tarde.token, 1)
     const sala = (await tablero(s)).json()
-    expect(sala.progreso.precierre).toBe(true)
+    expect(sala.sala.estado).toBe('r2_abierta')
     expect(ronda(sala, 'insumex', 1)).not.toHaveProperty('oculta')
     expect(ronda(sala, 'insumex', 1).promedios).not.toBeNull()
   })
@@ -271,9 +273,11 @@ describe('resultados.csv', () => {
     const s = await crearSala(e, 2)
     await accion(e, s.id, 'abrir_inscripcion')
     await accion(e, s.id, 'abrir_ronda_1')
+    // Alguien de la Mesa 2 no vota: con la sala completa la R2 se abriría sola (21-oct) y aquí se cierra la R1 a mano.
+    await persona(s.mesas[1].codigo, 'sin-votar@x.co')
     for (let i = 0; i < 3; i++) await votarAmbos((await persona(s.mesas[0].codigo, `uno${i}@x.co`)).token, 1, con({ alineacion_core: i === 0 ? 1 : 5 }))
     for (let i = 0; i < 2; i++) await votarAmbos((await persona(s.mesas[1].codigo, `dos${i}@x.co`)).token, 1)
-    await accion(e, s.id, 'cerrar_ronda_1')
+    expect((await accion(e, s.id, 'cerrar_ronda_1')).statusCode).toBe(200)
     const r = await pedir('GET', `/api/admin/salas/${s.id}/export/resultados.csv`)
     expect(r.statusCode).toBe(200)
     expect(r.headers['content-type']).toContain('text/csv')
@@ -339,10 +343,11 @@ describe('métricas del negocio y resumen del taller', () => {
     const resumen = async () => (await pedir('GET', `/api/admin/salas/${s.id}`)).json().resumen
     expect(await resumen()).toEqual({ minutos_r1: null, minutos_r2: null, inscritos: 3, completaron_r1: 0, completaron_r2: 0, accesos_nuevos: 0 })
     await accion(e, s.id, 'abrir_ronda_1')
-    for (const p of ps) await votarAmbos(p.token, 1)
+    for (const p of ps.slice(0, 2)) await votarAmbos(p.token, 1)
     e.reloj.ms += 12 * 60_000
-    await accion(e, s.id, 'cerrar_ronda_1')
-    await accion(e, s.id, 'abrir_ronda_2')
+    // 21-oct: el último voto cierra la R1 y abre la R2 sola; los minutos de la R1 salen de ese cierre.
+    await votarAmbos(ps[2].token, 1)
+    expect((await pedir('GET', `/api/admin/salas/${s.id}`)).json().sala.estado).toBe('r2_abierta')
     await votarAmbos(ps[0].token, 2)
     for (const p of ps.slice(0, 2)) expect((await pedir('POST', `/api/admin/participantes/${p.participante.id}/acceso`, {})).statusCode).toBe(200)
     expect(await resumen()).toEqual({ minutos_r1: 12, minutos_r2: null, inscritos: 3, completaron_r1: 3, completaron_r2: 1, accesos_nuevos: 2 })
