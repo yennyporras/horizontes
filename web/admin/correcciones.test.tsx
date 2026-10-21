@@ -41,7 +41,7 @@ const boton = (n: string | RegExp) => screen.getByRole('button', { name: n }) as
 async function abrirDemo(usuario = 'paola') {
   montar('/admin/login')
   await entrar(usuario)
-  fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+  fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
   await screen.findByRole('heading', { name: 'Sala en vivo' })
 }
 
@@ -590,14 +590,49 @@ describe('Login, cuenta y navegación', () => {
   })
 })
 
+describe('Composición común de las cuatro áreas (21-oct)', () => {
+  it('las secciones van en la franja de pestañas y la cuenta en la barra; bajo 1024 px todo va en «Menú», sin perder la Guía de uso', async () => {
+    montar('/admin/login')
+    await entrar()
+    const franja = document.querySelector<HTMLElement>('.hz-franja-pagina')!
+    expect(franja.getAttribute('data-tema')).toBe('claro')
+    expect(within(franja).getByRole('link', { name: 'Salas' }).getAttribute('aria-current')).toBe('page')
+    const cuenta = document.querySelector<HTMLElement>('.hz-producto__menu')!
+    for (const n of ['Guía de uso', 'Salir']) expect(within(cuenta).getByRole('button', { name: n })).toBeTruthy()
+    expect(within(cuenta).getByRole('link', { name: 'Cambiar mi clave' })).toBeTruthy()
+    // Celular y tableta: un solo botón con la sección actual abre las pestañas y la cuenta, una sola vez cada una.
+    fireEvent.click(screen.getByRole('button', { name: 'Menú · Salas' }))
+    const menu = document.querySelector<HTMLElement>('.hz-producto__desplegable')!
+    expect(within(menu).getByRole('navigation', { name: 'Secciones del panel' })).toBeTruthy()
+    expect(screen.getAllByRole('navigation', { name: 'Secciones del panel' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Guía de uso' })).toHaveLength(1)
+    expect(within(menu).getByRole('link', { name: 'Cambiar mi clave' })).toBeTruthy()
+    expect(within(menu).getByRole('button', { name: 'Salir' })).toBeTruthy()
+    fireEvent.click(within(menu).getByRole('button', { name: 'Guía de uso' }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(document.querySelector('.hz-producto__desplegable')).toBeNull()
+  })
+
+  it('cada sección abre con la cabecera de página común (h1 con la escala única y la sala como contexto)', async () => {
+    await abrirDemo()
+    const h1 = screen.getByRole('heading', { level: 1, name: 'Sala en vivo' })
+    expect(h1.className).toBe('hz-h1')
+    expect(h1.closest('.hz-cabecera-pagina')!.querySelector('.encabezado-sala__meta strong')!.textContent).toBe('Taller Horizontes demo')
+    const css = readFileSync(join(__dirname, 'admin.css'), 'utf8')
+    expect(css).toMatch(/\.hz-admin h1 \{ font-size: var\(--hz-fs-h1\); font-weight: var\(--hz-fw-h1\);/)
+  })
+})
+
 describe('Ancho de página común (pedido del 20-oct)', () => {
   it('la barra, el contenido y el pie usan el mismo contenedor .hz-pagina, también en el login', async () => {
     montar('/admin/login')
     await screen.findByRole('heading', { name: 'Panel del facilitador' })
-    const login = [document.querySelector('.hz-producto__fila'), screen.getByRole('main'), screen.getByRole('contentinfo')]
+    // El pie común (21-oct) va de borde a borde con la línea del degradado; su fila es el contenedor de página.
+    expect(screen.getByRole('contentinfo').classList.contains('hz-pie')).toBe(true)
+    const login = [document.querySelector('.hz-producto__fila'), screen.getByRole('main'), screen.getByRole('contentinfo').firstElementChild]
     for (const el of login) expect(el?.classList.contains('hz-pagina')).toBe(true)
     await entrar()
-    const panel = [document.querySelector('.hz-producto__fila'), document.getElementById('contenido'), screen.getByRole('contentinfo')]
+    const panel = [document.querySelector('.hz-producto__fila'), document.getElementById('contenido'), screen.getByRole('contentinfo').firstElementChild]
     for (const el of panel) expect(el?.classList.contains('hz-pagina')).toBe(true)
     const css = readFileSync(join(__dirname, 'admin.css'), 'utf8').split('@media print')[0]
     // El contenido no redefine su ancho ni su relleno lateral: manda el contenedor común.

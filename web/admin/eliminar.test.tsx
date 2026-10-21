@@ -50,7 +50,7 @@ describe('Eliminar sala (Configuración)', () => {
   it('pide el nombre exacto, advierte si la sala está abierta y vuelve a Salas con un aviso', async () => {
     montar('/admin/login')
     await entrar()
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     fireEvent.click(nav().getByText('Configuración'))
     const zona = within(await screen.findByRole('region', { name: 'Eliminar sala' }))
@@ -83,7 +83,7 @@ describe('Eliminar sala (Configuración)', () => {
   it('Cancelar o Esc cierran el diálogo sin borrar y el foco vuelve al botón', async () => {
     montar('/admin/login')
     await entrar()
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     fireEvent.click(nav().getByText('Configuración'))
     const abrir = within(await screen.findByRole('region', { name: 'Eliminar sala' })).getByRole('button', { name: 'Eliminar sala' })
     fireEvent.click(abrir)
@@ -106,7 +106,7 @@ describe('Eliminar sala (Configuración)', () => {
   it('un admin normal no ve la zona de eliminar', async () => {
     montar('/admin/login')
     await entrar('jorge')
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     fireEvent.click(nav().getByText('Configuración'))
     await screen.findByRole('region', { name: 'Rúbricas' })
     expect(screen.queryByRole('region', { name: 'Eliminar sala' })).toBeNull()
@@ -120,7 +120,7 @@ describe('Eliminar mesa (Mesas y QR)', () => {
   it('con inscritos el botón está deshabilitado y explica por qué', async () => {
     montar('/admin/login')
     await entrar()
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     fireEvent.click(nav().getByText('Mesas y QR'))
     const boton = (await screen.findByRole('button', { name: 'Eliminar Mesa 1' })) as HTMLButtonElement
     expect(boton.disabled).toBe(true)

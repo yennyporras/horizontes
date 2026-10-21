@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { consultar, salud, usaMocks, type Medicion } from '../api'
 import { fechaHora } from '../textos'
 import { useTituloPagina } from './EncabezadoSala'
+import { CabeceraPagina } from '../../shared/ui'
 
 /** Tiempo típico de respuesta: la mediana de las últimas consultas (menos sensible a una sola lenta). */
 const tipico = (xs: number[]) => {
@@ -60,8 +61,7 @@ export function Salud() {
 
   return (
     <>
-      <h1 tabIndex={-1}>Salud del sistema</h1>
-      <p className="pista">Se revisa sola cada 5 segundos, desde este navegador.</p>
+      <CabeceraPagina enfocable titulo="Salud del sistema" contexto="Se revisa sola cada 5 segundos, desde este navegador." />
       {usaMocks() && <p className="alerta alerta--aviso">Estás en modo simulado: estos datos no son del servidor real.</p>}
       <section className={`alerta alerta--${s.tono} semaforo`} aria-labelledby="t-semaforo" role="status">
         <strong id="t-semaforo">{s.titulo}</strong>

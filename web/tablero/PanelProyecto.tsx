@@ -1,6 +1,7 @@
 import type { DatosTablero, ProyectoVivo, RondaVivo, Vista } from './tipos'
 import { ColRonda, NombreCriterio, tituloCriterio } from './TablaComparada'
-import { cifraRonda, claseCifra, delta, mostrarR2, rondaDe } from './logica'
+import { cifraRonda, claseCifra, conResultado, delta, minimoDe, mostrarR2, rondaDe } from './logica'
+import { mensajeFaltanVotos } from '../shared/votos'
 
 /** Móvil y tableta: un panel por proyecto con R1, R2 y el cambio por criterio (sin fila «Total», preentrega del 19-oct). */
 export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVivo; datos: DatosTablero; vista: Vista }) {
@@ -23,6 +24,15 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
     </tr>
   )
 
+  // Bajo el mínimo (21-oct): un solo mensaje con el conteo real; sin ninguna ronda con resultado, en lugar de la tabla.
+  const bajo = [r1, conR2 ? r2 : null].filter((r): r is RondaVivo => !!r?.bajo_minimo)
+  const avisos = bajo.map((r) => `${conR2 ? `Ronda ${r.ronda}: ` : ''}${mensajeFaltanVotos(r.n_votos ?? 0, minimoDe(datos))}`)
+  const conAlguna = conResultado(r1) || (conR2 && conResultado(r2))
+  const notas = avisos.map((a) => (
+    <p key={a} className="hz-tabla-aviso">
+      {a}
+    </p>
+  ))
   return (
     <section className="hz-panel" aria-labelledby={idTitulo}>
       <header className="hz-panel-cab">
@@ -31,27 +41,32 @@ export function PanelProyecto({ proyecto, datos, vista }: { proyecto: ProyectoVi
           {proyecto.sector ? `${proyecto.sector} · ` : ''}TAM {proyecto.tam} de 10
         </span>
       </header>
-      <table className="hz-tabla">
-        <caption className="hz-oculto">
-          Promedios por criterio de {proyecto.nombre} {conR2 ? 'en la ronda 1 y la ronda 2' : 'en la ronda 1'}
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">Criterio</th>
-            <ColRonda n={1} />
-            {conR2 && (
-              <>
-                <ColRonda n={2} />
-                <th scope="col">
-                  <span aria-hidden="true">Δ</span>
-                  <span className="hz-oculto">Cambio de R1 a R2</span>
-                </th>
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>{datos.criterios.map((c) => fila(c, (r) => r?.promedios?.[c.id]))}</tbody>
-      </table>
+      {!conAlguna ? (
+        notas.length ? notas : <p className="hz-tabla-aviso">Aún no hay votos.</p>
+      ) : (
+        <table className="hz-tabla">
+          <caption className="hz-oculto">
+            Promedios por criterio de {proyecto.nombre} {conR2 ? 'en la ronda 1 y la ronda 2' : 'en la ronda 1'}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Criterio</th>
+              <ColRonda n={1} />
+              {conR2 && (
+                <>
+                  <ColRonda n={2} />
+                  <th scope="col">
+                    <span aria-hidden="true">Δ</span>
+                    <span className="hz-oculto">Cambio de R1 a R2</span>
+                  </th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>{datos.criterios.map((c) => fila(c, (r) => r?.promedios?.[c.id]))}</tbody>
+        </table>
+      )}
+      {conAlguna && notas}
     </section>
   )
 }

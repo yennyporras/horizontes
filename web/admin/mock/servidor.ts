@@ -580,7 +580,9 @@ export async function responderMock(metodo: string, ruta: string, cuerpo?: unkno
     if (!s) return error(404, 'SALA_NO_EXISTE', 'Esa sala no existe.')
     const m = s.mesas.find((x) => x.id === new URLSearchParams(consulta).get('mesa'))
     const alcance = m ? { tipo: 'mesa', mesa_id: m.id, mesa_nombre: m.nombre } : { tipo: 'sala' }
-    return ok({ ...structuredClone(tableroBase), version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null })
+    // Como el servidor (21-oct): en una sala de ensayo, resultados desde 1 voto, fotos de 1 en 1 y `ensayo: true`.
+    const ensayo = s.sala.tipo === 'ensayo' ? { ensayo: true, minimo_votos: 1, votos_por_actualizacion: 1 } : {}
+    return ok({ ...structuredClone(tableroBase), version: s.version, alcance, preliminar: rondaAbierta(s.sala.estado) !== null, ...ensayo })
   }
 
   const a = sesion()

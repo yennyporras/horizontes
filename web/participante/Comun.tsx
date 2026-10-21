@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
-import { Aviso, BarraAccion, Boton, EncabezadoProducto, Insignia, useTemaDocumento } from '../shared/ui'
+import { Aviso, BarraAccion, Boton, EncabezadoProducto, Insignia, PiePagina, useTemaDocumento } from '../shared/ui'
 import './participante.css'
 
 /** Cifra con coma decimal (es-CO) y siempre 2 decimales, igual que el tablero (triage #11). */
@@ -45,8 +45,9 @@ export interface MarcoProps {
 export type MarcoBase = Pick<MarcoProps, 'sala' | 'meta' | 'arriba' | 'flotantes'>
 
 /**
- * Página del celular: tema claro de Estratek, encabezado de producto y, debajo, la sala y la mesa. Encabezado,
- * contexto, contenido y pie usan el contenedor de página (`.hz-pagina`): en escritorio comparten los bordes del panel.
+ * Página del celular: tema claro de Estratek, la barra común y, debajo, la sala y la mesa. La barra y el pie usan el
+ * contenedor de página (`.hz-pagina`, los bordes del panel); el contexto, el contenido, los avisos y la barra de acción,
+ * la columna de lectura centrada dentro de él (`.hz-pagina--lectura`, 640 px como máximo).
  */
 export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFoco, children }: MarcoProps) {
   useTemaDocumento('claro')
@@ -84,17 +85,18 @@ export function Marco({ sala, meta, arriba, flotantes, barra, notaBarra, claveFo
         {/* El logo lleva a la entrada de la mesa, no a la landing: nadie sale del taller por tocarlo (QA por roles del 20-oct). */}
         <EncabezadoProducto href={inicio} />
       </div>
-      <div className="hzp-contexto hz-pagina">
+      <div className="hzp-contexto hz-pagina hz-pagina--lectura">
         <p className="hzp-contexto__sala">{sala}</p>
         {meta && <p className="hzp-contexto__meta">{meta}</p>}
       </div>
-      <main ref={ref} className="hz-contenido hz-pagina">
+      <main ref={ref} className="hz-contenido hz-pagina hz-pagina--lectura">
         {arriba}
         {children}
       </main>
+      <PiePagina className="hzp-pie-pagina" />
       {hayPie && (
         <div ref={pie} className={barra ? 'hzp-pie' : 'hzp-pie hzp-pie--sin-barra'}>
-          {flotantes && <div className="hzp-flotantes hz-pagina">{flotantes}</div>}
+          {flotantes && <div className="hzp-flotantes hz-pagina hz-pagina--lectura">{flotantes}</div>}
           {barra && <BarraAccion nota={notaBarra}>{barra}</BarraAccion>}
         </div>
       )}

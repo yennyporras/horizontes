@@ -41,7 +41,7 @@ describe('Exportar: selector de sala', () => {
   it('con una sola sala el selector se ve, con su etiqueta, pero deshabilitado', async () => {
     montar('/admin/login')
     await entrar()
-    fireEvent.click(screen.getByRole('link', { name: 'Abrir' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Abrir' }))
     await screen.findByRole('heading', { name: 'Sala en vivo' })
     fireEvent.click(nav().getByText('Exportar'))
     const selector = (await screen.findByLabelText('Sala de la que exportas')) as HTMLSelectElement

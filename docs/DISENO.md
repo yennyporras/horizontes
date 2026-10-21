@@ -125,12 +125,38 @@ Jerarquía por superficie y borde de 1 px. Sombra (`--hz-sombra`) solo en lo que
 - Rúbrica: `radiogroup` con radios nativos. Pestañas: patrón ARIA `tablist`. Avisos: `status` para info y ok, `alert` para alerta y error.
 - `lang="es-CO"`, coma decimal.
 
+## 6 bis. Composición (21-oct, pedido de Paola: «parecen cada página de un proyecto diferente»)
+
+Un solo producto: las cuatro áreas (landing, celular, tablero y panel) se arman con las mismas piezas y las mismas medidas. Lo de cada área entra en estas piezas; ninguna área redefine su alto, su ancho ni su escala.
+
+| Pieza | Medida | Dónde vive |
+|---|---|---|
+| Barra (`EncabezadoProducto`) | 64 px bajo 1024 px y 72 px desde ahí (`--hz-alto-barra`, con la línea del degradado de 4 px incluida); fila en `.hz-pagina` | `web/shared/ui/EncabezadoProducto.tsx` |
+| Menú del área (`menu`) | A la derecha de la barra desde 1024 px; por debajo, en el botón «Menú» que abre un desplegable carbón (se cierra al elegir, con Escape, con el mismo botón o tocando fuera). El contenido existe una sola vez: al abrir se muda al desplegable | landing: secciones e «Ingresar al panel»; panel: Guía de uso, Cambiar mi clave, quién eres y Salir |
+| Segunda franja (`franja`) | Clara, 56 px (`--hz-alto-franja`), una sola fila en `.hz-pagina`; si no cabe, se desliza de lado | panel: pestañas de las secciones (bajo 1024 px van dentro de «Menú», `franjaEnMenu`); tablero: la sala (h1) y los controles; bajo 1100 px la sala en su línea y los controles en una fila deslizable |
+| Contenedor | `.hz-pagina`: 1280 px centrado, márgenes de 16, 24 y 32 px. En el celular, la columna de lectura `.hz-pagina--lectura` (640 px como máximo, centrada); su resultado sale a 1280 desde 1280 px | todas las vistas |
+| Cabecera de página (`CabeceraPagina`) | h1 en 900 con `--hz-fs-h1` (`clamp(1.5rem, 1.2rem + 1vw, 2rem)`, de 24 a 32 px), línea de contexto en 14 px y acciones opcionales. La landing conserva su titular grande solo en el héroe; sus h2 de sección usan la misma escala | panel (cada sección, login y cambio de clave), celular (`.hz-titulo`), tablero (en la franja) |
+| Pie (`PiePagina`) | Línea del degradado encima, logo de Estratek, «Horizontes, una herramienta de Estratek »» y los enlaces mínimos (Política de datos y estratek.com.co) | landing (bajo el bloque final), celular, login, panel y tablero fuera del proyector |
+| Tarjeta | Superficie 1, borde de 1 px, radio 16, relleno `--hz-sp-tarjeta` (16 px; 24 desde 768 px) | `.hz-tarjeta`, `.panel` del panel, tarjetas del celular y de la landing |
+| Aire entre bloques | `--hz-sp-bloque` (24 px; 32 desde 768 px) | bajo la cabecera de página y entre tarjetas |
+| Botones y controles | 48 px en todas las áreas, también en el tablero (`.hz-segmento`, `.hz-boton-pantalla`, selector de alcance) | `componentes.css` |
+
+**Tablero.** La vista normal usa el contenedor de 1280 px. Excepción: el **Detallado desde 1600 px** toma el ancho de la pantalla (barra, franja y contenido juntos, con el margen de 32 px), porque la matriz de 820 px y la tabla comparada no caben en 1280 a 6 m. En el proyector (desde 1100 px) el tablero ocupa justo la pantalla y el pie común no se muestra (la firma de Estratek ya va en la barra). La pantalla completa de la matriz no cambia.
+
+**Capas.** El encabezado (con el desplegable) va en `z-index` 12: sobre la barra de acción fija del celular (10) y bajo la pantalla completa de respaldo del tablero (15).
+
+**Mínimo de votos y ensayo (21-oct).** Bajo el mínimo, un solo mensaje por bloque con el conteo real (`web/shared/votos.ts`): «Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.» Nunca «Faltan votos» en cada celda; si ninguna columna tiene resultado, el mensaje va en lugar de la tabla. En una sala de ensayo (`ensayo: true`), el aviso «Ensayo: los resultados se muestran desde 1 voto. En un taller con cliente hacen falta 3.» y la insignia «En vivo: se actualiza con cada voto».
+
 ## 7. Componentes base (`web/shared/ui/`)
 
 React sin dependencias externas, clases `hz-*` y tokens `--hz-*`. Ningún componente calcula resultados.
 
 ### EncabezadoProducto
-- La barra superior carbón de todas las vistas: el `<header>` lleva `data-tema="carbon"`, así la barra y sus hijos (navegación, botones, menú desplegable) toman los tokens del carbón aunque la página sea clara. Glifo de Horizontes (40 px, radio 12, carbón sobre el acento), nombre en 900, firma «por Estratek »» con la » en azul y la línea del degradado de 4 px debajo, de borde a borde. La fila usa `.hz-pagina`. `href` opcional (la marca se vuelve enlace), `onIr` para navegar sin recargar y `children` a la derecha. Prop `nombre` para las demás herramientas de la familia.
+- La barra superior carbón de todas las vistas: el `<header>` lleva `data-tema="carbon"`, así la barra y sus hijos (navegación, botones, menú desplegable) toman los tokens del carbón aunque la página sea clara. Glifo de Horizontes (40 px, radio 12, carbón sobre el acento), nombre en 900, firma «por Estratek »» con la » en azul y la línea del degradado de 4 px debajo, de borde a borde. La fila usa `.hz-pagina` y mide `--hz-alto-barra` (§6 bis). `href` opcional (la marca se vuelve enlace), `onIr` para navegar sin recargar, `children` siempre a la derecha, `menu` (a la derecha desde 1024 px; por debajo, en «Menú»), `franja` (segunda franja clara de 56 px), `franjaEnMenu`, `etiquetaMenu` y el estado controlado `menuAbierto`/`onMenu`. Prop `nombre` para las demás herramientas de la familia.
+
+### CabeceraPagina y PiePagina
+- `CabeceraPagina`: `titulo` (h1 `.hz-h1`), `antetitulo`, `contexto`, `acciones`, `enfocable` (tabindex -1 para llevar el foco al cambiar de sección) e `id`.
+- `PiePagina`: el pie común; `antes` agrega enlaces propios del área.
 
 ### LogoEstratek
 - Logo oficial de Estratek (`marca/estratek-logo.png`, un solo color) como máscara pintada con `--hz-tinta`: carbón sobre el claro, hielo dentro de la barra. `role="img"` y nombre «Estratek». Alto de 32 px por defecto (se cambia con `className`); en alto contraste de Windows, `CanvasText`.
@@ -167,11 +193,11 @@ React sin dependencias externas, clases `hz-*` y tokens `--hz-*`. Ningún compon
 - Tarjeta en superficie 1 con borde y radio 16; la activa lleva un filo de acción de 3 px arriba.
 
 ### Landing (`web/inicio/`)
-- Tema claro con la barra carbón (20-oct). `EncabezadoProducto` con las cinco secciones e «Ingresar al panel» desde 1152 px; por debajo, «Menú» (se cierra al elegir, con Escape, con el mismo botón o tocando fuera) y, desde 480 px, «Ingresar al panel» al lado.
+- Tema claro con la barra carbón (20-oct). `EncabezadoProducto` con el menú común (21-oct): las cinco secciones («Tu mesa», «Cómo funciona», «Qué se evalúa», «Facilitadores», «Tus datos») e «Ingresar al panel» desde 1024 px; por debajo, en «Menú». ~~Desde 1152 px, con «Entrar a tu mesa»~~ (20-oct).
 - Héroe: titular en 900 con la palabra clave en azul («La mesa mueve el **portafolio**»), un primario («Escribir el código de mi mesa») y el avance «Ver cómo funciona »». Desde 768 px, texto y matriz lado a lado.
 - Matriz ilustrada: plano en superficie 1 con ejes en borde de control, H2 y H1 en superficies 2 y 3 con su borde, etiquetas H1 a H3 en borde de control, fijos en tinta 3, R1 hueco verde y R2 sólido rojo del claro, «R1» del lado contrario a la flecha.
 - Secciones que alternan fondo y superficie 1 con borde. En las de dos columnas, el título lleva su bajada (y en facilitadores, «Ingresar al panel») al lado: la columna no queda vacía.
-- Pie con la línea del degradado, «Horizontes »» en grande y `LogoEstratek` en carbón. ~~Logo blanco sobre carbón~~ (19-oct).
+- Pie común (`PiePagina`, 21-oct) bajo el bloque comercial. ~~Pie propio con «Horizontes »» en grande~~ (20-oct).
 
 ## 8. Flujo de pantallas del participante
 

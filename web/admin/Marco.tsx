@@ -4,7 +4,7 @@ import { useSesion } from './sesion'
 import { api, lista, usaMocks } from './api'
 import { recordarSala, salaRecordada } from './memoria'
 import { dominioDistinto } from './textos'
-import { EncabezadoProducto } from '../shared/ui'
+import { EncabezadoProducto, PiePagina } from '../shared/ui'
 import { ProveedorPendientes, usePendientes } from './componentes/Pendientes'
 import { useGuiaUso } from './componentes/GuiaUso'
 import { GRUPOS, seccionesDe, type Grupo } from './secciones'
@@ -67,12 +67,15 @@ function MarcoInterno() {
     if (await confirmarSalida()) navegar(a)
   }
 
+  const actual = enlaces.find((e) => (e.end ? pathname === e.a : pathname.startsWith(e.a)))?.texto ?? 'Panel'
   return (
     <div className="marco">
       <a className="saltar" href="#contenido">
         Saltar al contenido
       </a>
-      <div className="cabecera" data-tema="carbon">
+      {/* Barra común (EncabezadoProducto): a la derecha la guía, la clave, quién eres y Salir; debajo, la franja de
+          pestañas con las secciones. Bajo 1024 px las dos van en «Menú · sección actual» (QA-A-23). */}
+      <div className="cabecera">
         <EncabezadoProducto
           href="/admin/salas"
           onIr={async (e) => {
@@ -81,84 +84,73 @@ function MarcoInterno() {
             e.preventDefault()
             if (await confirmarSalida()) navegar('/admin/salas')
           }}
-        >
-          {/* QA-A-23: en el celular el menú se abre con un botón que dice en qué sección estás. */}
-          <button
-            type="button"
-            className="hz-boton hz-boton--secundario menu-boton"
-            aria-expanded={menuAbierto}
-            aria-controls="menu-panel"
-            onClick={() => setMenuAbierto((v) => !v)}
-          >
-            Menú<span className="menu-boton__actual"> · {enlaces.find((e) => (e.end ? pathname === e.a : pathname.startsWith(e.a)))?.texto ?? 'Panel'}</span>
-          </button>
-          <nav id="menu-panel" aria-label="Secciones del panel" className={menuAbierto ? 'nav nav--abierto' : 'nav'}>
-            {grupos.map((g) => (
-              <div key={g} className="nav__grupo" role="group" aria-label={GRUPOS[g]}>
-                {enlaces
-                  .filter((e) => e.grupo === g)
-                  .map((e) => (
-                    <NavLink
-                      key={e.texto}
-                      to={e.a}
-                      end={e.end}
-                      onClick={irA(e.a)}
-                      className={({ isActive }) =>
-                        ['nav__item', isActive && 'nav__item--activo', guia.seccion === e.texto && 'nav__item--guia'].filter(Boolean).join(' ')
-                      }
-                    >
-                      {e.texto}
-                    </NavLink>
-                  ))}
-              </div>
-            ))}
-          </nav>
-          {/* En el celular estas dos van dentro del menú plegable; Salir queda siempre a la vista. */}
-          <div className={menuAbierto ? 'cuenta-extra cuenta-extra--abierta' : 'cuenta-extra'}>
-            <button type="button" className="hz-boton hz-boton--fantasma" onClick={guia.abrir}>
-              Guía de uso
-            </button>
-            {/* QA-A-22: cada quien cambia su clave cuando quiera. */}
-            <Link className="hz-boton hz-boton--fantasma" to="/admin/cambiar-clave" onClick={irA('/admin/cambiar-clave')}>
-              Cambiar mi clave
-            </Link>
-          </div>
-          <div className="usuario">
-            <span className="usuario__nombre">{admin?.nombre}</span>
-            <span className="etiqueta">{esSuperadmin ? 'Superadmin' : 'Admin'}</span>
-            <button
-              type="button"
-              className="hz-boton hz-boton--fantasma"
-              onClick={async () => {
-                if (!(await confirmarSalida())) return
-                await salir()
-                navegar('/admin/login', { replace: true })
-              }}
-            >
-              Salir
-            </button>
-          </div>
-        </EncabezadoProducto>
+          etiquetaMenu={
+            <>
+              Menú<span className="menu-boton__actual"> · {actual}</span>
+            </>
+          }
+          menuAbierto={menuAbierto}
+          onMenu={setMenuAbierto}
+          franjaEnMenu
+          franja={
+            <nav id="menu-panel" aria-label="Secciones del panel" className={['nav hz-pestanas-franja', menuAbierto && 'nav--abierto'].filter(Boolean).join(' ')}>
+              {grupos.map((g) => (
+                <div key={g} className="nav__grupo" role="group" aria-label={GRUPOS[g]}>
+                  {enlaces
+                    .filter((e) => e.grupo === g)
+                    .map((e) => (
+                      <NavLink
+                        key={e.texto}
+                        to={e.a}
+                        end={e.end}
+                        onClick={irA(e.a)}
+                        className={({ isActive }) =>
+                          ['nav__item hz-pestanas-franja__item', isActive && 'nav__item--activo', guia.seccion === e.texto && 'nav__item--guia'].filter(Boolean).join(' ')
+                        }
+                      >
+                        {e.texto}
+                      </NavLink>
+                    ))}
+                </div>
+              ))}
+            </nav>
+          }
+          menu={
+            <div className="cuenta">
+              {/* La Guía de uso sigue siempre a mano: en la barra o en el menú plegable. */}
+              <button type="button" onClick={guia.abrir}>
+                Guía de uso
+              </button>
+              {/* QA-A-22: cada quien cambia su clave cuando quiera. */}
+              <Link to="/admin/cambiar-clave" onClick={irA('/admin/cambiar-clave')}>
+                Cambiar mi clave
+              </Link>
+              <span className="usuario">
+                <span className="usuario__nombre">{admin?.nombre}</span>
+                <span className="etiqueta">{esSuperadmin ? 'Superadmin' : 'Admin'}</span>
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!(await confirmarSalida())) return
+                  await salir()
+                  navegar('/admin/login', { replace: true })
+                }}
+              >
+                Salir
+              </button>
+            </div>
+          }
+        />
       </div>
       <AvisoDominio sala={sala} />
       {usaMocks() && <p className="aviso-mock">Modo simulado: los datos vienen de mocks/ y no se guardan.</p>}
       <main id="contenido" className="contenido hz-pagina">
         <Outlet />
       </main>
-      <PiePanel />
+      <PiePagina />
       {guia.elemento}
     </div>
-  )
-}
-
-/** Pie del panel: en el mismo contenedor de página que la barra y el contenido (ancho común del 20-oct). */
-export function PiePanel() {
-  return (
-    <footer className="pie hz-pagina">
-      <p>
-        Horizontes, panel del facilitador · por Estratek <span className="pie__flecha" aria-hidden="true">»</span>
-      </p>
-    </footer>
   )
 }
 

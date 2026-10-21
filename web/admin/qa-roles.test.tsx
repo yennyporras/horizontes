@@ -225,6 +225,20 @@ describe('modo demo (jurado)', () => {
     expect((await responderMock('POST', '/api/admin/demo')).status).toBe(403)
   })
 
+  it('sala de ensayo (21-oct): «Cómo votó» avisa que los resultados se muestran desde 1 voto, con el dato del servidor', async () => {
+    montar('/admin/login')
+    await entrar()
+    fireEvent.click(within(screen.getByRole('region', { name: 'Demostración' })).getByRole('button', { name: 'Crear demostración' }))
+    await screen.findByRole('heading', { level: 1, name: 'Sala en vivo' })
+    const lista = (await responderMock('GET', '/api/admin/salas')).body as { id: string; nombre: string }[]
+    const sala = lista.find((s) => s.nombre === 'Demostración')!
+    const t = (await responderMock('GET', `/api/tablero/${sala.id}`)).body as { ensayo?: boolean; minimo_votos: number; votos_por_actualizacion: number }
+    expect([t.ensayo, t.minimo_votos, t.votos_por_actualizacion]).toEqual([true, 1, 1])
+    const aviso = await screen.findAllByText('Ensayo: los resultados se muestran desde 1 voto. En un taller con cliente hacen falta 3.', {}, { timeout: 5000 })
+    expect(aviso.length).toBeGreaterThan(0)
+    expect(aviso.every((a) => a.textContent!.indexOf('—') < 0)).toBe(true)
+  })
+
   it('una segunda demostración mientras corre la primera sale con el mensaje del servidor (409)', async () => {
     await responderMock('POST', '/api/admin/login', { usuario: 'paola', clave: 'demo1234' })
     expect((await responderMock('POST', '/api/admin/demo')).status).toBe(201)

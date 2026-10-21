@@ -77,7 +77,7 @@ describe.skipIf(disponibles.length === 0)('recorrido del participante en celular
         // cuándo salen los resultados.
         await titulo(p, /^(Resultado parcial de la sala|Calificación enviada)$/, espera)
         if (await p.getByRole('heading', { name: 'Calificación enviada', level: 1 }).count()) await ver(p, 'Los resultados de la ronda 1 se muestran cuando todos voten o al cerrar la ronda.', espera)
-        else await ver(p, 'Hacen falta al menos 3 votos para mostrar estos resultados.', espera)
+        else await ver(p, 'Hay 1 voto de los 3 que hacen falta para mostrar el resultado. Así nadie puede deducir cómo votó otra persona.', espera)
         await votarApi(e, tokenB, 'insumex', 1)
         await votarApi(e, tokenC, 'insumex', 1)
         await votarApi(e, tokenB, 'nutriwhat', 1)
