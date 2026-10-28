@@ -386,6 +386,12 @@
 .hz-admin .login { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .hz-admin .login__cuerpo { flex: 1; padding-block: var(--hz-sp-bloque) var(--hz-sp-12); }
 .hz-admin .login__caja { width: 100%; max-width: 28rem; margin: 0; }
+.hz-admin .login__clave { display: flex; gap: var(--hz-sp-2); }
+.hz-admin .login__clave input { flex: 1; min-width: 0; }
+.hz-admin .login__clave .hz-boton { flex: none; }
+.hz-admin .login__olvido summary { cursor: pointer; color: var(--hz-accion); min-height: var(--hz-tactil); display: flex; align-items: center; }
+.hz-admin .login__olvido p { margin-block: var(--hz-sp-2) 0; }
+.hz-admin .login__olvido code { overflow-wrap: anywhere; }
 
 /* ── Rúbricas: el valor fijo en un círculo y el texto editable al lado ── */
 .hz-admin .rubrica-pregunta { font-style: italic; color: var(--hz-tinta-2); }

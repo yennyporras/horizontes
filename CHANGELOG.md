@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versiones con [SemVer](https://semver.org/lang/es/).
 
+## [1.4.1] · 2026-10-28
+
+### Agregado
+- Entrar al panel: botón «Mostrar» para ver la clave escrita y «¿Olvidaste tu clave?» con los pasos para restablecerla (admin: la restablece el superadministrador; superadministrador: comando del servidor).
+
 ## [1.4.0] · 2026-10-21
 
 ### Agregado
